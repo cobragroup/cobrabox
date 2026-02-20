@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -41,11 +41,11 @@ class Dataset:
     def __init__(
         self,
         data: xr.DataArray,
-        subjectID: Optional[str] = None,
-        groupID: Optional[str] = None,
-        condition: Optional[str] = None,
-        history: Optional[List[str]] = None,
-        extra: Optional[Dict[str, Any]] = None,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        history: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
     ):
         """Initialize Dataset.
         
@@ -104,11 +104,11 @@ class Dataset:
         return self._data
     
     @property
-    def subjectID(self) -> Optional[str]:
+    def subjectID(self) -> str | None:
         """Subject identifier."""
         return self._data.attrs.get("subjectID")
     
-    def _infer_sampling_rate(self, data: xr.DataArray) -> Optional[float]:
+    def _infer_sampling_rate(self, data: xr.DataArray) -> float | None:
         """Infer sampling rate from time coordinates.
         
         Returns sampling rate in Hz if time coordinates represent time in seconds
@@ -154,27 +154,27 @@ class Dataset:
         return float(sampling_rate)
     
     @property
-    def sampling_rate(self) -> Optional[float]:
+    def sampling_rate(self) -> float | None:
         """Sampling rate in Hz (stored at creation, inferred from time coords when possible)."""
         return self._data.attrs.get("sampling_rate")
     
     @property
-    def groupID(self) -> Optional[str]:
+    def groupID(self) -> str | None:
         """Group identifier."""
         return self._data.attrs.get("groupID")
     
     @property
-    def condition(self) -> Optional[str]:
+    def condition(self) -> str | None:
         """Experimental condition."""
         return self._data.attrs.get("condition")
     
     @property
-    def history(self) -> List[str]:
+    def history(self) -> list[str]:
         """List of operations applied to this dataset."""
         return self._data.attrs.get("history", [])
     
     @property
-    def extra(self) -> Dict[str, Any]:
+    def extra(self) -> dict[str, Any]:
         """User-defined additional fields and arrays.
         
         Returns a copy of the extra dict. To add fields, create a new Dataset
@@ -210,8 +210,8 @@ class Dataset:
     def _copy_with_new_data(
         self,
         new_data: xr.DataArray | Dataset,
-        operation_name: Optional[str] = None,
-        extra: Optional[Dict[str, Any]] = None,
+        operation_name: str | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> Dataset:
         """Create a new Dataset with updated data, preserving metadata.
         

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import Callable, Protocol, TypeVar
+from typing import Callable, Protocol
 
 import xarray as xr
 
@@ -17,9 +17,6 @@ class FeatureFunction(Protocol):
     def __call__(self, data: Dataset, *args, **kwargs) -> FeatureReturn:
         """Feature function signature: takes Dataset, returns DataArray or Dataset."""
         ...
-
-
-T = TypeVar("T")
 
 
 def feature(feature_func: FeatureFunction) -> Callable[[Dataset, ...], Dataset]:
