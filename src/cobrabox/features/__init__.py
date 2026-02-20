@@ -1,5 +1,8 @@
-from .base import Feature
-from .dummy import DummyFeature
+from .sliding_window import sliding_window
+from .line_length import line_length
 
-__all__ = ["Feature", "DummyFeature"]
+__all__ = [
+    "sliding_window",
+    "line_length",
+]
 
