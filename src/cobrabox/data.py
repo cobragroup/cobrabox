@@ -41,6 +41,7 @@ class Dataset:
     def __init__(
         self,
         data: xr.DataArray,
+        sampling_rate: float | None = None,
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
@@ -51,22 +52,22 @@ class Dataset:
         
         Args:
             data: xarray DataArray with at least 'time' and 'space' dimensions
+            sampling_rate: Sampling rate in Hz. If not provided, inferred from
+                time coordinates when they represent time in seconds.
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
             history: List of operation names applied (default: empty list)
             extra: Optional dict for additional fields and arrays (e.g. xr.DataArray, scalars)
-        
-        Note:
-            sampling_rate is inferred from the time coordinates if they represent
-            time in seconds. If time coordinates are indices (0, 1, 2, ...), sampling_rate
-            will be None.
         """
         # Validate mandatory dimensions
         if "time" not in data.dims:
             raise ValueError("data must have 'time' dimension")
         if "space" not in data.dims:
             raise ValueError("data must have 'space' dimension")
+        
+        if sampling_rate is not None and sampling_rate <= 0:
+            raise ValueError("sampling_rate must be positive when provided")
         
         # Store xarray DataArray
         self._data = data
@@ -86,10 +87,13 @@ class Dataset:
             history = []
         attrs["history"] = history
         
-        # Infer and store sampling rate from time coordinates when possible
-        inferred_sampling_rate = self._infer_sampling_rate(data)
-        if inferred_sampling_rate is not None:
-            attrs["sampling_rate"] = inferred_sampling_rate
+        # Sampling rate: use provided value, else try to infer from time coordinates
+        if sampling_rate is not None:
+            attrs["sampling_rate"] = sampling_rate
+        else:
+            inferred = self._infer_sampling_rate(data)
+            if inferred is not None:
+                attrs["sampling_rate"] = inferred
         
         # Update attrs
         self._data = self._data.assign_attrs(attrs)
@@ -97,6 +101,104 @@ class Dataset:
         # User-defined extra fields and arrays (frozen copy)
         self._extra = dict(extra) if extra else {}
         self._frozen = True  # Mark as frozen after initialization
+    
+    @classmethod
+    def from_numpy(
+        cls,
+        arr: np.ndarray,
+        sampling_rate: float | None = None,
+        time: np.ndarray | list[float] | None = None,
+        space: np.ndarray | list[Any] | None = None,
+        dims: list[str] | None = None,
+        *,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> Dataset:
+        """Create a Dataset from a numpy array.
+
+        Requires at least 2 dimensions and that resulting dims include `time` and `space`.
+        """
+        arr = np.asarray(arr)
+        if arr.ndim < 2:
+            raise ValueError("array must have at least 2 dimensions (time, space)")
+
+        if dims is None:
+            dims = ["time", "space"] + [f"dim_{i}" for i in range(2, arr.ndim)]
+        elif len(dims) != arr.ndim:
+            raise ValueError("dims length must match array ndim")
+
+        if "time" not in dims or "space" not in dims:
+            raise ValueError("dims must include 'time' and 'space'")
+
+        time_axis = dims.index("time")
+        space_axis = dims.index("space")
+
+        coords: dict[str, Any] = {}
+        if time is not None:
+            if len(time) != arr.shape[time_axis]:
+                raise ValueError("time length must match size of 'time' dimension")
+            coords["time"] = time
+        elif sampling_rate is not None and sampling_rate > 0:
+            coords["time"] = np.arange(arr.shape[time_axis], dtype=float) / sampling_rate
+        else:
+            coords["time"] = np.arange(arr.shape[time_axis], dtype=float)
+
+        if space is not None:
+            if len(space) != arr.shape[space_axis]:
+                raise ValueError("space length must match size of 'space' dimension")
+            coords["space"] = space
+
+        data = xr.DataArray(arr, dims=dims, coords=coords)
+        return cls(
+            data=data,
+            sampling_rate=sampling_rate,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            extra=extra,
+        )
+    
+    @classmethod
+    def from_xarray(
+        cls,
+        ar: xr.DataArray,
+        *,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        history: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> Dataset:
+        """Create a Dataset from an xarray DataArray.
+        
+        The DataArray must have 'time' and 'space' dimensions. Time coordinates
+        should be in seconds if you want sampling_rate to be inferred.
+        
+        Args:
+            ar: xarray DataArray with dims (time, space) and optional coords.
+            subjectID: Subject identifier.
+            groupID: Group identifier.
+            condition: Experimental condition.
+            history: List of operation names applied.
+            extra: Optional extra dict.
+        
+        Returns:
+            Dataset instance.
+        
+        Example:
+            >>> ar = xr.DataArray(...)
+            >>> ds = cb.from_xarray(ar)
+        """
+        return cls(
+            data=ar,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            history=history,
+            extra=extra,
+        )
     
     @property
     def data(self) -> xr.DataArray:
@@ -143,9 +245,8 @@ class Dataset:
         if np.std(deltas) / mean_delta > 0.01:
             return None
         
-        # If time values look like indices (0, 1, 2, ...), can't infer sampling rate
-        # Assume if max time < 10, they're likely indices
-        if np.max(time_values) < 10 and np.allclose(time_values, np.arange(len(time_values))):
+        # If time values look like plain indices (0, 1, 2, ...), don't infer sampling rate.
+        if np.allclose(time_values, np.arange(len(time_values), dtype=float)):
             return None
         
         # Compute sampling rate: 1 / delta_time (assuming time is in seconds)
