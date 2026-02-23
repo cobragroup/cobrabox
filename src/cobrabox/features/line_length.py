@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 from ..data import Dataset
-from .wrapper import feature
+from ..function_wrapper import feature
 
 
 @feature

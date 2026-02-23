@@ -8,7 +8,8 @@ import cobrabox as cb
 
 data = cb.dataset("dummy_chain")[0]
 wdata = cb.feature.sliding_window(data)
-feature = cb.feature.line_length(wdata)
+feat = cb.feature.line_length(wdata)
+dummy = cb.feature.dummy(feat)
 
-print("feature.data.shape:", feature.data.shape)
-print("feature.history:", feature.history)
+print("feature.data.shape:", feat.data.shape)
+print("feature.history:", feat.history)

@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import numpy as np
-import xarray as xr
-
 from ..data import Dataset
-from .wrapper import feature
+from ..function_wrapper import feature
 
 
 @feature
@@ -14,6 +11,6 @@ def dummy(
     """Dummy feature that returns the input data."""
     a = data.asnumpy()
     sampling_rate = data.sampling_rate
+    whatever = data.extra.get("whatever", None)
 
-    
-    return data
+    return Dataset.from_numpy(a, dims=data.data.dims, sampling_rate=sampling_rate)
