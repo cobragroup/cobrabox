@@ -106,11 +106,9 @@ class Dataset:
     def from_numpy(
         cls,
         arr: np.ndarray,
-        sampling_rate: float | None = None,
-        time: np.ndarray | list[float] | None = None,
-        space: np.ndarray | list[Any] | None = None,
-        dims: list[str] | None = None,
+        dims: list[str],
         *,
+        sampling_rate: float | None = None,
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
@@ -124,31 +122,19 @@ class Dataset:
         if arr.ndim < 2:
             raise ValueError("array must have at least 2 dimensions (time, space)")
 
-        if dims is None:
-            dims = ["time", "space"] + [f"dim_{i}" for i in range(2, arr.ndim)]
-        elif len(dims) != arr.ndim:
+        if len(dims) != arr.ndim:
             raise ValueError("dims length must match array ndim")
 
-        if "time" not in dims or "space" not in dims:
-            raise ValueError("dims must include 'time' and 'space'")
+        if "time" not in dims:
+            raise ValueError("dims must include 'time'")
 
         time_axis = dims.index("time")
-        space_axis = dims.index("space")
 
         coords: dict[str, Any] = {}
-        if time is not None:
-            if len(time) != arr.shape[time_axis]:
-                raise ValueError("time length must match size of 'time' dimension")
-            coords["time"] = time
-        elif sampling_rate is not None and sampling_rate > 0:
+        if sampling_rate is not None and sampling_rate > 0:
             coords["time"] = np.arange(arr.shape[time_axis], dtype=float) / sampling_rate
         else:
             coords["time"] = np.arange(arr.shape[time_axis], dtype=float)
-
-        if space is not None:
-            if len(space) != arr.shape[space_axis]:
-                raise ValueError("space length must match size of 'space' dimension")
-            coords["space"] = space
 
         data = xr.DataArray(arr, dims=dims, coords=coords)
         return cls(

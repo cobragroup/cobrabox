@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import cobrabox as cb
 
-data = cb.dataset("name_of_data")
+data = cb.dataset("fMRI_sim2")
 wdata = cb.feature.sliding_window(data)
 feature = cb.feature.line_length(wdata)
 

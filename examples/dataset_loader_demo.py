@@ -1,0 +1,20 @@
+"""Run the structured dummy dataset loader demo."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+import cobrabox as cb
+
+
+def main() -> None:
+    datasets = cb.dataset("dummy_random")
+    print(datasets)
+    print(f"Loaded parts: {len(datasets)}")
+    print(f"First part shape: {datasets[0].data.shape}")
+    print(datasets[0].aspandas().head())
+
+
+if __name__ == "__main__":
+    main()
