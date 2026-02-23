@@ -9,7 +9,7 @@ import cobrabox as cb
 
 
 def main() -> None:
-    datasets = cb.dataset("dummy_random")
+    datasets = cb.dataset("dummy_chain")
     print(datasets)
     print(f"Loaded parts: {len(datasets)}")
     print(f"First part shape: {datasets[0].data.shape}")
