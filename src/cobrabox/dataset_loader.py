@@ -5,10 +5,10 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 
-from .data import Dataset
+from .data import Data
 
 
-def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> list[Dataset]:
+def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> list[Data]:
     """Load dummy dataset parts from `data/dummy/struct`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
@@ -22,7 +22,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
             f"(expected: dummy_struct_VAR_{variant}_*.csv.xz)."
         )
 
-    datasets: list[Dataset] = []
+    datasets: list[Data] = []
     for path in candidates:
         df = pd.read_csv(path, compression="xz")
         if df.empty:
@@ -41,16 +41,14 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
             coords={"time": time, "space": space},
             attrs={"source_file": path.name, "identifier": identifier},
         )
-        datasets.append(Dataset.from_xarray(da))
+        datasets.append(Data.from_xarray(da))
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return datasets
 
 
-def load_noise_dummy(
-    identifier: str = "dummy_noise", repo_root: Path | None = None
-) -> list[Dataset]:
+def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = None) -> list[Data]:
     """Load dummy noise dataset parts from `data/dummy/noise`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
@@ -60,7 +58,7 @@ def load_noise_dummy(
     if not candidates:
         raise FileNotFoundError(f"No .csv.xz files found for '{identifier}' in {noise_dir}.")
 
-    datasets: list[Dataset] = []
+    datasets: list[Data] = []
     for path in candidates:
         df = pd.read_csv(path, compression="xz")
         if df.empty:
@@ -77,7 +75,7 @@ def load_noise_dummy(
             coords={"time": time, "space": columns},
             attrs={"source_file": path.name, "identifier": identifier},
         )
-        datasets.append(Dataset.from_xarray(da))
+        datasets.append(Data.from_xarray(da))
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")

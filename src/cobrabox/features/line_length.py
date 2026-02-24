@@ -3,13 +3,13 @@ from __future__ import annotations
 import numpy as np
 import xarray as xr
 
-from ..data import Dataset
+from ..data import Data
 from ..function_wrapper import feature
 
 
 @feature
 def line_length(
-    data: Dataset,
+    data: Data,
 ) -> xr.DataArray:
     """Compute line length feature.
 
@@ -18,7 +18,7 @@ def line_length(
     for now.
 
     Args:
-        data: Dataset with 'time' and 'space' dimensions
+        data: Data with 'time' and 'space' dimensions
             (may also have 'window_index' if from sliding_window)
 
     Returns:

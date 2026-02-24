@@ -1,4 +1,4 @@
-"""Tests for Dataset constructors: from_numpy and from_xarray."""
+"""Tests for Data constructors: from_numpy and from_xarray."""
 
 import numpy as np
 import pytest
@@ -8,7 +8,7 @@ import cobrabox as cb
 
 
 def test_from_numpy_basic():
-    """from_numpy creates a Dataset with correct shape and sampling_rate."""
+    """from_numpy creates a Data object with correct shape and sampling_rate."""
     a = np.random.randn(100, 10)
     ds = cb.from_numpy(a, dims=["time", "space"], sampling_rate=100.0)
     assert ds.data.shape == (100, 10)

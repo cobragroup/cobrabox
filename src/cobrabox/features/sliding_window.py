@@ -3,13 +3,13 @@ from __future__ import annotations
 import numpy as np
 import xarray as xr
 
-from ..data import Dataset
+from ..data import Data
 from ..function_wrapper import feature
 
 
 @feature
 def sliding_window(
-    data: Dataset,
+    data: Data,
     window_size: int = 10,
     step_size: int = 5,
 ) -> xr.DataArray:
@@ -19,7 +19,7 @@ def sliding_window(
     windows along the 'time' dimension.
 
     Args:
-        data: Dataset with 'time' and 'space' dimensions
+        data: Data with 'time' and 'space' dimensions
         window_size: Size of each window in timepoints
         step_size: Step size between windows in timepoints
 

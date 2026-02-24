@@ -26,9 +26,9 @@ engineering across modalities.
 
 ### Core ideas
 
-- Data is represented by `cobrabox.Dataset` (internally wraps an xarray `DataArray`).
+- Data is represented by `cobrabox.Data` (internally wraps an xarray `DataArray`).
 - Feature functions are called from `cb.feature.*`.
-- Features return a new `Dataset` and append to `history`.
+- Features return a new `Data` object and append to `history`.
 
 ### Minimal feature pipeline
 
@@ -57,7 +57,7 @@ print(feat.history)  # ['sliding_window', 'line_length']
 ### Loading dummy datasets
 
 `cb.dataset(name)` currently supports dummy identifiers and returns a list of
-`Dataset` parts loaded from compressed CSV files:
+`Data` parts loaded from compressed CSV files:
 
 - `dummy_chain`
 - `dummy_random`

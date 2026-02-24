@@ -7,7 +7,7 @@ import pandas as pd
 import xarray as xr
 
 
-class Dataset:
+class Data:
     """Container for labelled multidimensional time-series data.
 
     Immutable container wrapping xarray.DataArray with mandatory dimensions
@@ -33,7 +33,7 @@ class Dataset:
 
     Note:
         This class is immutable. To create modified versions, use methods that
-        return new Dataset instances (e.g., features create new Datasets).
+        return new Data instances (e.g., features create new Data objects).
     """
 
     __slots__ = ("_data", "_extra", "_frozen")
@@ -48,7 +48,7 @@ class Dataset:
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ):
-        """Initialize Dataset.
+        """Initialize Data.
 
         Args:
             data: xarray DataArray with at least 'time' and 'space' dimensions
@@ -113,8 +113,8 @@ class Dataset:
         groupID: str | None = None,
         condition: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> Dataset:
-        """Create a Dataset from a numpy array.
+    ) -> Data:
+        """Create a Data object from a numpy array.
 
         Requires at least 2 dimensions and that resulting dims include `time` and `space`.
         """
@@ -156,8 +156,8 @@ class Dataset:
         condition: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> Dataset:
-        """Create a Dataset from an xarray DataArray.
+    ) -> Data:
+        """Create a Data object from an xarray DataArray.
 
         The DataArray must have 'time' and 'space' dimensions. Time coordinates
         should be in seconds if you want sampling_rate to be inferred.
@@ -171,7 +171,7 @@ class Dataset:
             extra: Optional extra dict.
 
         Returns:
-            Dataset instance.
+            Data instance.
 
         Example:
             >>> ar = xr.DataArray(...)
@@ -264,7 +264,7 @@ class Dataset:
     def extra(self) -> dict[str, Any]:
         """User-defined additional fields and arrays.
 
-        Returns a copy of the extra dict. To add fields, create a new Dataset
+        Returns a copy of the extra dict. To add fields, create a new Data object
         with updated extra dict.
         """
         return self._extra.copy()
@@ -273,8 +273,8 @@ class Dataset:
         """Prevent modification of attributes after initialization."""
         if hasattr(self, "_frozen") and self._frozen:
             raise AttributeError(
-                f"Cannot modify attribute '{name}'. Dataset is immutable. "
-                f"Create a new Dataset instance instead."
+                f"Cannot modify attribute '{name}'. Data is immutable. "
+                f"Create a new Data instance instead."
             )
         super().__setattr__(name, value)
 
@@ -296,30 +296,30 @@ class Dataset:
 
     def _copy_with_new_data(
         self,
-        new_data: xr.DataArray | Dataset,
+        new_data: xr.DataArray | Data,
         operation_name: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> Dataset:
-        """Create a new Dataset with updated data, preserving metadata.
+    ) -> Data:
+        """Create a new Data object with updated data, preserving metadata.
 
-        Internal method used by feature wrapper to create new Dataset instances.
-        Can merge metadata from a returned Dataset, only replacing fields that are
-        defined in the returned Dataset.
+        Internal method used by feature wrapper to create new Data objects.
+        Can merge metadata from a returned Data object, only replacing fields that are
+        defined in the returned Data object.
 
         Args:
-            new_data: New xarray DataArray or Dataset to merge
+            new_data: New xarray DataArray or Data object to merge
             operation_name: Name of operation to append to history
             extra: Optional extra dict to merge in
 
         Returns:
-            New Dataset instance with preserved/merged metadata
+            New Data instance with preserved/merged metadata
         """
-        # Handle both DataArray and Dataset returns
-        if isinstance(new_data, Dataset):
-            # Extract DataArray from returned Dataset
+        # Handle both DataArray and Data returns
+        if isinstance(new_data, Data):
+            # Extract DataArray from returned Data
             result_data = new_data.data
 
-            # Merge metadata: use values from returned Dataset only if they're defined
+            # Merge metadata: use values from returned Data only if they're defined
             # (not None), otherwise keep original values
             merged_subjectID = (
                 new_data.subjectID if new_data.subjectID is not None else self.subjectID
@@ -379,7 +379,7 @@ class Dataset:
                 result_data = result_data.assign_attrs(result_attrs)
                 result_data = result_data.expand_dims("time", axis=0).assign_coords(time=[0.01])
 
-        return Dataset(
+        return Data(
             data=result_data,
             subjectID=merged_subjectID,
             groupID=merged_groupID,
@@ -387,3 +387,11 @@ class Dataset:
             history=merged_history,
             extra=merged_extra,
         )
+
+
+class EEG(Data):
+    """EEG data container."""
+
+
+class FMRI(Data):
+    """fMRI data container."""
