@@ -37,4 +37,7 @@ def feature(feature_func: FeatureFunction) -> Callable[[Dataset, ...], Dataset]:
             operation_name=feature_name,
         )
 
+    # Marker used by dynamic feature discovery.
+    setattr(wrapped, "_is_cobrabox_feature", True)
+
     return wrapped

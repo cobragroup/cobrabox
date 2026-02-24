@@ -13,3 +13,5 @@ dummy = cb.feature.dummy(feat)
 
 print("feature.data.shape:", feat.data.shape)
 print("feature.history:", feat.history)
+
+print("dummy", dummy.data)
