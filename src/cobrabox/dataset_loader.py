@@ -48,7 +48,9 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
     return datasets
 
 
-def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = None) -> list[Dataset]:
+def load_noise_dummy(
+    identifier: str = "dummy_noise", repo_root: Path | None = None
+) -> list[Dataset]:
     """Load dummy noise dataset parts from `data/dummy/noise`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]

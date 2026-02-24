@@ -17,4 +17,3 @@ __all__ = [
 
 # Make feature module accessible as cb.feature
 from . import feature
-

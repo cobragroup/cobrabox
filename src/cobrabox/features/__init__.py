@@ -18,4 +18,3 @@ for _mod in pkgutil.iter_modules(__path__):
 
 globals().update(_discovered)
 __all__ = sorted(_discovered.keys())
-

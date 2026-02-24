@@ -98,5 +98,3 @@ def test_from_xarray_with_metadata():
     ds = cb.from_xarray(ar, subjectID="s1", groupID="g1")
     assert ds.subjectID == "s1"
     assert ds.groupID == "g1"
-
-
