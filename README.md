@@ -22,6 +22,11 @@ engineering across modalities.
 2. Add a small EEG or fMRI example to `data/raw/`.
 3. Run an example from `examples/` once available.
 
+### Python version
+
+- **Minimum supported:** Python 3.11 (enforced by core dependencies: numpy, pandas, xarray)
+- **Development / CI target:** Python 3.14
+
 ### `uv` basics
 
 We use `uv` for package and project management. Docs can be found [here](https://docs.astral.sh/uv/).

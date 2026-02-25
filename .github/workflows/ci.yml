@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: ["**"]
 
 jobs:
   tests:
     uses: ./.github/workflows/tests.yml
     with:
-      python-version: '3.14'
-      os: 'ubuntu-latest'
+      python-version: "3.14"
+      os: "ubuntu-latest"
 
   publish-results:
     name: Publish test results

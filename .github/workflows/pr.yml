@@ -12,8 +12,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
-        os: ["ubuntu-latest", "windows-latest"]
+        include:
+          # Linux: 3.11, 3.12, 3.13, 3.14
+          - python-version: "3.11"
+            os: ubuntu-latest
+          - python-version: "3.12"
+            os: ubuntu-latest
+          - python-version: "3.13"
+            os: ubuntu-latest
+          - python-version: "3.14"
+            os: ubuntu-latest
+          # Windows: 3.14 only
+          - python-version: "3.14"
+            os: windows-latest
+          # macOS: 3.14 only
+          - python-version: "3.14"
+            os: macos-latest
     uses: ./.github/workflows/tests.yml
     with:
       python-version: ${{ matrix.python-version }}
