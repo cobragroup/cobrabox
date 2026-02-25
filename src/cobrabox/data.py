@@ -278,13 +278,27 @@ class Data:
             )
         super().__setattr__(name, value)
 
-    def asnumpy(self) -> np.ndarray:
-        """Convert to numpy array.
+    def asnumpy(
+        self, style: str = "default"
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Convert data to numpy arrays.
+
+        Args:
+            style: Output style. ``"default"`` returns only data values.
+                ``"gorkastyle"`` returns a tuple
+                ``(time, space, labels)`` as separate arrays.
 
         Returns:
-            numpy array with same shape as underlying DataArray
+            Either the raw data array, or ``(time, space, labels)``.
         """
-        return self._data.values
+        if style == "default":
+            return self._data.values
+        if style == "gorkastyle":
+            time = np.asarray(self._data.coords["time"].values)
+            space = np.asarray(self._data.coords["space"].values)
+            labels = np.asarray(self._data.values)
+            return time, space, labels
+        raise ValueError("Unknown style. Expected 'default' or 'gorkastyle'.")
 
     def aspandas(self) -> pd.DataFrame:
         """Convert to pandas DataFrame.
