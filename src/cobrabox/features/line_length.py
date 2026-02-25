@@ -8,9 +8,7 @@ from ..function_wrapper import feature
 
 
 @feature
-def line_length(
-    data: Data,
-) -> xr.DataArray:
+def line_length(data: Data) -> xr.DataArray:
     """Compute line length feature.
 
     Line length is the sum of absolute differences between consecutive
@@ -44,6 +42,5 @@ def line_length(
     if "window_index" in xr_data.dims:
         # Line length per window
         return line_length_values
-    else:
-        # Single line length value per spatial location
-        return line_length_values
+    # Single line length value per spatial location
+    return line_length_values

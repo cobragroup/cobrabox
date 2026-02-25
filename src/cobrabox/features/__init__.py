@@ -17,4 +17,4 @@ for _mod in pkgutil.iter_modules(__path__):
             _discovered[_name] = _obj
 
 globals().update(_discovered)
-__all__ = sorted(_discovered.keys())
+__all__ = [*sorted(_discovered.keys())]  # noqa: PLE0604

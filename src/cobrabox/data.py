@@ -47,7 +47,7 @@ class Data:
         condition: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """Initialize Data.
 
         Args:

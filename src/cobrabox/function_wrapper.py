@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Protocol
+from typing import Protocol
 
 import xarray as xr
 
@@ -15,7 +16,7 @@ FeatureReturn = xr.DataArray | Data
 class FeatureFunction(Protocol):
     """Protocol for feature functions that can be decorated with @feature."""
 
-    def __call__(self, data: Data, *args, **kwargs) -> FeatureReturn:
+    def __call__(self, data: Data, *args: object, **kwargs: object) -> FeatureReturn:
         """Feature function signature: takes Data, returns DataArray or Data."""
         ...
 
@@ -25,19 +26,16 @@ def feature(feature_func: FeatureFunction) -> Callable[[Data, ...], Data]:
     feature_name = feature_func.__name__
 
     @wraps(feature_func)
-    def wrapped(data: Data, *args, **kwargs) -> Data:
+    def wrapped(data: Data, *args: object, **kwargs: object) -> Data:
         result = feature_func(data, *args, **kwargs)
         if not isinstance(result, (xr.DataArray, Data)):
             raise TypeError(
                 f"Feature function '{feature_name}' must return xarray.DataArray or Data, "
                 f"got {type(result)}"
             )
-        return data._copy_with_new_data(
-            new_data=result,
-            operation_name=feature_name,
-        )
+        return data._copy_with_new_data(new_data=result, operation_name=feature_name)
 
     # Marker used by dynamic feature discovery.
-    setattr(wrapped, "_is_cobrabox_feature", True)
+    wrapped._is_cobrabox_feature = True
 
     return wrapped
