@@ -44,6 +44,7 @@ addopts = "--cov=cobrabox --cov-report=term-missing"
 [tool.coverage.run]
 source = ["src/cobrabox"]
 omit = ["src/cobrabox/features/dummy.py"]
+relative_files = true
 
 [tool.coverage.report]
 exclude_lines = [
