@@ -3,7 +3,7 @@ name = "cobrabox"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.4.2",
     "pandas>=3.0.1",
@@ -17,6 +17,10 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.15.2",
 ]
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
 [tool.ruff]
 line-length = 100
 indent-width = 4
@@ -40,6 +44,7 @@ addopts = "--cov=cobrabox --cov-report=term-missing"
 [tool.coverage.run]
 source = ["src/cobrabox"]
 omit = ["src/cobrabox/features/dummy.py"]
+relative_files = true
 
 [tool.coverage.report]
 exclude_lines = [

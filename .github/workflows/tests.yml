@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to use
+        type: string
+        default: "3.14"
+      os:
+        description: Runner OS (ubuntu-latest, windows-latest, etc.)
+        type: string
+        default: "ubuntu-latest"
+
+jobs:
+  test:
+    name: py${{ inputs.python-version }} / ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest --junitxml=junit.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ inputs.os }}-py${{ inputs.python-version }}
+          path: junit.xml
+          retention-days: 7
