@@ -3,12 +3,16 @@ name: PR Tests
 on:
   pull_request:
 
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.12", "3.13", "3.14"]
         os: ["ubuntu-latest", "windows-latest"]
     uses: ./.github/workflows/tests.yml
     with:

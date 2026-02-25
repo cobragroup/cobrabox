@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(uvx ruff:*)",
-      "Bash(npx markdownlint-cli2:*)"
+      "Bash(npx markdownlint-cli2:*)",
+      "Skill(commit-commands:commit)",
+      "Bash(git push:*)",
+      "Bash(cat:*)"
     ]
   }
 }

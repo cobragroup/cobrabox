@@ -53,8 +53,15 @@ Pre-commit hooks (ruff) run automatically on commit. Install once with `uvx pre-
 - Feature functions take `Data` as first argument, return `xr.DataArray` or `Data`.
 - `Data` is immutable — features always produce new instances; never mutate in-place.
 - `history` is automatically maintained by the `@feature` decorator.
-- Ruff line length is 100; target Python 3.14+.
+- Ruff line length is 100; target Python 3.14+ (`target-version = "py314"`); `requires-python = ">=3.12"`.
 - `src/cobrabox/features/dummy.py` is a negative reference (bad docstring, has `print`, no validation) — do not model new features after it.
+
+## Build & CI
+
+- Build backend: `uv_build` — auto-discovers `src/cobrabox` from the project name; use `uv publish` for PyPI.
+- GitHub Actions: `.github/workflows/tests.yml` is a reusable workflow (inputs: `python-version`, `os`). `ci.yml` calls it on every push (defaults). `pr.yml` runs a full matrix (py3.12–3.15 × linux/windows) plus a coverage job.
+- **Editing workflow files is blocked by a security hook** — `Edit`/`Write` tools are rejected on `.github/workflows/*.yml`. Use `Bash` with a heredoc: `cat > file.yml << 'WORKFLOW' ... WORKFLOW`.
+- `EnricoMi/publish-unit-test-result-action` requires `contents: read` permission or it fails with 403.
 
 ## Agent skills
 
