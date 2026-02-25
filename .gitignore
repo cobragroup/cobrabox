@@ -41,6 +41,8 @@ dist/
 !agents.md
 !.claude/
 !.claude/**
+.claude/**/.DS_Store
+.claude/.DS_Store
 
 # Local data outputs (keep README placeholders)
 data/raw/*
