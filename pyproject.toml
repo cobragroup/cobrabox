@@ -18,3 +18,18 @@ dev = [
 ]
 [tool.ruff]
 line-length = 100
+indent-width = 4
+target-version = "py314"
+
+[tool.ruff.format]
+indent-style = "space"
+skip-magic-trailing-comma = true
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "RSE", "PIE", "RET", "ANN", "PLE", "ASYNC"]
+ignore = ["E731", "RET503", "ANN401"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+

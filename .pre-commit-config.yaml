@@ -1,9 +1,17 @@
 minimum_pre_commit_version: "4.5.0"
 
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.2
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.15.2
+  hooks:
+    # ruff linter - on par with `uvx ruff check`
+    - id: ruff-check
+    # ruff formatter - on par with `uvx ruff format`
+    - id: ruff-format
+
+- repo: https://github.com/astral-sh/uv-pre-commit
+  rev: 0.10.6
+  hooks:
+    # run uv lock and upgrade - on par with `uv lock && uv lock --upgrade`
+    - id: uv-lock
+      args: [--upgrade]
