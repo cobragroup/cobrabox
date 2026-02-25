@@ -48,7 +48,8 @@ def sliding_window(data: Data, window_size: int = 10, step_size: int = 5) -> xr.
     windows = []
     for start in window_starts:
         end = start + window_size
-        window = xr_data.isel(time=slice(start, end))
+        # Normalize local window time coordinates so windows align on concat.
+        window = xr_data.isel(time=slice(start, end)).assign_coords(time=np.arange(window_size))
         windows.append(window)
 
     # Stack windows along new dimension
