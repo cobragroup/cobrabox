@@ -8,11 +8,7 @@ from ..function_wrapper import feature
 
 
 @feature
-def sliding_window(
-    data: Data,
-    window_size: int = 10,
-    step_size: int = 5,
-) -> xr.DataArray:
+def sliding_window(data: Data, window_size: int = 10, step_size: int = 5) -> xr.DataArray:
     """Apply sliding window to time-series data.
 
     Adds a 'window_index' dimension to the data by creating overlapping
@@ -59,6 +55,4 @@ def sliding_window(
     stacked = xr.concat(windows, dim="window_index", join="inner")
 
     # Set window_index coordinates
-    stacked = stacked.assign_coords(window_index=np.arange(len(windows)))
-
-    return stacked
+    return stacked.assign_coords(window_index=np.arange(len(windows)))

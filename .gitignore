@@ -36,6 +36,14 @@ dist/
 # Jupyter
 .ipynb_checkpoints/
 
+# Negate global gitignore exclusions
+!CLAUDE.md
+!agents.md
+!.claude/
+!.claude/**
+.claude/**/.DS_Store
+.claude/.DS_Store
+
 # Local data outputs (keep README placeholders)
 data/raw/*
 !data/raw/README.md

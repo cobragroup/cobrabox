@@ -161,6 +161,27 @@ uvx ruff format --check
 uvx ruff format --diff
 ```
 
+#### Coverage
+
+We use [`pytest-cov`](https://pytest-cov.readthedocs.io/) for coverage measurement. Coverage is
+reported automatically on every test run. The project targets **≥95% coverage**; all new features
+and bug fixes are expected to include tests meeting this bar.
+
+```bash
+# Run tests with coverage (default — coverage shown automatically)
+uv run pytest
+
+# Enforce the 95% threshold explicitly
+uv run pytest --cov-fail-under=95
+
+# Generate an HTML report for detailed line-by-line inspection
+uv run pytest --cov-report=html
+# then open htmlcov/index.html
+```
+
+`src/cobrabox/features/dummy.py` is excluded from coverage measurement (it is a negative
+reference example, not production code).
+
 #### Pre-commit hooks
 
 To utilize pre-commit hooks, we use the [pre-commit](https://pre-commit.com) python library. Although written in Python, it supports many programming languages. The definition of a pre-commit hook(s) is given in the `.pre-commit-config.yaml` file in each respective repository. In other to use the pre-commit hooks, you can just:
@@ -172,6 +193,14 @@ uvx pre-commit install
 and you are good to go. To test the hooks, you can invoke hook run on all files using `uvx pre-commit run --all-files`.
 
 That's it. Now, any time you would commit, these hooks are run automatically, so you do not need to worry about failing linting on the CI or forgetting to update packages anymore.
+
+### Update all relevant stuff
+
+This will update all packages inside this project, update all the `uv` tools and also update pre-commit packages.
+
+```bash
+uv lock && uv lock --upgrade && uv sync --all-groups && uv tool upgrade --all && uvx pre-commit autoupdate
+```
 
 ## Feature API (sample docs)
 

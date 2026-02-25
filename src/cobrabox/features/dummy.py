@@ -5,9 +5,7 @@ from ..function_wrapper import feature
 
 
 @feature
-def dummy(
-    data: Data,
-) -> Data:
+def dummy(data: Data) -> Data:
     """Dummy feature that returns the input data."""
     a = data.asnumpy()
     sampling_rate = data.sampling_rate
