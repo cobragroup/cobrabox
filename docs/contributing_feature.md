@@ -7,7 +7,8 @@ This guide shows the recommended workflow for adding a new feature to CobraBox.
 1. Make a new branch.
 2. Make a new file in `src/cobrabox/features/` (for example `my_feature.py`)
 3. Make a new file in `tests/` named `test_feature_my_feature.py`
-4. Open a pull request.
+4. Do work
+5. Open a pull request. (When feature is finished)
 
 ## 1) Create a branch
 
