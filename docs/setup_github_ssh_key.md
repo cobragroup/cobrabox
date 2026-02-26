@@ -1,5 +1,7 @@
 # How to Set Up an SSH Key for GitHub
 
+The SSH key is sort of like an password for your laptop. Once you add it, you can painlessly use Github.
+
 Simple Linux/macOS workflow:
 
 ## 1) Check if you already have an SSH key
@@ -8,7 +10,7 @@ Simple Linux/macOS workflow:
 ls -al ~/.ssh
 ```
 
-If you already have `id_ed25519.pub`, you can reuse it.
+If you already have the file `id_ed25519.pub`, you can reuse it, skip to step 4. If you don't, then you'll need to make it (steps 2 & 3).
 
 ## 2) Generate a new SSH key (if needed)
 
@@ -39,6 +41,10 @@ Copy the full output line.
 2. Click **New SSH key**
 3. Paste your public key
 4. Click **Add SSH key**
+
+### Notes
+- For the title you'd like to have something associated with your computer.
+- Authentication key is the right option in the dropdown
 
 ## 6) Test the SSH connection
 

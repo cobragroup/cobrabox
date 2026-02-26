@@ -8,14 +8,20 @@ This command is an option on how to clone it. If you use some GUI, then feel fre
 
 ```bash
 git clone git@github.com:cobragroup/cobrabox.git
-cd cobrabox
 ```
 
-If you get a permission error, your SSH key may not be set up for GitHub yet.
+
+If you get an error "Add permision denied (public key)", your SSH key is not set up for GitHub yet.
 Use this guide:
 `docs/setup_github_ssh_key.md`
 
+Once you have an ssh key set up, come back here and try to clone again.
+
 ## 2) Install `uv` (unless you already have it)
+Enter the repository (the rest of the guide assumes you'll be running commands from here)
+```bash
+cd cobrabox
+```
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
