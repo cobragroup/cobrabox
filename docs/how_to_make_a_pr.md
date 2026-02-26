@@ -13,9 +13,12 @@ Simple step-by-step (GitHub website):
    - **compare** = your feature branch
 5. Add a clear title and short description of:
    - what changed
-   - how you tested it
+   - how you tested it (if relevant)
 6. Click **Create pull request**.
 7. Ask for review from the team.
+
+Once you see some messages saying "Review required", "Merging is blocked" with some big scary traffic signs. Then you're done! Good job! Now it's up to the person reviewing the pull request to look at the code, and possibly give you feedback.
+
 
 For the official detailed guide, see GitHub Docs:
 https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
