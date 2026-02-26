@@ -1,4 +1,4 @@
-# Documentation
+# Documentation - ONBOARDING
 
 If you have any questions or problems with any of the guides. Please try to ask your favourite AI for assitance, or google or whatever. If you still have any issues, then please ask me.
 ~ Joakim
