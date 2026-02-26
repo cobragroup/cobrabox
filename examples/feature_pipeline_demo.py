@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import cobrabox as cb
 
 data = cb.dataset("dummy_chain")[0]
-wdata = cb.feature.sliding_window(data)
+wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
 feat = cb.feature.line_length(wdata)
 dummy = cb.feature.dummy(feat)
 

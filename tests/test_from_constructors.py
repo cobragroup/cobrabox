@@ -95,3 +95,29 @@ def test_from_xarray_with_metadata() -> None:
     ds = cb.from_xarray(ar, subjectID="s1", groupID="g1")
     assert ds.subjectID == "s1"
     assert ds.groupID == "g1"
+
+
+def test_asnumpy_gorka_style_returns_separate_arrays() -> None:
+    """asnumpy(style='gorkastyle') returns (time, space, labels)."""
+    arr = np.array([[1.0, 2.0], [3.0, 4.0]])
+    ds = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=10.0)
+
+    time, space, labels = ds.asnumpy(style="gorkastyle")
+
+    np.testing.assert_allclose(time, np.array([0.0, 0.1]))
+    np.testing.assert_array_equal(space, np.array([0, 1]))
+    np.testing.assert_allclose(labels, arr)
+
+
+def test_asnumpy_invalid_style_raises() -> None:
+    """asnumpy raises for unknown style names."""
+    ds = cb.from_numpy(RNG.standard_normal((5, 2)), dims=["time", "space"])
+    with pytest.raises(ValueError, match="Unknown style"):
+        ds.asnumpy(style="something_else")
+
+
+def test_asnumpy_gorka_style_alias_not_supported() -> None:
+    """asnumpy no longer supports style='gorka_style' alias."""
+    ds = cb.from_numpy(RNG.standard_normal((5, 2)), dims=["time", "space"])
+    with pytest.raises(ValueError, match="Unknown style"):
+        ds.asnumpy(style="gorka_style")
