@@ -292,7 +292,7 @@ class Data:
             Either the raw data array, or ``(time, space, labels)``.
         """
         if style == "default":
-            return self._data.values
+            return self._data.to_numpy()
         if style == "gorkastyle":
             time = np.asarray(self._data.coords["time"].values)
             space = np.asarray(self._data.coords["space"].values)

@@ -2,7 +2,7 @@ minimum_pre_commit_version: "4.5.0"
 
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.2
+  rev: v0.15.4
   hooks:
     # ruff linter - on par with `uvx ruff check`
     - id: ruff-check
