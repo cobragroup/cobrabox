@@ -90,7 +90,7 @@ git push -u origin feature/add-mean-absolute-value
 
 Create the pull request in the GitHub website.
 For simple step-by-step instructions, see:
-`docs/how_to_make_a_pr.md`
+[`docs/how_to_make_a_pr.md`](how_to_make_a_pr.md)
 
 In the pull request description, include:
 

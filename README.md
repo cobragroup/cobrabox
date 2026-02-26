@@ -6,7 +6,7 @@ time-series data.
 ## Quick Start
 
 For setup, use the step-by-step guide:
-`docs/setup_repo.md`
+[`docs/setup_repo.md`](docs/setup_repo.md)
 
 Short version:
 
@@ -27,14 +27,19 @@ uv sync && uv run pre-commit install
 - Minimum supported: Python 3.11
 - Development target: Python 3.14
 
-## Minimal Usage
+## Minimal Runnable Usage
 
 ```python
 import cobrabox as cb
+import numpy as np
+
+# Create synthetic 2D input data: [time, space]
+my_array = np.random.default_rng(seed=0).normal(size=(100, 4))
 
 data = cb.from_numpy(arr=my_array, dims=["time", "space"], sampling_rate=100.0)
-wdata = cb.feature.sliding_window(data, window_size=20, step_size=10)
-feat = cb.feature.line_length(wdata)
+feat = cb.feature.line_length(data)
+
+print(feat)
 ```
 
 ## Core Concepts
@@ -64,8 +69,8 @@ uv run pytest -q
 
 ## Documentation
 
-- Setup repo: `docs/setup_repo.md`
-- Contribute a feature: `docs/contributing_feature.md`
-- Make a pull request: `docs/how_to_make_a_pr.md`
-- Set up GitHub SSH key: `docs/setup_github_ssh_key.md`
-- Docs index: `docs/README.md`
+- Setup repo: [`docs/setup_repo.md`](docs/setup_repo.md)
+- Contribute a feature: [`docs/contributing_feature.md`](docs/contributing_feature.md)
+- Make a pull request: [`docs/how_to_make_a_pr.md`](docs/how_to_make_a_pr.md)
+- Set up GitHub SSH key: [`docs/setup_github_ssh_key.md`](docs/setup_github_ssh_key.md)
+- Docs index: [`docs/README.md`](docs/README.md)

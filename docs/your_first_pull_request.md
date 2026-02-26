@@ -5,7 +5,7 @@ This is a simple end-to-end guide for your first PR in CobraBox.
 ## 1) Set up your local repo
 
 Follow:
-`docs/setup_repo.md`
+[`docs/setup_repo.md`](setup_repo.md)
 
 ## 2) Create a new branch
 
@@ -60,7 +60,7 @@ git push -u origin add_myname
 ## 6) Open the pull request
 
 Use this simple guide:
-`docs/how_to_make_a_pr.md`
+[`docs/how_to_make_a_pr.md`](how_to_make_a_pr.md)
 
 Official GitHub guide:
 https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
