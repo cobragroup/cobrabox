@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from ..data import Data
 from ..function_wrapper import feature
 
