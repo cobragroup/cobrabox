@@ -306,7 +306,7 @@ class Data:
         Returns:
             pandas DataFrame with MultiIndex from dimensions
         """
-        return self._data.to_pandas()
+        return self._data.to_dataframe()
 
     def _copy_with_new_data(
         self,
