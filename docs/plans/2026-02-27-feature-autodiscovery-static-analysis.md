@@ -37,6 +37,7 @@ from .features import line_length, sliding_window
 ```
 
 This was added to make IDEs happy at the top-level, but it:
+
 - Defeats the purpose of auto-discovery (new features must be added here too)
 - Is still broken at the `features` level for anyone importing from there directly
 
