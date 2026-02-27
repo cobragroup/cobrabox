@@ -1,6 +1,6 @@
 [project]
 name = "cobrabox"
-version = "0.1.0"
+version = "0.1.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,8 +32,11 @@ skip-magic-trailing-comma = true
 line-ending = "auto"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "RSE", "PIE", "RET", "ANN", "PLE", "B", "C4", "UP", "NPY", "PT", "RUF"]
-ignore = ["E731", "RET503", "ANN401"]
+select = [
+    "E", "F", "W", "I", "RSE", "PIE", "RET", "ANN", "PLE", "B", "C4", "UP",
+    "NPY", "PT", "RUF", "PD"
+]
+ignore = ["E731", "RET503", "ANN401", "UP040", "UP046", "UP047"]
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false

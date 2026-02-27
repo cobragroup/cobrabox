@@ -292,7 +292,7 @@ class Data:
             Either the raw data array, or ``(time, space, labels)``.
         """
         if style == "default":
-            return self._data.values
+            return self._data.to_numpy()
         if style == "gorkastyle":
             time = np.asarray(self._data.coords["time"].values)
             space = np.asarray(self._data.coords["space"].values)
@@ -306,7 +306,7 @@ class Data:
         Returns:
             pandas DataFrame with MultiIndex from dimensions
         """
-        return self._data.to_pandas()
+        return self._data.to_dataframe()
 
     def _copy_with_new_data(
         self,

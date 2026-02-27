@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 
+# Auto-discover features
 _discovered: dict[str, object] = {}
 
 for _mod in pkgutil.iter_modules(__path__):
