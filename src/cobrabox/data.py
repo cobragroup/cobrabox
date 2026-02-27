@@ -278,7 +278,7 @@ class Data:
             )
         super().__setattr__(name, value)
 
-    def asnumpy(
+    def to_numpy(
         self, style: str = "default"
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Convert data to numpy arrays.
@@ -300,7 +300,7 @@ class Data:
             return time, space, labels
         raise ValueError("Unknown style. Expected 'default' or 'gorkastyle'.")
 
-    def aspandas(self) -> pd.DataFrame:
+    def to_pandas(self) -> pd.DataFrame:
         """Convert to pandas DataFrame.
 
         Returns:

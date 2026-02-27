@@ -18,7 +18,7 @@ def test_from_numpy_basic() -> None:
     assert ds.data.shape == (100, 10)
     assert ds.data.dims == ("time", "space")
     assert ds.sampling_rate == pytest.approx(100.0)
-    np.testing.assert_array_almost_equal(ds.asnumpy(), a)
+    np.testing.assert_array_almost_equal(ds.to_numpy(), a)
 
 
 def test_from_numpy_with_metadata() -> None:
@@ -82,7 +82,7 @@ def test_from_xarray_basic() -> None:
     assert ds.data.shape == (30, 6)
     assert ds.data.dims == ("time", "space")
     assert ds.sampling_rate == pytest.approx(100.0)
-    np.testing.assert_array_almost_equal(ds.asnumpy(), ar.values)
+    np.testing.assert_array_almost_equal(ds.to_numpy(), ar.values)
 
 
 def test_from_xarray_with_metadata() -> None:
@@ -102,7 +102,7 @@ def test_asnumpy_gorka_style_returns_separate_arrays() -> None:
     arr = np.array([[1.0, 2.0], [3.0, 4.0]])
     ds = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=10.0)
 
-    time, space, labels = ds.asnumpy(style="gorkastyle")
+    time, space, labels = ds.to_numpy(style="gorkastyle")
 
     np.testing.assert_allclose(time, np.array([0.0, 0.1]))
     np.testing.assert_array_equal(space, np.array([0, 1]))
@@ -113,11 +113,11 @@ def test_asnumpy_invalid_style_raises() -> None:
     """asnumpy raises for unknown style names."""
     ds = cb.from_numpy(RNG.standard_normal((5, 2)), dims=["time", "space"])
     with pytest.raises(ValueError, match="Unknown style"):
-        ds.asnumpy(style="something_else")
+        ds.to_numpy(style="something_else")
 
 
 def test_asnumpy_gorka_style_alias_not_supported() -> None:
     """asnumpy no longer supports style='gorka_style' alias."""
     ds = cb.from_numpy(RNG.standard_normal((5, 2)), dims=["time", "space"])
     with pytest.raises(ValueError, match="Unknown style"):
-        ds.asnumpy(style="gorka_style")
+        ds.to_numpy(style="gorka_style")
