@@ -21,7 +21,7 @@ def test_dummy_feature_preserves_data_and_metadata() -> None:
         extra={"whatever": "hello"},
     )
 
-    out = cb.feature.dummy(data)
+    out = cb.feature.dummy(data, mandatory_arg=1)
 
     assert isinstance(out, cb.Data)
     assert out.data.shape == data.data.shape
