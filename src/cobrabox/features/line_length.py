@@ -1,4 +1,3 @@
-import numpy as np
 import xarray as xr
 
 from ..data import Data
@@ -34,7 +33,7 @@ def line_length(data: Data) -> xr.DataArray:
     # Compute line length: sum of absolute differences along time
     # For each spatial location, compute sum(|x[t+1] - x[t]|)
     diff = xr_data.diff(dim="time")
-    line_length_values = np.abs(diff).sum(dim="time")
+    line_length_values = abs(diff).sum(dim="time")
 
     # If window_index exists, preserve it
     if "window_index" in xr_data.dims:
