@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import cobrabox as cb
+
+# If your tests take more than 0.1 seconds, mark them as slow (pytestmark = pytest.mark.slow)
+pytestmark = pytest.mark.fast
 
 
 def test_dummy_feature_preserves_data_and_metadata() -> None:

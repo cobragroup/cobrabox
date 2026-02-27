@@ -8,6 +8,8 @@ import xarray as xr
 
 import cobrabox as cb
 
+pytestmark = pytest.mark.fast
+
 RNG = np.random.default_rng(seed=42)
 
 

@@ -7,6 +7,8 @@ import pytest
 
 import cobrabox as cb
 
+pytestmark = pytest.mark.fast
+
 
 def test_feature_mean_reduces_requested_dimension() -> None:
     """mean reduces only the requested dimension and updates history."""
