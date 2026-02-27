@@ -5,8 +5,8 @@ time-series data.
 
 ## Quick Start
 
-For setup, use the step-by-step guide:
-[`docs/setup_repo.md`](docs/setup_repo.md)
+For setup, use the onboarding:
+[`docs`](docs)
 
 Short version:
 
