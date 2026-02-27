@@ -12,7 +12,7 @@ wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
 win_min = cb.feature.min(wdata, dim="window_index")
 win_max = cb.feature.max(wdata, dim="window_index")
 feat = cb.feature.line_length(wdata)
-dummy = cb.feature.dummy(feat)
+dummy = cb.feature.dummy(feat, mandatory_arg=1, optional_arg=2)
 
 print("min over windows shape:", win_min.data.shape)
 print("min over windows history:", win_min.history)

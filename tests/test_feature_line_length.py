@@ -21,7 +21,7 @@ def test_feature_line_length_expected_values_and_history() -> None:
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("time", "space")
     assert out.data.shape == (1, 2)
-    np.testing.assert_allclose(out.asnumpy(), expected)
+    np.testing.assert_allclose(out.to_numpy(), expected)
     assert out.subjectID == "sub-02"
     assert out.sampling_rate == 200.0
     assert out.history == ["line_length"]

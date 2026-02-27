@@ -21,7 +21,7 @@ def test_dummy_feature_preserves_data_and_metadata() -> None:
         extra={"whatever": "hello"},
     )
 
-    out = cb.feature.dummy(data)
+    out = cb.feature.dummy(data, mandatory_arg=1)
 
     assert isinstance(out, cb.Data)
     assert out.data.shape == data.data.shape
@@ -32,4 +32,4 @@ def test_dummy_feature_preserves_data_and_metadata() -> None:
     assert out.sampling_rate == 200.0
     assert out.extra.get("whatever") == "hello"
     assert out.history == ["dummy"]
-    np.testing.assert_allclose(out.asnumpy(), arr)
+    np.testing.assert_allclose(out.to_numpy(), arr)

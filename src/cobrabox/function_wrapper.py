@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeAlias
+from typing import Any, Concatenate, ParamSpec, TypeAlias, cast
 
 import xarray as xr
 
@@ -31,6 +31,6 @@ def feature(feature_func: FeatureFunction) -> Callable[Concatenate[Data, P], Dat
         return data._copy_with_new_data(new_data=result, operation_name=feature_name)
 
     # Marker used by dynamic feature discovery.
-    wrapped._is_cobrabox_feature = True
+    cast(Any, wrapped)._is_cobrabox_feature = True
 
     return wrapped
