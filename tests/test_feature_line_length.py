@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 import cobrabox as cb
-
-pytestmark = pytest.mark.fast
 
 
 def test_feature_line_length_expected_values_and_history() -> None:

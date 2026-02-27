@@ -8,8 +8,6 @@ import xarray as xr
 
 import cobrabox as cb
 
-pytestmark = pytest.mark.fast
-
 
 def test_copy_with_new_data_from_dataarray_preserves_metadata_and_adds_time() -> None:
     """DataArray input preserves metadata, appends history, merges extra, and restores time."""

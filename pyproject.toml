@@ -44,9 +44,6 @@ split-on-trailing-comma = false
 
 [tool.pytest.ini_options]
 addopts = "--cov=cobrabox --cov-report=term-missing"
-markers = [
-    "fast: quick tests intended for pre-commit",
-]
 
 [tool.coverage.run]
 source = ["src/cobrabox"]

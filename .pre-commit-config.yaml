@@ -8,11 +8,6 @@ repos:
       entry: uv run ty check src
       language: system
       pass_filenames: false
-    - id: pytest-fast
-      name: pytest fast
-      entry: uv run pytest -q -m fast --maxfail=1
-      language: system
-      pass_filenames: false
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.15.4
