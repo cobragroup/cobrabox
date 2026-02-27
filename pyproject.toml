@@ -16,6 +16,7 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.15.2",
+    "ty>=0.0.19",
 ]
 [build-system]
 requires = ["uv_build"]
@@ -54,4 +55,7 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
 ]
+
+[tool.ty.src]
+exclude = ["src/cobrabox/features/dummy.py"]
 

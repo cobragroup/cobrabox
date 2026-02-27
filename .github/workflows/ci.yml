@@ -11,6 +11,28 @@ jobs:
       python-version: "3.14"
       os: "ubuntu-latest"
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+
+      - name: Ty check
+        run: uv run ty check src
+
+      - name: Ruff check
+        run: uvx ruff check --output-format=github
+
+      - name: Ruff format
+        run: uvx ruff format --check
+
   publish-results:
     name: Publish test results
     needs: tests

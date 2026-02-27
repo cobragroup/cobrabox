@@ -1,6 +1,14 @@
 minimum_pre_commit_version: "4.5.0"
 
 repos:
+- repo: local
+  hooks:
+    - id: ty-check
+      name: ty check
+      entry: uv run ty check src
+      language: system
+      pass_filenames: false
+
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.15.4
   hooks:
