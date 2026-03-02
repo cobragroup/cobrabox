@@ -7,6 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import cobrabox as cb
 
+# cb.gorkastyle()
+
 data = cb.dataset("dummy_chain")[0]
 wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
 win_min = cb.feature.min(wdata, dim="window_index")
