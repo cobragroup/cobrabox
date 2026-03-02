@@ -25,3 +25,19 @@ def test_feature_line_length_expected_values_and_history() -> None:
     assert out.subjectID == "sub-02"
     assert out.sampling_rate == 200.0
     assert out.history == ["line_length"]
+
+
+def test_feature_line_length_single_channel_timeseries() -> None:
+    """line_length works for a single-channel (1D) signal represented as time x 1."""
+    arr = np.array([[0.0], [2.0], [-1.0], [3.0]])
+    # |2-0| + |-1-2| + |3-(-1)| = 2 + 3 + 4 = 9
+    expected = np.array([[9.0]])
+
+    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    out = cb.feature.line_length(data)
+
+    assert isinstance(out, cb.Data)
+    assert out.data.dims == ("time", "space")
+    assert out.data.shape == (1, 1)
+    np.testing.assert_allclose(out.to_numpy(), expected)
+    assert out.history == ["line_length"]
