@@ -20,7 +20,7 @@ def test_feature_mean_reduces_requested_dimension() -> None:
     assert out.data.dims == ("time", "space")
     assert out.data.shape == (4, 2)
 
-    expected = np.mean(np.stack([arr[0:4], arr[2:6], arr[4:8], arr[6:10]], axis=0), axis=0)
+    expected = np.mean(np.stack([arr[0:4], arr[2:6], arr[4:8], arr[6:10]], axis=0), axis=1)
     np.testing.assert_allclose(out.to_numpy(), expected)
     assert out.subjectID == "sub-01"
     assert out.history == ["sliding_window", "mean"]
