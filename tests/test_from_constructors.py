@@ -190,9 +190,7 @@ def test_data_init_missing_space_dim_raises() -> None:
 def test_infer_sampling_rate_decreasing_time_returns_none() -> None:
     """Sampling rate is not inferred when time coordinates decrease."""
     ar = xr.DataArray(
-        np.ones((3, 2)),
-        dims=["time", "space"],
-        coords={"time": [0.1, 0.05, 0.0], "space": [0, 1]},
+        np.ones((3, 2)), dims=["time", "space"], coords={"time": [0.1, 0.05, 0.0], "space": [0, 1]}
     )
     ds = cb.from_xarray(ar)
     assert ds.sampling_rate is None
@@ -201,9 +199,7 @@ def test_infer_sampling_rate_decreasing_time_returns_none() -> None:
 def test_infer_sampling_rate_uneven_time_returns_none() -> None:
     """Sampling rate is not inferred when time coordinates are unevenly spaced."""
     ar = xr.DataArray(
-        np.ones((3, 2)),
-        dims=["time", "space"],
-        coords={"time": [0.0, 0.01, 0.05], "space": [0, 1]},
+        np.ones((3, 2)), dims=["time", "space"], coords={"time": [0.0, 0.01, 0.05], "space": [0, 1]}
     )
     ds = cb.from_xarray(ar)
     assert ds.sampling_rate is None
@@ -227,11 +223,7 @@ def test_to_pandas_returns_dataframe() -> None:
     import pandas as pd
     import xarray as xr
 
-    ar = xr.DataArray(
-        np.ones((4, 3)),
-        dims=["time", "space"],
-        name="signal",
-    )
+    ar = xr.DataArray(np.ones((4, 3)), dims=["time", "space"], name="signal")
     ds = cb.from_xarray(ar)
     df = ds.to_pandas()
     assert isinstance(df, pd.DataFrame)

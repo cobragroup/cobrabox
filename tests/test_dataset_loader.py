@@ -81,7 +81,7 @@ def test_load_noise_dummy_raises_when_no_csv_xz_files(tmp_path: Path) -> None:
     noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
     noise_dir.mkdir(parents=True)
 
-    with pytest.raises(FileNotFoundError, match="No .csv.xz files found"):
+    with pytest.raises(FileNotFoundError, match=r"No \.csv\.xz files found"):
         load_noise_dummy(repo_root=tmp_path)
 
 
