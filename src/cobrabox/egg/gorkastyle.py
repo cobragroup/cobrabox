@@ -79,3 +79,7 @@ def gorkastyle(
     """Play CobraBox ASCII animation in terminal."""
     frames = load_frames(frames_dir=frames_dir)
     play(frames=frames, fps=fps, loop=loop)
+
+
+if __name__ == "__main__":
+    gorkastyle(loop=True)

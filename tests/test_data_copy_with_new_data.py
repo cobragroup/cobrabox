@@ -25,9 +25,9 @@ def test_copy_with_new_data_from_dataarray_preserves_metadata_and_adds_time() ->
     out = base._copy_with_new_data(reduced, operation_name="line_length", extra={"new": 2})
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "space")
-    assert out.data.shape == (1, 2)
-    np.testing.assert_allclose(out.to_numpy(), np.array([[3.0, 7.0]]))
+    assert out.data.dims == ("space", "time")
+    assert out.data.shape == (2, 1)
+    np.testing.assert_allclose(out.to_numpy(), np.array([[3.0], [7.0]]))
     np.testing.assert_allclose(out.data.coords["time"].values, np.array([1.0 / 200.0]))
     assert out.sampling_rate == pytest.approx(200.0)
     assert out.subjectID == "sub-01"
@@ -61,7 +61,7 @@ def test_copy_with_new_data_from_data_merges_metadata_history_and_extra() -> Non
 
     out = base._copy_with_new_data(incoming, operation_name="outer", extra={"override": "final"})
 
-    np.testing.assert_allclose(out.to_numpy(), np.full((4, 2), 9.0))
+    np.testing.assert_allclose(out.to_numpy(), np.full((2, 4), 9.0))
     assert out.subjectID == "sub-01"  # incoming subjectID is None -> keep original
     assert out.groupID == "group-b"  # incoming non-None -> override original
     assert out.condition == "rest"  # incoming condition is None -> keep original
@@ -76,7 +76,7 @@ def test_copy_with_new_data_without_sampling_rate_uses_fallback() -> None:
 
     out = base._copy_with_new_data(reduced, operation_name="reduce")
 
-    assert out.data.dims == ("time", "space")
+    assert out.data.dims == ("space", "time")
     np.testing.assert_allclose(out.data.coords["time"].values, np.array([0.01]))
     assert out.sampling_rate == pytest.approx(100.0)
     assert out.history == ["reduce"]

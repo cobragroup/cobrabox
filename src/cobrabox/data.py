@@ -62,15 +62,17 @@ class Data:
         """
         # Validate mandatory dimensions
         if "time" not in data.dims:
-            raise ValueError("data must have 'time' dimension")
+            raise ValueError("data must have `time` dimension")
         if "space" not in data.dims:
-            raise ValueError("data must have 'space' dimension")
+            raise ValueError("data must have `space` dimension")
 
         if sampling_rate is not None and sampling_rate <= 0:
             raise ValueError("sampling_rate must be positive when provided")
 
-        # Store xarray DataArray
-        self._data = data
+        # Store xarray DataArray, enforce float64
+        self._data = data.astype(np.float64)
+        # optimisation: time dimension is always last
+        self._data = self._data.transpose(..., "time")
 
         # Store metadata in xarray attrs for persistence
         attrs = dict(data.attrs) if data.attrs else {}
