@@ -13,7 +13,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
 
-    struct_dir = repo_root / "data" / "dummy" / "struct"
+    struct_dir = repo_root / "data" / "synthetic" / "dummy" / "struct"
     variant = identifier.removeprefix("dummy_")
     candidates = sorted(struct_dir.glob(f"dummy_struct_VAR_{variant}_*.csv.xz"))
     if not candidates:
@@ -53,7 +53,7 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
 
-    noise_dir = repo_root / "data" / "dummy" / "noise"
+    noise_dir = repo_root / "data" / "synthetic" / "dummy" / "noise"
     candidates = sorted(noise_dir.glob("*.csv.xz"))
     if not candidates:
         raise FileNotFoundError(f"No .csv.xz files found for '{identifier}' in {noise_dir}.")

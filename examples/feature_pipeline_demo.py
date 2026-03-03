@@ -1,10 +1,5 @@
 """Minimal example. From project root: python examples/feature_pipeline_demo.py"""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
 import cobrabox as cb
 
 # cb.gorkastyle()
