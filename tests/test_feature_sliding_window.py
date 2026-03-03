@@ -22,10 +22,10 @@ def test_feature_sliding_window_shapes_values_and_metadata() -> None:
     out = cb.feature.sliding_window(data, window_size=4, step_size=2)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "window_index", "space")
-    assert out.data.shape == (4, 4, 2)
-    np.testing.assert_allclose(out.data.isel(time=0).values, arr[0:4, :])
-    np.testing.assert_allclose(out.data.isel(time=1).values, arr[2:6, :])
+    assert out.data.dims == ("space", "window_index", "time")
+    assert out.data.shape == (2, 4, 4)
+    np.testing.assert_allclose(out.data.isel(time=0).values, arr[0:4].T)
+    np.testing.assert_allclose(out.data.isel(time=1).values, arr[2:6].T)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "patient"
@@ -46,8 +46,8 @@ def test_feature_sliding_window_min_over_window_index_finds_smallest_per_window(
     # [5, 1, 7], [1, 7, -2], [7, -2, 3], [-2, 3, 0], [3, 0, -9]
     # Min per window: [ 1, -2, -2, -2, -9 ]
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "space")
-    assert out.data.shape == (5, 1)
+    assert out.data.dims == ("space", "time")
+    assert out.data.shape == (1, 5)
     np.testing.assert_allclose(
         out.to_numpy().reshape(5, 1), np.array([[1.0], [-2.0], [-2.0], [-2.0], [-9.0]])
     )
@@ -65,6 +65,6 @@ def test_feature_sliding_window_min_over_time_finds_smallest_per_local_index() -
     # [5, 1, 7], [1, 7, -2], [7, -2, 3], [-2, 3, 0], [3, 0, -9]
     # Min across windows at each local index: [ -2, -2, -9 ]
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "window_index", "space")
+    assert out.data.dims == ("space", "window_index", "time")
     assert out.data.shape == (1, 3, 1)
     np.testing.assert_allclose(out.to_numpy().reshape(3, 1), np.array([[-2.0], [-2.0], [-9.0]]))

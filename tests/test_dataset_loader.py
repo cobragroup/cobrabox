@@ -26,9 +26,9 @@ def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
     out = load_structured_dummy("dummy_chain", repo_root=tmp_path)
 
     assert len(out) == 2
-    assert out[0].data.dims == ("time", "space")
+    assert out[0].data.dims == ("space", "time")
     assert list(out[0].data.coords["space"].values) == ["ch0", "ch1"]
-    np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 3.0], [2.0, 4.0]]))
+    np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 2.0], [3.0, 4.0]]))
     assert out[0].data.attrs["identifier"] == "dummy_chain"
 
 
@@ -62,7 +62,7 @@ def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
     out = load_noise_dummy(repo_root=tmp_path)
 
     assert len(out) == 2
-    np.testing.assert_allclose(out[0].to_numpy(), np.array([[0.1], [0.2]]))
+    np.testing.assert_allclose(out[0].to_numpy(), np.array([[0.1, 0.2]]))
     assert out[0].data.attrs["identifier"] == "dummy_noise"
 
 

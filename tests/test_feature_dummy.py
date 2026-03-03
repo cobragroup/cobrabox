@@ -32,4 +32,4 @@ def test_dummy_feature_preserves_data_and_metadata() -> None:
     assert out.sampling_rate == 200.0
     assert out.extra.get("whatever") == "hello"
     assert out.history == ["dummy"]
-    np.testing.assert_allclose(out.to_numpy(), arr)
+    np.testing.assert_allclose(out.to_numpy(), arr.T)
