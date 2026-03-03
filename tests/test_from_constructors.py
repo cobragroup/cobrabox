@@ -165,3 +165,73 @@ def test_time_last_preserves_values() -> None:
     # After transpose time is last; recover original (time, space) order for comparison
     recovered = ds.data.transpose("time", "space").values
     np.testing.assert_array_equal(recovered, a.astype(np.float64))
+
+
+# --- Data.__init__ dimension validation ---
+
+
+def test_data_init_missing_time_dim_raises() -> None:
+    """Data.__init__ raises when DataArray lacks 'time' dimension."""
+    ar = xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
+    with pytest.raises(ValueError, match="must have `time` dimension"):
+        cb.from_xarray(ar)
+
+
+def test_data_init_missing_space_dim_raises() -> None:
+    """Data.__init__ raises when DataArray lacks 'space' dimension."""
+    ar = xr.DataArray(np.ones((3, 2)), dims=["time", "foo"])
+    with pytest.raises(ValueError, match="must have `space` dimension"):
+        cb.from_xarray(ar)
+
+
+# --- _infer_sampling_rate edge cases ---
+
+
+def test_infer_sampling_rate_decreasing_time_returns_none() -> None:
+    """Sampling rate is not inferred when time coordinates decrease."""
+    ar = xr.DataArray(
+        np.ones((3, 2)),
+        dims=["time", "space"],
+        coords={"time": [0.1, 0.05, 0.0], "space": [0, 1]},
+    )
+    ds = cb.from_xarray(ar)
+    assert ds.sampling_rate is None
+
+
+def test_infer_sampling_rate_uneven_time_returns_none() -> None:
+    """Sampling rate is not inferred when time coordinates are unevenly spaced."""
+    ar = xr.DataArray(
+        np.ones((3, 2)),
+        dims=["time", "space"],
+        coords={"time": [0.0, 0.01, 0.05], "space": [0, 1]},
+    )
+    ds = cb.from_xarray(ar)
+    assert ds.sampling_rate is None
+
+
+# --- immutability ---
+
+
+def test_immutability_guard_raises_on_setattr() -> None:
+    """Setting any attribute on a Data instance raises AttributeError."""
+    ds = cb.from_numpy(RNG.standard_normal((5, 2)), dims=["time", "space"])
+    with pytest.raises(AttributeError, match="Cannot modify attribute"):
+        ds.foo = "bar"  # type: ignore[attr-defined]
+
+
+# --- to_pandas ---
+
+
+def test_to_pandas_returns_dataframe() -> None:
+    """to_pandas() returns a pandas DataFrame."""
+    import pandas as pd
+    import xarray as xr
+
+    ar = xr.DataArray(
+        np.ones((4, 3)),
+        dims=["time", "space"],
+        name="signal",
+    )
+    ds = cb.from_xarray(ar)
+    df = ds.to_pandas()
+    assert isinstance(df, pd.DataFrame)

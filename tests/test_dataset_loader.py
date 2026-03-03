@@ -74,3 +74,30 @@ def test_load_noise_dummy_raises_when_all_files_empty(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="All files for 'dummy_noise' are empty"):
         load_noise_dummy(repo_root=tmp_path)
+
+
+def test_load_noise_dummy_raises_when_no_csv_xz_files(tmp_path: Path) -> None:
+    """Noise loader raises FileNotFoundError when the noise dir has no .csv.xz files."""
+    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
+    noise_dir.mkdir(parents=True)
+
+    with pytest.raises(FileNotFoundError, match="No .csv.xz files found"):
+        load_noise_dummy(repo_root=tmp_path)
+
+
+def test_load_structured_dummy_default_repo_root() -> None:
+    """load_structured_dummy infers repo_root from package path and loads real data."""
+    from cobrabox.data import Data
+
+    out = load_structured_dummy("dummy_chain")
+    assert len(out) > 0
+    assert all(isinstance(d, Data) for d in out)
+
+
+def test_load_noise_dummy_default_repo_root() -> None:
+    """load_noise_dummy infers repo_root from package path and loads real data."""
+    from cobrabox.data import Data
+
+    out = load_noise_dummy()
+    assert len(out) > 0
+    assert all(isinstance(d, Data) for d in out)

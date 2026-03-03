@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import cobrabox as cb
 
@@ -51,6 +52,29 @@ def test_feature_sliding_window_min_over_window_index_finds_smallest_per_window(
     np.testing.assert_allclose(
         out.to_numpy().reshape(5, 1), np.array([[1.0], [-2.0], [-2.0], [-2.0], [-9.0]])
     )
+
+
+def test_feature_sliding_window_raises_when_time_dim_missing() -> None:
+    """sliding_window raises ValueError when the underlying DataArray lacks 'time'."""
+    import xarray as xr
+
+    from cobrabox.features.sliding_window import sliding_window
+
+    class _FakeData:
+        @property
+        def data(self) -> xr.DataArray:
+            return xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
+
+    with pytest.raises(ValueError, match="must have 'time' dimension"):
+        sliding_window.__wrapped__(_FakeData())  # type: ignore[attr-defined]
+
+
+def test_feature_sliding_window_raises_when_window_too_large() -> None:
+    """sliding_window raises ValueError when window_size exceeds the time axis length."""
+    arr = np.ones((5, 2))
+    data = cb.from_numpy(arr, dims=["time", "space"])
+    with pytest.raises(ValueError, match="window_size"):
+        cb.feature.sliding_window(data, window_size=10, step_size=1)
 
 
 def test_feature_sliding_window_min_over_time_finds_smallest_per_local_index() -> None:
