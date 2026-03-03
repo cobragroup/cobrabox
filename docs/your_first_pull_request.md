@@ -10,11 +10,13 @@ Follow:
 ## 2) Create a new branch
 
 Let's make sure we're on main (the checkout command is switching between branches, just like cd switches between folders)
+
 ```bash
 git checkout main
 ```
 
 Then let's ensure we're up do date. We'll pull (I.e. download the latest changes to the repo)
+
 ```bash
 git pull
 ```
@@ -26,6 +28,7 @@ git branch add_myname
 ```
 
 Then let's check out your new branch
+
 ```bash
 git checkout add_myname
 ```
@@ -33,6 +36,7 @@ git checkout add_myname
 ### Note
 
 In the future you can use this handy command to both create and checkout a branch:
+
 ```bash
 git checkout -b add_myname
 ```
@@ -63,7 +67,7 @@ Use this simple guide:
 [`docs/how_to_make_a_pr.md`](how_to_make_a_pr.md)
 
 Official GitHub guide:
-https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
+<https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>
 
 ## 7) Respond to review feedback
 
