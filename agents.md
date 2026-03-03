@@ -7,6 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This project uses `uv` for package and environment management.
 
 ```bash
+# First-time setup (installs git-lfs hooks, syncs deps, installs pre-commit)
+make setup
+
 # Install/sync dependencies
 uv sync
 
