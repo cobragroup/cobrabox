@@ -37,6 +37,9 @@ dist/
 # Jupyter
 .ipynb_checkpoints/
 
+# MkDocs build output
+site/
+
 # Negate global gitignore exclusions
 !CLAUDE.md
 !agents.md
