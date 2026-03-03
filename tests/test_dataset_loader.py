@@ -13,7 +13,7 @@ from cobrabox.dataset_loader import load_noise_dummy, load_structured_dummy
 
 def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
     """Structured loader returns one Data object per matching non-empty file."""
-    struct_dir = tmp_path / "data" / "dummy" / "struct"
+    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
     struct_dir.mkdir(parents=True)
 
     pd.DataFrame({"ch0": [1.0, 2.0], "ch1": [3.0, 4.0]}).to_csv(
@@ -34,7 +34,7 @@ def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
 
 def test_load_structured_dummy_raises_when_no_files(tmp_path: Path) -> None:
     """Structured loader raises if no matching files exist."""
-    (tmp_path / "data" / "dummy" / "struct").mkdir(parents=True)
+    (tmp_path / "data" / "synthetic" / "dummy" / "struct").mkdir(parents=True)
 
     with pytest.raises(FileNotFoundError, match="No files found"):
         load_structured_dummy("dummy_chain", repo_root=tmp_path)
@@ -42,7 +42,7 @@ def test_load_structured_dummy_raises_when_no_files(tmp_path: Path) -> None:
 
 def test_load_structured_dummy_raises_when_all_files_empty(tmp_path: Path) -> None:
     """Structured loader raises if all matching files are empty."""
-    struct_dir = tmp_path / "data" / "dummy" / "struct"
+    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
     struct_dir.mkdir(parents=True)
     pd.DataFrame(columns=["ch0", "ch1"]).to_csv(
         struct_dir / "dummy_struct_VAR_star_1.csv.xz", index=False, compression="xz"
@@ -54,7 +54,7 @@ def test_load_structured_dummy_raises_when_all_files_empty(tmp_path: Path) -> No
 
 def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
     """Noise loader returns one Data object per non-empty noise file."""
-    noise_dir = tmp_path / "data" / "dummy" / "noise"
+    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
     noise_dir.mkdir(parents=True)
     pd.DataFrame({"n0": [0.1, 0.2]}).to_csv(noise_dir / "a.csv.xz", index=False, compression="xz")
     pd.DataFrame({"n0": [0.3, 0.4]}).to_csv(noise_dir / "b.csv.xz", index=False, compression="xz")
@@ -68,7 +68,7 @@ def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
 
 def test_load_noise_dummy_raises_when_all_files_empty(tmp_path: Path) -> None:
     """Noise loader raises if all discovered files are empty."""
-    noise_dir = tmp_path / "data" / "dummy" / "noise"
+    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
     noise_dir.mkdir(parents=True)
     pd.DataFrame(columns=["n0"]).to_csv(noise_dir / "a.csv.xz", index=False, compression="xz")
 
