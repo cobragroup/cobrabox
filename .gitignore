@@ -37,6 +37,9 @@ dist/
 # Jupyter
 .ipynb_checkpoints/
 
+# MkDocs build output
+site/
+
 # Negate global gitignore exclusions
 !CLAUDE.md
 !agents.md
@@ -50,5 +53,5 @@ data/raw/*
 !data/raw/README.md
 data/processed/*
 !data/processed/README.md
-data/synthetic/*
-!data/synthetic/README.md
+#data/synthetic/*
+#!data/synthetic/README.md
