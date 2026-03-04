@@ -36,7 +36,7 @@ class Data:
         return new Data instances (e.g., features create new Data objects).
     """
 
-    __slots__ = ("_data", "_extra", "_frozen")
+    __slots__ = ("_data", "_extra", "_frozen", "_window_length", "_window_stride", "_windowed")
 
     def __init__(
         self,
@@ -47,7 +47,13 @@ class Data:
         condition: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
+        _windowed: bool = False,
+        _window_length: int | None = None,
+        _window_stride: int | None = None,
     ) -> None:
+        self._windowed = _windowed
+        self._window_length = _window_length
+        self._window_stride = _window_stride
         """Initialize Data.
 
         Args:
@@ -270,6 +276,54 @@ class Data:
         with updated extra dict.
         """
         return self._extra.copy()
+
+    def window(self, length: int, stride: int) -> Data:
+        """Mark data for window-wise feature evaluation.
+
+        When passed to a feature function, the feature will be applied
+        to each window and results will be stacked along a new window_index dimension.
+
+        Args:
+            length: Window length in timepoints
+            stride: Step size between windows in timepoints
+
+        Returns:
+            New Data object with window parameters set
+        """
+        if length <= 0 or stride <= 0:
+            raise ValueError("length and stride must be positive integers")
+
+        n_time = self._data.sizes["time"]
+        if length > n_time:
+            raise ValueError(
+                f"window length ({length}) cannot exceed time dimension size ({n_time})"
+            )
+
+        return Data(
+            data=self._data,
+            sampling_rate=self.sampling_rate,
+            subjectID=self.subjectID,
+            groupID=self.groupID,
+            condition=self.condition,
+            history=self.history,
+            extra=self.extra,
+            _windowed=True,
+            _window_length=length,
+            _window_stride=stride,
+        )
+
+    @property
+    def windowed(self) -> bool:
+        """Whether data is marked for window-wise evaluation."""
+        return self._windowed
+
+    @property
+    def window_length(self) -> int | None:
+        return self._window_length
+
+    @property
+    def window_stride(self) -> int | None:
+        return self._window_stride
 
     def __setattr__(self, name: str, value: Any) -> None:
         """Prevent modification of attributes after initialization."""
