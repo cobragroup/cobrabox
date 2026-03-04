@@ -17,11 +17,11 @@ def test_feature_min_reduces_requested_dimension() -> None:
     out = cb.feature.min(wdata, dim="window_index")
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "space")
-    assert out.data.shape == (4, 2)
+    assert out.data.dims == ("space", "time")
+    assert out.data.shape == (2, 4)
 
     expected = np.min(np.stack([arr[0:4], arr[2:6], arr[4:8], arr[6:10]], axis=0), axis=1)
-    np.testing.assert_allclose(out.to_numpy(), expected)
+    np.testing.assert_allclose(out.to_numpy(), expected.T)
     assert out.subjectID == "sub-01"
     assert out.history == ["sliding_window", "min"]
 
@@ -41,7 +41,7 @@ def test_feature_min_single_channel_timeseries_returns_single_value() -> None:
     out = cb.feature.min(data, dim="time")
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "space")
+    assert out.data.dims == ("space", "time")
     assert out.data.shape == (1, 1)
     assert out.to_numpy().size == 1
     np.testing.assert_allclose(out.to_numpy(), np.array([[1.0]]))
@@ -56,5 +56,5 @@ def test_feature_min_finds_smallest_value_with_negative_numbers() -> None:
     out = cb.feature.min(data, dim="time")
 
     assert isinstance(out, cb.Data)
-    assert out.data.shape == (1, 2)
-    np.testing.assert_allclose(out.to_numpy(), np.array([[-5.0, -7.0]]))
+    assert out.data.shape == (2, 1)
+    np.testing.assert_allclose(out.to_numpy(), np.array([[-5.0], [-7.0]]))
