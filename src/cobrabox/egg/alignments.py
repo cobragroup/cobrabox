@@ -23,6 +23,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "sw",
         "lore":  "Rigidly structured, principled expansion of data — serves understanding",
     },
+    "SpikesCalc": {
+        "law":   1,
+        "good":  -1,
+        "label": "Lawful Evil",
+        "abbrev": "sc",
+        "lore":  "Judges by the book of IQR, condemning outliers to mere enumeration",
+    },
     "MeanAggregate": {
         "law":   1,
         "good":  0,
