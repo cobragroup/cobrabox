@@ -19,10 +19,12 @@ def _manual_partial_correlation(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> 
 
 
 def test_partial_correlation_returns_float() -> None:
-    """partial_correlation returns a valid Data object with correct value."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    """PartialCorrelation returns a valid Data object with correct value."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
-    result = cb.feature.partial_correlation(data, 0, 1, control_vars=[2])
+    result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
 
     assert isinstance(result, cb.Data)
     assert result.data.dims == ("space", "time")
@@ -35,10 +37,12 @@ def test_partial_correlation_returns_float() -> None:
 
 
 def test_partial_correlation_matrix_returns_square_matrix() -> None:
-    """partial_correlation_matrix returns correct square shape."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    """PartialCorrelationMatrix returns correct square shape."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
-    result = cb.feature.partial_correlation_matrix(data, [0, 1, 2], control_vars=[3])
+    result = cb.feature.PartialCorrelationMatrix(coords=[0, 1, 2], control_vars=[3]).apply(data)
 
     assert isinstance(result, cb.Data)
     matrix_values = result.data.values[0, :, :, 0]
@@ -47,68 +51,76 @@ def test_partial_correlation_matrix_returns_square_matrix() -> None:
 
 def test_partial_correlation_diagonal_is_one() -> None:
     """Partial correlation of coordinate with itself equals 1.0."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
-    result = cb.feature.partial_correlation(data, 0, 0, control_vars=[2])
+    result = cb.feature.PartialCorrelation(coord_x=0, coord_y=0, control_vars=[2]).apply(data)
 
     np.testing.assert_allclose(result.data.values.item(), 1.0)
 
 
 def test_partial_correlation_raises_empty_control_vars() -> None:
     """Raises ValueError when control_vars is empty."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="control_vars must have at least one coordinate"):
-        cb.feature.partial_correlation(data, 0, 1, control_vars=[])
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[]).apply(data)
 
 
 def test_partial_correlation_raises_invalid_coordinate() -> None:
     """Raises ValueError when coordinate is not found in space dimension."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="coordinate '99' not found"):
-        cb.feature.partial_correlation(data, 99, 1, control_vars=[2])
+        cb.feature.PartialCorrelation(coord_x=99, coord_y=1, control_vars=[2]).apply(data)
 
 
 def test_partial_correlation_raises_invalid_control_coordinate() -> None:
     """Raises ValueError when control variable coordinate is not found."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="control coordinate '99' not found"):
-        cb.feature.partial_correlation(data, 0, 1, control_vars=[99])
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[99]).apply(data)
 
 
 def test_partial_correlation_matrix_raises_empty_coords() -> None:
     """Raises ValueError when coords list is empty."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="coords must have at least one coordinate"):
-        cb.feature.partial_correlation_matrix(data, [], control_vars=[2])
+        cb.feature.PartialCorrelationMatrix(coords=[], control_vars=[2]).apply(data)
 
 
 def test_partial_correlation_preserves_history() -> None:
-    """History is updated correctly after calling partial_correlation."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    """History is updated correctly after calling PartialCorrelation."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
-    result = cb.feature.partial_correlation(data, 0, 1, control_vars=[2])
+    result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
 
-    assert "partial_correlation" in result.history
+    assert "PartialCorrelation" in result.history
 
 
 def test_partial_correlation_matrix_preserves_history() -> None:
-    """History is updated correctly after calling partial_correlation_matrix."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    """History is updated correctly after calling PartialCorrelationMatrix."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
-    result = cb.feature.partial_correlation_matrix(data, [0, 1], control_vars=[2])
+    result = cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(data)
 
-    assert "partial_correlation_matrix" in result.history
+    assert "PartialCorrelationMatrix" in result.history
 
 
 def test_partial_correlation_with_multiple_controls() -> None:
     """Works correctly with multiple control variables."""
-    data = cb.from_numpy(rng.normal(size=(100, 5)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 5)), dims=["time", "space"], sampling_rate=100.0
+    )
 
-    result = cb.feature.partial_correlation(data, 0, 1, control_vars=[2, 3])
+    result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2, 3]).apply(data)
 
     assert isinstance(result, cb.Data)
     assert result.data.values.shape == (1, 1)

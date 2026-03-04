@@ -45,3 +45,28 @@ Features are discovered automatically from the `cobrabox/features/` directory.
     options:
         show_root_heading: true
         show_source: true
+
+::: cobrabox.features.spectrogram
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.epileptogenicity_index
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.envelope_correlation
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.partial_correlation
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.spikes_calc
+    options:
+        show_root_heading: true
+        show_source: true

@@ -70,6 +70,10 @@ Key rules:
   `SplitterFeature`, and `Data` for `AggregatorFeature`
 - Do NOT implement `apply()` — it is inherited from `BaseFeature` and handles history automatically
 - `AggregatorFeature` must build `history` manually (see patterns.md for the template)
+- **Convert private/helper functions to class methods**: If the old file has helper functions (e.g.,
+  functions starting with `_`), convert them to private methods on the new class. Move the logic
+  inside the class as `def _helper(self, ...)` methods. Only use `@staticmethod` if the helper
+  genuinely does not need access to `self` or any instance state.
 
 ### 3. Update imports
 

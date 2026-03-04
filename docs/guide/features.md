@@ -145,6 +145,70 @@ Computes magnitude-squared coherence for every unique pair of spatial channels u
 Welch's method (50% overlap, Hann window). Returns a symmetric `(space, space_to)` matrix
 in [0, 1] with NaN on the diagonal. Extra dimensions (e.g. `window_index`) are preserved.
 
+### `Spectrogram`
+
+```python
+sg = cb.feature.Spectrogram().apply(data)
+sg = cb.feature.Spectrogram(nperseg=256, scaling="density").apply(data)
+```
+
+Computes the power spectrogram for each spatial channel using Welch's method.
+Returns a DataArray with dims `(space, frequency, time)`. Supports multiple
+scaling modes: `"log"` (default, in dB), `"density"` (PSD), `"spectrum"` (power),
+or `"magnitude"` (STFT magnitude). Extra dimensions are preserved.
+
+### `EpileptogenicityIndex`
+
+```python
+ei = cb.feature.EpileptogenicityIndex().apply(data)
+ei = cb.feature.EpileptogenicityIndex(window_duration=2.0, bias=0.3).apply(data)
+```
+
+Computes the Epileptogenicity Index (EI) per channel (Bartolomei et al., 2008).
+Quantifies epileptogenicity by combining spectral properties (high-frequency discharge)
+and temporal properties (onset timing). Returns values normalized to [0, 1] per channel.
+Requires `sampling_rate` to be set on the data.
+
+### `EnvelopeCorrelation`
+
+```python
+aec = cb.feature.EnvelopeCorrelation().apply(data)
+aec = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
+```
+
+Computes amplitude envelope correlation (AEC) between all channel pairs using
+Hilbert transform. When `orthogonalize="pairwise"` (default), zero-lag contributions
+are removed to reduce volume conduction effects. Returns a symmetric `(space, space_to)`
+matrix of Pearson correlations.
+
+### `PartialCorrelation`
+
+```python
+# Single pair with controls
+pc = cb.feature.PartialCorrelation(
+    coord_x=0, coord_y=1, control_vars=[2, 3]
+).apply(data)
+
+# Full matrix for multiple coordinates
+pcm = cb.feature.PartialCorrelationMatrix(
+    coords=[0, 1, 2], control_vars=[3]
+).apply(data)
+```
+
+Computes partial correlation between coordinates while controlling for others.
+`PartialCorrelation` computes a single coefficient between two coordinates.
+`PartialCorrelationMatrix` computes all pairwise partial correlations for a set
+of coordinates. All coordinates must be from the space dimension.
+
+### `SpikesCalc`
+
+```python
+spikes = cb.feature.SpikesCalc().apply(data)
+```
+
+Detects spikes (outliers) using the IQR method. Values outside ±1.5×IQR from Q1/Q3
+are counted as spikes. Returns a single value with the spike count.
+
 ### `MeanAggregate` (aggregator)
 
 Averages a stream of per-window `Data` objects into one result. Used as the terminal step of a `Chord`.

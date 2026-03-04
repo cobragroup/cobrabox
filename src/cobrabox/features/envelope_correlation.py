@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import xarray as xr
 from mne_connectivity import envelope_correlation as _mne_envelope_correlation
 
-from ..data import Data
-from ..function_wrapper import feature
+from ..base_feature import BaseFeature
+from ..data import SignalData
 
 
-@feature
-def envelope_correlation(
-    data: Data, *, orthogonalize: str | bool = "pairwise", absolute: bool = False
-) -> xr.DataArray:
+@dataclass
+class EnvelopeCorrelation(BaseFeature[SignalData]):
     """Compute amplitude envelope correlation (AEC) between all channel pairs.
 
     Estimates the correlation between the amplitude envelopes of each pair of
@@ -24,8 +24,6 @@ def envelope_correlation(
     ``log=False``.
 
     Args:
-        data: Data with exactly ``time`` and ``space`` dimensions.
-            Must contain at least 2 spatial channels.
         orthogonalize: Whether and how to orthogonalise signal pairs before
             correlating. ``'pairwise'`` (default) removes zero-lag correlations
             per pair. ``False`` skips orthogonalisation.
@@ -35,11 +33,7 @@ def envelope_correlation(
 
     Returns:
         xarray DataArray with dims ``(space, space_to)`` containing
-        Pearson correlation values between amplitude envelopes. The
-        ``@feature`` wrapper appends a singleton ``time`` dimension, yielding
-        final dims ``(space, space_to, time)``. To drop it::
-
-            out.data.squeeze("time")
+        Pearson correlation values between amplitude envelopes.
 
     Raises:
         ValueError: If ``data`` has dimensions other than ``time`` and
@@ -47,40 +41,49 @@ def envelope_correlation(
         ValueError: If ``data`` has fewer than 2 spatial channels.
 
     Example:
-        >>> aec = cb.feature.envelope_correlation(data)
-        >>> aec_signed = cb.feature.envelope_correlation(data, absolute=False)
-        >>> aec_no_orth = cb.feature.envelope_correlation(data, orthogonalize=False)
+        >>> aec = cb.feature.EnvelopeCorrelation().apply(data)
+        >>> aec_signed = cb.feature.EnvelopeCorrelation(absolute=False).apply(data)
+        >>> aec_no_orth = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
     """
-    xr_data = data.data
 
-    extra_dims = [d for d in xr_data.dims if d not in ("space", "time")]
-    if extra_dims:
-        raise ValueError(
-            f"envelope_correlation only supports 'space' and 'time' dimensions, "
-            f"got extra dims: {extra_dims}"
+    orthogonalize: str | bool = "pairwise"
+    absolute: bool = False
+
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+
+        extra_dims = [d for d in xr_data.dims if d not in ("space", "time")]
+        if extra_dims:
+            raise ValueError(
+                f"envelope_correlation only supports 'space' and 'time' dimensions, "
+                f"got extra dims: {extra_dims}"
+            )
+
+        space_coords = xr_data.coords["space"].values if "space" in xr_data.coords else None
+        n_space = xr_data.sizes["space"]
+
+        if n_space < 2:
+            raise ValueError(
+                f"envelope_correlation requires at least 2 spatial channels, got {n_space}"
+            )
+
+        # values shape: (space, time) — Data always transposes to (..., time)
+        values = xr_data.values
+
+        conn = _mne_envelope_correlation(
+            [values],
+            orthogonalize=self.orthogonalize,
+            log=False,
+            absolute=self.absolute,
+            verbose=False,
         )
 
-    space_coords = xr_data.coords["space"].values if "space" in xr_data.coords else None
-    n_space = xr_data.sizes["space"]
+        # get_data() → (n_epochs, n_nodes, n_nodes, n_times); take the single epoch and time
+        mat = conn.get_data()[0, :, :, 0]
 
-    if n_space < 2:
-        raise ValueError(
-            f"envelope_correlation requires at least 2 spatial channels, got {n_space}"
-        )
-
-    # values shape: (space, time) — Data always transposes to (..., time)
-    values = xr_data.values
-
-    conn = _mne_envelope_correlation(
-        [values], orthogonalize=orthogonalize, log=False, absolute=absolute, verbose=False
-    )
-
-    # get_data() → (n_epochs, n_nodes, n_nodes, n_times); take the single epoch and time
-    mat = conn.get_data()[0, :, :, 0]
-
-    da = xr.DataArray(mat, dims=["space", "space_to"])
-    coords: dict[str, np.ndarray] = {}
-    if space_coords is not None:
-        coords["space"] = space_coords
-        coords["space_to"] = space_coords
-    return da.assign_coords(coords)
+        da = xr.DataArray(mat, dims=["space", "space_to"])
+        coords: dict[str, np.ndarray] = {}
+        if space_coords is not None:
+            coords["space"] = space_coords
+            coords["space_to"] = space_coords
+        return da.assign_coords(coords)

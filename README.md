@@ -63,6 +63,28 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 - **Chord**: combines a splitter + pipeline + aggregator into a single composable feature
 - All features append to `history` automatically
 
+## Built-in Features
+
+### Standard Features
+- `LineLength` - Sum of absolute differences per channel
+- `Min` / `Max` / `Mean` - Reduce over any dimension
+- `Bandpower` - Power in frequency bands using Welch's method
+- `Coherence` - Magnitude-squared coherence between channel pairs
+- `Spectrogram` - Time-frequency power spectrogram
+- `SpikesCalc` - Outlier detection using IQR method
+
+### Connectivity Features
+- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
+- `PartialCorrelation` - Partial correlation controlling for other variables
+
+### Specialized Features
+- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
+
+### Windowing & Aggregation
+- `SlidingWindow` - Split data into overlapping windows (splitter)
+- `MeanAggregate` - Average windowed results (aggregator)
+- `Chord` - Combine splitter + feature + aggregator
+
 ## Built-in Dummy Datasets
 
 Use `cb.dataset(name)` with:

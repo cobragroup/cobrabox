@@ -1,4 +1,4 @@
-"""Tests for the epileptogenicity_index feature.
+"""Tests for the EpileptogenicityIndex feature.
 
 Signal design rationale
 -----------------------
@@ -30,7 +30,7 @@ _N_SEC = 30
 
 def _make_data(arr: np.ndarray, fs: float = _FS, **kwargs: object) -> cb.Data:
     """Wrap a (time, space) numpy array in a Data object."""
-    return cb.from_numpy(arr, dims=["time", "space"], sampling_rate=fs, **kwargs)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=fs, **kwargs)
 
 
 def _gamma_onset_signal(
@@ -62,15 +62,15 @@ def _two_channel_data(onset_ch0: float = 10.0, onset_ch1: float = 20.0) -> cb.Da
 
 
 def test_ei_dims() -> None:
-    """Output has exactly (space, time) dimensions."""
-    out = cb.feature.epileptogenicity_index(_two_channel_data())
-    assert set(out.data.dims) == {"space", "time"}
+    """Output has exactly (space,) dimensions."""
+    out = cb.feature.EpileptogenicityIndex().apply(_two_channel_data())
+    assert set(out.data.dims) == {"space"}
 
 
 def test_ei_output_shape() -> None:
-    """Output shape is (n_channels, 1) — singleton time added by @feature."""
-    out = cb.feature.epileptogenicity_index(_two_channel_data())
-    assert out.data.shape == (2, 1)
+    """Output shape is (n_channels,)."""
+    out = cb.feature.EpileptogenicityIndex().apply(_two_channel_data())
+    assert out.data.shape == (2,)
 
 
 def test_ei_space_coords_preserved() -> None:
@@ -83,7 +83,7 @@ def test_ei_space_coords_preserved() -> None:
         coords={"time": np.arange(arr.shape[0]) / _FS, "space": space_vals},
     )
     data = cb.from_xarray(xr_da)
-    out = cb.feature.epileptogenicity_index(data)
+    out = cb.feature.EpileptogenicityIndex().apply(data)
     np.testing.assert_array_equal(out.data.coords["space"].values, space_vals)
 
 
@@ -94,7 +94,7 @@ def test_ei_space_coords_preserved() -> None:
 
 def test_ei_values_in_unit_interval() -> None:
     """All EI values must be in [0, 1]."""
-    out = cb.feature.epileptogenicity_index(_two_channel_data())
+    out = cb.feature.EpileptogenicityIndex().apply(_two_channel_data())
     vals = out.data.values
     assert np.all(vals >= 0.0)
     assert np.all(vals <= 1.0)
@@ -102,14 +102,16 @@ def test_ei_values_in_unit_interval() -> None:
 
 def test_ei_max_is_one() -> None:
     """After normalisation the maximum EI value must equal 1."""
-    out = cb.feature.epileptogenicity_index(_two_channel_data())
+    out = cb.feature.EpileptogenicityIndex().apply(_two_channel_data())
     assert np.isclose(out.data.values.max(), 1.0)
 
 
 def test_ei_early_channel_scores_higher() -> None:
     """Channel firing earlier must have higher EI than a channel firing later."""
-    out = cb.feature.epileptogenicity_index(_two_channel_data(onset_ch0=10.0, onset_ch1=20.0))
-    ei = out.data.squeeze("time").values  # (space,)
+    out = cb.feature.EpileptogenicityIndex().apply(
+        _two_channel_data(onset_ch0=10.0, onset_ch1=20.0)
+    )
+    ei = out.data.values  # (space,)
     # Channel 0 fires 10 s earlier → should have higher EI
     assert ei[0] > ei[1], f"Expected ei[0]={ei[0]:.4f} > ei[1]={ei[1]:.4f}"
 
@@ -122,8 +124,8 @@ def test_ei_no_discharge_channel_near_zero() -> None:
     arr = np.stack([sig_burst, sig_theta], axis=1)
     data = _make_data(arr)
 
-    out = cb.feature.epileptogenicity_index(data)
-    ei = out.data.squeeze("time").values  # (space,)
+    out = cb.feature.EpileptogenicityIndex().apply(data)
+    ei = out.data.values  # (space,)
 
     assert ei[0] > 0.5, f"Burst channel EI should be high, got {ei[0]:.4f}"
     assert ei[1] < 0.1, f"Theta-only channel EI should be near zero, got {ei[1]:.4f}"
@@ -134,7 +136,7 @@ def test_ei_flat_signal_all_zero() -> None:
     arr = np.ones((int(_N_SEC * _FS), 2))
     data = _make_data(arr)
 
-    out = cb.feature.epileptogenicity_index(data)
+    out = cb.feature.EpileptogenicityIndex().apply(data)
     assert np.allclose(out.data.values, 0.0)
 
 
@@ -144,8 +146,8 @@ def test_ei_three_channels_ordering() -> None:
     arr = np.stack(sigs, axis=1)
     data = _make_data(arr)
 
-    out = cb.feature.epileptogenicity_index(data)
-    ei = out.data.squeeze("time").values
+    out = cb.feature.EpileptogenicityIndex().apply(data)
+    ei = out.data.values
     assert ei[0] > ei[1] > ei[2], f"Expected decreasing EI, got {ei}"
 
 
@@ -155,16 +157,16 @@ def test_ei_three_channels_ordering() -> None:
 
 
 def test_ei_history_appended() -> None:
-    """'epileptogenicity_index' must appear as the last entry in history."""
-    out = cb.feature.epileptogenicity_index(_two_channel_data())
-    assert out.history[-1] == "epileptogenicity_index"
+    """'EpileptogenicityIndex' must appear as the last entry in history."""
+    out = cb.feature.EpileptogenicityIndex().apply(_two_channel_data())
+    assert out.history[-1] == "EpileptogenicityIndex"
 
 
 def test_ei_metadata_preserved() -> None:
     """subjectID, groupID, condition, and sampling_rate are preserved."""
     arr = np.stack([_gamma_onset_signal(onset=10.0)] * 2, axis=1)
     data = _make_data(arr, subjectID="sub-99", groupID="patients", condition="seizure")
-    out = cb.feature.epileptogenicity_index(data)
+    out = cb.feature.EpileptogenicityIndex().apply(data)
 
     assert out.subjectID == "sub-99"
     assert out.groupID == "patients"
@@ -181,8 +183,8 @@ def test_ei_window_duration_accepted_and_shape_unchanged() -> None:
     """Different window_duration values should not crash and must keep output shape."""
     data = _two_channel_data()
     for wd in (0.25, 0.5, 1.0, 2.0):
-        out = cb.feature.epileptogenicity_index(data, window_duration=wd)
-        assert out.data.shape == (2, 1), f"Unexpected shape for window_duration={wd}"
+        out = cb.feature.EpileptogenicityIndex(window_duration=wd).apply(data)
+        assert out.data.shape == (2,), f"Unexpected shape for window_duration={wd}"
         assert np.all(out.data.values >= 0.0)
         assert np.all(out.data.values <= 1.0)
 
@@ -190,7 +192,7 @@ def test_ei_window_duration_accepted_and_shape_unchanged() -> None:
 def test_ei_very_high_threshold_suppresses_detection() -> None:
     """With threshold=1e9 no channel fires; all EI values should be zero."""
     data = _two_channel_data()
-    out = cb.feature.epileptogenicity_index(data, threshold=1e9)
+    out = cb.feature.EpileptogenicityIndex(threshold=1e9).apply(data)
     # No detection → all N_di = last sample → EI numerator from background ≈ 0
     assert np.all(out.data.values >= 0.0)
     assert np.all(out.data.values <= 1.0)
@@ -203,7 +205,7 @@ def test_ei_very_high_threshold_suppresses_detection() -> None:
 
 def test_ei_raises_without_time_dim() -> None:
     """ValueError raised when data lacks the 'time' dimension."""
-    from cobrabox.features.epileptogenicity_index import epileptogenicity_index
+    from cobrabox.features.epileptogenicity_index import EpileptogenicityIndex
 
     class _FakeData:
         @property
@@ -215,12 +217,12 @@ def test_ei_raises_without_time_dim() -> None:
             return 256.0
 
     with pytest.raises(ValueError, match="exactly 'time' and 'space'"):
-        epileptogenicity_index.__wrapped__(_FakeData())  # type: ignore[attr-defined]
+        EpileptogenicityIndex()(_FakeData())  # type: ignore[arg-type]
 
 
 def test_ei_raises_without_sampling_rate() -> None:
     """ValueError raised when sampling_rate is not set."""
-    from cobrabox.features.epileptogenicity_index import epileptogenicity_index
+    from cobrabox.features.epileptogenicity_index import EpileptogenicityIndex
 
     class _FakeData:
         @property
@@ -232,12 +234,12 @@ def test_ei_raises_without_sampling_rate() -> None:
             return None
 
     with pytest.raises(ValueError, match="sampling_rate must be set"):
-        epileptogenicity_index.__wrapped__(_FakeData())  # type: ignore[attr-defined]
+        EpileptogenicityIndex()(_FakeData())  # type: ignore[arg-type]
 
 
 def test_ei_raises_with_extra_dims() -> None:
     """ValueError raised when data has dimensions beyond 'time' and 'space'."""
-    from cobrabox.features.epileptogenicity_index import epileptogenicity_index
+    from cobrabox.features.epileptogenicity_index import EpileptogenicityIndex
 
     class _FakeData:
         @property
@@ -249,7 +251,7 @@ def test_ei_raises_with_extra_dims() -> None:
             return 256.0
 
     with pytest.raises(ValueError, match="exactly 'time' and 'space'"):
-        epileptogenicity_index.__wrapped__(_FakeData())  # type: ignore[attr-defined]
+        EpileptogenicityIndex()(_FakeData())  # type: ignore[arg-type]
 
 
 def test_ei_raises_when_signal_shorter_than_window() -> None:
@@ -258,4 +260,4 @@ def test_ei_raises_when_signal_shorter_than_window() -> None:
     data = _make_data(arr)
 
     with pytest.raises(ValueError, match="shorter than window"):
-        cb.feature.epileptogenicity_index(data)
+        cb.feature.EpileptogenicityIndex().apply(data)
