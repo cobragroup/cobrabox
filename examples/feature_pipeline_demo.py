@@ -28,7 +28,7 @@ feat = cb.feature.LineLength().apply(data)
 dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(feat)
 
 # Compute coherence
-coh = cb.feature.coherence(data)
+coh = cb.feature.Coherence().apply(data)
 
 print("min over windows shape:", win_min.data.shape)
 print("min over windows history:", win_min.history)

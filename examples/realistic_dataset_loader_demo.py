@@ -1,10 +1,5 @@
 """Demo loading the realistic Swiss VAR dataset and inspecting metadata."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
 import cobrabox as cb
 
 
