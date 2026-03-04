@@ -66,13 +66,14 @@ def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
     # Sidecar JSON with settings metadata
     a_json = noise_dir / "info_a.json.xz"
     with lzma.open(a_json, "wt", encoding="utf-8") as f:
-        json.dump({"Settings": {"Seizure start (sec)": 8, "SOZ": "[1 0 1 0]"}}, f)
+        json.dump({"Settings": {"Seizure start (sec)": 8, "SOZ": "[1 0 1 0]", "fs": 256}}, f)
 
     out = load_noise_dummy(repo_root=tmp_path)
 
     assert len(out) == 2
     np.testing.assert_allclose(out[0].to_numpy(), np.array([[0.1, 0.2]]))
     assert out[0].data.attrs["identifier"] == "dummy_noise"
+    assert out[0].sampling_rate == 256.0
     # Extra metadata propagated from JSON, including SOZ array string
     assert "Settings" in out[0].extra
     settings = out[0].extra["Settings"]
@@ -110,13 +111,14 @@ def test_load_realistic_swiss_reads_all_matching_files(tmp_path: Path) -> None:
 
     json1 = realistic_dir / "info_fit_Swiss_VAR_ID1_sz13_simulated_data_1.json.xz"
     with lzma.open(json1, "wt", encoding="utf-8") as f:
-        json.dump({"Settings": {"Seizure start (sec)": 5, "SOZ": "[0 1 0]"}}, f)
+        json.dump({"Settings": {"Seizure start (sec)": 5, "SOZ": "[0 1 0]", "fs": 512}}, f)
 
     out = load_realistic_swiss(repo_root=tmp_path)
 
     assert len(out) == 2
     np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 2.0]]))
     assert out[0].data.attrs["identifier"] == "realistic_swiss"
+    assert out[0].sampling_rate == 512.0
     assert "Settings" in out[0].extra
     settings = out[0].extra["Settings"]
     assert settings["Seizure start (sec)"] == 5
