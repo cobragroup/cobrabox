@@ -7,6 +7,7 @@ import pkgutil
 
 from . import features as _features_pkg
 
+# Auto-discover features
 _discovered: dict[str, object] = {}
 
 for _mod in pkgutil.iter_modules(_features_pkg.__path__):

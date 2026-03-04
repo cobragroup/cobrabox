@@ -7,6 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This project uses `uv` for package and environment management.
 
 ```bash
+# First-time setup (installs git-lfs hooks, syncs deps, installs pre-commit)
+make setup
+
 # Install/sync dependencies
 uv sync
 
@@ -45,7 +48,7 @@ Pre-commit hooks (ruff) run automatically on commit. Install once with `uvx pre-
 
 **Datasets** (`src/cobrabox/datasets.py`, `src/cobrabox/dataset_loader.py`): `cb.dataset(name)` returns a `list[Data]`. Built-in dummy datasets (`dummy_chain`, `dummy_random`, `dummy_star`, `dummy_noise`) are loaded from compressed CSV files in `data/dummy/`.
 
-**Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, plus all auto-discovered feature functions. The `feature` submodule is also accessible as `cb.feature.*`.
+**Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, plus all auto-discovered feature functions. The `feature` submodule is also accessible as `cb.feature.*`. **Note:** `__init__.py` contains hardcoded feature imports as a workaround — `globals().update()` in `features/__init__.py` is opaque to IDEs/type-checkers, so the `# noqa: PLE0604` there and hardcoded imports here are intentional. See `docs/plans/2026-02-27-feature-autodiscovery-static-analysis.md` for the open decision on a permanent fix.
 
 ## Key conventions
 
@@ -65,9 +68,10 @@ Pre-commit hooks (ruff) run automatically on commit. Install once with `uvx pre-
 
 ## Agent skills
 
-Two project-level Claude Code skills are in `.claude/skills/`:
+Three project-level Claude Code skills are in `.claude/skills/`:
 
 - `/review-feature <path>` — audits a feature file for code quality; writes report to `docs/agent-reviews/<feature>.md`.
 - `/review-feature-tests <path>` — reviews or generates tests for a feature; writes plan to `docs/agent-reviews/<feature>-tests.md`.
+- `/dnd-alignment [features...]` — rates features/pipelines on the D&D 9-alignment grid; no args prints full roster.
 
 `CLAUDE.md` is a symlink to `agents.md` — edit `agents.md` directly.

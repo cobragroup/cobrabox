@@ -1,8 +1,16 @@
 minimum_pre_commit_version: "4.5.0"
 
 repos:
+- repo: local
+  hooks:
+    - id: ty-check
+      name: ty check
+      entry: uv run ty check src
+      language: system
+      pass_filenames: false
+
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.2
+  rev: v0.15.4
   hooks:
     # ruff linter - on par with `uvx ruff check`
     - id: ruff-check
@@ -10,7 +18,7 @@ repos:
     - id: ruff-format
 
 - repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.10.6
+  rev: 0.10.7
   hooks:
     # run uv lock and upgrade - on par with `uv lock && uv lock --upgrade`
     - id: uv-lock

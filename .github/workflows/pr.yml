@@ -63,6 +63,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -91,6 +93,8 @@ jobs:
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 95
+          MINIMUM_ORANGE: 70
 
   lint:
     name: Lint
@@ -99,11 +103,19 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Ty check
+        run: uv run ty check src
 
       - name: Ruff check
         run: uvx ruff check --output-format=github

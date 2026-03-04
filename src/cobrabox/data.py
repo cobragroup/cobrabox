@@ -62,15 +62,17 @@ class Data:
         """
         # Validate mandatory dimensions
         if "time" not in data.dims:
-            raise ValueError("data must have 'time' dimension")
+            raise ValueError("data must have `time` dimension")
         if "space" not in data.dims:
-            raise ValueError("data must have 'space' dimension")
+            raise ValueError("data must have `space` dimension")
 
         if sampling_rate is not None and sampling_rate <= 0:
             raise ValueError("sampling_rate must be positive when provided")
 
-        # Store xarray DataArray
-        self._data = data
+        # Store xarray DataArray, enforce float64
+        self._data = data.astype(np.float64)
+        # optimisation: time dimension is always last
+        self._data = self._data.transpose(..., "time")
 
         # Store metadata in xarray attrs for persistence
         attrs = dict(data.attrs) if data.attrs else {}
@@ -278,7 +280,7 @@ class Data:
             )
         super().__setattr__(name, value)
 
-    def asnumpy(
+    def to_numpy(
         self, style: str = "default"
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Convert data to numpy arrays.
@@ -292,7 +294,7 @@ class Data:
             Either the raw data array, or ``(time, space, labels)``.
         """
         if style == "default":
-            return self._data.values
+            return self._data.to_numpy()
         if style == "gorkastyle":
             time = np.asarray(self._data.coords["time"].values)
             space = np.asarray(self._data.coords["space"].values)
@@ -300,13 +302,13 @@ class Data:
             return time, space, labels
         raise ValueError("Unknown style. Expected 'default' or 'gorkastyle'.")
 
-    def aspandas(self) -> pd.DataFrame:
+    def to_pandas(self) -> pd.DataFrame:
         """Convert to pandas DataFrame.
 
         Returns:
             pandas DataFrame with MultiIndex from dimensions
         """
-        return self._data.to_pandas()
+        return self._data.to_dataframe()
 
     def _copy_with_new_data(
         self,

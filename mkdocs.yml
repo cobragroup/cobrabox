@@ -1,0 +1,78 @@
+site_name: CobraBox
+site_description: Lightweight toolbox for feature extraction from EEG and fMRI time-series data
+site_url: https://cobrabox.readthedocs.io
+repo_url: https://github.com/cobragroup/cobrabox
+repo_name: cobrabox
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.select
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src/cobrabox]
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_source: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            separate_signature: true
+            merge_init_into_class: true
+  - mkdocs-jupyter:
+      include_source: true
+      ignore_h1_titles: true
+
+nav:
+  - Home:
+      - CobraBox: index.md
+      - Installation: installation.md
+      - Quick Start: quickstart.md
+  - User Guide:
+      - Core Concepts: guide/core-concepts.md
+      - Data Containers: guide/data-containers.md
+      - Features: guide/features.md
+      - Working with Datasets: guide/datasets.md
+      - Pipelines: guide/pipelines.md
+  - API Reference:
+      - Overview: api/index.md
+      - Data API: api/data.md
+      - Features API: api/features.md
+      - Datasets API: api/datasets.md
+  - Contributing:
+      - Setup Guide: contributing/setup.md
+      - Feature Guide: contributing/features.md
+      - Pull Requests: contributing/pr.md
