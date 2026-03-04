@@ -2,11 +2,11 @@
 
 **File**: `src/cobrabox/features/max.py`
 **Date**: 2026-03-04
-**Verdict**: NEEDS WORK
+**Verdict**: PASS
 
 ## Summary
 
-`Max` is structurally correct and ruff-clean. It has the right import order, `@dataclass` decorator, `BaseFeature` inheritance, a typed field, a proper `__call__` signature, input validation, and no mutation of input data. The sole but significant deficiency is the docstring: the one-line summary is present but `Args:`, `Returns:`, and `Example:` sections are entirely absent, making this a HIGH-severity finding. There are no other issues.
+Clean, well-structured feature. The `Max` class correctly inherits from `BaseFeature[Data]`, implements proper input validation, and includes complete Google-style docstrings. All ruff checks pass. A solid example of a dimension-reducing aggregation feature.
 
 ## Ruff
 
@@ -20,36 +20,47 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-- **Line 1**: `from __future__ import annotations` is present and first. Correct.
-- **Lines 3–8**: Import order is future → stdlib (`dataclasses`) → third-party (`xarray`) → internal. Correct.
-- **Lines 11–12**: `@dataclass` and `BaseFeature` inheritance are present. Correct.
-- **Class name**: `Max` is PascalCase and matches `max.py`. Correct.
-- **Line 15**: `dim: str` is a typed dataclass field. Correct.
-- **Line 17**: `__call__` signature is `(self, data: Data) -> xr.DataArray`. Correct for a `BaseFeature`.
-- `data` is not a dataclass field. Correct.
-- No reimplementation of `.apply()`. Correct.
+Line 1: `from __future__ import annotations` present — correct.
+
+Line 11: `@dataclass` decorator applied.
+
+Line 12: Inherits `BaseFeature[Data]` — appropriate for a generic dimension-reducing feature that works on any `Data` (not just time-series).
+
+Line 12: Class name `Max` matches filename `max.py` — correct.
+
+Line 27: Field `dim: str` is a dataclass field (not `data`), correctly placed.
+
+Line 29: `__call__` signature `def __call__(self, data: Data) -> xr.DataArray` is correct. The return type `xr.DataArray` is appropriate since the output removes a dimension.
+
+No `apply()` method — correctly inherited from `BaseFeature`.
+
+Imports are in correct order: future annotations, dataclass, third-party (xarray), internal (base_feature, data).
 
 ## Docstring
 
-- **Line 13**: Only a one-line summary `"""Compute maximum across a dimension."""` is present.
-- Missing `Args:` section. The field `dim` is not documented (what values are valid? what does passing `"time"` vs `"space"` mean?).
-- Missing `Returns:` section. The output shape (input shape minus the reduced dimension), preserved dimensions, dtype, and value semantics (element-wise maximum) are not described.
-- Missing `Example:` section demonstrating `.apply()` usage.
+Complete Google-style docstring with all required sections:
+
+- Line 13: One-line summary describing the feature's purpose.
+- Lines 15-17: `Args:` section documents the `dim` field.
+- Lines 18-21: `Returns:` section describes shape and values.
+- Lines 23-25: `Example:` section shows correct usage via `.apply()`.
 
 ## Typing
 
-- `dim: str` is typed. Correct.
-- `__call__` return type is `xr.DataArray`. Correct.
-- No bare `Any`. Correct.
+Line 27: Field `dim: str` is properly typed.
+
+Line 29: `__call__` return type `xr.DataArray` is explicit and matches the contract.
+
+No bare `Any` types.
 
 ## Safety & Style
 
-- No `print()` statements. Correct.
-- **Lines 18–19**: Validates that `self.dim` is in `data.data.dims` and raises `ValueError` with a descriptive message. Correct.
-- No mutation of input `data`. `data.data.max(...)` returns a new array. Correct.
-- No `__post_init__` is needed (no numeric constraints on `dim`). Correct.
-- All lines are within 100 characters. Correct.
+Line 30-31: Input validation raises `ValueError` with a clear message if `dim` is not found in the data dimensions. This is good defensive programming.
+
+Line 32: Uses `data.data.max(dim=self.dim)` — operates on the underlying xarray without mutating the input `Data` object. Correct immutability handling.
+
+No `print()` statements.
 
 ## Action List
 
-1. [HIGH] Add a complete Google-style docstring with `Args:` (documenting `dim` — its purpose, valid values, and effect), `Returns:` (output shape, remaining dimensions, value semantics), and `Example:` (minimal self-contained call via `.apply()`).
+None.

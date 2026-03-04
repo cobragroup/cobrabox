@@ -11,9 +11,11 @@ The `LineLength` feature is exemplary and serves as the positive reference in th
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure

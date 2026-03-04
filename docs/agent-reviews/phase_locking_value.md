@@ -1,76 +1,111 @@
 # Feature Review: phase_locking_value
 
 **File**: `src/cobrabox/features/phase_locking_value.py`
-**Date**: 2026-03-04
-**Verdict**: NEEDS WORK
+**Date**: 2025-03-04
+**Verdict**: PASS
 
 ## Summary
 
-The file contains two well-structured classes (`PhaseLockingValue` and
-`PhaseLockingValueMatrix`) that are correctly migrated to the new class-based pattern.
-Ruff is clean, all fields are typed, docstrings have all required sections, and
-validation is appropriate for `BaseFeature[SignalData]`. Two low-severity issues prevent
-a PASS: the `_compute_plv` static method is duplicated verbatim in both classes (DRY
-violation), and `PhaseLockingValue`'s `Raises` section documents a `time`-dimension
-error that this feature never actually raises (it is enforced upstream by `SignalData`
-construction).
+Both `PhaseLockingValue` and `PhaseLockingValueMatrix` are well-structured, compliant features. They correctly inherit from `BaseFeature[SignalData]`, set `output_type = Data` (scalar/matrix output removes time dimension), include complete Google-style docstrings with all required sections, and validate inputs thoroughly. The helper function `_compute_plv` is cleanly factored out at module level and shared by both classes. No issues found.
 
 ## Ruff
 
 ### `uvx ruff check`
-Clean — no issues found.
+
+All checks passed!
 
 ### `uvx ruff format --check`
-Clean — no formatting issues.
+
+1 file already formatted
 
 ## Signature & Structure
 
-Both classes use `@dataclass` and `BaseFeature[SignalData]` correctly — they require
-both `space` and `time` dimensions, so `SignalData` is the right type parameter.
-`output_type: ClassVar[type[Data]] = Data` is set on both, which is correct since
-neither output preserves the time dimension. `__call__` signatures match the base class
-contract. No `apply()` override. Imports are clean and in standard order.
-`from __future__ import annotations` is on line 1.
+**PhaseLockingValue (lines 33-81):**
 
-The file contains two classes, following the same precedent as
-`partial_correlation.py`. Acceptable.
+- ✅ `@dataclass` decorator present (line 33)
+- ✅ Correctly inherits `BaseFeature[SignalData]` (line 34)
+- ✅ `output_type: ClassVar[type[Data]] = Data` correctly set (line 55) — scalar output removes time dimension
+- ✅ `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray` (line 60)
+- ✅ Uses inherited `apply()` — no override
+
+**PhaseLockingValueMatrix (lines 84-139):**
+
+- ✅ `@dataclass` decorator present (line 84)
+- ✅ Correctly inherits `BaseFeature[SignalData]` (line 85)
+- ✅ `output_type: ClassVar[type[Data]] = Data` correctly set (line 106) — matrix output removes time dimension
+- ✅ `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray` (line 110)
+
+**Helper function `_compute_plv` (lines 14-30):**
+
+- ✅ Cleanly separated as module-level private function
+- ✅ Shared by both classes (DRY principle followed)
+- ✅ Has its own docstring with Args/Returns
+
+**Imports (lines 1-11):**
+
+- ✅ `from __future__ import annotations` first (line 1)
+- ✅ Correct order: stdlib → third-party → internal
+- ✅ All imports used
 
 ## Docstring
 
-Both docstrings have one-line summaries, extended descriptions, `Args:`, `Returns:`,
-`Raises:`, and `Example:` sections. `Returns:` correctly describes the output shape and
-dims for each class. One inaccuracy: `PhaseLockingValue.Raises` (line 30) states
-"If `space` or `time` dimension is not in data", but the feature only checks `space`
-explicitly — `time` is guaranteed by `SignalData` at construction time and will never
-raise from within this feature. `PhaseLockingValueMatrix.Raises` correctly omits the
-`time` claim.
+**PhaseLockingValue:**
+
+- ✅ One-line summary: "Compute phase locking value (PLV) between two coordinates."
+- ✅ Extended description explains space/time dimensions and PLV meaning
+- ✅ `Args:` section documents `coord_x` and `coord_y`
+- ✅ `Returns:` describes scalar DataArray
+- ✅ `Raises:` documents ValueError cases (correctly omits time dimension claim)
+- ✅ `Example:` shows `.apply()` usage
+
+**PhaseLockingValueMatrix:**
+
+- ✅ One-line summary: "Compute pairwise phase locking value matrix for multiple coordinates."
+- ✅ Extended description explains pairwise computation
+- ✅ `Args:` section documents `coords`
+- ✅ `Returns:` describes DataArray with dims `(coord_i, coord_j)`
+- ✅ `Raises:` documents both ValueError cases
+- ✅ `Example:` shows `.apply()` usage
 
 ## Typing
 
-All dataclass fields typed: `coord_x: str`, `coord_y: str`, `coords: list[str]`.
-`__call__` return type is `xr.DataArray` on both classes. `_compute_plv` is fully
-annotated (`np.ndarray, np.ndarray) -> float`. No bare `Any`.
+**PhaseLockingValue:**
+
+- ✅ Fields typed: `coord_x: str | int`, `coord_y: str | int` (lines 57-58)
+- ✅ `__call__` return type: `xr.DataArray` (line 60)
+- ✅ No bare `Any`
+
+**PhaseLockingValueMatrix:**
+
+- ✅ Fields typed: `coords: list[str] | list[int]` (line 108)
+- ✅ `__call__` return type: `xr.DataArray` (line 110)
+- ✅ No bare `Any`
 
 ## Safety & Style
 
-No `print` statements. No mutation of input `data`. `space` dimension and coordinate
-presence are validated with clear `ValueError` messages. No redundant `time` check
-(correctly deferred to `SignalData`).
+**PhaseLockingValue:**
 
-`_compute_plv` (lines 42–59 and 111–128) is a byte-for-byte duplicate in both classes.
-The same logic is repeated in `PhaseLockingValueMatrix._compute_plv`. This creates a
-maintenance hazard: a bug fix or improvement in one copy must be manually mirrored in
-the other.
+- ✅ No `print()` statements
+- ✅ Input validation (lines 64-76):
+  - Checks `space` dimension exists
+  - Validates both coordinates exist in space dimension
+- ✅ No mutation of input `data` — works on `data.data` and returns new array
+
+**PhaseLockingValueMatrix:**
+
+- ✅ No `print()` statements
+- ✅ Input validation (lines 114-124):
+  - Checks `space` dimension exists
+  - Validates `coords` is not empty
+  - Validates all coordinates exist in space dimension
+- ✅ No mutation of input `data`
+
+**Algorithm considerations:**
+
+- Line 30: `_compute_plv` uses `hilbert()` from scipy.signal — appropriate for phase extraction
+- Line 27-28: Early return of 1.0 when x and y are identical (optimization)
+- Lines 127-133: Matrix version uses nested loops; O(n²) is acceptable for typical space dimension sizes
 
 ## Action List
 
-1. [LOW] Remove the duplicate `_compute_plv` static method. Extract it as a
-   module-level private function `_compute_plv(x, y) -> float` above both class
-   definitions, and call it directly from both `__call__` implementations. This is the
-   same pattern used for shared helpers in the old code, and avoids the maintenance
-   hazard.
-
-2. [LOW] Fix the `Raises` section in `PhaseLockingValue` (line 30): remove or reword
-   the claim about `time` dimension. Since `SignalData` enforces the `time` requirement
-   at construction, this feature cannot raise for a missing `time` dim. Change to:
-   `ValueError: If ``space`` dimension is not in data or either coordinate is missing.`
+None.

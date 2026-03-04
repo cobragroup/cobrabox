@@ -10,6 +10,46 @@ from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
 
+def _compute_partial_correlation(x: np.ndarray, y: np.ndarray, controls: list[np.ndarray]) -> float:
+    """Compute partial correlation between x and y controlling for variables in controls.
+
+    Args:
+        x: 1D array of shape (n_samples,)
+        y: 1D array of shape (n_samples,)
+        controls: list of 1D arrays, each of shape (n_samples,)
+
+    Returns:
+        Partial correlation coefficient (float)
+
+    Raises:
+        ValueError: If correlation matrix is singular (non-invertible)
+    """
+    x = np.asarray(x).ravel()
+    y = np.asarray(y).ravel()
+    controls = [np.asarray(c).ravel() for c in controls]
+
+    if np.allclose(x, y):
+        return 1.0
+
+    all_vars_arr = np.column_stack([x, y, *controls])
+
+    corr_matrix = np.corrcoef(all_vars_arr, rowvar=False)
+
+    try:
+        precision_matrix = np.linalg.inv(corr_matrix)
+    except np.linalg.LinAlgError as e:
+        raise ValueError(
+            f"Correlation matrix is singular (non-invertible). "
+            f"This can happen when variables are perfectly correlated or "
+            f"when there are insufficient samples. "
+            f"Original error: {e}"
+        ) from e
+
+    r_xy_z = -precision_matrix[0, 1] / np.sqrt(precision_matrix[0, 0] * precision_matrix[1, 1])
+
+    return float(r_xy_z)
+
+
 @dataclass
 class PartialCorrelation(BaseFeature[SignalData]):
     """Compute partial correlation between two coordinates while controlling for others.
@@ -40,36 +80,6 @@ class PartialCorrelation(BaseFeature[SignalData]):
     coord_x: str | int
     coord_y: str | int
     control_vars: list[str] | list[int]
-
-    def _compute_partial_correlation(
-        self, x: np.ndarray, y: np.ndarray, controls: list[np.ndarray]
-    ) -> float:
-        """Compute partial correlation between x and y controlling for variables in controls.
-
-        Args:
-            x: 1D array of shape (n_samples,)
-            y: 1D array of shape (n_samples,)
-            controls: list of 1D arrays, each of shape (n_samples,)
-
-        Returns:
-            Partial correlation coefficient (float)
-        """
-        x = np.asarray(x).ravel()
-        y = np.asarray(y).ravel()
-        controls = [np.asarray(c).ravel() for c in controls]
-
-        if np.allclose(x, y):
-            return 1.0
-
-        all_vars_arr = np.column_stack([x, y, *controls])
-
-        corr_matrix = np.corrcoef(all_vars_arr, rowvar=False)
-
-        precision_matrix = np.linalg.inv(corr_matrix)
-
-        r_xy_z = -precision_matrix[0, 1] / np.sqrt(precision_matrix[0, 0] * precision_matrix[1, 1])
-
-        return float(r_xy_z)
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
@@ -107,7 +117,7 @@ class PartialCorrelation(BaseFeature[SignalData]):
 
         control_series = [xr_data.sel({space_dim: cv}).values for cv in self.control_vars]
 
-        result = self._compute_partial_correlation(x_series, y_series, control_series)
+        result = _compute_partial_correlation(x_series, y_series, control_series)
 
         time_coord = xr_data.coords[time_dim].values
         return (
@@ -149,36 +159,6 @@ class PartialCorrelationMatrix(BaseFeature[SignalData]):
     coords: list[str] | list[int]
     control_vars: list[str] | list[int]
 
-    def _compute_partial_correlation(
-        self, x: np.ndarray, y: np.ndarray, controls: list[np.ndarray]
-    ) -> float:
-        """Compute partial correlation between x and y controlling for variables in controls.
-
-        Args:
-            x: 1D array of shape (n_samples,)
-            y: 1D array of shape (n_samples,)
-            controls: list of 1D arrays, each of shape (n_samples,)
-
-        Returns:
-            Partial correlation coefficient (float)
-        """
-        x = np.asarray(x).ravel()
-        y = np.asarray(y).ravel()
-        controls = [np.asarray(c).ravel() for c in controls]
-
-        if np.allclose(x, y):
-            return 1.0
-
-        all_vars_arr = np.column_stack([x, y, *controls])
-
-        corr_matrix = np.corrcoef(all_vars_arr, rowvar=False)
-
-        precision_matrix = np.linalg.inv(corr_matrix)
-
-        r_xy_z = -precision_matrix[0, 1] / np.sqrt(precision_matrix[0, 0] * precision_matrix[1, 1])
-
-        return float(r_xy_z)
-
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
         space_dim = "space"
@@ -217,7 +197,7 @@ class PartialCorrelationMatrix(BaseFeature[SignalData]):
             x_series = xr_data.sel({space_dim: coord_i}).values
             for j, coord_j in enumerate(self.coords):
                 y_series = xr_data.sel({space_dim: coord_j}).values
-                result[i, j] = self._compute_partial_correlation(x_series, y_series, control_series)
+                result[i, j] = _compute_partial_correlation(x_series, y_series, control_series)
 
         return xr.DataArray(
             result,

@@ -321,8 +321,13 @@ Has all docstring sections, typed fields, `__call__` return type, no print state
 
 ### Negative reference: `src/cobrabox/features/dummy.py`
 
-Non-compliant. Issues:
+**SKIP this file during reviews.** It is intentionally non-compliant as a negative reference example.
+The docstring explicitly warns: "This feature exists as a negative reference showing what a poorly
+written feature looks like. Do not use this as a template for new features."
 
-- Incomplete docstring (one-liner only, no Args/Returns/Example sections)
-- `print("whatever", whatever)` statement
-- No input validation
+Known intentional issues:
+
+- Missing type parameter on `BaseFeature` (should be `BaseFeature[SignalData]`)
+- Wrong `__call__` return type (`Data` instead of `xr.DataArray | Data`)
+- Missing `__post_init__` validation
+- Drops metadata (subjectID, groupID, condition, extra)

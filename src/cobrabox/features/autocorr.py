@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 import xarray as xr
@@ -39,6 +40,8 @@ class Autocorr(BaseFeature[Data]):
     fs: float
     lag_steps: int | None = None
     lag_ms: float | None = None
+
+    output_type: ClassVar[type[Data]] = Data
 
     def __post_init__(self) -> None:
         if self.lag_steps is not None and self.lag_ms is not None:

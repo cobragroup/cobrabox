@@ -1,78 +1,79 @@
 # Feature Review: bandpower
 
 **File**: `src/cobrabox/features/bandpower.py`
-**Date**: 2026-03-04
-**Verdict**: NEEDS WORK
+**Date**: 2025-03-04
+**Verdict**: PASS
 
 ## Summary
 
-`Bandpower` is a well-structured `BaseFeature` subclass with solid input validation, correct
-typing, and a thorough docstring. The main gap is a missing `Returns:` section — required by
-the criteria — which leaves the caller without a formal description of output shape and
-semantics. A secondary low-severity gap is the absence of `__post_init__` validation for
-`nperseg` (a negative or zero value would be silently passed to `scipy.signal.welch` and
-produce a confusing error there rather than here). Ruff is fully clean.
+Bandpower is a well-implemented feature that computes frequency band power using Welch's method. The code is clean, properly typed, has comprehensive docstrings, and includes thorough input validation. All ruff checks pass. The implementation correctly handles default bands, custom band specifications, and edge cases like empty frequency masks.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
 
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-All structural requirements are met:
+Line 21-22: Correct `@dataclass` decorator and `BaseFeature[SignalData]` inheritance — appropriate since this is a time-series feature requiring the `time` dimension.
 
-- `from __future__ import annotations` is present at line 1. ✅
-- Class is decorated with `@dataclass` and inherits `BaseFeature`. ✅
-- Class name `Bandpower` is PascalCase and matches filename `bandpower.py`. ✅
-- `__call__(self, data: Data) -> xr.DataArray` is correctly typed; `data` is a parameter, not
-  a field. ✅
-- `apply()` is not reimplemented — inherited from `BaseFeature`. ✅
-- Imports follow the correct order (future → stdlib → third-party → internal) with no unused
-  entries. ✅
+Line 65: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray:`. Uses `SignalData` as the type parameter, which enforces the time dimension at the container level.
+
+Line 119: Feature correctly returns `xr.DataArray` (not wrapped `Data`) — the `BaseFeature.apply()` method will handle wrapping and history.
+
+Class name `Bandpower` matches filename `bandpower.py`.
+
+No `apply()` override — correctly inherits implementation from `BaseFeature`.
 
 ## Docstring
 
-The one-line summary and extended description (lines 22–49) are clear and accurate. The
-`Args:` section documents both fields (`bands` and `nperseg`) with full detail including
-sub-cases and examples. The `Example:` block (lines 47–49) shows three realistic usage
-patterns via `.apply()`.
+Excellent docstring with all required sections:
 
-**Missing**: a `Returns:` section. The criteria require it for all features. The caller needs
-to know the output dimensions, shape, and value semantics without reading the implementation.
+- Line 23: Concise one-line summary
+- Lines 25-28: Extended description explaining the algorithm
+- Lines 30-44: `Args:` section documenting both `bands` and `nperseg` fields with detailed explanations of default bands
+- Lines 46-49: `Example:` section with 3 working examples showing different usage patterns
+- Lines 51-55: `Returns:` section describing output shape, dimensions, and units
+
+The docstring is particularly strong in explaining the `bands` parameter flexibility (None, True for defaults, or explicit ranges).
 
 ## Typing
 
-All fields are annotated:
+All fields properly typed:
 
-- `bands: dict[str, list[float] | bool] | None` (line 55)
-- `nperseg: int | None` (line 56)
+- Line 58: `bands: dict[str, list[float] | bool] | None`
+- Line 59: `nperseg: int | None`
 
-`__call__` return type is `xr.DataArray`. No bare `Any`. ✅
+Line 65: `__call__` return type `xr.DataArray` is correct for `BaseFeature`.
+
+No bare `Any` types used.
 
 ## Safety & Style
 
-- No `print()` statements. ✅
-- Input validation in `__call__`:
-  - `"time"` dimension check at line 62 raises `ValueError` with a clear message. ✅
-  - `sampling_rate is None` check at line 66 raises `ValueError` with a clear message. ✅
-  - Band spec validation (lines 75–88) covers the `True`/`False`/list cases correctly. ✅
-- No mutation of the input `data` object. ✅
-- `nperseg` is not validated in `__post_init__`: a caller passing `nperseg=0` or a negative
-  integer will get an obscure error from `scipy.signal.welch` rather than a clear `ValueError`
-  at construction time.
+**Validation:**
+
+- Lines 61-63: `__post_init__` validates `nperseg >= 2`
+- Lines 68-72: Validates `sampling_rate` is set on input data
+- Lines 78-94: Validates band specifications — handles `True` (use default), `False` (error), unknown band names, and custom ranges
+
+**Edge case handling:**
+
+- Lines 107-110: Gracefully handles case where no frequencies fall within a band (returns zeros)
+- Line 97-98: Transposes data to ensure time is last axis for welch
+
+**No mutation:**
+
+- Line 66: Works on `data.data` (the underlying xarray), not mutating input
+- Line 99: Gets values via `.values` property
+- Returns new `xr.DataArray` (line 115) with proper coordinates (lines 116-118)
+
+**No print statements:** Clean — uses no debug output.
 
 ## Action List
 
-1. [MEDIUM] Add a `Returns:` section to the class docstring. Describe output dimensions
-   (``band_index``, ``space``, plus a singleton ``time`` added by `_copy_with_new_data`),
-   the coordinate assigned to ``band_index``, and that values are absolute power in
-   signal² / Hz.
-2. [LOW] Add `__post_init__` validation for `nperseg`: raise `ValueError` if it is not
-   `None` and is less than 2, consistent with the downstream constraint in
-   `scipy.signal.welch`.
+None.

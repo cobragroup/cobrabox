@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 import xarray as xr
@@ -14,18 +15,20 @@ class SpikesCalc(BaseFeature[Data]):
     """Calculate spikes in the input data using the IQR method.
 
     Detects outliers as values falling outside ±1.5*IQR from Q1/Q3.
-    Returns a 2D array shaped (1, 1) containing the spike count.
+    Returns a scalar count of detected spikes.
 
     Args:
         None
 
     Returns:
-        xr.DataArray with shape (1, 1), dims ["time", "space"],
-        containing the spike count as a float value.
+        xr.DataArray with shape (), dims (),
+        containing the spike count as a scalar float value.
 
     Example:
         >>> result = SpikesCalc().apply(data)
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     def __call__(self, data: Data) -> xr.DataArray:
         a = data.data.values
@@ -44,7 +47,5 @@ class SpikesCalc(BaseFeature[Data]):
         # Count outliers
         spike_count = np.sum((a > up_bound) | (a < low_bound))
 
-        # Reshape to 2D array (1, 1) required by Data architecture
-        result = np.array([[spike_count]], dtype=float)
-
-        return xr.DataArray(result, dims=["time", "space"], coords={"time": [0]})
+        # Return as 0-dimensional scalar array
+        return xr.DataArray(float(spike_count))

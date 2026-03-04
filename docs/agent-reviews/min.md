@@ -2,11 +2,11 @@
 
 **File**: `src/cobrabox/features/min.py`
 **Date**: 2026-03-04
-**Verdict**: NEEDS WORK
+**Verdict**: PASS
 
 ## Summary
 
-`Min` is structurally identical to `Max` and `Mean` and has the same sole deficiency: the docstring is a bare one-liner with no `Args:`, `Returns:`, or `Example:` sections. All other aspects — imports, decorator, base class, field typing, `__call__` signature, input validation, and immutability — are correct. The missing docstring sections are rated HIGH because they are mandatory per the review criteria.
+Clean, well-structured feature that computes the minimum value across a specified dimension. Follows all cobrabox conventions with complete docstring, proper typing, input validation, and no style issues. Ready for production use.
 
 ## Ruff
 
@@ -20,36 +20,29 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-- **Line 1**: `from __future__ import annotations` is present and first. Correct.
-- **Lines 3–8**: Import order is future → stdlib (`dataclasses`) → third-party (`xarray`) → internal. Correct.
-- **Lines 11–12**: `@dataclass` and `BaseFeature` inheritance are present. Correct.
-- **Class name**: `Min` is PascalCase and matches `min.py`. Correct.
-- **Line 15**: `dim: str` is a typed dataclass field. Correct.
-- **Line 17**: `__call__` signature is `(self, data: Data) -> xr.DataArray`. Correct for a `BaseFeature`.
-- `data` is not a dataclass field. Correct.
-- No reimplementation of `.apply()`. Correct.
+Correct `@dataclass` decorator with `BaseFeature[Data]` inheritance (lines 11-12). The `Data` type parameter is appropriate since this is a generic dimension-reduction feature that does not inherently require a time dimension. Class name `Min` matches filename `min.py`. `__call__` signature correctly takes `data: Data` and returns `xr.DataArray` (line 29). No custom `apply()` implementation — correctly relies on inherited method.
+
+Import order is correct: `__future__`, stdlib (`dataclasses`), third-party (`xarray`), then internal (`..base_feature`, `..data`).
 
 ## Docstring
 
-- **Line 13**: Only a one-line summary `"""Compute minimum across a dimension."""` is present.
-- Missing `Args:` section. The field `dim` is not documented (valid values, effect on output shape, e.g. reducing `"time"` gives per-channel minimum).
-- Missing `Returns:` section. The output shape (input shape minus the reduced dimension), preserved dimensions, dtype, and value semantics (element-wise minimum) are not described.
-- Missing `Example:` section demonstrating `.apply()` usage.
+Complete Google-style docstring with all required sections:
+
+- **One-line summary**: Clear and descriptive (line 13)
+- **Args**: Documents the `dim` field with type and description (lines 15-16)
+- **Returns**: Describes shape change and value semantics (lines 18-21)
+- **Example**: Shows correct `.apply()` usage (lines 23-24)
 
 ## Typing
 
-- `dim: str` is typed. Correct.
-- `__call__` return type is `xr.DataArray`. Correct.
-- No bare `Any`. Correct.
+All fields are typed: `dim: str` (line 27). `__call__` has explicit return type `xr.DataArray` (line 29). No bare `Any` types present.
 
 ## Safety & Style
 
-- No `print()` statements. Correct.
-- **Lines 18–19**: Validates that `self.dim` is in `data.data.dims` and raises `ValueError` with a descriptive message. Correct.
-- No mutation of input `data`. `data.data.min(...)` returns a new array. Correct.
-- No `__post_init__` is needed (no numeric constraints on `dim`). Correct.
-- All lines are within 100 characters. Correct.
+No `print()` statements. Input validation present at lines 30-31: checks that `self.dim` exists in `data.data.dims` and raises `ValueError` with a clear message if not. Feature operates on `data.data` (the underlying xarray) and returns a new array — no mutation of the immutable `Data` container.
+
+Line length is within 100 character limit (longest line is 86 characters).
 
 ## Action List
 
-1. [HIGH] Add a complete Google-style docstring with `Args:` (documenting `dim` — its purpose, valid values such as `"time"` or `"space"`, and effect on output shape), `Returns:` (output shape, remaining dimensions, value semantics), and `Example:` (minimal self-contained call via `.apply()`).
+None.

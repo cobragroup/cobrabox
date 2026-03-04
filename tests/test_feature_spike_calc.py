@@ -16,12 +16,12 @@ def test_spikes_calc_clean_data_no_outliers(rng: np.random.Generator) -> None:
     out = cb.feature.SpikesCalc().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.shape == (1, 1)
-    assert set(out.data.dims) == {"time", "space"}
+    assert out.data.shape == ()
+    assert out.data.dims == ()
     assert out.subjectID == "sub-01"
     assert out.history == ["SpikesCalc"]
     # Clean data should have 0 or very few spikes
-    assert out.to_numpy().flat[0] < 5
+    assert out.to_numpy() < 5
 
 
 def test_spikes_calc_with_outliers() -> None:
@@ -36,7 +36,7 @@ def test_spikes_calc_with_outliers() -> None:
     out = cb.feature.SpikesCalc().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.to_numpy().flat[0] >= 2  # At least the 2 extreme values
+    assert out.to_numpy() >= 2  # At least the 2 extreme values
 
 
 def test_spikes_calc_preserves_metadata(rng: np.random.Generator) -> None:
@@ -61,16 +61,18 @@ def test_spikes_calc_preserves_metadata(rng: np.random.Generator) -> None:
     assert out.history == ["SpikesCalc"]
 
 
-def test_spikes_calc_returns_shape_1_1(rng: np.random.Generator) -> None:
-    """SpikesCalc returns Data with shape (1, 1)."""
+def test_spikes_calc_returns_scalar(rng: np.random.Generator) -> None:
+    """SpikesCalc returns scalar Data with shape ()."""
     arr = rng.standard_normal((30, 2))
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     out = cb.feature.SpikesCalc().apply(data)
 
-    assert out.data.shape == (1, 1)
-    assert set(out.data.dims) == {"time", "space"}
-    assert isinstance(out.to_numpy().flat[0], (int, float, np.integer, np.floating))
+    assert out.data.shape == ()
+    assert out.data.dims == ()
+    # to_numpy() returns a 0-d numpy array, extract scalar with item()
+    val = out.to_numpy().item()
+    assert isinstance(val, (int, float, np.integer, np.floating))
 
 
 def test_spikes_calc_multivariate_data(rng: np.random.Generator) -> None:
@@ -85,7 +87,7 @@ def test_spikes_calc_multivariate_data(rng: np.random.Generator) -> None:
     out = cb.feature.SpikesCalc().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.to_numpy().flat[0] > 0
+    assert out.to_numpy() > 0
 
 
 def test_spikes_calc_empty_data_raises() -> None:
