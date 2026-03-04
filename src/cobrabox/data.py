@@ -403,27 +403,6 @@ class Data:
             else:
                 merged_extra = {**self._extra, **extra}
 
-        # Conditionally restore time dimension only if original had time
-        if self._has_time and "time" not in result_data.dims:
-            # Preserve original sampling rate in attrs since we can't infer from singleton
-            original_sampling_rate = self.sampling_rate
-            if original_sampling_rate is not None:
-                # Store sampling_rate in attrs so it doesn't need to be inferred
-                result_attrs = dict(result_data.attrs) if result_data.attrs else {}
-                result_attrs["sampling_rate"] = original_sampling_rate
-                result_data = result_data.assign_attrs(result_attrs)
-                # Use proper time coordinate for consistency
-                time_delta = 1.0 / original_sampling_rate
-                result_data = result_data.expand_dims("time", axis=-1).assign_coords(
-                    time=[time_delta]
-                )
-            else:
-                # Fallback: use a small time value that suggests 100 Hz
-                result_attrs = dict(result_data.attrs) if result_data.attrs else {}
-                result_attrs["sampling_rate"] = 100.0
-                result_data = result_data.assign_attrs(result_attrs)
-                result_data = result_data.expand_dims("time", axis=-1).assign_coords(time=[0.01])
-
         return Data(
             data=result_data,
             subjectID=merged_subjectID,
@@ -605,6 +584,61 @@ class SignalData(Data):
             condition=condition,
             history=history,
             extra=extra,
+        )
+
+    def _copy_with_new_data(
+        self,
+        new_data: xr.DataArray | Data,
+        operation_name: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> Data:
+        """Override to add singleton time dimension if result lacks it.
+
+        SignalData requires a time dimension, so if the feature result doesn't
+        have one, we add a singleton time dimension to preserve the SignalData
+        contract while allowing features to reduce over time.
+        """
+        # Get the result from parent class (which returns Data, not SignalData)
+        result = super()._copy_with_new_data(new_data, operation_name, extra)
+
+        # If result already has time dimension, return as-is (but as SignalData)
+        if "time" in result.data.dims:
+            return SignalData(
+                data=result.data,
+                sampling_rate=result.sampling_rate,
+                subjectID=result.subjectID,
+                groupID=result.groupID,
+                condition=result.condition,
+                history=result.history,
+                extra=result.extra,
+            )
+
+        # Add singleton time dimension
+        result_data = result.data
+        original_sampling_rate = self.sampling_rate
+        if original_sampling_rate is not None:
+            # Store sampling_rate in attrs so it doesn't need to be inferred
+            result_attrs = dict(result_data.attrs) if result_data.attrs else {}
+            result_attrs["sampling_rate"] = original_sampling_rate
+            result_data = result_data.assign_attrs(result_attrs)
+            # Use proper time coordinate for consistency
+            time_delta = 1.0 / original_sampling_rate
+            result_data = result_data.expand_dims("time", axis=-1).assign_coords(time=[time_delta])
+        else:
+            # Fallback: use a small time value that suggests 100 Hz
+            result_attrs = dict(result_data.attrs) if result_data.attrs else {}
+            result_attrs["sampling_rate"] = 100.0
+            result_data = result_data.assign_attrs(result_attrs)
+            result_data = result_data.expand_dims("time", axis=-1).assign_coords(time=[0.01])
+
+        return SignalData(
+            data=result_data,
+            sampling_rate=result.sampling_rate,
+            subjectID=result.subjectID,
+            groupID=result.groupID,
+            condition=result.condition,
+            history=result.history,
+            extra=result.extra,
         )
 
 

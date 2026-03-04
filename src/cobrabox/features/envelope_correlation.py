@@ -67,8 +67,8 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
                 f"envelope_correlation requires at least 2 spatial channels, got {n_space}"
             )
 
-        # values shape: (space, time) — Data always transposes to (..., time)
-        values = xr_data.values
+        # values shape needs to be (space, time) for mne_connectivity
+        values = xr_data.transpose("space", "time").values
 
         conn = _mne_envelope_correlation(
             [values],
