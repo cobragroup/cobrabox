@@ -212,7 +212,7 @@ def test_immutability_guard_raises_on_setattr() -> None:
     """Setting any attribute on a Data instance raises AttributeError."""
     ds = cb.from_numpy(RNG.standard_normal((5, 2)), dims=["time", "space"])
     with pytest.raises(AttributeError, match="Cannot modify attribute"):
-        ds.foo = "bar"  # type: ignore[attr-defined]
+        ds.foo = "bar"
 
 
 # --- to_pandas ---
