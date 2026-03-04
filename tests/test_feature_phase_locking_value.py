@@ -18,7 +18,9 @@ def _manual_phase_locking_value(x: np.ndarray, y: np.ndarray) -> float:
 
 def test_phase_locking_value_returns_float() -> None:
     """PhaseLockingValue returns a valid Data object with correct value."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     result = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
 
@@ -34,7 +36,9 @@ def test_phase_locking_value_returns_float() -> None:
 
 def test_phase_locking_value_matrix_returns_square_matrix() -> None:
     """PhaseLockingValueMatrix returns correct square shape."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
 
@@ -45,7 +49,9 @@ def test_phase_locking_value_matrix_returns_square_matrix() -> None:
 
 def test_phase_locking_value_diagonal_is_one() -> None:
     """PLV of a coordinate with itself equals 1.0."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     result = cb.feature.PhaseLockingValue(coord_x=0, coord_y=0).apply(data)
 
@@ -54,7 +60,9 @@ def test_phase_locking_value_diagonal_is_one() -> None:
 
 def test_phase_locking_value_raises_invalid_coordinate() -> None:
     """Raises ValueError when coordinate is not found in space dimension."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     with pytest.raises(ValueError, match="coordinate '99' not found"):
         cb.feature.PhaseLockingValue(coord_x=99, coord_y=1).apply(data)
@@ -62,7 +70,9 @@ def test_phase_locking_value_raises_invalid_coordinate() -> None:
 
 def test_phase_locking_value_matrix_raises_empty_coords() -> None:
     """Raises ValueError when coords list is empty."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     with pytest.raises(ValueError, match="coords must have at least one coordinate"):
         cb.feature.PhaseLockingValueMatrix(coords=[]).apply(data)
@@ -70,7 +80,9 @@ def test_phase_locking_value_matrix_raises_empty_coords() -> None:
 
 def test_phase_locking_value_preserves_history() -> None:
     """History is updated correctly after calling PhaseLockingValue."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     result = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
 
@@ -86,7 +98,9 @@ def test_phase_locking_value_raises_when_no_space_dim() -> None:
 
 def test_phase_locking_value_raises_when_coord_y_not_found() -> None:
     """Raises ValueError when coord_y is missing (coord_x is valid)."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0
+    )
     with pytest.raises(ValueError, match="coordinate '99' not found"):
         cb.feature.PhaseLockingValue(coord_x=0, coord_y=99).apply(data)
 
@@ -100,14 +114,18 @@ def test_phase_locking_value_matrix_raises_when_no_space_dim() -> None:
 
 def test_phase_locking_value_matrix_raises_when_coord_not_found() -> None:
     """Raises ValueError when a coord in coords is not in space."""
-    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0
+    )
     with pytest.raises(ValueError, match="coordinate '99' not found"):
         cb.feature.PhaseLockingValueMatrix(coords=[99, 1]).apply(data)
 
 
 def test_phase_locking_value_matrix_preserves_history() -> None:
     """History is updated correctly after calling PhaseLockingValueMatrix."""
-    data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
 
     result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1]).apply(data)
 

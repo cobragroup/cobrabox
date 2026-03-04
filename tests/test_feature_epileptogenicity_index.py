@@ -28,7 +28,7 @@ _FS = 256.0
 _N_SEC = 30
 
 
-def _make_data(arr: np.ndarray, fs: float = _FS, **kwargs: object) -> cb.Data:
+def _make_data(arr: np.ndarray, fs: float = _FS, **kwargs: object) -> cb.SignalData:
     """Wrap a (time, space) numpy array in a Data object."""
     return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=fs, **kwargs)
 
@@ -48,7 +48,7 @@ def _gamma_onset_signal(
     return sig.astype(np.float64)
 
 
-def _two_channel_data(onset_ch0: float = 10.0, onset_ch1: float = 20.0) -> cb.Data:
+def _two_channel_data(onset_ch0: float = 10.0, onset_ch1: float = 20.0) -> cb.SignalData:
     """Two-channel Data: channel 0 fires at onset_ch0 s, channel 1 at onset_ch1 s."""
     sig0 = _gamma_onset_signal(onset=onset_ch0)
     sig1 = _gamma_onset_signal(onset=onset_ch1)
@@ -82,7 +82,7 @@ def test_ei_space_coords_preserved() -> None:
         dims=["time", "space"],
         coords={"time": np.arange(arr.shape[0]) / _FS, "space": space_vals},
     )
-    data = cb.from_xarray(xr_da)
+    data = cb.data.SignalData.from_xarray(xr_da)
     out = cb.feature.EpileptogenicityIndex().apply(data)
     np.testing.assert_array_equal(out.data.coords["space"].values, space_vals)
 

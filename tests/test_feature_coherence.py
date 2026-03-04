@@ -13,7 +13,7 @@ import cobrabox as cb
 # ---------------------------------------------------------------------------
 
 
-def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.Data:
+def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.SignalData:
     """Create Data from a (time, space) array."""
     return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
@@ -43,7 +43,7 @@ def test_coherence_space_coords_are_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(300, dtype=float) / 100.0},
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
     out = cb.feature.Coherence().apply(data)
 
@@ -124,7 +124,7 @@ def test_coherence_preserves_metadata_and_history() -> None:
         subjectID="sub-01",
         groupID="control",
         condition="rest",
-        extra={"session": 1},  # type: ignore[arg-type]
+        extra={"session": 1},
     )
 
     out = cb.feature.Coherence().apply(data)

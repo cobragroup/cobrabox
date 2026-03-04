@@ -13,7 +13,7 @@ import cobrabox as cb
 # ---------------------------------------------------------------------------
 
 
-def _make_data(arr: np.ndarray, *, sampling_rate: float = 256.0) -> cb.Data:
+def _make_data(arr: np.ndarray, *, sampling_rate: float = 256.0) -> cb.SignalData:
     """Create Data from a (time, space) array."""
     return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
@@ -41,7 +41,7 @@ def test_spectrogram_space_dim_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz", "Oz"], "time": np.arange(512) / 256.0},
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
     out = cb.feature.Spectrogram().apply(data)
 
@@ -212,7 +212,7 @@ def test_spectrogram_preserves_metadata() -> None:
         subjectID="sub-01",
         groupID="ctrl",
         condition="rest",
-        extra={"session": 2},  # type: ignore[arg-type]
+        extra={"session": 2},
     )
 
     out = cb.feature.Spectrogram().apply(data)
@@ -244,7 +244,7 @@ def test_spectrogram_preserves_extra_dim() -> None:
             "space": [f"ch{k}" for k in range(n_space)],
         },
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
     out = cb.feature.Spectrogram(nperseg=32).apply(data)
 
@@ -337,4 +337,4 @@ def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
 
 def test_spectrogram_accessible_via_feature_module() -> None:
     """Spectrogram is accessible as cb.feature.Spectrogram."""
-    assert callable(cb.feature.Spectrogram)  # type: ignore[attr-defined]
+    assert callable(cb.feature.Spectrogram)

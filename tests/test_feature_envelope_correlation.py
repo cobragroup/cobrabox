@@ -15,7 +15,7 @@ def _make_data(
     sampling_rate: float = 256.0,
     subjectID: str = "sub-01",
     seed: int = 0,
-) -> cb.Data:
+) -> cb.SignalData:
     """Helper: random broadband data."""
     rng = np.random.default_rng(seed)
     arr = rng.standard_normal((n_time, n_space))
@@ -48,7 +48,7 @@ def test_envelope_correlation_space_coords_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(512) / 256.0},
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
@@ -169,7 +169,7 @@ def test_envelope_correlation_raises_for_extra_dims() -> None:
             "space": [f"ch{k}" for k in range(4)],
         },
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
     with pytest.raises(ValueError, match="extra dims"):
         cb.feature.EnvelopeCorrelation().apply(data)
