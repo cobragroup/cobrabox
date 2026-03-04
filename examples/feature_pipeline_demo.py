@@ -25,7 +25,7 @@ win_max = (
 ).apply(data)
 
 feat = cb.feature.LineLength().apply(data)
-dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(feat)
+dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(data)
 
 # Compute coherence
 coh = cb.feature.Coherence().apply(data)

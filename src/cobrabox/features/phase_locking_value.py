@@ -54,8 +54,8 @@ class PhaseLockingValue(BaseFeature[SignalData]):
 
     output_type: ClassVar[type[Data]] = Data
 
-    coord_x: str
-    coord_y: str
+    coord_x: str | int
+    coord_y: str | int
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
@@ -105,7 +105,7 @@ class PhaseLockingValueMatrix(BaseFeature[SignalData]):
 
     output_type: ClassVar[type[Data]] = Data
 
-    coords: list[str]
+    coords: list[str] | list[int]
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data

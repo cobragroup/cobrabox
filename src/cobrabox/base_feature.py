@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 import xarray as xr
 
@@ -78,9 +78,7 @@ class SplitterFeature(ABC, Generic[DataT]):
     def __call__(self, data: DataT) -> Iterator[Data]:
         """Yield one Data object per split (e.g. per window)."""
 
-    def __or__(
-        self, other: BaseFeature[Data] | AggregatorFeature
-    ) -> _ChordBuilder[DataT] | Chord[DataT]:
+    def __or__(self, other: BaseFeature[Any]) -> _ChordBuilder[DataT]:
         """Start building a Chord: SplitterFeature | pipeline_step | AggregatorFeature."""
         if isinstance(other, AggregatorFeature):
             raise TypeError(
@@ -120,13 +118,13 @@ class _ChordBuilder(Generic[DataT]):
     """
 
     def __init__(
-        self, split: SplitterFeature[DataT], pipeline: BaseFeature[Data] | Pipeline[Data]
+        self, split: SplitterFeature[DataT], pipeline: BaseFeature[Any] | Pipeline[Any]
     ) -> None:
         self.split = split
         self.pipeline = pipeline
 
     def __or__(
-        self, other: BaseFeature[Data] | AggregatorFeature
+        self, other: BaseFeature[Any] | AggregatorFeature
     ) -> _ChordBuilder[DataT] | Chord[DataT]:
         if isinstance(other, AggregatorFeature):
             return Chord(split=self.split, pipeline=self.pipeline, aggregate=other)
@@ -165,7 +163,7 @@ class Chord(BaseFeature[DataT]):
     """
 
     split: SplitterFeature[DataT]
-    pipeline: BaseFeature[Data] | Pipeline[Data]
+    pipeline: BaseFeature[Any] | Pipeline[Any]
     aggregate: AggregatorFeature
 
     def __call__(self, data: DataT) -> Data:

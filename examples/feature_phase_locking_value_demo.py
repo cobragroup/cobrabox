@@ -6,7 +6,9 @@ import cobrabox as cb
 
 rng = np.random.default_rng(42)
 
-data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+data = cb.data.SignalData.from_numpy(
+    rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+)
 
 print("Data shape:", data.data.shape)
 print("Space coordinates:", list(data.data.coords["space"].values))
@@ -15,7 +17,7 @@ print()
 print("=" * 60)
 print("Example 1: Single phase locking value")
 print("=" * 60)
-r = cb.feature.phase_locking_value(data, 0, 1)
+r = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
 print(f"Phase locking value (electrode 0 vs 1): {r.data.values.item():.4f}")
 print(f"History: {r.history}")
 print()
@@ -23,9 +25,9 @@ print()
 print("=" * 60)
 print("Example 2: Phase locking value matrix")
 print("=" * 60)
-m = cb.feature.phase_locking_value_matrix(data, [0, 1, 2])
+m = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
 print("Pairwise phase locking value:")
-print(m.data.values[0, :, :, 0])
+print(m.data.values)
 print()
 
 print("=" * 60)
@@ -35,13 +37,13 @@ print("=" * 60)
 
 print("\nInvalid coordinate:")
 try:
-    cb.feature.phase_locking_value(data, 99, 1)
+    cb.feature.PhaseLockingValue(coord_x=99, coord_y=1).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 
 print("\nEmpty coords in matrix:")
 try:
-    cb.feature.phase_locking_value_matrix(data, [])
+    cb.feature.PhaseLockingValueMatrix(coords=[]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 

@@ -37,9 +37,9 @@ class PartialCorrelation(BaseFeature[SignalData]):
 
     output_type: ClassVar[type[Data]] = Data
 
-    coord_x: str
-    coord_y: str
-    control_vars: list[str]
+    coord_x: str | int
+    coord_y: str | int
+    control_vars: list[str] | list[int]
 
     def _compute_partial_correlation(
         self, x: np.ndarray, y: np.ndarray, controls: list[np.ndarray]
@@ -146,8 +146,8 @@ class PartialCorrelationMatrix(BaseFeature[SignalData]):
 
     output_type: ClassVar[type[Data]] = Data
 
-    coords: list[str]
-    control_vars: list[str]
+    coords: list[str] | list[int]
+    control_vars: list[str] | list[int]
 
     def _compute_partial_correlation(
         self, x: np.ndarray, y: np.ndarray, controls: list[np.ndarray]
