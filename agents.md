@@ -74,6 +74,7 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 - `Data` is immutable — features always produce new instances via `_copy_with_new_data`; never mutate in-place.
 - `history` is automatically maintained by `BaseFeature.apply`; `AggregatorFeature` subclasses are responsible for building history themselves.
 - Ruff line length is 100; target Python 3.14+ (`target-version = "py314"`); `requires-python = ">=3.11"`.
+- Test files for features are named `tests/test_feature_<feature_name>.py` (e.g. `line_length.py` → `test_feature_line_length.py`).
 - `src/cobrabox/features/dummy.py` is a negative reference (no useful docstring, no validation) — do not model new features after it.
 
 ## Build & CI

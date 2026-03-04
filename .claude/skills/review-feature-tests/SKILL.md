@@ -19,7 +19,7 @@ plan document for a coding agent or developer to implement.
 ### 1. Read inputs
 
 - Read the feature file at `$ARGUMENTS`
-- Derive the expected test path: `tests/test_<feature_name>.py`
+- Derive the expected test path: `tests/test_feature_<feature_name>.py`
 
 ### 2. Branch on test file existence
 
@@ -57,7 +57,7 @@ Review written to docs/agent-reviews/<feature-name>-tests.md — <MISSING|NEEDS 
 # Test Plan: <feature_name>
 
 **Feature**: `src/cobrabox/features/<feature>.py`
-**Test file**: `tests/test_<feature_name>.py` (does not exist)
+**Test file**: `tests/test_feature_<feature_name>.py` (does not exist)
 **Date**: YYYY-MM-DD
 **Verdict**: MISSING
 
@@ -78,7 +78,7 @@ Brief description of what the feature does and what the tests will verify.
 # Test Review: <feature_name>
 
 **Feature**: `src/cobrabox/features/<feature>.py`
-**Test file**: `tests/test_<feature_name>.py`
+**Test file**: `tests/test_feature_<feature_name>.py`
 **Date**: YYYY-MM-DD
 **Verdict**: PASS | NEEDS WORK
 
