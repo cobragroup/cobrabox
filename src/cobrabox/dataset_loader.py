@@ -57,7 +57,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
         if df.empty:
             continue
         columns = list(df.columns)
-        if not columns:
+        if not columns:  # pragma: no cover
             raise ValueError(f"{path.name}: expected at least one column")
 
         # For these dummy datasets, time is implicit row index.
@@ -109,7 +109,7 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
         if df.empty:
             continue
         columns = list(df.columns)
-        if not columns:
+        if not columns:  # pragma: no cover
             raise ValueError(f"{path.name}: expected at least one column")
 
         time = df.index.to_numpy(dtype=float)
@@ -162,7 +162,7 @@ def load_realistic_swiss(
         if df.empty:
             continue
         columns = list(df.columns)
-        if not columns:
+        if not columns:  # pragma: no cover
             raise ValueError(f"{path.name}: expected at least one column")
 
         time = df.index.to_numpy(dtype=float)

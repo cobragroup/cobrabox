@@ -61,6 +61,16 @@ def test_sliding_window_raises_when_window_too_large() -> None:
         list(cb.feature.SlidingWindow(window_size=10, step_size=1)(data))
 
 
+def test_sliding_window_raises_when_window_size_less_than_one() -> None:
+    with pytest.raises(ValueError, match="window_size must be >= 1"):
+        cb.feature.SlidingWindow(window_size=0)
+
+
+def test_sliding_window_raises_when_step_size_less_than_one() -> None:
+    with pytest.raises(ValueError, match="step_size must be >= 1"):
+        cb.feature.SlidingWindow(step_size=0)
+
+
 def test_sliding_window_is_lazy() -> None:
     """Generator should not materialise all windows upfront."""
     data = cb.SignalData.from_numpy(np.ones((100, 2)), dims=["time", "space"])

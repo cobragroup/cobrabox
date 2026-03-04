@@ -77,6 +77,34 @@ def test_phase_locking_value_preserves_history() -> None:
     assert result.history == ["PhaseLockingValue"]
 
 
+def test_phase_locking_value_raises_when_no_space_dim() -> None:
+    """Raises ValueError when data has no space dimension."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "channels"])
+    with pytest.raises(ValueError, match="dimension 'space' not found"):
+        cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
+
+
+def test_phase_locking_value_raises_when_coord_y_not_found() -> None:
+    """Raises ValueError when coord_y is missing (coord_x is valid)."""
+    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    with pytest.raises(ValueError, match="coordinate '99' not found"):
+        cb.feature.PhaseLockingValue(coord_x=0, coord_y=99).apply(data)
+
+
+def test_phase_locking_value_matrix_raises_when_no_space_dim() -> None:
+    """Raises ValueError when data has no space dimension."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "channels"])
+    with pytest.raises(ValueError, match="dimension 'space' not found"):
+        cb.feature.PhaseLockingValueMatrix(coords=[0, 1]).apply(data)
+
+
+def test_phase_locking_value_matrix_raises_when_coord_not_found() -> None:
+    """Raises ValueError when a coord in coords is not in space."""
+    data = cb.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    with pytest.raises(ValueError, match="coordinate '99' not found"):
+        cb.feature.PhaseLockingValueMatrix(coords=[99, 1]).apply(data)
+
+
 def test_phase_locking_value_matrix_preserves_history() -> None:
     """History is updated correctly after calling PhaseLockingValueMatrix."""
     data = cb.from_numpy(rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)

@@ -114,6 +114,62 @@ def test_partial_correlation_matrix_preserves_history() -> None:
     assert "PartialCorrelationMatrix" in result.history
 
 
+def test_partial_correlation_raises_when_no_space_dim() -> None:
+    """Raises ValueError when data has no space dimension."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "channels"])
+    with pytest.raises(ValueError, match="dimension 'space' not found"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_raises_when_no_time_dim() -> None:
+    """Raises ValueError when data has no time dimension."""
+    data = cb.Data.from_numpy(np.ones((3,)), dims=["space"])
+    with pytest.raises(ValueError, match="data must have 'time' dimension"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_raises_when_coord_y_not_found() -> None:
+    """Raises ValueError when coord_y is missing (coord_x is valid)."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    with pytest.raises(ValueError, match="coordinate '99' not found"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=99, control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_matrix_raises_when_no_space_dim() -> None:
+    """Raises ValueError when data has no space dimension."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "channels"])
+    with pytest.raises(ValueError, match="dimension 'space' not found"):
+        cb.feature.PartialCorrelationMatrix(coords=[0], control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_matrix_raises_when_no_time_dim() -> None:
+    """Raises ValueError when data has no time dimension."""
+    data = cb.Data.from_numpy(np.ones((3,)), dims=["space"])
+    with pytest.raises(ValueError, match="data must have 'time' dimension"):
+        cb.feature.PartialCorrelationMatrix(coords=[0], control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_matrix_raises_empty_control_vars() -> None:
+    """Raises ValueError when control_vars is empty (coords is non-empty)."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    with pytest.raises(ValueError, match="control_vars must have at least one coordinate"):
+        cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[]).apply(data)
+
+
+def test_partial_correlation_matrix_raises_invalid_coord() -> None:
+    """Raises ValueError when a coord in coords is not in space."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    with pytest.raises(ValueError, match="coordinate '99' not found"):
+        cb.feature.PartialCorrelationMatrix(coords=[99, 1], control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_matrix_raises_invalid_control_var() -> None:
+    """Raises ValueError when a coord in control_vars is not in space."""
+    data = cb.SignalData.from_numpy(np.ones((10, 3)), dims=["time", "space"], sampling_rate=100.0)
+    with pytest.raises(ValueError, match="control coordinate '99' not found"):
+        cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[99]).apply(data)
+
+
 def test_partial_correlation_with_multiple_controls() -> None:
     """Works correctly with multiple control variables."""
     data = cb.SignalData.from_numpy(

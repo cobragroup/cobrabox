@@ -187,3 +187,41 @@ def test_bandpower_raises_for_true_with_unknown_band() -> None:
 
     with pytest.raises(ValueError, match="not a known default band"):
         cb.feature.Bandpower(bands={"foobar": True}).apply(data)
+
+
+def test_bandpower_raises_when_nperseg_less_than_2() -> None:
+    with pytest.raises(ValueError, match="nperseg must be >= 2"):
+        cb.feature.Bandpower(nperseg=1)
+
+
+def test_bandpower_raises_for_false_band_spec() -> None:
+    data = _sine_data(freq_hz=10.0)
+    with pytest.raises(ValueError, match="must be True"):
+        cb.feature.Bandpower(bands={"alpha": False}).apply(data)
+
+
+def test_bandpower_transposes_when_time_not_last() -> None:
+    """When time is not the last dim, Bandpower transposes before computing."""
+    import xarray as xr
+
+    from cobrabox.features.bandpower import Bandpower
+
+    class _FakeData:
+        @property
+        def data(self) -> xr.DataArray:
+            return xr.DataArray(np.ones((10, 4)), dims=["time", "space"])
+
+        @property
+        def sampling_rate(self) -> float:
+            return 256.0
+
+    out = Bandpower().__call__(_FakeData())  # type: ignore[arg-type]
+    assert "band_index" in out.dims
+
+
+def test_bandpower_zeros_when_no_freq_bins_in_band() -> None:
+    """Bands with no matching frequency bins return zero power."""
+    # Low sampling rate → Nyquist = 5 Hz; band [100, 200] has no bins
+    data = _sine_data(freq_hz=1.0, sampling_rate=10.0, n_seconds=4.0)
+    out = cb.feature.Bandpower(bands={"ultra": [100.0, 200.0]}).apply(data)
+    assert (out.to_numpy() == 0.0).all()

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pytest
 
 import cobrabox as cb
-from cobrabox.base_feature import _ChordBuilder
+from cobrabox.base_feature import BaseFeature, Pipeline, _ChordBuilder
 
 
 def _make_data(n_time: int = 20, n_space: int = 2, sr: float = 100.0) -> cb.SignalData:
@@ -140,3 +142,49 @@ def test_mean_aggregate_raises_on_empty_stream() -> None:
     data = _make_data()
     with pytest.raises(ValueError, match="empty stream"):
         cb.feature.MeanAggregate()(data, iter([]))
+
+
+# --- base_feature coverage ---
+
+
+@dataclass
+class _BadFeature(BaseFeature[cb.Data]):
+    def __call__(self, data: cb.Data) -> int:  # type: ignore[override]
+        return 42
+
+
+def test_apply_raises_type_error_when_call_returns_wrong_type() -> None:
+    data = _make_data()
+    with pytest.raises(TypeError, match="must return"):
+        _BadFeature().apply(data)
+
+
+def test_chord_builder_pipe_extends_existing_pipeline() -> None:
+    """_ChordBuilder.__or__ with an existing Pipeline (line 135) extends it."""
+    builder = (
+        cb.feature.SlidingWindow(window_size=4, step_size=2)
+        | cb.feature.LineLength()
+        | cb.feature.Mean(dim="space")
+        | cb.feature.Min(dim="time")
+    )
+    assert isinstance(builder, _ChordBuilder)
+    assert isinstance(builder.pipeline, Pipeline)
+    assert len(builder.pipeline.features) == 3
+
+
+def test_pipeline_or_extends_pipeline() -> None:
+    """Pipeline.__or__ returns a new Pipeline with the appended feature."""
+    p = cb.feature.LineLength() | cb.feature.Mean(dim="space")
+    assert isinstance(p, Pipeline)
+    p2 = p | cb.feature.Min(dim="time")
+    assert isinstance(p2, Pipeline)
+    assert len(p2.features) == 3
+
+
+def test_pipeline_call_syntax() -> None:
+    """Pipeline(data) is equivalent to Pipeline.apply(data)."""
+    data = _make_data()
+    pipeline = cb.feature.LineLength() | cb.feature.Mean(dim="space")
+    result_call = pipeline(data)
+    result_apply = pipeline.apply(data)
+    np.testing.assert_allclose(result_call.to_numpy(), result_apply.to_numpy())
