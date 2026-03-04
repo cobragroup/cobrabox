@@ -18,71 +18,83 @@ from __future__ import annotations
 import numpy as np
 ```
 
-### `@feature` decorator
+### `@dataclass` decorator + base class inheritance
 
-Must be present and must be the outermost decorator on the function.
+The class must be decorated with `@dataclass` and inherit exactly one of the three base classes.
+The correct base class depends on what the feature does:
+
+| Base class | Use when |
+|---|---|
+| `BaseFeature` | standard `Data → Data` transformation |
+| `SplitterFeature` | fan-out: yields multiple `Data` windows |
+| `AggregatorFeature` | fan-in: folds a stream back into one `Data` |
 
 ```python
 # ✅
+@dataclass
+class LineLength(BaseFeature):
+
+# ✅
+@dataclass
+class SlidingWindow(SplitterFeature):
+
+# ✅
+@dataclass
+class MeanAggregate(AggregatorFeature):
+
+# ❌ missing @dataclass
+class LineLength(BaseFeature):
+
+# ❌ wrong base (function instead of class)
 @feature
-def my_feature(data: Data, ...) -> xr.DataArray:
-
-# ❌ missing decorator — function will not be auto-discovered
-def my_feature(data: Data, ...) -> xr.DataArray:
-
-# ❌ decorator not outermost
-@some_other_decorator
-@feature
-def my_feature(...):
+def line_length(data: Data, ...) -> xr.DataArray:
 ```
 
-### First parameter
+### Class name
 
-Must be `data: Data` with no default value.
+Must be PascalCase matching the filename (`line_length.py` → `LineLength`).
+
+### `__call__` signature
+
+`data` is the **argument** to `__call__`, not a class field. Parameters are dataclass fields.
 
 ```python
-# ✅
-def my_feature(data: Data, window_size: int = 10) -> xr.DataArray:
+# ✅ BaseFeature
+def __call__(self, data: Data) -> xr.DataArray | Data:
 
-# ❌ wrong name
-def my_feature(input: Data, ...) -> xr.DataArray:
+# ✅ SplitterFeature
+def __call__(self, data: Data) -> Iterator[Data]:
 
-# ❌ no type annotation on first param
-def my_feature(data, ...) -> xr.DataArray:
+# ✅ AggregatorFeature
+def __call__(self, data: Data, windows: Iterator[Data]) -> Data:
+
+# ❌ data as a field
+@dataclass
+class LineLength(BaseFeature):
+    data: Data  # wrong — data is never a field
 ```
 
-### Return type annotation
+### Do NOT implement `apply()`
 
-Must be `xr.DataArray` or `Data` (or `xr.DataArray | Data`). Must be explicit.
-
-```python
-# ✅
-def my_feature(data: Data) -> xr.DataArray:
-
-# ✅
-def my_feature(data: Data) -> Data:
-
-# ❌ missing return type
-def my_feature(data: Data):
-
-# ❌ too broad
-def my_feature(data: Data) -> Any:
-```
+`apply()` is inherited from `BaseFeature` and handles history and wrapping automatically.
+Only `AggregatorFeature` subclasses must build `history` themselves.
 
 ### Imports
 
 Only import what is used. No unused imports. Standard order:
 
 1. `from __future__ import annotations`
-2. stdlib
+2. stdlib (including `from dataclasses import dataclass, field` and `from collections.abc import Iterator`)
 3. third-party (`numpy`, `xarray`)
-4. internal (`from ..data import Data`, `from ..function_wrapper import feature`)
+4. internal (`from ..data import Data`, `from ..base_feature import BaseFeature`)
+
+No import of `cobrabox.function_wrapper` — that module no longer exists.
 
 ---
 
 ## 2. Docstring
 
-All features require a Google-style docstring with all four sections. None are optional.
+All features require a Google-style docstring with all required sections. None are optional.
 
 ### One-line summary
 
@@ -93,7 +105,7 @@ First line: concise verb phrase, no period needed but consistent with existing s
 """Compute line length of the signal along the time dimension."""
 
 # ❌ too vague
-"""Feature function."""
+"""Feature class."""
 
 # ❌ missing entirely
 ```
@@ -101,25 +113,26 @@ First line: concise verb phrase, no period needed but consistent with existing s
 ### Extended description
 
 Required if the algorithm or behaviour is non-trivial. Skip only for genuinely
-self-evident functions. When present, explain *what* and *why*, not *how*.
+self-evident features. When present, explain *what* and *why*, not *how*.
 
 ### `Args:` section
 
-Every parameter except `data` needs a type and description. `data` should describe
-which dimensions and any preconditions.
+Every **field** (dataclass parameter) needs a type and description. `data` is the
+`__call__` argument and should not appear in `Args:` — it is described contextually
+or omitted if obvious.
 
 ```python
 # ✅
 Args:
-    data: Input signal with 'time' and 'space' dimensions.
-        If produced by sliding_window, 'window_index' is preserved.
     window_size: Number of timepoints per window. Must be > 0.
+    step_size: Step between consecutive windows. Must be > 0.
 
-# ❌ missing Args section entirely
+# ❌ missing Args section when fields exist
 
-# ❌ Args present but parameters not documented
+# ❌ documenting data as if it were a field
 Args:
-    data: Data object.
+    data: Input Data object.
+    window_size: ...
 ```
 
 ### `Returns:` section
@@ -141,50 +154,57 @@ Returns:
 
 ### `Example:` section
 
-At least one working snippet showing typical usage via `cb.feature.*`.
+At least one working snippet showing typical usage via `.apply()`.
 
 ```python
 # ✅
 Example:
-    >>> wdata = cb.feature.sliding_window(data, window_size=20, step_size=10)
-    >>> feat = cb.feature.my_feature(wdata)
+    >>> result = cb.feature.LineLength().apply(data)
+
+    >>> chord = cb.feature.SlidingWindow(window_size=20, step_size=10) | \
+    ...         cb.feature.LineLength() | \
+    ...         cb.feature.MeanAggregate()
+    >>> result = chord.apply(data)
 
 # ❌ missing Example section
+
+# ❌ old function-call style
+Example:
+    >>> result = cb.feature.line_length(data)
 ```
 
 ---
 
 ## 3. Typing
 
-### All parameters typed
+### All fields typed
 
-Every parameter must have a type annotation. No bare untyped parameters.
+Every dataclass field must have a type annotation. No bare untyped fields.
 
 ```python
 # ✅
-def my_feature(data: Data, window_size: int = 10, threshold: float = 0.5) -> xr.DataArray:
+@dataclass
+class SlidingWindow(SplitterFeature):
+    window_size: int
+    step_size: int = 1
 
-# ❌ untyped parameter
-def my_feature(data: Data, window_size=10) -> xr.DataArray:
+# ❌ untyped field
+@dataclass
+class SlidingWindow(SplitterFeature):
+    window_size = 10
 ```
+
+### `__call__` return type annotation
+
+Must be explicit and match the base class contract:
+
+- `BaseFeature.__call__` → `xr.DataArray | Data`
+- `SplitterFeature.__call__` → `Iterator[Data]`
+- `AggregatorFeature.__call__` → `Data`
 
 ### No bare `Any`
 
 `Any` is only acceptable with an inline comment explaining why it cannot be narrowed.
-
-```python
-# ❌
-def my_feature(data: Data, config: Any = None) -> xr.DataArray:
-
-# ✅ (justified)
-def my_feature(data: Data, config: Any = None) -> xr.DataArray:
-    # config accepts heterogeneous user-supplied dicts; cannot narrow further
-```
-
-### Return type matches actual return
-
-If the function returns `xr.DataArray`, the annotation must say `xr.DataArray`, not
-`Data`. If it returns a `Data` instance, annotate as `Data`.
 
 ---
 
@@ -192,7 +212,7 @@ If the function returns `xr.DataArray`, the annotation must say `xr.DataArray`, 
 
 ### No `print()` statements
 
-`print()` is not acceptable in feature functions. Use `logging` if output is needed.
+`print()` is not acceptable in feature classes. Use `logging` if output is needed.
 
 ```python
 # ❌ — from dummy.py
@@ -204,7 +224,7 @@ logger = logging.getLogger(__name__)
 logger.debug("whatever: %s", whatever)
 ```
 
-### Input validation
+### Input validation in `__call__`
 
 Features should validate critical preconditions and raise `ValueError` with a clear
 message. At minimum, validate that required dimensions are present.
@@ -217,12 +237,13 @@ if "time" not in data.data.dims:
 # ❌ no validation — will produce a cryptic xarray error downstream
 ```
 
-Parameters with numeric constraints should also be validated:
+Dataclass fields with numeric constraints should be validated in `__post_init__`:
 
 ```python
 # ✅
-if window_size <= 0:
-    raise ValueError(f"window_size must be positive, got {window_size}")
+def __post_init__(self) -> None:
+    if self.window_size <= 0:
+        raise ValueError(f"window_size must be positive, got {self.window_size}")
 ```
 
 ### No mutation of input `data`
@@ -232,7 +253,7 @@ work on `data.data` (the underlying `xr.DataArray`) and return a new array or ob
 
 ```python
 # ❌
-data._data = result  # will raise AttributeError but signals intent to mutate
+data._data = result  # signals intent to mutate
 
 # ✅
 xr_data = data.data
@@ -242,8 +263,7 @@ return result
 
 ### Line length
 
-Maximum 100 characters per line (enforced by ruff, but flag narratively if ruff is
-not catching it due to configuration drift).
+Maximum 100 characters per line (enforced by ruff).
 
 ---
 
@@ -251,15 +271,13 @@ not catching it due to configuration drift).
 
 ### Positive reference: `src/cobrabox/features/line_length.py`
 
-Compliant feature. Has all docstring sections, typed params, return type, input
-validation, no print statements, `from __future__ import annotations`.
+Compliant feature. Has all docstring sections, typed fields, `__call__` return type,
+input validation, no print statements, `from __future__ import annotations`.
 
 ### Negative reference: `src/cobrabox/features/dummy.py`
 
 Non-compliant. Issues:
 
 - Incomplete docstring (one-liner only, no Args/Returns/Example sections)
-- `print("whatever", whatever)` on line 16
+- `print("whatever", whatever)` statement
 - No input validation
-- Returns `Data` but has no explicit return type annotation issue (actually annotated
-  correctly), but the `print` and missing docstring sections are clear violations

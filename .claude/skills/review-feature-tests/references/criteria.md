@@ -58,7 +58,7 @@ Every test function must have a one-line docstring describing what it verifies.
 ```python
 # ✅
 def test_line_length_basic() -> None:
-    """line_length returns correct shape with time dimension removed."""
+    """LineLength returns correct shape with time dimension removed."""
 
 # ❌ missing docstring
 def test_line_length_basic() -> None:
@@ -86,10 +86,14 @@ assert not np.any(np.isnan(result.asnumpy()))
 
 ### History updated
 
-After calling the feature, the feature name must appear at the end of `history`.
+After calling the feature via `.apply()`, the **class name** (PascalCase) must appear
+at the end of `history`.
 
 ```python
 # ✅
+assert result.history[-1] == "LineLength"
+
+# ❌ old snake_case name — wrong in the new system
 assert result.history[-1] == "line_length"
 
 # ❌ only checks history is non-empty
@@ -114,32 +118,35 @@ assert result.subjectID == "s1"
 
 ### Invalid dims — missing `time`
 
-Must raise `ValueError` when input lacks `time` dimension.
+Must raise `ValueError` when input lacks the required dimension.
 
 ```python
 # ✅
 with pytest.raises(ValueError, match="time"):
-    cb.feature.line_length(data_without_time)
+    cb.feature.LineLength().apply(data_without_time)
 
 # ❌ no error case tested
 ```
 
 ### Invalid params (skip if feature has no parameters)
 
-Must raise `ValueError` for each parameter with a constraint (e.g. negative size,
-zero step).
+Must raise `ValueError` for each field with a constraint (e.g. negative size, zero step).
+Validation typically lives in `__post_init__` — test by constructing the class with bad args.
 
 ```python
-# ✅ for sliding_window
+# ✅ for SlidingWindow
 with pytest.raises(ValueError):
-    cb.feature.sliding_window(data, window_size=0)
+    cb.feature.SlidingWindow(window_size=0, step_size=10)
 with pytest.raises(ValueError):
-    cb.feature.sliding_window(data, window_size=1000)  # larger than signal
+    cb.feature.SlidingWindow(window_size=10, step_size=0)
+# Also test runtime guard (window larger than signal):
+with pytest.raises(ValueError):
+    cb.feature.SlidingWindow(window_size=1000, step_size=10).apply(short_data)
 ```
 
 ### Output type is `Data`
 
-The `@feature` decorator always repacks the result into a `Data` instance. Verify this.
+`.apply()` always returns a `Data` instance (it calls `_copy_with_new_data` internally).
 
 ```python
 # ✅
@@ -151,14 +158,13 @@ assert isinstance(result, xr.DataArray)
 
 ### No mutation of input
 
-The input `Data` object must be unchanged after the feature call. Check `history`
-and shape.
+The input `Data` object must be unchanged after `.apply()`. Check `history` and shape.
 
 ```python
 # ✅
 original_history = list(data.history)
 original_shape = data.data.shape
-_ = cb.feature.line_length(data)
+_ = cb.feature.LineLength().apply(data)
 assert data.history == original_history
 assert data.data.shape == original_shape
 ```
@@ -212,7 +218,7 @@ def test_line_length_basic() -> None:
     """..."""
     arr = np.random.randn(100, 10)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    result = cb.feature.line_length(data)
+    result = cb.feature.LineLength().apply(data)
     ...
 
 # ❌ test depends on module-level mutable state

@@ -24,12 +24,12 @@ These alignments are fixed lore. Do not recompute them — look them up.
 
 | Feature | Law | Good | Alignment | Lore |
 |---|---|---|---|---|
-| `sliding_window` | +1 | +1 | Lawful Good | Rigidly structured, principled expansion of data — serves understanding |
-| `mean` | +1 | 0 | Lawful Neutral | Collapses by strict rule; neither creates nor destroys meaning |
-| `max` | +1 | -1 | Lawful Evil | Obeys the law of the maximum, ruthlessly discards everything else |
-| `min` | 0 | -1 | Neutral Evil | Seeks only the lowest — no principle beyond pessimism |
-| `line_length` | 0 | +1 | Neutral Good | Measures without judgement, in service of signal |
-| `dummy` | -1 | 0 | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice |
+| `SlidingWindow` | +1 | +1 | Lawful Good | Rigidly structured, principled expansion of data — serves understanding |
+| `MeanAggregate` | +1 | 0 | Lawful Neutral | Collapses by strict rule; neither creates nor destroys meaning |
+| `Max` | +1 | -1 | Lawful Evil | Obeys the law of the maximum, ruthlessly discards everything else |
+| `Min` | 0 | -1 | Neutral Evil | Seeks only the lowest — no principle beyond pessimism |
+| `LineLength` | 0 | +1 | Neutral Good | Measures without judgement, in service of signal |
+| `Dummy` | -1 | 0 | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice |
 
 ### Axis encoding
 
@@ -108,12 +108,12 @@ Cell contents (6 chars wide):
 
 | Feature | Abbrev |
 |---|---|
-| `sliding_window` | `sw` |
-| `mean` | `mn` |
-| `max` | `mx` |
-| `min` | `mi` |
-| `line_length` | `ll` |
-| `dummy` | `du` |
+| `SlidingWindow` | `sw` |
+| `MeanAggregate` | `ma` |
+| `Max` | `mx` |
+| `Min` | `mi` |
+| `LineLength` | `ll` |
+| `Dummy` | `du` |
 
 For unknown/user features not in the table, use first 2 chars of the name.
 
@@ -126,35 +126,35 @@ For unknown/user features not in the table, use first 2 chars of the name.
 ```
 ## Cobrabox Feature Alignment Roster
 
-sliding_window  —  Lawful Good
+SlidingWindow  —  Lawful Good
   "Rigidly structured, principled expansion of data — serves understanding"
 
-mean  —  Lawful Neutral
+MeanAggregate  —  Lawful Neutral
   "Collapses by strict rule; neither creates nor destroys meaning"
 
-max  —  Lawful Evil
+Max  —  Lawful Evil
   "Obeys the law of the maximum, ruthlessly discards everything else"
 
-min  —  Neutral Evil
+Min  —  Neutral Evil
   "Seeks only the lowest — no principle beyond pessimism"
 
-line_length  —  Neutral Good
+LineLength  —  Neutral Good
   "Measures without judgement, in service of signal"
 
-dummy  —  Chaotic Neutral
+Dummy  —  Chaotic Neutral
   "Print statements, no validation — chaos without malice, just bad practice"
 
          LAW        NEUTRAL      CHAOS
          ─────────────────────────────────
 GOOD  │  [  sw  ]   [  ll  ]   [      ]  │
-NEUT  │  [  mn  ]   [      ]   [  du  ]  │
+NEUT  │  [  ma  ]   [      ]   [  du  ]  │
 EVIL  │  [  mx  ]   [  mi  ]   [      ]  │
 ```
 
-### Pipeline mode (`/dnd-alignment sliding_window line_length mean`)
+### Pipeline mode (`/dnd-alignment SlidingWindow LineLength MeanAggregate`)
 
 ```
-Pipeline: sliding_window → line_length → mean
+Pipeline: SlidingWindow → LineLength → MeanAggregate
 
 Law scores:  +1, 0, +1  →  avg +0.67  →  Lawful
 Good scores: +1, +1, 0  →  avg +0.67  →  Good
@@ -162,7 +162,7 @@ Good scores: +1, +1, 0  →  avg +0.67  →  Good
          LAW        NEUTRAL      CHAOS
          ─────────────────────────────────
 GOOD  │  [sw ★ ]   [  ll  ]   [      ]  │
-NEUT  │  [  mn  ]   [      ]   [      ]  │
+NEUT  │  [  ma  ]   [      ]   [      ]  │
 EVIL  │  [      ]   [      ]   [      ]  │
 
 Aggregate Alignment: Lawful Good  ★
