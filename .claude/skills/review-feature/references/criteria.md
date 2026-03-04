@@ -25,24 +25,36 @@ The correct base class depends on what the feature does:
 
 | Base class | Use when |
 |---|---|
-| `BaseFeature` | standard `Data → Data` transformation |
-| `SplitterFeature` | fan-out: yields multiple `Data` windows |
+| `BaseFeature[Data]` | standard transformation, no time dimension required |
+| `BaseFeature[SignalData]` | transformation that requires a `time` dimension |
+| `SplitterFeature[Data]` | fan-out: yields multiple `Data` windows (generic) |
+| `SplitterFeature[SignalData]` | fan-out: yields windows over the time dimension |
 | `AggregatorFeature` | fan-in: folds a stream back into one `Data` |
 
+The type parameter narrows what `__call__` accepts. Use `SignalData` for any feature that
+operates on the time axis; use `Data` for dimension-agnostic features.
+
 ```python
-# ✅
+# ✅ time-series feature
 @dataclass
-class LineLength(BaseFeature):
+class LineLength(BaseFeature[SignalData]):
+
+# ✅ generic (any dims)
+@dataclass
+class Mean(BaseFeature[Data]):
 
 # ✅
 @dataclass
-class SlidingWindow(SplitterFeature):
+class SlidingWindow(SplitterFeature[SignalData]):
 
 # ✅
 @dataclass
 class MeanAggregate(AggregatorFeature):
 
 # ❌ missing @dataclass
+class LineLength(BaseFeature[SignalData]):
+
+# ❌ missing type parameter (still works at runtime, but incomplete typing)
 class LineLength(BaseFeature):
 
 # ❌ wrong base (function instead of class)
@@ -57,21 +69,25 @@ Must be PascalCase matching the filename (`line_length.py` → `LineLength`).
 ### `__call__` signature
 
 `data` is the **argument** to `__call__`, not a class field. Parameters are dataclass fields.
+The `data` type must match the type parameter of the base class.
 
 ```python
-# ✅ BaseFeature
+# ✅ BaseFeature[Data] (generic feature)
 def __call__(self, data: Data) -> xr.DataArray | Data:
 
-# ✅ SplitterFeature
-def __call__(self, data: Data) -> Iterator[Data]:
+# ✅ BaseFeature[SignalData] (time-series feature)
+def __call__(self, data: SignalData) -> xr.DataArray | Data:
+
+# ✅ SplitterFeature[SignalData]
+def __call__(self, data: SignalData) -> Iterator[Data]:
 
 # ✅ AggregatorFeature
 def __call__(self, data: Data, windows: Iterator[Data]) -> Data:
 
 # ❌ data as a field
 @dataclass
-class LineLength(BaseFeature):
-    data: Data  # wrong — data is never a field
+class LineLength(BaseFeature[SignalData]):
+    data: SignalData  # wrong — data is never a field
 ```
 
 ### Do NOT implement `apply()`
@@ -226,11 +242,16 @@ logger.debug("whatever: %s", whatever)
 
 ### Input validation in `__call__`
 
-Features should validate critical preconditions and raise `ValueError` with a clear
-message. At minimum, validate that required dimensions are present.
+Features should validate critical preconditions and raise `ValueError` with a clear message.
+
+For **`BaseFeature[SignalData]`** features: `SignalData` already enforces the `time` dimension
+at construction time, so a redundant check in `__call__` is not required. Focus validation on
+feature-specific constraints (e.g. required non-time dims, parameter/data interactions).
+
+For **`BaseFeature[Data]`** features that require `time`: validate explicitly:
 
 ```python
-# ✅
+# ✅ required for Data-typed features that need time
 if "time" not in data.data.dims:
     raise ValueError("data must have 'time' dimension")
 
@@ -271,8 +292,9 @@ Maximum 100 characters per line (enforced by ruff).
 
 ### Positive reference: `src/cobrabox/features/line_length.py`
 
-Compliant feature. Has all docstring sections, typed fields, `__call__` return type,
-input validation, no print statements, `from __future__ import annotations`.
+Compliant feature. Uses `BaseFeature[SignalData]` with `data: SignalData` in `__call__`.
+Has all docstring sections, typed fields, `__call__` return type, no print statements,
+`from __future__ import annotations`. No redundant time-dim check since `SignalData` enforces it.
 
 ### Negative reference: `src/cobrabox/features/dummy.py`
 

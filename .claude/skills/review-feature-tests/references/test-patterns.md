@@ -9,7 +9,8 @@ Examples use `LineLength` (no params) and `SlidingWindow` + `MeanAggregate` (hav
 
 ## Helper
 
-A small helper keeps tests concise. Returns a fresh `Data` object each call.
+A small helper keeps tests concise. Returns a fresh `SignalData` object each call.
+Use `cb.SignalData.from_numpy` (not `cb.from_numpy`, which returns plain `Data`).
 
 ```python
 def _make_data(
@@ -19,9 +20,9 @@ def _make_data(
     subjectID: str = "s1",
     groupID: str = "g1",
     condition: str = "rest",
-) -> cb.Data:
+) -> cb.SignalData:
     arr = np.random.randn(n_time, n_space)
-    return cb.from_numpy(
+    return cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],
         sampling_rate=sampling_rate,
@@ -43,7 +44,7 @@ def test_line_length_basic() -> None:
     assert isinstance(result, cb.Data)
     assert "time" not in result.data.dims
     assert result.data.sizes["space"] == 10
-    assert not np.any(np.isnan(result.asnumpy()))
+    assert not np.any(np.isnan(result.to_numpy()))
 ```
 
 For features that keep `time` but change other dims, adjust the assertion:
@@ -208,13 +209,13 @@ def test_line_length_does_not_mutate_input() -> None:
     data = _make_data()
     original_history = list(data.history)
     original_shape = data.data.shape
-    original_values = data.asnumpy().copy()
+    original_values = data.to_numpy().copy()
 
     _ = cb.feature.LineLength().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
-    np.testing.assert_array_equal(data.asnumpy(), original_values)
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
 ```
 
 ---
@@ -247,9 +248,9 @@ def _make_data(
     subjectID: str = "s1",
     groupID: str = "g1",
     condition: str = "rest",
-) -> cb.Data:
+) -> cb.SignalData:
     arr = np.random.randn(n_time, n_space)
-    return cb.from_numpy(
+    return cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],
         sampling_rate=sampling_rate,

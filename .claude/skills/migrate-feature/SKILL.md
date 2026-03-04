@@ -39,11 +39,13 @@ Those are the files to migrate.
 |---|---|
 | `from cobrabox.function_wrapper import feature` | `from ..base_feature import BaseFeature` |
 | `@feature` on a function | `@dataclass` on a class |
-| `def my_feature(data, param=val, **kwargs)` | `class MyFeature(BaseFeature): param: type` |
-| `def sliding_window(data, ...) -> xr.DataArray` (windowing) | `class MySplit(SplitterFeature): ... -> Iterator[Data]` |
+| `def my_feature(data: Data, ...)` (time-series) | `class MyFeature(BaseFeature[SignalData])` |
+| `def my_feature(data: Data, ...)` (any dims) | `class MyFeature(BaseFeature[Data])` |
+| `def sliding_window(data, ...) -> xr.DataArray` (windowing) | `class MySplit(SplitterFeature[SignalData]): ... -> Iterator[Data]` |
 | Manual aggregation loop | `class MyAgg(AggregatorFeature): ... -> Data` |
 | `cb.feature.my_feature(data, param=val)` | `cb.feature.MyFeature(param=val).apply(data)` |
 | `cb.feature.my_feature \| cb.feature.other` | `cb.feature.MyFeature() \| cb.feature.Other()` |
+| `cb.from_numpy(arr, dims=[...])` in tests | `cb.SignalData.from_numpy(arr, dims=[...])` for time-series tests |
 
 ## Procedure
 
@@ -83,7 +85,8 @@ from ..base_feature import AggregatorFeature    # folding a stream
 ```
 
 Also add `from __future__ import annotations` and `from dataclasses import dataclass` (plus
-`field` if any field has a non-trivial default).
+`field` if any field has a non-trivial default). Import `SignalData` from `..data` for
+features that operate on time-series data, or `Data` for dimension-agnostic features.
 
 ### 4. Add or update the docstring
 

@@ -35,22 +35,24 @@ from dataclasses import dataclass
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import Data
+from ..data import SignalData
 
 
 @dataclass
-class LineLength(BaseFeature):
+class LineLength(BaseFeature[SignalData]):
     """Compute line length over the time dimension.
 
     Sum of absolute differences between consecutive timepoints per channel.
+
+    Returns:
+        xarray DataArray with the ``time`` dimension removed.
 
     Example:
         >>> result = cb.feature.LineLength().apply(data)
     """
 
-    def __call__(self, data: Data) -> xr.DataArray:
-        if "time" not in data.data.dims:
-            raise ValueError("data must have 'time' dimension")
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        # No time-dim check needed: SignalData guarantees 'time' exists
         return data.data.diff(dim="time").abs().sum(dim="time")
 ```
 
@@ -91,7 +93,7 @@ from ..data import Data
 
 
 @dataclass
-class Mean(BaseFeature):
+class Mean(BaseFeature[Data]):
     """Compute mean across a dimension.
 
     Args:
@@ -108,6 +110,9 @@ class Mean(BaseFeature):
             raise ValueError(f"dim '{self.dim}' not found in data dimensions {data.data.dims}")
         return data.data.mean(dim=self.dim)
 ```
+
+`Mean` uses `BaseFeature[Data]` (not `SignalData`) because it works on any dimension.
+For features that only operate on the `time` axis, use `BaseFeature[SignalData]` instead.
 
 **Note on defaults:** If the old function had `dim: str = "time"`, use a dataclass default:
 
@@ -137,7 +142,7 @@ def bandpass(data: Data, low: float = 1.0, high: float = 40.0, order: int = 4, *
 
 ```python
 @dataclass
-class Bandpass(BaseFeature):
+class Bandpass(BaseFeature[SignalData]):
     """Apply a Butterworth bandpass filter.
 
     Args:
@@ -153,11 +158,12 @@ class Bandpass(BaseFeature):
     high: float = 40.0
     order: int = 4
 
-    def __call__(self, data: Data) -> xr.DataArray:
-        if "time" not in data.data.dims:
-            raise ValueError("data must have 'time' dimension")
+    def __post_init__(self) -> None:
         if self.low >= self.high:
             raise ValueError(f"low ({self.low}) must be less than high ({self.high})")
+
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        # No time-dim check needed: SignalData guarantees 'time' exists
         # ... filter logic ...
         return filtered
 ```
@@ -194,18 +200,18 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from ..base_feature import SplitterFeature
-from ..data import Data
+from ..data import Data, SignalData
 
 
 @dataclass
-class SlidingWindow(SplitterFeature):
+class SlidingWindow(SplitterFeature[SignalData]):
     """Yield one Data per sliding window over the time dimension.
 
     Lazily generates windows to avoid materialising all windows in memory at once.
 
     Args:
-        window_size: Number of timepoints per window.
-        step_size: Step between window starts in timepoints.
+        window_size: Number of timepoints per window. Must be >= 1.
+        step_size: Step between window starts in timepoints. Must be >= 1.
 
     Example:
         >>> chord = (
@@ -218,10 +224,15 @@ class SlidingWindow(SplitterFeature):
     window_size: int = field(default=10)
     step_size: int = field(default=5)
 
-    def __call__(self, data: Data) -> Iterator[Data]:
+    def __post_init__(self) -> None:
+        if self.window_size < 1:
+            raise ValueError(f"window_size must be >= 1, got {self.window_size}")
+        if self.step_size < 1:
+            raise ValueError(f"step_size must be >= 1, got {self.step_size}")
+
+    def __call__(self, data: SignalData) -> Iterator[Data]:
+        # No time-dim check: SignalData guarantees 'time' exists
         xr_data = data.data
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
         n_time = xr_data.sizes["time"]
         if self.window_size > n_time:
             raise ValueError(f"window_size ({self.window_size}) must be <= n_time ({n_time})")
@@ -327,7 +338,8 @@ def test_mean_reduces_time() -> None:
 
 ```python
 def test_mean_reduces_time() -> None:
-    data = cb.from_numpy(np.ones((10, 4)), dims=["time", "space"])
+    # Use SignalData.from_numpy for time-series data (cb.from_numpy returns plain Data)
+    data = cb.SignalData.from_numpy(np.ones((10, 4)), dims=["time", "space"])
     result = cb.feature.Mean(dim="time").apply(data)
     assert result.history == ["Mean"]  # PascalCase
     assert "time" not in result.data.dims
@@ -337,7 +349,7 @@ def test_mean_reduces_time() -> None:
 
 ```python
 def test_sliding_window_yields_correct_count() -> None:
-    data = cb.from_numpy(np.ones((20, 4)), dims=["time", "space"])
+    data = cb.SignalData.from_numpy(np.ones((20, 4)), dims=["time", "space"])
     windows = list(cb.feature.SlidingWindow(window_size=10, step_size=5)(data))
     assert len(windows) == 3
     assert windows[0].data.sizes["time"] == 10
@@ -348,7 +360,7 @@ def test_sliding_window_yields_correct_count() -> None:
 
 ```python
 def test_mean_aggregate_via_chord() -> None:
-    data = cb.from_numpy(np.ones((20, 4)), dims=["time", "space"])
+    data = cb.SignalData.from_numpy(np.ones((20, 4)), dims=["time", "space"])
     result = (
         cb.feature.SlidingWindow(window_size=10, step_size=5)
         | cb.feature.LineLength()
