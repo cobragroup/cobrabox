@@ -6,11 +6,11 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from ..base_feature import SplitterFeature
-from ..data import Data
+from ..data import Data, SignalData
 
 
 @dataclass
-class SlidingWindow(SplitterFeature):
+class SlidingWindow(SplitterFeature[SignalData]):
     """Yield one Data per sliding window over the time dimension.
 
     Lazily generates windows to avoid materialising all windows in memory at once.
@@ -42,12 +42,8 @@ class SlidingWindow(SplitterFeature):
         if self.step_size < 1:
             raise ValueError(f"step_size must be >= 1, got {self.step_size}")
 
-    def __call__(self, data: Data) -> Iterator[Data]:
+    def __call__(self, data: SignalData) -> Iterator[Data]:
         xr_data = data.data
-
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
-
         n_time = xr_data.sizes["time"]
         n_windows = (n_time - self.window_size) // self.step_size + 1
         if n_windows <= 0:

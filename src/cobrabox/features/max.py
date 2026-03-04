@@ -9,7 +9,7 @@ from ..data import Data
 
 
 @dataclass
-class Max(BaseFeature):
+class Max(BaseFeature[Data]):
     """Compute the maximum value across a dimension.
 
     Args:

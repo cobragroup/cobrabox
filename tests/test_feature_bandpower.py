@@ -162,25 +162,6 @@ def test_bandpower_metadata_preserved() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bandpower_raises_when_time_dim_missing() -> None:
-    """ValueError raised when data lacks 'time' dimension."""
-    import xarray as xr
-
-    from cobrabox.features.bandpower import Bandpower
-
-    class _FakeData:
-        @property
-        def data(self) -> xr.DataArray:
-            return xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
-
-        @property
-        def sampling_rate(self) -> float:
-            return 256.0
-
-    with pytest.raises(ValueError, match="must have 'time' dimension"):
-        Bandpower().__call__(_FakeData())  # type: ignore[arg-type]
-
-
 def test_bandpower_raises_when_sampling_rate_missing() -> None:
     """ValueError raised when sampling_rate is not set."""
     import xarray as xr

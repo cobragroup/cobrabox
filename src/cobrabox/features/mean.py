@@ -9,7 +9,7 @@ from ..data import Data
 
 
 @dataclass
-class Mean(BaseFeature):
+class Mean(BaseFeature[Data]):
     """Compute the mean value across a dimension.
 
     Args:

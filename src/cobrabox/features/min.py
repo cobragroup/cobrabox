@@ -9,7 +9,7 @@ from ..data import Data
 
 
 @dataclass
-class Min(BaseFeature):
+class Min(BaseFeature[Data]):
     """Compute the minimum value across a dimension.
 
     Args:

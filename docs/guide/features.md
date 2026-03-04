@@ -8,9 +8,11 @@ CobraBox has three kinds of features, each with a different role:
 
 | Type | Signature | Role |
 |------|-----------|------|
-| `BaseFeature` | `Data → Data` | Standard transformation |
-| `SplitterFeature` | `Data → Iterator[Data]` | Splits data into a lazy stream (e.g. windows) |
+| `BaseFeature` | `DataT → Data` | Standard transformation |
+| `SplitterFeature` | `DataT → Iterator[Data]` | Splits data into a lazy stream (e.g. windows) |
 | `AggregatorFeature` | `(Data, Iterator[Data]) → Data` | Folds a stream back into one `Data` |
+
+Features are generic: they accept a type parameter `DataT` that specifies what kind of data they work with. Use `BaseFeature[SignalData]` for time-series features, or `BaseFeature[Data]` for generic features that work with any data.
 
 ## What is a Feature?
 
@@ -21,19 +23,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 import xarray as xr
 from cobrabox.base_feature import BaseFeature
-from cobrabox.data import Data
+from cobrabox.data import SignalData
 
 @dataclass
-class SpectralPower(BaseFeature):
+class SpectralPower(BaseFeature[SignalData]):
     """Compute mean power in a frequency band."""
 
     low: float
     high: float
 
-    def __call__(self, data: Data) -> xr.DataArray:
+    def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
+        # SignalData guarantees 'time' dimension exists
         # ... FFT, bandpass, etc.
         return xr_data.mean(dim="time")
 ```
@@ -44,6 +45,48 @@ Call `.apply(data)` — it handles wrapping the result and appending the class n
 feat = SpectralPower(low=8.0, high=12.0).apply(data)
 print(feat.history)  # ['SpectralPower']
 ```
+
+## Generic Feature Typing
+
+### Generic Features (Work with Any Data)
+
+Use `BaseFeature[Data]` for features that work with any data container:
+
+```python
+from cobrabox.base_feature import BaseFeature
+from cobrabox.data import Data
+
+@dataclass
+class Mean(BaseFeature[Data]):
+    """Compute mean over any dimension."""
+    dim: str
+
+    def __call__(self, data: Data) -> xr.DataArray:
+        return data.data.mean(dim=self.dim)
+```
+
+### Time-Series Features (Require SignalData)
+
+Use `BaseFeature[SignalData]` for features that require time-series data:
+
+```python
+from cobrabox.base_feature import BaseFeature
+from cobrabox.data import SignalData
+
+@dataclass
+class LineLength(BaseFeature[SignalData]):
+    """Compute line length over time dimension."""
+
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+        diff = xr_data.diff(dim="time")
+        return abs(diff).sum(dim="time")
+```
+
+The `SignalData` type ensures:
+- Data has a 'time' dimension (validated at construction)
+- `sampling_rate` may be available
+- Better IDE support and type checking
 
 ## Built-in Features
 
@@ -154,7 +197,7 @@ print(dir(cb.feature))
 
 ## Creating Custom Features
 
-### `BaseFeature` (standard)
+### Generic `BaseFeature` (works with any Data)
 
 ```python
 # src/cobrabox/features/variance.py
@@ -165,7 +208,7 @@ from cobrabox.base_feature import BaseFeature
 from cobrabox.data import Data
 
 @dataclass
-class Variance(BaseFeature):
+class Variance(BaseFeature[Data]):
     """Compute variance over a dimension."""
 
     dim: str
@@ -176,7 +219,30 @@ class Variance(BaseFeature):
         return data.data.var(dim=self.dim)
 ```
 
-### `SplitterFeature`
+### Time-Series `BaseFeature` (requires SignalData)
+
+```python
+# src/cobrabox/features/band_power.py
+from __future__ import annotations
+from dataclasses import dataclass
+import xarray as xr
+from cobrabox.base_feature import BaseFeature
+from cobrabox.data import SignalData
+
+@dataclass
+class BandPower(BaseFeature[SignalData]):
+    """Compute power in a frequency band."""
+
+    band: tuple[float, float]
+
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        # SignalData guarantees 'time' dimension exists
+        # No need to check: if "time" not in data.data.dims
+        # ... compute power
+        return result
+```
+
+### `SplitterFeature` (time-series)
 
 ```python
 # src/cobrabox/features/trial_split.py
@@ -184,15 +250,15 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from cobrabox.base_feature import SplitterFeature
-from cobrabox.data import Data
+from cobrabox.data import Data, SignalData
 
 @dataclass
-class TrialSplit(SplitterFeature):
+class TrialSplit(SplitterFeature[SignalData]):
     """Yield one Data per trial block."""
 
     trial_length: int
 
-    def __call__(self, data: Data) -> Iterator[Data]:
+    def __call__(self, data: SignalData) -> Iterator[Data]:
         n = data.data.sizes["time"]
         for start in range(0, n - self.trial_length + 1, self.trial_length):
             window = data.data.isel(time=slice(start, start + self.trial_length))
@@ -251,7 +317,8 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 ## Best Practices
 
 1. **One class per file** — match filename to class name (snake_case file, PascalCase class)
-2. **Validate inputs** — check dimensions, data types, ranges in `__call__`
-3. **Document thoroughly** — Args, returns, and example in the docstring
-4. **`AggregatorFeature` owns its history** — propagate per-window ops manually
-5. **No side effects** — never mutate `data` in place; always return new objects
+2. **Use proper generic typing** — `BaseFeature[SignalData]` for time-series, `BaseFeature[Data]` for generic
+3. **Let SignalData validate** — no need to check for 'time' dimension; `SignalData` validates at construction
+4. **Document thoroughly** — Args, returns, and example in the docstring
+5. **`AggregatorFeature` owns its history** — propagate per-window ops manually
+6. **No side effects** — never mutate `data` in place; always return new objects

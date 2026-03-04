@@ -42,7 +42,13 @@ Pre-commit hooks (ruff) run automatically on commit. Install once with `uvx pre-
 
 ## Architecture
 
-**Core data container** (`src/cobrabox/data.py`): `Data` is an immutable wrapper around `xarray.DataArray`. It requires `time` and `space` dimensions and stores metadata (`subjectID`, `groupID`, `condition`, `sampling_rate`, `history`, `extra`) in xarray attrs. `EEG` and `FMRI` are empty subclasses for type distinction. Construct via `cb.from_numpy(arr, dims, ...)` or `cb.from_xarray(ar, ...)`.
+**Core data containers** (`src/cobrabox/data.py`):
+
+- `Data` — General immutable wrapper around `xarray.DataArray` with no dimension requirements. Stores metadata (`subjectID`, `groupID`, `condition`, `sampling_rate`, `history`, `extra`) in xarray attrs. `sampling_rate` is `None` if no time dimension. Construct via `cb.Data.from_numpy()` or `cb.Data.from_xarray()`.
+- `SignalData` — Time-series data container that requires a 'time' dimension. Automatically transposes data to put time last for performance. Use for EEG/fMRI and any time-series analysis. Inherits from `Data`.
+- `EEG` / `FMRI` — Type markers inheriting from `SignalData` for EEG and fMRI data respectively.
+
+Class hierarchy: `Data` ← `SignalData` ← (`EEG`, `FMRI`)
 
 **Feature system** (`src/cobrabox/base_feature.py`, `src/cobrabox/feature.py`, `src/cobrabox/features/`): Features are `@dataclass` classes that inherit one of three base classes:
 
@@ -55,14 +61,15 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 
 **Datasets** (`src/cobrabox/datasets.py`, `src/cobrabox/dataset_loader.py`): `cb.dataset(name)` returns a `list[Data]`. Built-in dummy datasets (`dummy_chain`, `dummy_random`, `dummy_star`, `dummy_noise`) are loaded from compressed CSV files in `data/dummy/`.
 
-**Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, the base classes `BaseFeature`, `SplitterFeature`, `AggregatorFeature`, `Pipeline`, and `Chord`, plus hardcoded imports of key feature classes (`LineLength`, `SlidingWindow`, `MeanAggregate`). The `feature` submodule is also accessible as `cb.feature.*` (auto-discovered). **Note:** `globals().update()` in `features/__init__.py` is opaque to IDEs/type-checkers; the `# noqa: PLE0604` there is intentional. See `docs/plans/2026-02-27-feature-autodiscovery-static-analysis.md` for the open decision on a permanent fix.
+**Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `SignalData`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, the base classes `BaseFeature`, `SplitterFeature`, `AggregatorFeature`, `Pipeline`, and `Chord`, plus hardcoded imports of key feature classes (`LineLength`, `SlidingWindow`, `MeanAggregate`). The `feature` submodule is also accessible as `cb.feature.*` (auto-discovered). **Note:** `globals().update()` in `features/__init__.py` is opaque to IDEs/type-checkers; the `# noqa: PLE0604` there is intentional. See `docs/plans/2026-02-27-feature-autodiscovery-static-analysis.md` for the open decision on a permanent fix.
 
 ## Key conventions
 
 - Feature classes live in `src/cobrabox/features/` as individual files, one class per file.
 - Each file defines a `@dataclass` class inheriting `BaseFeature`, `SplitterFeature`, or `AggregatorFeature` from `src/cobrabox/base_feature.py`.
-- `BaseFeature.__call__` takes `Data`, returns `xr.DataArray | Data`. Use `.apply(data)` externally — it handles wrapping and history.
-- `SplitterFeature.__call__` takes `Data`, yields `Data` (generator). No `.apply()` — used inside `Chord`.
+- Base classes are generic: `BaseFeature[DataT]` and `SplitterFeature[DataT]`. Features that require time dimension should use `BaseFeature[SignalData]` or `SplitterFeature[SignalData]`; generic features use `BaseFeature[Data]`.
+- `BaseFeature.__call__` takes `DataT`, returns `xr.DataArray | Data`. Use `.apply(data)` externally — it handles wrapping and history.
+- `SplitterFeature.__call__` takes `DataT`, yields `Data` (generator). No `.apply()` — used inside `Chord`.
 - `AggregatorFeature.__call__` takes `(Data, Iterator[Data])`, returns `Data`. Must propagate per-window history manually.
 - `Data` is immutable — features always produce new instances via `_copy_with_new_data`; never mutate in-place.
 - `history` is automatically maintained by `BaseFeature.apply`; `AggregatorFeature` subclasses are responsible for building history themselves.

@@ -55,22 +55,6 @@ def test_sliding_window_preserves_metadata() -> None:
         assert w.history == ["SlidingWindow"]
 
 
-def test_sliding_window_raises_when_time_dim_missing() -> None:
-    import xarray as xr
-
-    class _FakeData:
-        @property
-        def data(self) -> xr.DataArray:
-            return xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
-
-    with pytest.raises(ValueError, match="must have 'time' dimension"):
-        list(
-            cb.feature.SlidingWindow()(  # type: ignore[arg-type]
-                _FakeData()
-            )
-        )
-
-
 def test_sliding_window_raises_when_window_too_large() -> None:
     data = cb.SignalData.from_numpy(np.ones((5, 2)), dims=["time", "space"])
     with pytest.raises(ValueError, match="window_size"):

@@ -5,11 +5,11 @@ from dataclasses import dataclass
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import Data
+from ..data import SignalData
 
 
 @dataclass
-class LineLength(BaseFeature):
+class LineLength(BaseFeature[SignalData]):
     """Compute line length over the time dimension.
 
     Line length is the sum of absolute differences between consecutive
@@ -25,11 +25,7 @@ class LineLength(BaseFeature):
         >>> result = cb.feature.LineLength().apply(data)
     """
 
-    def __call__(self, data: Data) -> xr.DataArray:
+    def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
-
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
-
         diff = xr_data.diff(dim="time")
         return abs(diff).sum(dim="time")

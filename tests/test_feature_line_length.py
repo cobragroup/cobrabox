@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
-import xarray as xr
 
 import cobrabox as cb
 
@@ -45,18 +43,6 @@ def test_feature_line_length_single_channel_timeseries() -> None:
     assert out.data.shape == (1, 1)
     np.testing.assert_allclose(out.to_numpy(), expected)
     assert out.history == ["LineLength"]
-
-
-def test_feature_line_length_raises_when_time_dim_missing() -> None:
-    """LineLength raises ValueError when the underlying DataArray lacks 'time'."""
-
-    class _FakeData:
-        @property
-        def data(self) -> xr.DataArray:
-            return xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
-
-    with pytest.raises(ValueError, match="must have 'time' dimension"):
-        cb.feature.LineLength().__call__(_FakeData())  # type: ignore[arg-type]
 
 
 def test_feature_line_length_via_chord() -> None:

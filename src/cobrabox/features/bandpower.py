@@ -7,7 +7,7 @@ import xarray as xr
 from scipy.signal import welch
 
 from ..base_feature import BaseFeature
-from ..data import Data
+from ..data import SignalData
 
 _DEFAULTS: dict[str, tuple[float, float]] = {
     "delta": (1.0, 4.0),
@@ -19,7 +19,7 @@ _DEFAULTS: dict[str, tuple[float, float]] = {
 
 
 @dataclass
-class Bandpower(BaseFeature):
+class Bandpower(BaseFeature[SignalData]):
     """Compute band power for specified frequency bands using Welch's method.
 
     For each frequency band, integrates the power spectral density (PSD)
@@ -62,12 +62,8 @@ class Bandpower(BaseFeature):
         if self.nperseg is not None and self.nperseg < 2:
             raise ValueError(f"nperseg must be >= 2, got {self.nperseg}")
 
-    def __call__(self, data: Data) -> xr.DataArray:
+    def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
-
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
-
         sampling_rate = data.sampling_rate
         if sampling_rate is None:
             raise ValueError(

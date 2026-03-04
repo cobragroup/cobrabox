@@ -7,11 +7,11 @@ import numpy as np
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import Data
+from ..data import SignalData
 
 
 @dataclass
-class Coherence(BaseFeature):
+class Coherence(BaseFeature[SignalData]):
     """Compute magnitude-squared coherence for all pairwise channel combinations.
 
     Uses Welch's method (50 % overlap, Hann window) to estimate the
@@ -84,11 +84,9 @@ class Coherence(BaseFeature):
         coh_per_freq = np.abs(pxy) ** 2 / (pxx * pyy)
         return coh_per_freq.mean(axis=-1)  # average over frequency bins
 
-    def __call__(self, data: Data) -> xr.DataArray:
+    def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
 
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
         if "space" not in xr_data.dims:
             raise ValueError("data must have 'space' dimension")
 

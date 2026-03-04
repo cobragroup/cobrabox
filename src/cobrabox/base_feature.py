@@ -3,32 +3,39 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Generic, TypeVar
 
 import xarray as xr
 
 from .data import Data
 
+# Type variable for generic features - allows subclasses to specify Data or SignalData
+DataT = TypeVar("DataT", bound=Data)
+
 
 @dataclass
-class BaseFeature(ABC):
+class BaseFeature(ABC, Generic[DataT]):
     """Base class for all cobrabox features (Data → Data).
 
     Features are dataclasses that store configuration at initialization
     and implement transform logic in __call__.
+
+    Type Parameters:
+        DataT: The type of data this feature accepts. Defaults to Data (any data),
+            but subclasses can narrow to SignalData for time-series features.
     """
 
     _is_cobrabox_feature: ClassVar[bool] = True
 
-    def __or__(self, other: BaseFeature) -> Pipeline:
+    def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
         """Enable pipe syntax: Feature1() | Feature2()"""
         return Pipeline(self, other)
 
     @abstractmethod
-    def __call__(self, data: Data) -> xr.DataArray | Data:
+    def __call__(self, data: DataT) -> xr.DataArray | Data:
         """Apply the feature transformation. Subclasses implement this."""
 
-    def apply(self, data: Data) -> Data:
+    def apply(self, data: DataT) -> Data:
         """Apply feature and wrap result in Data with history tracking."""
         result = self(data)
         if not isinstance(result, (xr.DataArray, Data)):
@@ -40,22 +47,28 @@ class BaseFeature(ABC):
 
 
 @dataclass
-class SplitterFeature(ABC):
+class SplitterFeature(ABC, Generic[DataT]):
     """Base class for features that split one Data into a stream of Data (Data → Iterator[Data]).
 
     Used for windowing operations. Subclasses implement __call__ as a generator.
     Supports | to begin building a Chord:
 
         SlidingWindow(10, 5) | LineLength() | MeanAggregate()  # → Chord
+
+    Type Parameters:
+        DataT: The type of data this feature accepts. Defaults to Data (any data),
+            but subclasses can narrow to SignalData for time-series features.
     """
 
     _is_cobrabox_feature: ClassVar[bool] = True
 
     @abstractmethod
-    def __call__(self, data: Data) -> Iterator[Data]:
+    def __call__(self, data: DataT) -> Iterator[Data]:
         """Yield one Data object per split (e.g. per window)."""
 
-    def __or__(self, other: BaseFeature | AggregatorFeature) -> _ChordBuilder | Chord:
+    def __or__(
+        self, other: BaseFeature[Data] | AggregatorFeature
+    ) -> _ChordBuilder[DataT] | Chord[DataT]:
         """Start building a Chord: SplitterFeature | pipeline_step | AggregatorFeature."""
         if isinstance(other, AggregatorFeature):
             raise TypeError(
@@ -84,7 +97,7 @@ class AggregatorFeature(ABC):
         """
 
 
-class _ChordBuilder:
+class _ChordBuilder(Generic[DataT]):
     """Intermediate object produced by SplitterFeature | pipeline_step.
 
     Continue piping to extend the inner pipeline, or pipe into an
@@ -94,11 +107,15 @@ class _ChordBuilder:
         #                                                        ↑ finalises here
     """
 
-    def __init__(self, split: SplitterFeature, pipeline: BaseFeature | Pipeline) -> None:
+    def __init__(
+        self, split: SplitterFeature[DataT], pipeline: BaseFeature[Data] | Pipeline[Data]
+    ) -> None:
         self.split = split
         self.pipeline = pipeline
 
-    def __or__(self, other: BaseFeature | AggregatorFeature) -> _ChordBuilder | Chord:
+    def __or__(
+        self, other: BaseFeature[Data] | AggregatorFeature
+    ) -> _ChordBuilder[DataT] | Chord[DataT]:
         if isinstance(other, AggregatorFeature):
             return Chord(split=self.split, pipeline=self.pipeline, aggregate=other)
         # Extend the inner pipeline
@@ -108,7 +125,7 @@ class _ChordBuilder:
             new_pipeline = Pipeline(self.pipeline, other)
         return _ChordBuilder(split=self.split, pipeline=new_pipeline)
 
-    def apply(self, data: Data) -> Data:
+    def apply(self, data: DataT) -> Data:
         # TODO: rewrite to more helpful and use-friendly errors, users might be stupid
         raise TypeError(
             "_ChordBuilder is incomplete — pipe into an AggregatorFeature to finalise the Chord.\n"
@@ -117,7 +134,7 @@ class _ChordBuilder:
 
 
 @dataclass
-class Chord(BaseFeature):
+class Chord(BaseFeature[DataT]):
     """Fan-out → map → fan-in composition.
 
     Splits input data with a SplitterFeature, applies a pipeline to each
@@ -130,36 +147,43 @@ class Chord(BaseFeature):
     Example:
         >>> chord = SlidingWindow(100, 50) | BandpassFilter() | MeanAggregate()
         >>> result = chord.apply(data)
+
+    Type Parameters:
+        DataT: The type of data this chord accepts. Inherited from the splitter.
     """
 
-    split: SplitterFeature
-    pipeline: BaseFeature | Pipeline
+    split: SplitterFeature[DataT]
+    pipeline: BaseFeature[Data] | Pipeline[Data]
     aggregate: AggregatorFeature
 
-    def __call__(self, data: Data) -> Data:
+    def __call__(self, data: DataT) -> Data:
         stream = self.split(data)
         processed = (self.pipeline.apply(w) for w in stream)
         return self.aggregate(data, processed)
 
 
-class Pipeline(list[BaseFeature]):
-    """Sequential pipeline of features using pipe syntax."""
+class Pipeline(list[BaseFeature[DataT]], Generic[DataT]):
+    """Sequential pipeline of features using pipe syntax.
 
-    def __init__(self, *features: BaseFeature) -> None:
+    Type Parameters:
+        DataT: The type of data this pipeline accepts.
+    """
+
+    def __init__(self, *features: BaseFeature[DataT]) -> None:
         super().__init__(features)
         self.features = features
 
-    def __or__(self, other: BaseFeature) -> Pipeline:
+    def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
         """Enable chaining: pipeline | AnotherFeature()"""
         return Pipeline(*self.features, other)
 
-    def apply(self, data: Data) -> Data:
+    def apply(self, data: DataT) -> Data:
         """Apply all features in sequence."""
-        result = data
+        result: Data = data
         for feature in self.features:
-            result = feature.apply(result)
+            result = feature.apply(result)  # type: ignore[arg-type]
         return result
 
-    def __call__(self, data: Data) -> Data:
+    def __call__(self, data: DataT) -> Data:
         """Allow pipeline(data) syntax."""
         return self.apply(data)
