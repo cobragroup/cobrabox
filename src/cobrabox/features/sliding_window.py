@@ -16,19 +16,31 @@ class SlidingWindow(SplitterFeature):
     Lazily generates windows to avoid materialising all windows in memory at once.
 
     Args:
-        window_size: Number of timepoints per window.
-        step_size: Step between window starts in timepoints.
+        window_size: Number of timepoints per window. Must be >= 1.
+        step_size: Step between window starts in timepoints. Must be >= 1.
+
+    Returns:
+        Generator of ``Data`` objects. Each yielded item has the same
+        dimensions as the input with the ``time`` axis sliced to
+        ``window_size`` samples. The string ``"SlidingWindow"`` is appended
+        to ``history`` on each yielded window. All other metadata is
+        preserved.
 
     Example:
-        >>> chord = Chord(
-        ...     split=SlidingWindow(window_size=100, step_size=50),
-        ...     pipeline=LineLength(),
-        ...     aggregate=MeanAggregate(),
-        ... )
+        >>> windows = list(cb.feature.SlidingWindow(window_size=100, step_size=50)(data))
+        >>> len(windows)  # number of windows depends on data length
+        >>> windows[0].data.sizes["time"]
+        100
     """
 
     window_size: int = field(default=10)
     step_size: int = field(default=5)
+
+    def __post_init__(self) -> None:
+        if self.window_size < 1:
+            raise ValueError(f"window_size must be >= 1, got {self.window_size}")
+        if self.step_size < 1:
+            raise ValueError(f"step_size must be >= 1, got {self.step_size}")
 
     def __call__(self, data: Data) -> Iterator[Data]:
         xr_data = data.data
@@ -42,7 +54,6 @@ class SlidingWindow(SplitterFeature):
             raise ValueError(f"window_size ({self.window_size}) must be <= n_time ({n_time})")
 
         window_starts = np.arange(0, n_time - self.window_size + 1, self.step_size)
-        window_starts = window_starts[:n_windows]
 
         for start in window_starts:
             end = start + self.window_size

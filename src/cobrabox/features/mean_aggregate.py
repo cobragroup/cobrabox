@@ -16,12 +16,20 @@ class MeanAggregate(AggregatorFeature):
     Collects all windows, stacks them along a temporary 'window' dimension,
     and reduces with mean. Per-window pipeline history is propagated to the result.
 
+    Returns:
+        A new ``Data`` object with the same shape as each individual window
+        result (the ``window`` stacking dimension is reduced away). All
+        metadata from the original ``data`` is preserved, including
+        ``sampling_rate``. History includes all per-window operations
+        followed by ``"MeanAggregate"``.
+
     Example:
-        >>> chord = Chord(
-        ...     split=SlidingWindow(window_size=100, step_size=50),
-        ...     pipeline=LineLength(),
-        ...     aggregate=MeanAggregate(),
+        >>> chord = (
+        ...     cb.feature.SlidingWindow(window_size=100, step_size=50)
+        ...     | cb.feature.LineLength()
+        ...     | cb.feature.MeanAggregate()
         ... )
+        >>> result = chord.apply(data)
     """
 
     def __call__(self, data: Data, stream: Iterator[Data]) -> Data:
@@ -37,6 +45,7 @@ class MeanAggregate(AggregatorFeature):
             subjectID=data.subjectID,
             groupID=data.groupID,
             condition=data.condition,
+            sampling_rate=data.sampling_rate,
             history=list(data.history) + window_history + ["MeanAggregate"],
             extra=data.extra,
         )

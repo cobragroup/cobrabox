@@ -33,9 +33,20 @@ class Coherence(BaseFeature):
         >>> coh = cb.feature.Coherence().apply(data)
         >>> coh.data.dims
         ('space', 'space_to')
+
+    Returns:
+        xarray DataArray with dims ``(*extra_dims, space, space_to)`` (plus a
+        singleton ``time`` dimension added by ``BaseFeature.apply``). Both
+        ``space`` and ``space_to`` carry the original channel coordinates.
+        Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix
+        is symmetric: ``result[i, j] == result[j, i]``.
     """
 
     nperseg: int | None = field(default=None)
+
+    def __post_init__(self) -> None:
+        if self.nperseg is not None and self.nperseg < 2:
+            raise ValueError(f"nperseg must be >= 2, got {self.nperseg}")
 
     def _mean_squared_coherence(self, x: np.ndarray, y: np.ndarray, nperseg: int) -> np.ndarray:
         """Compute frequency-averaged magnitude-squared coherence using Welch's method.
@@ -75,6 +86,11 @@ class Coherence(BaseFeature):
 
     def __call__(self, data: Data) -> xr.DataArray:
         xr_data = data.data
+
+        if "time" not in xr_data.dims:
+            raise ValueError("data must have 'time' dimension")
+        if "space" not in xr_data.dims:
+            raise ValueError("data must have 'space' dimension")
 
         n_time = xr_data.sizes["time"]
         space_coords = xr_data.coords["space"].values

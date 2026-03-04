@@ -10,7 +10,19 @@ from ..data import Data
 
 @dataclass
 class Max(BaseFeature):
-    """Compute maximum across a dimension."""
+    """Compute the maximum value across a dimension.
+
+    Args:
+        dim: Name of the dimension to reduce over (e.g. ``"time"``).
+
+    Returns:
+        xarray DataArray with ``dim`` removed. Shape is the input shape
+        minus the reduced dimension. Values are the per-position maximum
+        in the same units as the input signal.
+
+    Example:
+        >>> result = cb.feature.Max(dim="time").apply(data)
+    """
 
     dim: str
 

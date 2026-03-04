@@ -10,7 +10,19 @@ from ..data import Data
 
 @dataclass
 class Mean(BaseFeature):
-    """Compute mean across a dimension."""
+    """Compute the mean value across a dimension.
+
+    Args:
+        dim: Name of the dimension to reduce over (e.g. ``"time"``).
+
+    Returns:
+        xarray DataArray with ``dim`` removed. Shape is the input shape
+        minus the reduced dimension. Values are the per-position arithmetic
+        mean in the same units as the input signal.
+
+    Example:
+        >>> result = cb.feature.Mean(dim="time").apply(data)
+    """
 
     dim: str
 

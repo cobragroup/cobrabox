@@ -10,7 +10,19 @@ from ..data import Data
 
 @dataclass
 class Min(BaseFeature):
-    """Compute minimum across a dimension."""
+    """Compute the minimum value across a dimension.
+
+    Args:
+        dim: Name of the dimension to reduce over (e.g. ``"time"``).
+
+    Returns:
+        xarray DataArray with ``dim`` removed. Shape is the input shape
+        minus the reduced dimension. Values are the per-position minimum
+        in the same units as the input signal.
+
+    Example:
+        >>> result = cb.feature.Min(dim="time").apply(data)
+    """
 
     dim: str
 

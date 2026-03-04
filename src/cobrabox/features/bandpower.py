@@ -47,10 +47,20 @@ class Bandpower(BaseFeature):
         >>> bp = cb.feature.Bandpower().apply(data)
         >>> bp_custom = cb.feature.Bandpower(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
         >>> bp_fine = cb.feature.Bandpower(nperseg=512).apply(data)
+
+    Returns:
+        xarray DataArray with dims ``(band_index, space)`` (plus a singleton
+        ``time`` dimension added by ``BaseFeature.apply``). The ``band_index``
+        coordinate holds the band names. Values are absolute power in units of
+        the input signal squared per Hz (signal² / Hz).
     """
 
     bands: dict[str, list[float] | bool] | None = field(default=None)
     nperseg: int | None = field(default=None)
+
+    def __post_init__(self) -> None:
+        if self.nperseg is not None and self.nperseg < 2:
+            raise ValueError(f"nperseg must be >= 2, got {self.nperseg}")
 
     def __call__(self, data: Data) -> xr.DataArray:
         xr_data = data.data

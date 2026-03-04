@@ -10,21 +10,19 @@ from ..data import Data
 
 @dataclass
 class LineLength(BaseFeature):
-    """Compute line length feature.
+    """Compute line length over the time dimension.
 
     Line length is the sum of absolute differences between consecutive
-    timepoints, summed over the time dimension.
-
-    Args:
-        data: Data with 'time' and 'space' dimensions
-            (may also have 'window_index' if from SlidingWindow)
+    timepoints. A larger value indicates a more rapidly varying signal.
 
     Returns:
-        xarray DataArray with 'time' dimension removed (or 'window_index' preserved)
+        xarray DataArray with the ``time`` dimension removed. Shape is
+        ``(space,)`` for standard input, or ``(*extra_dims, space)`` if
+        additional dimensions are present (e.g. ``window_index``). Values
+        are in the same units as the input signal.
 
     Example:
-        >>> wdata = cb.feature.SlidingWindow().apply(data)
-        >>> out = cb.feature.LineLength().apply(wdata)
+        >>> result = cb.feature.LineLength().apply(data)
     """
 
     def __call__(self, data: Data) -> xr.DataArray:

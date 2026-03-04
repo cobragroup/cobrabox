@@ -76,6 +76,32 @@ for window in windows:
 
 Used inside a `Chord` — not called directly in typical pipelines.
 
+### `Bandpower`
+
+```python
+bp = cb.feature.Bandpower().apply(data)                          # all five default bands
+bp = cb.feature.Bandpower(bands={"alpha": True}).apply(data)     # single default band
+bp = cb.feature.Bandpower(bands={"ripple": [45, 80]}).apply(data)  # custom range
+```
+
+Computes band power using Welch's method for each requested frequency band. Returns a
+`(band_index, space)` array (plus a singleton `time` dimension). Requires `sampling_rate`
+to be set on the `Data` object.
+
+Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
+`gamma` (30–45 Hz).
+
+### `Coherence`
+
+```python
+coh = cb.feature.Coherence().apply(data)
+coh = cb.feature.Coherence(nperseg=128).apply(data)
+```
+
+Computes magnitude-squared coherence for every unique pair of spatial channels using
+Welch's method (50% overlap, Hann window). Returns a symmetric `(space, space_to)` matrix
+in [0, 1] with NaN on the diagonal. Extra dimensions (e.g. `window_index`) are preserved.
+
 ### `MeanAggregate` (aggregator)
 
 Averages a stream of per-window `Data` objects into one result. Used as the terminal step of a `Chord`.
@@ -155,8 +181,8 @@ class Variance(BaseFeature):
 ```python
 # src/cobrabox/features/trial_split.py
 from __future__ import annotations
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 from cobrabox.base_feature import SplitterFeature
 from cobrabox.data import Data
 
@@ -178,8 +204,8 @@ class TrialSplit(SplitterFeature):
 ```python
 # src/cobrabox/features/max_aggregate.py
 from __future__ import annotations
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 import xarray as xr
 from cobrabox.base_feature import AggregatorFeature
 from cobrabox.data import Data
@@ -200,6 +226,7 @@ class MaxAggregate(AggregatorFeature):
             subjectID=data.subjectID,
             groupID=data.groupID,
             condition=data.condition,
+            sampling_rate=data.sampling_rate,
             history=list(data.history) + window_history + ["MaxAggregate"],
             extra=data.extra,
         )
