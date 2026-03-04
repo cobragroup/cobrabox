@@ -8,8 +8,8 @@ from ..function_wrapper import feature
 
 
 @feature
-def autocorrelation(
-    data: Data, dim: str, lag_steps: int | None = None, lag_ms: float | None = None
+def autocorr(
+    data: Data, dim: str, fs: float, lag_steps: int | None = None, lag_ms: float | None = None
 ) -> xr.DataArray:
     """Compute normalized autocorrelation at a given lag along a required dimension.
 
@@ -29,12 +29,6 @@ def autocorrelation(
 
     if lag_steps is not None and lag_ms is not None:
         raise ValueError("Specify either 'lag_steps' or 'lag_ms', not both.")
-
-    fs_value = data.sampling_rate
-    if fs_value is None:
-        raise ValueError("sampling_rate must be defined for autocorrelation.")
-
-    fs = float(fs_value)
 
     # determine lag
     if lag_steps is not None:
