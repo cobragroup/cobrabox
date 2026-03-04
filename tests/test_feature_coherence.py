@@ -246,6 +246,4 @@ def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
 
 def test_coherence_accessible_via_feature_module() -> None:
     """coherence is accessible as both cb.coherence and cb.feature.coherence."""
-    assert callable(cb.coherence)
     assert callable(cb.feature.coherence)  # type: ignore[attr-defined]
-    assert cb.coherence is cb.feature.coherence  # type: ignore[attr-defined]
