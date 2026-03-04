@@ -14,7 +14,7 @@ def test_feature_min_reduces_extra_dimension() -> None:
 
     arr = np.arange(24, dtype=float).reshape(3, 4, 2)  # run_index, time, space
     xr_data = xr.DataArray(arr, dims=["run_index", "time", "space"])
-    data = cb.Data(xr_data, sampling_rate=100.0, subjectID="sub-01")
+    data = cb.SignalData(xr_data, sampling_rate=100.0, subjectID="sub-01")
 
     out = cb.feature.Min(dim="run_index").apply(data)
 
@@ -28,7 +28,7 @@ def test_feature_min_reduces_extra_dimension() -> None:
 
 def test_feature_min_raises_for_unknown_dimension() -> None:
     """Min raises a clear error when dim is missing."""
-    data = cb.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=100.0)
     with pytest.raises(ValueError, match="dim 'band_index' not found"):
         cb.feature.Min(dim="band_index").apply(data)
 
@@ -36,7 +36,7 @@ def test_feature_min_raises_for_unknown_dimension() -> None:
 def test_feature_min_single_channel_timeseries_returns_single_value() -> None:
     """Min over time on a single-channel signal returns exactly one value."""
     arr = np.array([[1.0], [2.0], [3.0], [4.0]])
-    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     out = cb.feature.Min(dim="time").apply(data)
 
@@ -51,7 +51,7 @@ def test_feature_min_single_channel_timeseries_returns_single_value() -> None:
 def test_feature_min_finds_smallest_value_with_negative_numbers() -> None:
     """Min over time returns the true smallest value per channel."""
     arr = np.array([[2.0, -1.0], [-5.0, 4.0], [3.0, -7.0], [1.0, 0.0]])
-    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     out = cb.feature.Min(dim="time").apply(data)
 

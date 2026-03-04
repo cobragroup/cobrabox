@@ -14,13 +14,13 @@ def _sine_data(
     n_seconds: float = 4.0,
     n_channels: int = 2,
     subjectID: str = "sub-01",
-) -> cb.Data:
+) -> cb.SignalData:
     """Helper: pure sine wave at ``freq_hz`` Hz."""
     n_time = int(n_seconds * sampling_rate)
     t = np.arange(n_time) / sampling_rate
     signal = np.sin(2 * np.pi * freq_hz * t)
     arr = np.stack([signal] * n_channels, axis=1)  # (time, space)
-    return cb.from_numpy(
+    return cb.SignalData.from_numpy(
         arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subjectID
     )
 
@@ -103,7 +103,7 @@ def test_bandpower_all_positive_values() -> None:
     """Power values must be non-negative for any signal."""
     rng = np.random.default_rng(0)
     arr = rng.standard_normal((512, 4))
-    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
     out = cb.feature.Bandpower().apply(data)
 
     assert (out.data.values >= 0).all()

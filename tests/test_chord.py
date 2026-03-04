@@ -9,9 +9,11 @@ import cobrabox as cb
 from cobrabox.base_feature import _ChordBuilder
 
 
-def _make_data(n_time: int = 20, n_space: int = 2, sr: float = 100.0) -> cb.Data:
+def _make_data(n_time: int = 20, n_space: int = 2, sr: float = 100.0) -> cb.SignalData:
     arr = np.arange(n_time * n_space, dtype=float).reshape(n_time, n_space)
-    return cb.from_numpy(arr, dims=["time", "space"], sampling_rate=sr, subjectID="sub-01")
+    return cb.SignalData.from_numpy(
+        arr, dims=["time", "space"], sampling_rate=sr, subjectID="sub-01"
+    )
 
 
 # --- pipe syntax ---

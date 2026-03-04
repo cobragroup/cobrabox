@@ -97,7 +97,9 @@ class Bandpower(BaseFeature):
                 else:
                     resolved[name] = (float(spec[0]), float(spec[1]))
 
-        # Data always transposes to (..., time), so time is always the last axis
+        # Ensure time is the last axis for welch
+        if xr_data.dims[-1] != "time":
+            xr_data = xr_data.transpose(..., "time")
         values = xr_data.values  # shape (..., time)
 
         freqs, psd = welch(values, fs=sampling_rate, nperseg=self.nperseg, axis=-1)

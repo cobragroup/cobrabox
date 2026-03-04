@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 
-from .data import Data
+from .data import Data, SignalData
 
 
 def _sidecar_json_for_csv(path: Path) -> Path:

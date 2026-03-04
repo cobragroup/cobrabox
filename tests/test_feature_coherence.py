@@ -15,7 +15,7 @@ import cobrabox as cb
 
 def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.Data:
     """Create Data from a (time, space) array."""
-    return cb.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ def test_coherence_values_are_in_unit_range() -> None:
 def test_coherence_preserves_metadata_and_history() -> None:
     """Coherence propagates subjectID, groupID, condition, sampling_rate, extra, and history."""
     rng = np.random.default_rng(6)
-    data = cb.from_numpy(
+    data = cb.SignalData.from_numpy(
         rng.standard_normal((200, 3)),
         dims=["time", "space"],
         sampling_rate=100.0,

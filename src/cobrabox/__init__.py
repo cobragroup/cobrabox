@@ -1,7 +1,7 @@
 # Make feature module accessible as cb.feature
 from . import feature  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
-from .data import EEG, FMRI, Data
+from .data import EEG, FMRI, Data, SignalData
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
 from .features.line_length import LineLength
@@ -21,6 +21,7 @@ __all__ = [
     "LineLength",
     "MeanAggregate",
     "Pipeline",
+    "SignalData",
     "SlidingWindow",
     "SplitterFeature",
     "dataset",

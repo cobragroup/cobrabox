@@ -11,7 +11,7 @@ def test_dummy_feature_preserves_data_and_metadata() -> None:
     """Dummy returns Data with same values and propagated metadata/history."""
     rng = np.random.default_rng(seed=123)
     arr = rng.standard_normal((40, 8))
-    data = cb.from_numpy(
+    data = cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],
         sampling_rate=200.0,
