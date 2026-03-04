@@ -12,14 +12,15 @@ for the feature under review.
 
 ### File naming
 
-Must be `tests/test_<feature_name>.py`, matching the feature file name exactly.
+Must be `tests/test_feature_<feature_name>.py`, matching the feature file name exactly.
 
 ```text
 # ✅
-src/cobrabox/features/line_length.py  →  tests/test_line_length.py
+src/cobrabox/features/line_length.py  →  tests/test_feature_line_length.py
 
 # ❌
 tests/test_features.py  (too generic, mixes features)
+tests/test_line_length.py  (missing feature_ prefix)
 tests/line_length_test.py  (wrong convention)
 ```
 
@@ -41,13 +42,13 @@ def test_history() -> None:
 
 ### Return annotation
 
-Every test function must have `-> None`.
+Every test function should have `-> None`. This is recommended for clarity but not strictly enforced.
 
 ```python
 # ✅
 def test_line_length_basic() -> None:
 
-# ❌
+# ❌ (acceptable but not preferred)
 def test_line_length_basic():
 ```
 
@@ -114,6 +115,19 @@ assert result.sampling_rate == pytest.approx(100.0)
 
 # ❌ only checks one field
 assert result.subjectID == "s1"
+```
+
+### Output type handling (`output_type = Data`)
+
+When a feature sets `output_type: ClassVar[type[Data]] = Data` (removing the time
+dimension), `sampling_rate` should become `None` since there is no time axis.
+
+```python
+# ✅ Feature that removes time dimension
+assert result.sampling_rate is None
+
+# ✅ Feature that preserves time dimension (default behavior)
+assert result.sampling_rate == pytest.approx(100.0)
 ```
 
 ### Invalid dims — missing `time`
@@ -225,5 +239,5 @@ def test_line_length_basic() -> None:
 data = cb.from_numpy(...)  # module-level — shared across tests
 ```
 
-Small shared helpers (e.g. `_make_data()`) are fine if they return a fresh object
-each call.
+Small shared helpers (e.g. `_make_data()`) are acceptable and encouraged for
+consistency. They must return a fresh object each call to maintain test isolation.

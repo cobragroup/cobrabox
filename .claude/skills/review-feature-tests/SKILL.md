@@ -120,8 +120,8 @@ Missing scenarios — new tests to add:
 
 Severity guide:
 
-- **HIGH** — missing required scenario, missing `-> None`, no docstring
-- **MEDIUM** — incomplete assertion, wrong naming convention
+- **HIGH** — missing required scenario, no docstring, missing metadata preservation test
+- **MEDIUM** — incomplete assertion, wrong naming convention, missing `-> None`
 - **LOW** — style, minor improvements
 
 If all required scenarios are covered and criteria pass, write `## Action List\n\nNone.`

@@ -224,6 +224,58 @@ def test_line_length_does_not_mutate_input() -> None:
 
 ---
 
+## Lazy generator (SplitterFeature)
+
+For features that return generators, verify they are truly lazy.
+
+```python
+def test_sliding_window_is_lazy() -> None:
+    """Generator should not materialise all windows upfront."""
+    import inspect
+    data = _make_data(n_time=100)
+    gen = cb.feature.SlidingWindow(window_size=10, step_size=1)(data)
+    assert inspect.isgenerator(gen)
+```
+
+---
+
+## Output type handling (`output_type = Data`)
+
+When a feature sets `output_type: ClassVar[type[Data]] = Data` (removing the time
+dimension), test that `sampling_rate` becomes `None`.
+
+```python
+def test_line_length_sampling_rate_none() -> None:
+    """LineLength sets sampling_rate to None when time dimension is removed."""
+    data = _make_data(sampling_rate=250.0)
+    result = cb.feature.LineLength().apply(data)
+    assert result.sampling_rate is None
+```
+
+---
+
+## Chord composition
+
+For features commonly used in Chord pipelines, verify they work correctly in that context.
+
+```python
+def test_line_length_via_chord() -> None:
+    """LineLength applied per window via Chord produces correct results."""
+    data = _make_data(n_time=20)
+    chord = cb.Chord(
+        split=cb.feature.SlidingWindow(window_size=5, step_size=2),
+        pipeline=cb.feature.LineLength(),
+        aggregate=cb.feature.MeanAggregate(),
+    )
+    result = chord.apply(data)
+    assert isinstance(result, cb.Data)
+    assert "LineLength" in result.history
+    assert "MeanAggregate" in result.history
+    assert "SlidingWindow" in result.history
+```
+
+---
+
 ## Full file skeleton
 
 Use this as the starting template when generating from scratch. Replace
@@ -291,7 +343,11 @@ def test_<feature_name>_metadata_preserved() -> None:
     assert result.subjectID == "s42"
     assert result.groupID == "ctrl"
     assert result.condition == "task"
-    assert result.sampling_rate == pytest.approx(250.0)
+    # sampling_rate is None if time dimension was removed, otherwise preserved
+    if "time" in result.data.dims:
+        assert result.sampling_rate == pytest.approx(250.0)
+    else:
+        assert result.sampling_rate is None
 
 
 def test_<feature_name>_missing_time_raises() -> None:
