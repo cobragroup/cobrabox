@@ -8,22 +8,22 @@ import pytest
 import cobrabox as cb
 
 
-def test_feature_max_reduces_requested_dimension() -> None:
-    """Max reduces only the requested dimension and updates history."""
-    arr = np.arange(20, dtype=float).reshape(10, 2)
-    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0, subjectID="sub-01")
+def test_feature_max_reduces_extra_dimension() -> None:
+    """Max reduces an extra dimension (run_index) and updates history."""
+    import xarray as xr
 
-    wdata = cb.feature.SlidingWindow(window_size=4, step_size=2).apply(data)
-    out = cb.feature.Max(dim="window_index").apply(wdata)
+    arr = np.arange(24, dtype=float).reshape(3, 4, 2)  # run_index, time, space
+    xr_data = xr.DataArray(arr, dims=["run_index", "time", "space"])
+    data = cb.Data(xr_data, sampling_rate=100.0, subjectID="sub-01")
+
+    out = cb.feature.Max(dim="run_index").apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "time")
+    assert "run_index" not in out.data.dims
     assert out.data.shape == (2, 4)
-
-    expected = np.max(np.stack([arr[0:4], arr[2:6], arr[4:8], arr[6:10]], axis=0), axis=1)
-    np.testing.assert_allclose(out.to_numpy(), expected.T)
+    np.testing.assert_allclose(out.to_numpy(), arr.max(axis=0).T)
     assert out.subjectID == "sub-01"
-    assert out.history == ["SlidingWindow", "Max"]
+    assert out.history == ["Max"]
 
 
 def test_feature_max_raises_for_unknown_dimension() -> None:

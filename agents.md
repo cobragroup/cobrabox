@@ -44,20 +44,30 @@ Pre-commit hooks (ruff) run automatically on commit. Install once with `uvx pre-
 
 **Core data container** (`src/cobrabox/data.py`): `Data` is an immutable wrapper around `xarray.DataArray`. It requires `time` and `space` dimensions and stores metadata (`subjectID`, `groupID`, `condition`, `sampling_rate`, `history`, `extra`) in xarray attrs. `EEG` and `FMRI` are empty subclasses for type distinction. Construct via `cb.from_numpy(arr, dims, ...)` or `cb.from_xarray(ar, ...)`.
 
-**Feature system** (`src/cobrabox/function_wrapper.py`, `src/cobrabox/feature.py`, `src/cobrabox/features/`): Features are plain functions decorated with `@feature` from `function_wrapper.py`. The decorator automatically repacks the return value (`xr.DataArray` or `Data`) into a new `Data` object via `_copy_with_new_data`, appending the function name to `history`. Feature discovery is automatic: `feature.py` scans all modules in the `features/` subpackage and registers any callable marked `_is_cobrabox_feature = True`. Adding a new feature means creating a new file in `features/` with a `@feature`-decorated function — no manual registration needed.
+**Feature system** (`src/cobrabox/base_feature.py`, `src/cobrabox/feature.py`, `src/cobrabox/features/`): Features are `@dataclass` classes that inherit one of three base classes:
+
+- `BaseFeature` (`Data → Data`): standard feature; implement `__call__`; call `.apply(data)` which wraps the result via `_copy_with_new_data` and appends the class name to `history`. Supports pipe syntax: `Feature1() | Feature2()` produces a `Pipeline`.
+- `SplitterFeature` (`Data → Iterator[Data]`): yields one `Data` per split (e.g. `SlidingWindow`). Lazy generator — does not materialise all splits in memory.
+- `AggregatorFeature` (`(Data, Iterator[Data]) → Data`): folds a stream back into one `Data` (e.g. `MeanAggregate`); responsible for merging per-window history into the result.
+- `Chord(BaseFeature)`: composes a `SplitterFeature` + `BaseFeature`/`Pipeline` + `AggregatorFeature` into a single `BaseFeature` (fan-out → map → fan-in). Itself composable with `|`.
+
+Feature discovery is automatic: `feature.py` scans all modules in `features/` and registers any callable with `_is_cobrabox_feature = True` **and** `__module__ == <that module>` (the `__module__` filter prevents base classes imported into feature files from being registered as duplicates). Adding a new feature means creating a new file in `features/` with a class inheriting the appropriate base — no manual registration needed.
 
 **Datasets** (`src/cobrabox/datasets.py`, `src/cobrabox/dataset_loader.py`): `cb.dataset(name)` returns a `list[Data]`. Built-in dummy datasets (`dummy_chain`, `dummy_random`, `dummy_star`, `dummy_noise`) are loaded from compressed CSV files in `data/dummy/`.
 
-**Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, plus all auto-discovered feature functions. The `feature` submodule is also accessible as `cb.feature.*`. **Note:** `__init__.py` contains hardcoded feature imports as a workaround — `globals().update()` in `features/__init__.py` is opaque to IDEs/type-checkers, so the `# noqa: PLE0604` there and hardcoded imports here are intentional. See `docs/plans/2026-02-27-feature-autodiscovery-static-analysis.md` for the open decision on a permanent fix.
+**Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, the base classes `BaseFeature`, `SplitterFeature`, `AggregatorFeature`, `Pipeline`, and `Chord`, plus hardcoded imports of key feature classes (`LineLength`, `SlidingWindow`, `MeanAggregate`). The `feature` submodule is also accessible as `cb.feature.*` (auto-discovered). **Note:** `globals().update()` in `features/__init__.py` is opaque to IDEs/type-checkers; the `# noqa: PLE0604` there is intentional. See `docs/plans/2026-02-27-feature-autodiscovery-static-analysis.md` for the open decision on a permanent fix.
 
 ## Key conventions
 
-- Feature functions live in `src/cobrabox/features/` as individual files, decorated with `@feature`.
-- Feature functions take `Data` as first argument, return `xr.DataArray` or `Data`.
-- `Data` is immutable — features always produce new instances; never mutate in-place.
-- `history` is automatically maintained by the `@feature` decorator.
-- Ruff line length is 100; target Python 3.14+ (`target-version = "py314"`); `requires-python = ">=3.11"` (dependency floor: numpy/pandas/xarray all require 3.11; code itself only needs 3.10).
-- `src/cobrabox/features/dummy.py` is a negative reference (bad docstring, has `print`, no validation) — do not model new features after it.
+- Feature classes live in `src/cobrabox/features/` as individual files, one class per file.
+- Each file defines a `@dataclass` class inheriting `BaseFeature`, `SplitterFeature`, or `AggregatorFeature` from `src/cobrabox/base_feature.py`.
+- `BaseFeature.__call__` takes `Data`, returns `xr.DataArray | Data`. Use `.apply(data)` externally — it handles wrapping and history.
+- `SplitterFeature.__call__` takes `Data`, yields `Data` (generator). No `.apply()` — used inside `Chord`.
+- `AggregatorFeature.__call__` takes `(Data, Iterator[Data])`, returns `Data`. Must propagate per-window history manually.
+- `Data` is immutable — features always produce new instances via `_copy_with_new_data`; never mutate in-place.
+- `history` is automatically maintained by `BaseFeature.apply`; `AggregatorFeature` subclasses are responsible for building history themselves.
+- Ruff line length is 100; target Python 3.14+ (`target-version = "py314"`); `requires-python = ">=3.11"`.
+- `src/cobrabox/features/dummy.py` is a negative reference (no useful docstring, no validation) — do not model new features after it.
 
 ## Build & CI
 

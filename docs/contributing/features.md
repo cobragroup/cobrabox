@@ -5,9 +5,9 @@ This guide shows the recommended workflow for adding a new feature to CobraBox.
 ## Quick Checklist
 
 1. Make a new branch
-2. Create a new file in `src/cobrabox/features/` (e.g., `my_feature.py`)
-3. Create a new test file in `tests/` (e.g., `test_feature_my_feature.py`)
-4. Implement and test
+2. Create `src/cobrabox/features/my_feature.py`
+3. Create `tests/test_feature_my_feature.py`
+4. Implement, test, lint
 5. Open a pull request
 
 ## 1. Create a Branch
@@ -15,185 +15,178 @@ This guide shows the recommended workflow for adding a new feature to CobraBox.
 ```bash
 git checkout main
 git pull
-git checkout -b feature/add-mean-absolute-value
+git checkout -b feature/add-variance
 ```
 
-Pick a branch name that describes the feature.
+## 2. Choose the Right Base Class
 
-## 2. Implement the Feature
+| You want to… | Inherit from |
+|---|---|
+| Transform `Data` → `Data` | `BaseFeature` |
+| Split data into a lazy stream of windows | `SplitterFeature` |
+| Fold a stream back into one `Data` | `AggregatorFeature` |
 
-Create `src/cobrabox/features/my_feature.py`:
+## 3. Implement the Feature
+
+### Standard feature (`BaseFeature`)
 
 ```python
+# src/cobrabox/features/variance.py
+from __future__ import annotations
+from dataclasses import dataclass
 import xarray as xr
-from cobrabox import Data
-from cobrabox.function_wrapper import feature
+from cobrabox.base_feature import BaseFeature
+from cobrabox.data import Data
 
-@feature
-def my_feature(data: Data, dim: str) -> xr.DataArray:
-    """Compute my custom feature.
-    
+@dataclass
+class Variance(BaseFeature):
+    """Compute variance over a dimension.
+
     Args:
-        data: Input Data with 'time' and 'space' dimensions
-        dim: Dimension to reduce over
-        
-    Returns:
-        xarray DataArray with computed feature values
-        
+        dim: Dimension to reduce over.
+
     Example:
-        >>> result = cb.feature.my_feature(data, dim="time")
+        >>> result = cb.feature.Variance(dim="time").apply(data)
     """
-    xr_data = data.data
-    
-    # Validate dimensions
-    if dim not in xr_data.dims:
-        raise ValueError(f"dim '{dim}' not found in {xr_data.dims}")
-    
-    # Your computation here
-    result = xr_data.mean(dim=dim)
-    
-    return result
+
+    dim: str
+
+    def __call__(self, data: Data) -> xr.DataArray:
+        if self.dim not in data.data.dims:
+            raise ValueError(f"dim '{self.dim}' not found in {data.data.dims}")
+        return data.data.var(dim=self.dim)
 ```
 
 **Key points:**
 
-- Use the `@feature` decorator
-- First parameter must be `data: Data`
+- `@dataclass` on the class, not `@feature` on a function
+- Store parameters as dataclass fields (with defaults where sensible)
+- Implement `__call__(self, data: Data)` — no `apply()` needed, that's inherited
 - Return `xr.DataArray` or `Data`
-- Add parameters as needed
-- Validate inputs
-- Write a clear docstring (Google style)
+- Validate inputs and raise `ValueError` with clear messages
+- Write a Google-style docstring with an `Example:` block
 
-**Reference implementations:**
-
-- `src/cobrabox/features/line_length.py`
-- `src/cobrabox/features/sliding_window.py`
-- `src/cobrabox/features/mean.py`
-
-**Note:** Features are auto-discovered. No need to manually register in `features/__init__.py`.
-
-## 3. Add Tests
-
-Create `tests/test_feature_my_feature.py`:
+### Splitter feature (`SplitterFeature`)
 
 ```python
+# src/cobrabox/features/trial_split.py
+from __future__ import annotations
+from collections.abc import Iterator
+from dataclasses import dataclass
+from cobrabox.base_feature import SplitterFeature
+from cobrabox.data import Data
+
+@dataclass
+class TrialSplit(SplitterFeature):
+    """Yield one Data per fixed-length trial block."""
+
+    trial_length: int
+
+    def __call__(self, data: Data) -> Iterator[Data]:
+        n = data.data.sizes["time"]
+        for start in range(0, n - self.trial_length + 1, self.trial_length):
+            window = data.data.isel(time=slice(start, start + self.trial_length))
+            yield data._copy_with_new_data(new_data=window, operation_name="TrialSplit")
+```
+
+### Aggregator feature (`AggregatorFeature`)
+
+```python
+# src/cobrabox/features/max_aggregate.py
+from __future__ import annotations
+from collections.abc import Iterator
+from dataclasses import dataclass
+import xarray as xr
+from cobrabox.base_feature import AggregatorFeature
+from cobrabox.data import Data
+
+@dataclass
+class MaxAggregate(AggregatorFeature):
+    """Take element-wise max across a stream of per-window Data."""
+
+    def __call__(self, data: Data, stream: Iterator[Data]) -> Data:
+        items = list(stream)
+        if not items:
+            raise ValueError("MaxAggregate received an empty stream")
+        stacked = xr.concat([w.data for w in items], dim="window", join="override")
+        result = stacked.max(dim="window")
+        window_history = [op for op in items[0].history if op not in data.history]
+        return Data(
+            data=result,
+            subjectID=data.subjectID,
+            groupID=data.groupID,
+            condition=data.condition,
+            history=list(data.history) + window_history + ["MaxAggregate"],
+            extra=data.extra,
+        )
+```
+
+Note: `AggregatorFeature` is responsible for building history manually — include the per-window pipeline ops and the aggregator's own name.
+
+## 4. Add Tests
+
+```python
+# tests/test_feature_variance.py
+from __future__ import annotations
 import numpy as np
+import pytest
 import cobrabox as cb
 
-def test_my_feature_basic():
-    """Test basic functionality."""
+
+def test_variance_reduces_time_dimension() -> None:
     arr = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-    data = cb.from_numpy(arr, dims=["time", "space"])
-    
-    result = cb.feature.my_feature(data, dim="time")
-    
-    # Check shape
-    assert result.data.shape == (2,)  # space dimension only
-    
-    # Check history
-    assert "my_feature" in result.history
-    
-    # Check values (mean of [1,3,5] and [2,4,6])
-    expected = np.array([3.0, 4.0])
-    np.testing.assert_array_almost_equal(result.data.values, expected)
+    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-def test_my_feature_invalid_dim():
-    """Test error handling for invalid dimension."""
-    arr = np.random.normal(size=(10, 4))
-    data = cb.from_numpy(arr, dims=["time", "space"])
-    
-    import pytest
-    with pytest.raises(ValueError, match="dim 'invalid' not found"):
-        cb.feature.my_feature(data, dim="invalid")
+    out = cb.feature.Variance(dim="time").apply(data)
+
+    assert isinstance(out, cb.Data)
+    assert "time" not in out.data.dims
+    np.testing.assert_allclose(out.to_numpy().flatten(), np.var([[1,3,5],[2,4,6]], axis=1))
+    assert out.history == ["Variance"]
+
+
+def test_variance_raises_for_unknown_dimension() -> None:
+    data = cb.from_numpy(np.ones((5, 3)), dims=["time", "space"])
+    with pytest.raises(ValueError, match="dim 'band_index' not found"):
+        cb.feature.Variance(dim="band_index").apply(data)
 ```
 
-**Test coverage:**
+**Cover at minimum:**
 
-- Basic functionality with known inputs
-- Metadata/history preservation
-- Edge cases (empty data, single timepoint, etc.)
-- Error handling (invalid dimensions, bad parameters)
+- Correct values on known input
+- `history` contains the class name
+- Metadata (`subjectID`, `sampling_rate`) is preserved
+- `ValueError` on invalid dimension/parameters
 
-**Reference tests:**
+## 5. Auto-discovery
 
-- `tests/test_feature_dummy.py`
-- `tests/test_feature_line_length.py`
-- `tests/test_feature_sliding_window.py`
+Features are discovered automatically — no registration needed. The discovery looks for classes where:
 
-Run tests:
+- `_is_cobrabox_feature` is `True` (inherited from all base classes), **and**
+- `__module__` matches the feature's own file
+
+So just drop the file in `src/cobrabox/features/` and run the tests.
+
+## 6. Lint and Format
 
 ```bash
-uv run pytest tests/test_feature_my_feature.py -v
+uvx ruff check --fix src/ tests/
+uvx ruff format src/ tests/
 ```
 
-## 4. Commit and Push
+## 7. Commit and Push
 
 ```bash
-# Add feature implementation
-git add src/cobrabox/features/my_feature.py
-git commit -m "feat: add my_feature implementation"
-
-# Add tests
-git add tests/test_feature_my_feature.py
-git commit -m "test: add tests for my_feature"
-
-# Push to remote
-git push -u origin feature/add-mean-absolute-value
+git add src/cobrabox/features/variance.py tests/test_feature_variance.py
+git commit -m "feat: add Variance feature"
+git push -u origin feature/add-variance
 ```
 
-Pre-commit hooks will automatically run ruff linting.
+Pre-commit hooks run ruff automatically on commit.
 
-## 5. Create Pull Request
+## Reference Implementations
 
-Go to GitHub and create a pull request. Include:
-
-- **What** the feature computes
-- **Why** it's useful
-- **How** to use it (example code)
-- **Test coverage** summary
-
-## Feature Naming Conventions
-
-- Use lowercase with underscores: `line_length`, `spectral_power`
-- Be descriptive but concise
-- Match the function name to the file name
-
-## Best Practices
-
-1. **Keep it focused** - One feature, one computation
-2. **Validate inputs** - Check dimensions, ranges, data types
-3. **Document thoroughly** - Args, returns, examples in docstring
-4. **Test edge cases** - Empty data, NaN values, boundary conditions
-5. **Preserve dimensions** - Only remove dimensions intentionally
-6. **Use type hints** - Full type annotations for all parameters
-
-## Common Patterns
-
-### Reducing a Dimension
-
-```python
-@feature
-def mean_over_time(data: Data) -> xr.DataArray:
-    """Compute mean over time dimension."""
-    return data.data.mean(dim="time")
-```
-
-### Adding a New Dimension
-
-```python
-@feature
-def sliding_window(data: Data, window_size: int) -> xr.DataArray:
-    """Create sliding windows."""
-    # Your implementation that adds 'window_index' dimension
-    ...
-```
-
-### Conditional Logic
-
-```python
-@feature
-def threshold_feature(data: Data, threshold: float) -> xr.DataArray:
-    """Apply thresholding."""
-    xr_data = data.data
-    return (xr_data > threshold).sum(dim="time")
-```
+- `src/cobrabox/features/line_length.py` — simple `BaseFeature`
+- `src/cobrabox/features/mean.py` — `BaseFeature` with a parameter
+- `src/cobrabox/features/sliding_window.py` — `SplitterFeature`
+- `src/cobrabox/features/mean_aggregate.py` — `AggregatorFeature`

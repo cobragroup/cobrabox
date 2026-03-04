@@ -6,14 +6,24 @@ import cobrabox as cb
 
 data = cb.dataset("dummy_chain")[0]
 
-pipeline = cb.feature.SlidingWindow(window_size=10, step_size=5) | cb.feature.Min(
-    dim="window_index"
-)
-win_min = pipeline.apply(data)
+# Simple pipeline using | syntax
+pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+simple_out = pipeline.apply(data)
+print("simple pipeline history:", simple_out.history)
+print("simple pipeline shape:", simple_out.data.shape)
+
+win_min = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.Min(dim="time")
+    | cb.feature.MeanAggregate()
+).apply(data)
 
 win_max = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5) | cb.feature.Max(dim="window_index")
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.Max(dim="time")
+    | cb.feature.MeanAggregate()
 ).apply(data)
+
 feat = cb.feature.LineLength().apply(data)
 dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(feat)
 

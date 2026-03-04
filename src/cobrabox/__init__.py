@@ -1,9 +1,10 @@
 # Make feature module accessible as cb.feature
 from . import feature  # noqa: F401
+from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
-from .features import LineLength, SlidingWindow, coherence
+from .features import LineLength, MeanAggregate, SlidingWindow, coherence
 
 # Package-level aliases for class methods
 from_numpy = Data.from_numpy
@@ -12,10 +13,14 @@ from_xarray = Data.from_xarray
 __all__ = [
     "EEG",
     "FMRI",
+    "AggregatorFeature",
+    "Chord",
     "Data",
     "LineLength",
+    "MeanAggregate",
+    "Pipeline",
     "SlidingWindow",
-    "coherence",
+    "SplitterFeature",
     "dataset",
     "from_numpy",
     "from_xarray",

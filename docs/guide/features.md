@@ -1,212 +1,230 @@
 # Features
 
-Features are the core building blocks of CobraBox pipelines. They are functions that operate on `Data` objects and return new `Data` objects with updated history.
+Features are the core building blocks of CobraBox pipelines. They are classes that operate on `Data` objects and return new `Data` objects with updated history.
+
+## Feature Types
+
+CobraBox has three kinds of features, each with a different role:
+
+| Type | Signature | Role |
+|------|-----------|------|
+| `BaseFeature` | `Data → Data` | Standard transformation |
+| `SplitterFeature` | `Data → Iterator[Data]` | Splits data into a lazy stream (e.g. windows) |
+| `AggregatorFeature` | `(Data, Iterator[Data]) → Data` | Folds a stream back into one `Data` |
 
 ## What is a Feature?
 
-A feature is a function decorated with `@feature`:
+A feature is a `@dataclass` subclassing `BaseFeature`. Store configuration in fields; implement `__call__`:
 
 ```python
-from cobrabox.function_wrapper import feature
-from cobrabox import Data
+from __future__ import annotations
+from dataclasses import dataclass
 import xarray as xr
+from cobrabox.base_feature import BaseFeature
+from cobrabox.data import Data
 
-@feature
-def my_feature(data: Data, param: float) -> xr.DataArray:
-    """Compute custom feature.
-    
-    Args:
-        data: Input Data with 'time' and 'space' dimensions
-        param: Custom parameter
-        
-    Returns:
-        xarray DataArray with computed feature values
-    """
-    # Your computation here
-    result = data.data.mean(dim="time")
-    return result
+@dataclass
+class SpectralPower(BaseFeature):
+    """Compute mean power in a frequency band."""
+
+    low: float
+    high: float
+
+    def __call__(self, data: Data) -> xr.DataArray:
+        xr_data = data.data
+        if "time" not in xr_data.dims:
+            raise ValueError("data must have 'time' dimension")
+        # ... FFT, bandpass, etc.
+        return xr_data.mean(dim="time")
 ```
 
-The `@feature` decorator automatically:
-- Repackages the return value into a new `Data` object
-- Preserves metadata (subjectID, groupID, condition, etc.)
-- Appends the function name to `history`
-- Merges `extra` dicts
+Call `.apply(data)` — it handles wrapping the result and appending the class name to `history`:
+
+```python
+feat = SpectralPower(low=8.0, high=12.0).apply(data)
+print(feat.history)  # ['SpectralPower']
+```
 
 ## Built-in Features
 
-### Line Length
+### `LineLength`
 
 ```python
-from cobrabox import feature
-
-# Compute line length (sum of absolute differences)
-line_len = feature.line_length(data)
+feat = cb.feature.LineLength().apply(data)
 ```
 
-### Sliding Window
+Sum of absolute differences between consecutive timepoints per channel.
+
+### `Min` / `Max` / `Mean`
 
 ```python
-# Create sliding windows
-wdata = feature.sliding_window(
-    data,
-    window_size=10,  # samples per window
-    step_size=5      # samples between windows
+min_val = cb.feature.Min(dim="time").apply(data)
+max_val = cb.feature.Max(dim="time").apply(data)
+mean_val = cb.feature.Mean(dim="time").apply(data)
+```
+
+Reduce over any dimension present in the data.
+
+### `SlidingWindow` (splitter)
+
+```python
+windows = cb.feature.SlidingWindow(window_size=10, step_size=5)(data)
+# yields one Data per window, lazily
+for window in windows:
+    print(window.data.shape)
+```
+
+Used inside a `Chord` — not called directly in typical pipelines.
+
+### `MeanAggregate` (aggregator)
+
+Averages a stream of per-window `Data` objects into one result. Used as the terminal step of a `Chord`.
+
+## Pipe Syntax `|`
+
+### Sequential pipeline
+
+Chain `BaseFeature` instances with `|`:
+
+```python
+pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+result = pipeline.apply(data)
+print(result.history)  # ['Min', 'Max']
+```
+
+### Chord (fan-out → map → fan-in)
+
+Start a `Chord` by piping a `SplitterFeature` into a pipeline step, then into an `AggregatorFeature`:
+
+```python
+chord = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
 )
-
-# wdata now has a 'window_index' dimension
+result = chord.apply(data)
+print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
-### Min/Max/Mean
+The intermediate steps build a `_ChordBuilder`; piping into an `AggregatorFeature` finalises it into a `Chord`. A `Chord` is itself a `BaseFeature`, so it composes freely with `|`:
 
 ```python
-# Compute statistics across a dimension
-win_min = feature.min(wdata, dim="window_index")
-win_max = feature.max(wdata, dim="window_index")
-mean_val = feature.mean(wdata, dim="time")
+full = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+    | cb.feature.Mean(dim="time")   # post-chord step
+)
 ```
 
 ## Feature Discovery
 
-Features are auto-discovered from the `cobrabox/features/` directory. Any function decorated with `@feature` is automatically registered and accessible via `cb.feature.*`.
-
-To see available features:
+Features are auto-discovered from `src/cobrabox/features/`. Any class with `_is_cobrabox_feature = True` (inherited from all base classes) whose `__module__` matches its file is registered automatically under `cb.feature.*`.
 
 ```python
 import cobrabox as cb
-
-# Access feature module
 print(dir(cb.feature))
 ```
 
 ## Creating Custom Features
 
-### Basic Feature
+### `BaseFeature` (standard)
 
 ```python
-# src/cobrabox/features/my_feature.py
+# src/cobrabox/features/variance.py
+from __future__ import annotations
+from dataclasses import dataclass
 import xarray as xr
-from cobrabox import Data
-from cobrabox.function_wrapper import feature
+from cobrabox.base_feature import BaseFeature
+from cobrabox.data import Data
 
-@feature
-def spectral_power(data: Data, freq_band: tuple) -> xr.DataArray:
-    """Compute spectral power in a frequency band.
-    
-    Args:
-        data: Input Data
-        freq_band: (low, high) frequency range in Hz
-        
-    Returns:
-        DataArray with power values
-    """
-    # Your implementation
-    xr_data = data.data
-    
-    # Validate dimensions
-    if "time" not in xr_data.dims:
-        raise ValueError("data must have 'time' dimension")
-    
-    # Compute feature
-    # ... FFT, bandpass, etc.
-    result = xr_data.mean(dim="time")
-    
-    return result
+@dataclass
+class Variance(BaseFeature):
+    """Compute variance over a dimension."""
+
+    dim: str
+
+    def __call__(self, data: Data) -> xr.DataArray:
+        if self.dim not in data.data.dims:
+            raise ValueError(f"dim '{self.dim}' not found in {data.data.dims}")
+        return data.data.var(dim=self.dim)
 ```
 
-### Feature with Extra Metadata
+### `SplitterFeature`
 
 ```python
-@feature
-def custom_feature(data: Data) -> xr.DataArray:
-    """Custom feature with extra metadata."""
-    result = data.data.std(dim="time")
-    
-    # Return Data with custom extra dict
-    # (will be merged with original extra)
-    return result
+# src/cobrabox/features/trial_split.py
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Iterator
+from cobrabox.base_feature import SplitterFeature
+from cobrabox.data import Data
+
+@dataclass
+class TrialSplit(SplitterFeature):
+    """Yield one Data per trial block."""
+
+    trial_length: int
+
+    def __call__(self, data: Data) -> Iterator[Data]:
+        n = data.data.sizes["time"]
+        for start in range(0, n - self.trial_length + 1, self.trial_length):
+            window = data.data.isel(time=slice(start, start + self.trial_length))
+            yield data._copy_with_new_data(new_data=window, operation_name="TrialSplit")
 ```
 
-### Returning Data Objects
-
-Features can return `Data` objects directly:
+### `AggregatorFeature`
 
 ```python
-@feature
-def complex_feature(data: Data) -> Data:
-    """Feature that returns Data directly."""
-    # Intermediate computation
-    intermediate = data.data.mean(dim="time")
-    
-    # Wrap in Data with custom metadata
-    return Data(
-        data=intermediate,
-        subjectID="custom",  # Will override if not None
-        extra={"custom": "metadata"}
-    )
-```
+# src/cobrabox/features/max_aggregate.py
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Iterator
+import xarray as xr
+from cobrabox.base_feature import AggregatorFeature
+from cobrabox.data import Data
 
-When a feature returns a `Data` object, metadata is merged:
-- Non-None values from returned `Data` override originals
-- Histories are concatenated
-- `extra` dicts are merged (returned values override)
+@dataclass
+class MaxAggregate(AggregatorFeature):
+    """Take element-wise max across a stream of Data."""
 
-## Feature Validation
-
-Features should validate their inputs:
-
-```python
-@feature
-def safe_feature(data: Data, dim: str) -> xr.DataArray:
-    """Feature with validation."""
-    xr_data = data.data
-    
-    # Check required dimensions
-    if dim not in xr_data.dims:
-        raise ValueError(f"dim '{dim}' not found in {xr_data.dims}")
-    
-    # Check data type, range, etc.
-    if xr_data.isnull().any():
-        raise ValueError("data contains NaN values")
-    
-    return xr_data.mean(dim=dim)
-```
-
-## Best Practices
-
-1. **Keep features focused** - One feature, one computation
-2. **Validate inputs** - Check dimensions, data types, ranges
-3. **Document thoroughly** - Use Google-style docstrings
-4. **Preserve dimensions** - Only remove dimensions when intentional
-5. **Test extensively** - Write tests for edge cases
-
-## Feature Naming
-
-Use descriptive, lowercase names with underscores:
-
-```python
-@feature
-def line_length(data: Data) -> xr.DataArray:
-    ...
-
-@feature
-def spectral_edge_frequency(data: Data) -> xr.DataArray:
-    ...
+    def __call__(self, data: Data, stream: Iterator[Data]) -> Data:
+        items = list(stream)
+        if not items:
+            raise ValueError("MaxAggregate received an empty stream")
+        stacked = xr.concat([w.data for w in items], dim="window", join="override")
+        result = stacked.max(dim="window")
+        window_history = [op for op in items[0].history if op not in data.history]
+        return Data(
+            data=result,
+            subjectID=data.subjectID,
+            groupID=data.groupID,
+            condition=data.condition,
+            history=list(data.history) + window_history + ["MaxAggregate"],
+            extra=data.extra,
+        )
 ```
 
 ## Accessing Feature History
 
-After applying features, check the history:
-
 ```python
 data = cb.from_numpy(arr, dims=["time", "space"])
-result = cb.feature.line_length(data)
 
-print(result.history)  # ['line_length']
+feat = cb.feature.LineLength().apply(data)
+print(feat.history)  # ['LineLength']
 
-# Chain multiple features
-wdata = cb.feature.sliding_window(data, window_size=10)
-win_min = cb.feature.min(wdata, dim="window_index")
-
-print(win_min.history)  # ['sliding_window', 'min']
+result = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+).apply(data)
+print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
+
+## Best Practices
+
+1. **One class per file** — match filename to class name (snake_case file, PascalCase class)
+2. **Validate inputs** — check dimensions, data types, ranges in `__call__`
+3. **Document thoroughly** — Args, returns, and example in the docstring
+4. **`AggregatorFeature` owns its history** — propagate per-window ops manually
+5. **No side effects** — never mutate `data` in place; always return new objects

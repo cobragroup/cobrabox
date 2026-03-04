@@ -1,153 +1,122 @@
 # Pipelines
 
-Build reproducible analysis pipelines by chaining features.
+Build reproducible analysis pipelines by chaining features with `|`.
 
-## Basic Pipeline
+## Sequential Pipeline
+
+Chain `BaseFeature` instances with `|`:
 
 ```python
 import cobrabox as cb
 
-# Load data
 data = cb.dataset("dummy_chain")[0]
 
-# Apply pipeline
-wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
-win_min = cb.feature.min(wdata, dim="window_index")
-win_max = cb.feature.max(wdata, dim="window_index")
-line_len = cb.feature.line_length(data)
-
-# Track history
-print(win_min.history)  # ['sliding_window', 'min']
-print(win_max.history)  # ['sliding_window', 'max']
-print(line_len.history)  # ['line_length']
+pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+result = pipeline.apply(data)
+print(result.history)  # ['Min', 'Max']
 ```
 
-## Pipeline Function
-
-Encapsulate pipelines in functions:
+Each step receives the output of the previous one. The pipeline is itself composable — you can store it and reuse it across subjects.
 
 ```python
-def preprocess_and_extract(data: cb.Data) -> cb.Data:
-    """Apply preprocessing and feature extraction."""
-    # Sliding window
-    windowed = cb.feature.sliding_window(data, window_size=10, step_size=5)
-    
-    # Extract features per window
-    min_vals = cb.feature.min(windowed, dim="window_index")
-    max_vals = cb.feature.max(windowed, dim="window_index")
-    
-    # Line length on original data
-    line_len = cb.feature.line_length(data)
-    
-    return line_len  # or return multiple results
+pipeline = cb.feature.LineLength() | cb.feature.Mean(dim="space")
+
+results = [pipeline.apply(d) for d in cb.dataset("dummy_chain")]
 ```
 
-## Pipeline with Multiple Features
+## Chord (fan-out → map → fan-in)
+
+A `Chord` runs a `SplitterFeature` to produce a stream of windows, applies a per-window pipeline, and folds the results back into one `Data` with an `AggregatorFeature`.
 
 ```python
-def extract_all_features(data: cb.Data) -> dict:
-    """Extract multiple features."""
-    features = {}
-    
-    # Basic statistics
-    features["mean"] = cb.feature.mean(data, dim="time")
-    features["min"] = cb.feature.min(data, dim="time")
-    features["max"] = cb.feature.max(data, dim="time")
-    
-    # Line length
-    features["line_length"] = cb.feature.line_length(data)
-    
-    return features
+chord = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+)
+result = chord.apply(data)
+print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
-## Batch Processing
+The `|` operator builds the chord automatically:
+
+| Left | Right | Result |
+|------|-------|--------|
+| `BaseFeature` | `BaseFeature` | `Pipeline` |
+| `SplitterFeature` | `BaseFeature` | `_ChordBuilder` (intermediate) |
+| `_ChordBuilder` | `BaseFeature` | `_ChordBuilder` (extended pipeline) |
+| `_ChordBuilder` | `AggregatorFeature` | `Chord` |
+
+A `Chord` is itself a `BaseFeature`, so it composes freely with `|`:
 
 ```python
-import numpy as np
-
-def process_subjects(dataset_name: str) -> np.ndarray:
-    """Process all subjects in a dataset."""
-    datasets = cb.dataset(dataset_name)
-    
-    results = []
-    for data in datasets:
-        # Apply pipeline
-        feat = cb.feature.line_length(data)
-        results.append(feat.data.values)
-    
-    # Stack into array: [subjects, space]
-    return np.stack(results)
+full = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+    | cb.feature.Mean(dim="space")   # post-chord step
+)
+result = full.apply(data)
+print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord', 'Mean']
 ```
 
-## Pipeline with Conditional Logic
+## Multi-Step Chord
+
+Pipe multiple `BaseFeature` steps between the splitter and the aggregator:
 
 ```python
-def adaptive_pipeline(data: cb.Data, threshold: float) -> cb.Data:
-    """Apply different features based on data properties."""
-    # Compute basic stats
-    mean_val = data.data.mean()
-    
-    if mean_val > threshold:
-        # High activity: use sliding window
-        windowed = cb.feature.sliding_window(data, window_size=10)
-        return cb.feature.max(windowed, dim="window_index")
-    else:
-        # Low activity: simple line length
-        return cb.feature.line_length(data)
+chord = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.Mean(dim="time")
+    | cb.feature.MeanAggregate()
+)
+result = chord.apply(data)
+print(result.history)
+# ['SlidingWindow', 'LineLength', 'Mean', 'MeanAggregate', 'Chord']
 ```
 
-## Tracking Pipeline History
+## Applying to a Dataset
 
-The `history` attribute tracks all applied operations:
+```python
+pipeline = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+)
+
+datasets = cb.dataset("dummy_chain")
+results = [pipeline.apply(d) for d in datasets]
+```
+
+## History Tracking
+
+Every step appends its class name to `history`:
 
 ```python
 data = cb.from_numpy(arr, dims=["time", "space"])
 
-# Build pipeline
 result = (
-    data
-    .pipe(cb.feature.sliding_window, window_size=10)
-    .pipe(cb.feature.min, dim="window_index")
-)
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+).apply(data)
 
-print(result.history)  # ['sliding_window', 'min']
+print(result.history)
+# ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
-## Saving Pipeline Results
+Use history for logging, reproducibility checks, or debugging:
 
 ```python
-import pickle
-
-# Process data
-result = cb.feature.line_length(data)
-
-# Save to file
-with open("results.pkl", "wb") as f:
-    pickle.dump(result, f)
-
-# Load later
-with open("results.pkl", "rb") as f:
-    loaded = pickle.load(f)
-
-print(loaded.history)  # Preserved!
-```
-
-## Pipeline Visualization
-
-```python
-def visualize_pipeline(data: cb.Data):
-    """Print pipeline history."""
-    print("Pipeline:")
-    for i, step in enumerate(data.history, 1):
-        print(f"  {i}. {step}")
-    print(f"\nFinal shape: {data.data.shape}")
-    print(f"Subject: {data.subjectID}")
+for i, step in enumerate(result.history, 1):
+    print(f"  {i}. {step}")
 ```
 
 ## Best Practices
 
-1. **Keep pipelines modular** - Break into small, testable functions
-2. **Document each step** - Explain why each feature is applied
-3. **Validate intermediate results** - Check shapes, ranges, NaN values
-4. **Preserve history** - Don't manually modify the `history` attribute
-5. **Test on dummy data** - Use `cb.dataset()` datasets for development
+1. **Build pipelines once, apply many times** — define the pipeline outside the loop, then apply it per subject
+2. **Prefer `Chord` over manual loops** — it handles history propagation correctly
+3. **Validate inputs in `__call__`** — raise `ValueError` early rather than producing silent bad output
+4. **`AggregatorFeature` owns its history** — propagate per-window ops manually when writing a custom aggregator
+5. **No side effects** — features must never mutate `data`; always return new objects

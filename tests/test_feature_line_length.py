@@ -47,6 +47,7 @@ def test_feature_line_length_single_channel_timeseries() -> None:
 
 def test_feature_line_length_raises_when_time_dim_missing() -> None:
     """LineLength raises ValueError when the underlying DataArray lacks 'time'."""
+
     class _FakeData:
         @property
         def data(self) -> xr.DataArray:
@@ -56,14 +57,18 @@ def test_feature_line_length_raises_when_time_dim_missing() -> None:
         cb.feature.LineLength().__call__(_FakeData())  # type: ignore[arg-type]
 
 
-def test_feature_line_length_with_window_index_preserved() -> None:
-    """LineLength preserves window_index dimension when data comes from SlidingWindow."""
+def test_feature_line_length_via_chord() -> None:
+    """LineLength applied per window via Chord produces one result per window."""
     arr = np.arange(20, dtype=float).reshape(10, 2)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    wdata = cb.feature.SlidingWindow(window_size=5, step_size=2).apply(data)
 
-    out = cb.feature.LineLength().apply(wdata)
+    chord = cb.Chord(
+        split=cb.feature.SlidingWindow(window_size=5, step_size=2),
+        pipeline=cb.feature.LineLength(),
+        aggregate=cb.feature.MeanAggregate(),
+    )
+    out = chord.apply(data)
 
     assert isinstance(out, cb.Data)
-    assert "window_index" in out.data.dims
-    assert out.data.sizes["time"] == 1
+    assert "LineLength" in out.history
+    assert "MeanAggregate" in out.history
