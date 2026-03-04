@@ -6,7 +6,7 @@ from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
 from .features.line_length import LineLength
 from .features.mean_aggregate import MeanAggregate
-from .features.sliding_window import SlidingWindow, coherence
+from .features.sliding_window import SlidingWindow
 
 # Package-level aliases for class methods
 from_numpy = Data.from_numpy
