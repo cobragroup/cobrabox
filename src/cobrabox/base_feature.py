@@ -109,6 +109,7 @@ class _ChordBuilder:
         return _ChordBuilder(split=self.split, pipeline=new_pipeline)
 
     def apply(self, data: Data) -> Data:
+        # TODO: rewrite to more helpful and use-friendly errors, users might be stupid
         raise TypeError(
             "_ChordBuilder is incomplete — pipe into an AggregatorFeature to finalise the Chord.\n"
             "Example: SlidingWindow() | LineLength() | MeanAggregate()"
