@@ -14,6 +14,9 @@ Every `.csv` data file is accompanied by a metadata file named `info_[filename].
       * `dummy_noise_simulated_data_4.csv`: Independent 1/f (pink) noise.
       * `dummy_noise_simulated_data_5.csv`: Independent Gaussian noise containing a synthetic seizure event. 
     * **Struct** – Vector Autoregressive (VAR) processes generated using specific connectivity matrices (chain, star, random) and autocorrelation settings. Includes both directed and symmetric topologies.
+      *Example contents:*
+      * `dummy_struct_VAR_chain_3.csv`: A directed chain with high autocorrelation, generating wave-like activity in the signal to simulate an interictal state. 
+      * `dummy_struct_VAR_random_3.csv`: A directed random connectivity graph with amplitude modulation applied during post-processing. These amplitude changes mimic the appearance of seizures, while all underlying network characteristics remain stable.
 
 2. **Realistic Data** – Data simulated from VAR models fitted to actual patient iEEG data (Subject `ID1`, seizures `Sz13` and `Sz7` from the SWEC-ETHZ iEEG Database).  
     *Simulation Pipeline:*
@@ -25,5 +28,8 @@ Every `.csv` data file is accompanied by a metadata file named `info_[filename].
     * For each phase, Principal Component Analysis (PCA) is applied for dimensionality reduction (retaining components that explain 95% of the data variance).
     * A VAR model is estimated and simulated within this latent PCA space.
     * An inverse PCA transformation is applied to project the simulated signals back into the original iEEG sensor space.
+
+      *Example contents:*
+      * `fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv`: Simulated data mimiucking seizure `Sz13` from patient `ID1`.  
 
 3. **Biorealistic Data** – This dataset was generated using the *Wendling neural mass model*, which simulates the transition from interictal to ictal states in human temporal lobe epilepsy. For full details on the underlying computational framework, please refer to the original study by [Wendling et al. (2005)](https://doi.org/10.1097/01.wnp.0000184051.37267.f0).
