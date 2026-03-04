@@ -16,12 +16,22 @@ class SpikesCalc(BaseFeature[Data]):
     Detects outliers as values falling outside ±1.5*IQR from Q1/Q3.
     Returns a 2D array shaped (1, 1) containing the spike count.
 
+    Args:
+        None
+
+    Returns:
+        xr.DataArray with shape (1, 1), dims ["time", "space"],
+        containing the spike count as a float value.
+
     Example:
         >>> result = SpikesCalc().apply(data)
     """
 
     def __call__(self, data: Data) -> xr.DataArray:
-        a = data.to_numpy()
+        a = data.data.values
+
+        if a.size == 0:
+            raise ValueError("Input data cannot be empty")
 
         # Calculate IQR bounds
         q1 = np.quantile(a, 0.25)

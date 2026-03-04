@@ -86,3 +86,12 @@ def test_spikes_calc_multivariate_data() -> None:
 
     assert isinstance(out, cb.Data)
     assert out.to_numpy().flat[0] > 0
+
+
+def test_spikes_calc_empty_data_raises() -> None:
+    """SpikesCalc raises ValueError for empty input data."""
+    arr = np.array([]).reshape(0, 0)
+    data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+
+    with np.testing.assert_raises(ValueError):
+        cb.feature.SpikesCalc().apply(data)
