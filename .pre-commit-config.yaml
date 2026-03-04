@@ -3,6 +3,13 @@ minimum_pre_commit_version: "4.5.0"
 repos:
 - repo: local
   hooks:
+    - id: gen-feature-stubs
+      name: generate feature stubs
+      entry: uv run python scripts/gen_stubs.py
+      language: system
+      pass_filenames: false
+      files: ^src/cobrabox/features/.*\.py$
+
     - id: ty-check
       name: ty check
       entry: uv run ty check src
