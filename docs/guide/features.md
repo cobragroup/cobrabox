@@ -6,11 +6,11 @@ Features are the core building blocks of CobraBox pipelines. They are classes th
 
 CobraBox has three kinds of features, each with a different role:
 
-| Type | Signature | Role |
-|------|-----------|------|
-| `BaseFeature` | `DataT → Data` | Standard transformation |
-| `SplitterFeature` | `DataT → Iterator[Data]` | Splits data into a lazy stream (e.g. windows) |
-| `AggregatorFeature` | `(Data, Iterator[Data]) → Data` | Folds a stream back into one `Data` |
+| Type                | Signature                       | Role                                          |
+| ------------------- | ------------------------------- | --------------------------------------------- |
+| `BaseFeature`       | `DataT → Data`                  | Standard transformation                       |
+| `SplitterFeature`   | `DataT → Iterator[Data]`        | Splits data into a lazy stream (e.g. windows) |
+| `AggregatorFeature` | `(Data, Iterator[Data]) → Data` | Folds a stream back into one `Data`           |
 
 Features are generic: they accept a type parameter `DataT` that specifies what kind of data they work with. Use `BaseFeature[SignalData]` for time-series features, or `BaseFeature[Data]` for generic features that work with any data.
 

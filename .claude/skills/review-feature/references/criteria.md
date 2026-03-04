@@ -23,13 +23,13 @@ import numpy as np
 The class must be decorated with `@dataclass` and inherit exactly one of the three base classes.
 The correct base class depends on what the feature does:
 
-| Base class | Use when |
-|---|---|
-| `BaseFeature[Data]` | standard transformation, no time dimension required |
-| `BaseFeature[SignalData]` | transformation that requires a `time` dimension |
-| `SplitterFeature[Data]` | fan-out: yields multiple `Data` windows (generic) |
+| Base class                  | Use when                                      |
+| --------------------------- | --------------------------------------------- |
+| `BaseFeature[Data]`         | standard transformation, no time dimension required |
+| `BaseFeature[SignalData]`   | transformation that requires a `time` dimension |
+| `SplitterFeature[Data]`     | fan-out: yields multiple `Data` windows (generic) |
 | `SplitterFeature[SignalData]` | fan-out: yields windows over the time dimension |
-| `AggregatorFeature` | fan-in: folds a stream back into one `Data` |
+| `AggregatorFeature`         | fan-in: folds a stream back into one `Data`   |
 
 The type parameter narrows what `__call__` accepts. Use `SignalData` for any feature that
 operates on the time axis; use `Data` for dimension-agnostic features.

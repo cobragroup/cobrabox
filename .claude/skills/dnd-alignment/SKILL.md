@@ -19,13 +19,13 @@ Determine the D&D 9-alignment of a cobrabox feature and append it to the canonic
 
 ## Responsibility split
 
-| Task | Owner |
-|---|---|
-| Rank an individual feature (assign Law/Good scores + lore) | This skill |
-| Append ranking to the canonical table | This skill |
-| Print the full roster | `uv run python -m cobrabox.egg.dnd_alignment --roster` |
-| Compute pipeline aggregate | `uv run python -m cobrabox.egg.dnd_alignment F1 F2 F3` |
-| Compute Chord pipeline aggregate | `uv run python -m cobrabox.egg.dnd_alignment --chord F1 F2 F3` |
+| Task                                                       | Owner                                                          |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| Rank an individual feature (assign Law/Good scores + lore) | This skill                                                     |
+| Append ranking to the canonical table                      | This skill                                                     |
+| Print the full roster                                      | `uv run python -m cobrabox.egg.dnd_alignment --roster`         |
+| Compute pipeline aggregate                                 | `uv run python -m cobrabox.egg.dnd_alignment F1 F2 F3`         |
+| Compute Chord pipeline aggregate                           | `uv run python -m cobrabox.egg.dnd_alignment --chord F1 F2 F3` |
 
 ---
 
@@ -70,19 +70,19 @@ for each axis before committing to a score.
 
 #### Law axis rubric
 
-| Score | Meaning | Indicators |
-|---|---|---|
-| +1 Lawful | Operates by strict, deterministic rules | Fixed formula, no randomness, enforces structure (windowing, ordering, exact aggregation) |
-| 0 Neutral | Neither imposes nor destroys structure | Passes through dimensions, flexible reduction, agnostic to order |
-| -1 Chaotic | Disrupts or ignores conventions | `print` statements, missing validation, unpredictable output shape |
+| Score      | Meaning                                  | Indicators                                                                               |
+| ---------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| +1 Lawful  | Operates by strict, deterministic rules  | Fixed formula, no randomness, enforces structure (windowing, ordering, exact aggregation) |
+| 0 Neutral  | Neither imposes nor destroys structure   | Passes through dimensions, flexible reduction, agnostic to order                         |
+| -1 Chaotic | Disrupts or ignores conventions          | `print` statements, missing validation, unpredictable output shape                       |
 
 #### Good axis rubric
 
-| Score | Meaning | Indicators |
-|---|---|---|
-| +1 Good | Preserves or enhances signal meaning | Increases interpretability, faithful to data, good metadata practice |
-| 0 Neutral | Indifferent to meaning | Mechanical reduction with no semantic intent (pure aggregation) |
-| -1 Evil | Discards or distorts signal meaning | Selects extremes ruthlessly, drops metadata, lossy without documentation |
+| Score     | Meaning                               | Indicators                                                                 |
+| --------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| +1 Good   | Preserves or enhances signal meaning  | Increases interpretability, faithful to data, good metadata practice       |
+| 0 Neutral | Indifferent to meaning                | Mechanical reduction with no semantic intent (pure aggregation)            |
+| -1 Evil   | Discards or distorts signal meaning   | Selects extremes ruthlessly, drops metadata, lossy without documentation   |
 
 ### 4. Write one lore sentence
 

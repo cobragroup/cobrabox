@@ -13,14 +13,14 @@ Add a `/dnd-alignment` skill that ranks every cobrabox feature on the D&D 9-alig
 
 ## Feature alignment table
 
-| Feature | Law score | Good score | Alignment | Rationale |
-|---|---|---|---|---|
-| `sliding_window` | +1 (Lawful) | +1 (Good) | Lawful Good | Rigidly structured, principled expansion of data — serves understanding |
-| `mean` | +1 (Lawful) | 0 (Neutral) | Lawful Neutral | Collapses information by strict rule, neither creates nor destroys meaning |
-| `max` | +1 (Lawful) | -1 (Evil) | Lawful Evil | Obeys the law of the maximum, ruthlessly discards everything else |
-| `min` | 0 (Neutral) | -1 (Evil) | Neutral Evil | Seeks only the lowest — no principle beyond pessimism |
-| `line_length` | 0 (Neutral) | +1 (Good) | Neutral Good | Measures without judgement, in service of signal |
-| `dummy` | -1 (Chaotic) | 0 (Neutral) | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice |
+| Feature          | Law score    | Good score   | Alignment       | Rationale                                                                  |
+| ---------------- | ------------ | ------------ | --------------- | -------------------------------------------------------------------------- |
+| `sliding_window` | +1 (Lawful)  | +1 (Good)    | Lawful Good     | Rigidly structured, principled expansion of data — serves understanding    |
+| `mean`           | +1 (Lawful)  | 0 (Neutral)  | Lawful Neutral  | Collapses information by strict rule, neither creates nor destroys meaning |
+| `max`            | +1 (Lawful)  | -1 (Evil)    | Lawful Evil     | Obeys the law of the maximum, ruthlessly discards everything else          |
+| `min`            | 0 (Neutral)  | -1 (Evil)    | Neutral Evil    | Seeks only the lowest — no principle beyond pessimism                      |
+| `line_length`    | 0 (Neutral)  | +1 (Good)    | Neutral Good    | Measures without judgement, in service of signal                           |
+| `dummy`          | -1 (Chaotic) | 0 (Neutral)  | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice  |
 
 ## Axes encoding
 

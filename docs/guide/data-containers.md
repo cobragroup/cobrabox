@@ -11,12 +11,12 @@ Data (general, no dimension requirements)
     └── FMRI  # fMRI data (type marker)
 ```
 
-| Class | Requirements | Use Case |
-|-------|--------------|----------|
-| `Data` | None | General multidimensional data |
-| `SignalData` | Must have 'time' dimension | Time-series analysis (EEG, fMRI) |
-| `EEG` | Must have 'time' dimension | EEG-specific data |
-| `FMRI` | Must have 'time' dimension | fMRI-specific data |
+| Class        | Requirements             | Use Case                            |
+| ------------ | ------------------------ | ----------------------------------- |
+| `Data`       | None                     | General multidimensional data       |
+| `SignalData` | Must have 'time' dimension | Time-series analysis (EEG, fMRI)   |
+| `EEG`        | Must have 'time' dimension | EEG-specific data                   |
+| `FMRI`       | Must have 'time' dimension | fMRI-specific data                  |
 
 ## General Data Container
 

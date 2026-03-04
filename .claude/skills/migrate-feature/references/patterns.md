@@ -373,12 +373,12 @@ def test_mean_aggregate_via_chord() -> None:
 
 ## Common Pitfalls
 
-| Pitfall | Fix |
-|---|---|
-| Keeping `**kwargs` | Remove it; declare every parameter explicitly as a typed field |
-| `data` as a dataclass field | `data` is only the argument to `__call__`, never a field |
-| Calling `self.apply()` inside `__call__` | Never; `apply()` calls `__call__`, not the other way |
-| Using `data._copy_with_new_data` in `AggregatorFeature` | Build `Data(...)` directly and set history manually |
-| Forgetting `join="override"` in `xr.concat` | Add it to suppress FutureWarning on mismatched coords |
-| History still lowercase after migration | History is the class name — PascalCase |
-| `SplitterFeature` called with `.apply()` | Call it directly: `splitter(data)` returns `Iterator[Data]` |
+| Pitfall                                                   | Fix                                                              |
+| --------------------------------------------------------- | ---------------------------------------------------------------- |
+| Keeping `**kwargs`                                        | Remove it; declare every parameter explicitly as a typed field   |
+| `data` as a dataclass field                               | `data` is only the argument to `__call__`, never a field         |
+| Calling `self.apply()` inside `__call__`                  | Never; `apply()` calls `__call__`, not the other way             |
+| Using `data._copy_with_new_data` in `AggregatorFeature`   | Build `Data(...)` directly and set history manually              |
+| Forgetting `join="override"` in `xr.concat`               | Add it to suppress FutureWarning on mismatched coords            |
+| History still lowercase after migration                   | History is the class name — PascalCase                           |
+| `SplitterFeature` called with `.apply()`                  | Call it directly: `splitter(data)` returns `Iterator[Data]`      |

@@ -50,14 +50,14 @@ Determine the D&D alignment of cobrabox features — individually or as a pipeli
 
 These alignments are fixed lore. Do not recompute them — look them up.
 
-| Feature | Law | Good | Alignment | Lore |
-|---|---|---|---|---|
-| `sliding_window` | +1 | +1 | Lawful Good | Rigidly structured, principled expansion of data — serves understanding |
-| `mean` | +1 | 0 | Lawful Neutral | Collapses by strict rule; neither creates nor destroys meaning |
-| `max` | +1 | -1 | Lawful Evil | Obeys the law of the maximum, ruthlessly discards everything else |
-| `min` | 0 | -1 | Neutral Evil | Seeks only the lowest — no principle beyond pessimism |
-| `line_length` | 0 | +1 | Neutral Good | Measures without judgement, in service of signal |
-| `dummy` | -1 | 0 | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice |
+| Feature          | Law | Good | Alignment       | Lore                                                                    |
+| ---------------- | --- | ---- | --------------- | ----------------------------------------------------------------------- |
+| `sliding_window` | +1  | +1   | Lawful Good     | Rigidly structured, principled expansion of data — serves understanding |
+| `mean`           | +1  | 0    | Lawful Neutral  | Collapses by strict rule; neither creates nor destroys meaning          |
+| `max`            | +1  | -1   | Lawful Evil     | Obeys the law of the maximum, ruthlessly discards everything else       |
+| `min`            | 0   | -1   | Neutral Evil    | Seeks only the lowest — no principle beyond pessimism                   |
+| `line_length`    | 0   | +1   | Neutral Good    | Measures without judgement, in service of signal                        |
+| `dummy`          | -1  | 0    | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice |
 
 ### Axis encoding
 
@@ -134,14 +134,14 @@ Cell contents (6 chars wide, left-padded):
 
 ### Feature abbreviations
 
-| Feature | Abbrev |
-|---|---|
-| `sliding_window` | `sw` |
-| `mean` | `mn` |
-| `max` | `mx` |
-| `min` | `mi` |
-| `line_length` | `ll` |
-| `dummy` | `du` |
+| Feature          | Abbrev |
+| ---------------- | ------ |
+| `sliding_window` | `sw`   |
+| `mean`           | `mn`   |
+| `max`            | `mx`   |
+| `min`            | `mi`   |
+| `line_length`    | `ll`   |
+| `dummy`          | `du`   |
 
 For unknown/user features not in the table, use first 2 chars of the name.
 

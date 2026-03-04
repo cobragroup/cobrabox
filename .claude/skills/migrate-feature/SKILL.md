@@ -35,17 +35,17 @@ Those are the files to migrate.
 
 ## Quick Reference
 
-| Old pattern | New pattern |
-|---|---|
-| `from cobrabox.function_wrapper import feature` | `from ..base_feature import BaseFeature` |
-| `@feature` on a function | `@dataclass` on a class |
-| `def my_feature(data: Data, ...)` (time-series) | `class MyFeature(BaseFeature[SignalData])` |
-| `def my_feature(data: Data, ...)` (any dims) | `class MyFeature(BaseFeature[Data])` |
-| `def sliding_window(data, ...) -> xr.DataArray` (windowing) | `class MySplit(SplitterFeature[SignalData]): ... -> Iterator[Data]` |
-| Manual aggregation loop | `class MyAgg(AggregatorFeature): ... -> Data` |
-| `cb.feature.my_feature(data, param=val)` | `cb.feature.MyFeature(param=val).apply(data)` |
-| `cb.feature.my_feature \| cb.feature.other` | `cb.feature.MyFeature() \| cb.feature.Other()` |
-| `cb.from_numpy(arr, dims=[...])` in tests | `cb.SignalData.from_numpy(arr, dims=[...])` for time-series tests |
+| Old pattern                                            | New pattern                                                                  |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `from cobrabox.function_wrapper import feature`        | `from ..base_feature import BaseFeature`                                     |
+| `@feature` on a function                               | `@dataclass` on a class                                                      |
+| `def my_feature(data: Data, ...)` (time-series)        | `class MyFeature(BaseFeature[SignalData])`                                   |
+| `def my_feature(data: Data, ...)` (any dims)           | `class MyFeature(BaseFeature[Data])`                                         |
+| `def sliding_window(data, ...) -> xr.DataArray` (windowing) | `class MySplit(SplitterFeature[SignalData]): ... -> Iterator[Data]`     |
+| Manual aggregation loop                                | `class MyAgg(AggregatorFeature): ... -> Data`                               |
+| `cb.feature.my_feature(data, param=val)`               | `cb.feature.MyFeature(param=val).apply(data)`                                |
+| `cb.feature.my_feature \| cb.feature.other`            | `cb.feature.MyFeature() \| cb.feature.Other()`                              |
+| `cb.from_numpy(arr, dims=[...])` in tests              | `cb.SignalData.from_numpy(arr, dims=[...])` for time-series tests            |
 
 ## Procedure
 
