@@ -8,7 +8,8 @@ CobraBox provides a clean, immutable data model for neuroimaging time-series ana
 
 - **Immutable data containers** - `Data`, `EEG`, and `FMRI` classes wrapping `xarray.DataArray`
 - **Automatic history tracking** - Every operation is recorded in the `history` attribute
-- **Feature system** - Decorator-based feature functions that preserve metadata
+- **Feature system** - Dataclass-based feature classes that preserve metadata
+- **Chord pipelines** - Fan-out → map → fan-in for windowed analysis
 - **Multi-modal support** - Works with EEG, fMRI, and other time-series data
 - **Type-safe** - Full type hints for better IDE support and error detection
 
@@ -58,3 +59,5 @@ See [Installation](installation.md) for detailed setup instructions.
 - [Quick Start](quickstart.md) - Get up and running in 5 minutes
 - [Core Concepts](guide/core-concepts.md) - Understand the data model
 - [Feature Guide](guide/features.md) - Learn to use and create features
+- [Pipelines](guide/pipelines.md) - Build reproducible analysis pipelines
+- [API Reference](api/index.md) - Auto-generated API documentation

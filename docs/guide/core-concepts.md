@@ -75,7 +75,7 @@ print(result2.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chor
 
 CobraBox has three feature types, composable with `|`:
 
-```
+```text
 BaseFeature      Data → Data          standard transformation
 SplitterFeature  Data → Iterator[Data]  lazy stream of windows
 AggregatorFeature  (Data, stream) → Data  fold stream back to Data
@@ -105,7 +105,7 @@ The `|` operator knows which type is on the left and produces either a `Pipeline
 
 At its core, CobraBox wraps `xarray.DataArray`:
 
-```
+```text
 ┌─────────────────────────────────────┐
 │              Data                   │
 │  ┌───────────────────────────────┐  │
@@ -138,9 +138,10 @@ At its core, CobraBox wraps `xarray.DataArray`:
 
 ## Type Distinctions
 
-- **`Data`** — base class for all time-series data
-- **`EEG`** — subclass for EEG data (type marker)
-- **`FMRI`** — subclass for fMRI data (type marker)
+- **`Data`** — base class for all data (general multidimensional container)
+- **`SignalData`** — subclass for time-series data (requires 'time' dimension)
+- **`EEG`** — subclass for EEG data (type marker, inherits from SignalData)
+- **`FMRI`** — subclass for fMRI data (type marker, inherits from SignalData)
 
 ```python
 eeg_data = cb.EEG(base.data, sampling_rate=256.0)

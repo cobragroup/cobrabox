@@ -66,21 +66,27 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 ## Built-in Features
 
 ### Standard Features
+
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
 - `Bandpower` - Power in frequency bands using Welch's method
 - `Coherence` - Magnitude-squared coherence between channel pairs
 - `Spectrogram` - Time-frequency power spectrogram
 - `SpikesCalc` - Outlier detection using IQR method
+- `Autocorr` - Normalized autocorrelation at a single lag
 
 ### Connectivity Features
+
 - `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
-- `PartialCorrelation` - Partial correlation controlling for other variables
+- `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
+- `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
 
 ### Specialized Features
+
 - `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
 
 ### Windowing & Aggregation
+
 - `SlidingWindow` - Split data into overlapping windows (splitter)
 - `MeanAggregate` - Average windowed results (aggregator)
 - `Chord` - Combine splitter + feature + aggregator

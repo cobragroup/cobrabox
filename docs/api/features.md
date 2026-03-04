@@ -66,17 +66,17 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.phase_locking_value
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.spikes_calc
     options:
         show_root_heading: true
         show_source: true
 
 ::: cobrabox.features.autocorr
-    options:
-        show_root_heading: true
-        show_source: true
-
-::: cobrabox.features.phase_locking_value
     options:
         show_root_heading: true
         show_source: true
