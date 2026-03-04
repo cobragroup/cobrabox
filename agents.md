@@ -53,6 +53,8 @@ Class hierarchy: `Data` ← `SignalData` ← (`EEG`, `FMRI`)
 **Feature system** (`src/cobrabox/base_feature.py`, `src/cobrabox/feature.py`, `src/cobrabox/features/`): Features are `@dataclass` classes that inherit one of three base classes:
 
 - `BaseFeature` (`Data → Data`): standard feature; implement `__call__`; call `.apply(data)` which wraps the result via `_copy_with_new_data` and appends the class name to `history`. Supports pipe syntax: `Feature1() | Feature2()` produces a `Pipeline`.
+  - Use `output_type: ClassVar[type[Data]] = Data` to return plain `Data` without time dimension (e.g., correlation matrices).
+  - Default (`output_type = None`) preserves input container type.
 - `SplitterFeature` (`Data → Iterator[Data]`): yields one `Data` per split (e.g. `SlidingWindow`). Lazy generator — does not materialise all splits in memory.
 - `AggregatorFeature` (`(Data, Iterator[Data]) → Data`): folds a stream back into one `Data` (e.g. `MeanAggregate`); responsible for merging per-window history into the result.
 - `Chord(BaseFeature)`: composes a `SplitterFeature` + `BaseFeature`/`Pipeline` + `AggregatorFeature` into a single `BaseFeature` (fan-out → map → fan-in). Itself composable with `|`.

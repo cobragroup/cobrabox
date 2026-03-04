@@ -403,6 +403,12 @@ class Data:
             else:
                 merged_extra = {**self._extra, **extra}
 
+        # Strip sampling_rate from attrs if result has no time dimension
+        # (sampling_rate is meaningless without time)
+        if "time" not in result_data.dims and "sampling_rate" in result_data.attrs:
+            result_data = result_data.copy()
+            result_data.attrs = {k: v for k, v in result_data.attrs.items() if k != "sampling_rate"}
+
         return Data(
             data=result_data,
             subjectID=merged_subjectID,

@@ -29,10 +29,11 @@ You can start from the template-like `dummy` feature, copy it and then adapt it.
 Then edit `src/cobrabox/features/my_feature.py`:
 
 - Rename `dummy` to your feature function name.
-- Keep the `@feature` decorator.
-- Keep input type as `Data`.
+- Keep the `@dataclass` decorator.
+- Choose appropriate base class (`BaseFeature[Data]`, `BaseFeature[SignalData]`, etc.).
 - Return either `xr.DataArray` or `Data`.
 - Add parameters needed by your feature (for example `dim`, `window_size`, etc.).
+- Set `output_type = Data` if your feature removes the time dimension (e.g., correlation matrices).
 
 Look at existing implementations for patterns:
 

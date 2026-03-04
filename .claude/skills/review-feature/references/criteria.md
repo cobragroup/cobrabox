@@ -34,6 +34,29 @@ The correct base class depends on what the feature does:
 The type parameter narrows what `__call__` accepts. Use `SignalData` for any feature that
 operates on the time axis; use `Data` for dimension-agnostic features.
 
+### `output_type` classvar (optional)
+
+Features can set `output_type` to control the output container type:
+
+| `output_type` value | Result container | Use when |
+| ------------------- | ---------------- | -------- |
+| `None` (default)    | Same as input    | Feature preserves input container type |
+| `Data`              | Plain `Data`     | Feature removes time dimension (e.g., correlation matrices) |
+
+```python
+# ✅ Feature that preserves container type (default)
+@dataclass
+class Spectrogram(BaseFeature[SignalData]):
+    # output_type defaults to None - returns SignalData
+    ...
+
+# ✅ Feature that returns plain Data (no time dimension)
+@dataclass
+class Coherence(BaseFeature[SignalData]):
+    output_type: ClassVar[type[Data]] = Data
+    ...
+```
+
 ```python
 # ✅ time-series feature
 @dataclass

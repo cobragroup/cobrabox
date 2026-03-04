@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 import xarray as xr
 from mne_connectivity import envelope_correlation as _mne_envelope_correlation
 
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 
 @dataclass
@@ -45,6 +46,8 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
         >>> aec_signed = cb.feature.EnvelopeCorrelation(absolute=False).apply(data)
         >>> aec_no_orth = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     orthogonalize: str | bool = "pairwise"
     absolute: bool = False

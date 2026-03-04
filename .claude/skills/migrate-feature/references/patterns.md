@@ -371,6 +371,58 @@ def test_mean_aggregate_via_chord() -> None:
 
 ---
 
+## BaseFeature with output_type — Returning Data without Time Dimension
+
+Use when the feature computes a correlation matrix or other result that has no `time` dimension.
+Set `output_type: ClassVar[type[Data]] = Data` to return plain `Data` instead of preserving the
+input container type.
+
+### After
+
+```python
+# src/cobrabox/features/coherence.py
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import ClassVar
+
+import numpy as np
+import xarray as xr
+
+from ..base_feature import BaseFeature
+from ..data import Data, SignalData
+
+
+@dataclass
+class Coherence(BaseFeature[SignalData]):
+    """Compute magnitude-squared coherence for all pairwise channel combinations.
+
+    Uses Welch's method to estimate coherence between each pair of spatial channels.
+
+    Returns:
+        xarray DataArray with dims ``(space, space_to)`` (no time dimension).
+
+    Example:
+        >>> result = cb.feature.Coherence().apply(data)
+    """
+
+    output_type: ClassVar[type[Data]] = Data  # Returns plain Data, not SignalData
+
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        # Compute coherence matrix (no time dimension in result)
+        # ... computation ...
+        return xr.DataArray(coh_matrix, dims=["space", "space_to"])
+```
+
+**Key points:**
+- Import `ClassVar` from `typing` and `Data` from `..data`
+- Set `output_type: ClassVar[type[Data]] = Data` as a class attribute
+- The feature still takes `SignalData` as input (requires time for computation)
+- Returns `xr.DataArray` with no time dimension — `apply()` wraps it in plain `Data`
+- `sampling_rate` is not preserved for `Data` without time dimension
+
+---
+
 ## Common Pitfalls
 
 | Pitfall                                                   | Fix                                                              |

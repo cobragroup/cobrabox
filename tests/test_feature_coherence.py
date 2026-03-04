@@ -31,10 +31,9 @@ def test_coherence_output_dims_and_shape() -> None:
     out = cb.feature.Coherence().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "space_to", "time")
+    assert out.data.dims == ("space", "space_to")
     assert out.data.sizes["space"] == 4
     assert out.data.sizes["space_to"] == 4
-    assert out.data.sizes["time"] == 1
 
 
 def test_coherence_space_coords_are_preserved() -> None:
@@ -66,7 +65,7 @@ def test_coherence_identical_channels_give_unity_coherence() -> None:
     data = _make_data(arr, sampling_rate=200.0)
 
     out = cb.feature.Coherence().apply(data)
-    mat = out.data.isel(time=0).values  # (3, 3)
+    mat = out.data.values  # (3, 3)
 
     for i in range(3):
         for j in range(3):
@@ -80,7 +79,7 @@ def test_coherence_diagonal_is_nan() -> None:
     data = _make_data(rng.standard_normal((300, 5)))
 
     out = cb.feature.Coherence().apply(data)
-    mat = out.data.isel(time=0).values
+    mat = out.data.values
 
     assert np.all(np.isnan(np.diag(mat)))
 
@@ -91,7 +90,7 @@ def test_coherence_matrix_is_symmetric() -> None:
     data = _make_data(rng.standard_normal((400, 6)))
 
     out = cb.feature.Coherence().apply(data)
-    mat = out.data.isel(time=0).values
+    mat = out.data.values
 
     mask = ~np.isnan(mat)
     np.testing.assert_allclose(mat[mask], mat.T[mask])
@@ -103,7 +102,7 @@ def test_coherence_values_are_in_unit_range() -> None:
     data = _make_data(rng.standard_normal((512, 8)))
 
     out = cb.feature.Coherence().apply(data)
-    mat = out.data.isel(time=0).values
+    mat = out.data.values
     off_diag = mat[~np.isnan(mat)]
 
     assert np.all(off_diag >= 0.0)
@@ -133,7 +132,8 @@ def test_coherence_preserves_metadata_and_history() -> None:
     assert out.subjectID == "sub-01"
     assert out.groupID == "control"
     assert out.condition == "rest"
-    assert out.sampling_rate == 100.0
+    # sampling_rate is not preserved for Data without time dimension
+    assert out.sampling_rate is None
     assert out.history == ["Coherence"]
     assert out.extra.get("session") == 1
 
@@ -157,7 +157,7 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
             "space": [f"ch{k}" for k in range(n_space)],
         },
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr, sampling_rate=100.0)
 
     out = cb.feature.Coherence().apply(data)
 
@@ -167,7 +167,7 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
     assert out.data.sizes["space_to"] == n_space
     # Each run's diagonal must be NaN
     for r in range(n_runs):
-        mat = out.data.isel(run_index=r, time=0).values
+        mat = out.data.isel(run_index=r).values
         assert np.all(np.isnan(np.diag(mat)))
 
 
@@ -184,7 +184,7 @@ def test_coherence_custom_nperseg_produces_valid_output() -> None:
     out = cb.feature.Coherence(nperseg=32).apply(data)
 
     assert isinstance(out, cb.Data)
-    mat = out.data.isel(time=0).values
+    mat = out.data.values
     off_diag = mat[~np.isnan(mat)]
     assert np.all(off_diag >= 0.0)
     assert np.all(off_diag <= 1.0)
@@ -199,9 +199,7 @@ def test_coherence_results_depend_on_nperseg() -> None:
     out128 = cb.feature.Coherence(nperseg=128).apply(data)
 
     # Values will differ because segment length affects the estimate
-    assert not np.allclose(
-        out32.data.isel(time=0).values, out128.data.isel(time=0).values, equal_nan=True
-    )
+    assert not np.allclose(out32.data.values, out128.data.values, equal_nan=True)
 
 
 # ---------------------------------------------------------------------------

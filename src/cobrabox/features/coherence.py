@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import itertools
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 
 @dataclass
@@ -41,6 +42,8 @@ class Coherence(BaseFeature[SignalData]):
         Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix
         is symmetric: ``result[i, j] == result[j, i]``.
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     nperseg: int | None = field(default=None)
 

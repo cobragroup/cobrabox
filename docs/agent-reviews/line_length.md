@@ -2,55 +2,63 @@
 
 **File**: `src/cobrabox/features/line_length.py`
 **Date**: 2026-03-04
-**Verdict**: NEEDS WORK
+**Verdict**: PASS
 
 ## Summary
 
-`LineLength` is structurally sound: it has the correct imports, decorators, base class, return type, input validation for the `time` dimension, and no mutation of input data. The primary issues are in the docstring: `data` is documented in `Args:` when it should not be (only dataclass fields belong there, and `LineLength` has no fields), the `Returns:` section is missing the dimension names and value semantics of the output array, and the `Example:` code references a non-existent `wdata` variable that would confuse a new user. These are all medium-severity docstring deficiencies.
+The `LineLength` feature is exemplary and serves as the positive reference in the codebase. It correctly inherits from `BaseFeature[SignalData]`, has complete type annotations, a thorough Google-style docstring with all required sections (including Args with "None" since there are no dataclass fields), and follows all safety conventions. Ruff passes cleanly. No issues found.
 
 ## Ruff
 
 ### `uvx ruff check`
-
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
-
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-- **Line 1**: `from __future__ import annotations` is present and first. Correct.
-- **Lines 3–8**: Import order is future → stdlib (`dataclasses`) → third-party (`xarray`) → internal. Correct.
-- **Lines 11–12**: `@dataclass` and `BaseFeature` inheritance are present. Correct.
-- **Class name**: `LineLength` is PascalCase and matches `line_length.py`. Correct.
-- **Line 30**: `__call__` signature is `(self, data: Data) -> xr.DataArray`. Correct for a `BaseFeature`.
-- `LineLength` has no dataclass fields, which is valid. `data` is not a field. Correct.
-- No reimplementation of `.apply()`. Correct.
+Line 1: `from __future__ import annotations` present and correctly placed.
+
+Line 12-13: Correctly decorated with `@dataclass` and inherits `BaseFeature[SignalData]` (appropriate for a time-series feature).
+
+Line 32: Correctly sets `output_type: ClassVar[type[Data]] = Data` since this feature removes the time dimension.
+
+Line 34: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray`.
+
+No `apply()` method is implemented (correctly inherited from `BaseFeature`).
+
+Imports are in the correct order and only import what is used.
 
 ## Docstring
 
-- **Lines 13–28**: Google-style docstring is present with a one-line summary and extended description. Good.
-- **Lines 18–20 (`Args:`)**: `data` is listed in `Args:`. Per the review criteria, `Args:` must document only the dataclass fields, not `data`. Since `LineLength` has no fields, the `Args:` section should be omitted entirely.
-- **Lines 22–23 (`Returns:`)**: The `Returns:` section says "xarray DataArray with 'time' dimension removed (or 'window_index' preserved)". This is partially correct but lacks the output shape description, the remaining dimension names (i.e. `space`, and optionally `window_index`), and the value semantics (sum of absolute first differences).
-- **Lines 25–27 (`Example:`)**: The example applies `SlidingWindow` to produce `wdata` without showing that `data` must first be created. A reader cannot run this example without additional context. A minimal self-contained example using `.apply(data)` on a plain `Data` object would be clearer and more consistent with the convention used in other features.
+Lines 14-30: Complete Google-style docstring with all required sections:
+
+- **One-line summary** (line 14): "Compute line length over the time dimension."
+- **Extended description** (lines 16-17): Explains what line length measures.
+- **Args** (lines 19-20): Present with "None" since there are no dataclass fields.
+- **Returns** (lines 22-26): Thorough description of output shape and dimensions.
+- **Example** (lines 28-29): Working snippet showing typical usage.
 
 ## Typing
 
-- No dataclass fields to type. Correct.
-- `__call__` return type is `xr.DataArray`. Correct.
-- No bare `Any`. Correct.
+All types are correctly specified:
+
+- `output_type: ClassVar[type[Data]] = Data` (line 32)
+- `def __call__(self, data: SignalData) -> xr.DataArray` (line 34)
+
+No bare `Any` types are used.
 
 ## Safety & Style
 
-- No `print()` statements. Correct.
-- **Line 33–34**: Validates that `time` is in `data.data.dims` and raises `ValueError`. Correct.
-- No mutation of input `data`. `xr_data.diff(...)` and `.sum(...)` return new arrays. Correct.
-- All lines are within 100 characters. Correct.
-- No `__post_init__` needed (no fields with constraints). Correct.
+No `print()` statements found.
+
+No input validation required—`SignalData` already enforces the `time` dimension at construction time.
+
+No mutation of input `data`—the feature correctly works on `data.data` and returns a new array.
+
+Line length is within limits (enforced by ruff).
 
 ## Action List
 
-1. [MEDIUM] Remove the `Args:` section entirely, or replace it with a note that this feature takes no configuration parameters. `data` must not appear in `Args:`.
-2. [MEDIUM] Expand `Returns:` to specify the output dimensions (e.g. `(space,)` or `(window_index, space)`), the dtype, and that values represent the sum of absolute first differences along the time axis.
-3. [LOW] Rewrite the `Example:` to be a minimal, self-contained snippet that constructs a `Data` object and calls `LineLength().apply(data)` directly, without depending on `SlidingWindow` or an unexplained `wdata` variable.
+None.

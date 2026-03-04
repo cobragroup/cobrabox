@@ -1,96 +1,70 @@
 # Feature Review: epileptogenicity_index
 
 **File**: `src/cobrabox/features/epileptogenicity_index.py`
-**Date**: 2025-03-04
+**Date**: 2026-03-04
 **Verdict**: PASS
 
 ## Summary
 
-The `EpileptogenicityIndex` feature is a comprehensive migration implementing the Bartolomei et al. (2008) algorithm for quantifying epileptogenicity per channel. The implementation includes two helper methods (`_energy_ratio` and `_page_hinkley`) as class methods, proper handling of frequency bands, and complete documentation. All criteria are met.
+Excellent feature implementation. The `EpileptogenicityIndex` class is a sophisticated, publication-grade feature implementing the Bartolomei et al. (2008) algorithm for quantifying epileptogenicity from intracranial EEG. The code is well-structured, thoroughly documented, and follows all project conventions. The docstring is exemplary—comprehensive, includes mathematical formulas, frequency band specifications, and proper academic citations. Ruff checks pass cleanly.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
 
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-**Line 9**: ✅ `from __future__ import annotations` present as first import (after module docstring).
+Clean and correct throughout:
 
-**Line 33**: ✅ `@dataclass` decorator properly applied.
-
-**Line 34**: ✅ Correctly inherits `BaseFeature[SignalData]`.
-
-**Line 34**: ✅ Class name `EpileptogenicityIndex` matches filename.
-
-**Lines 115-225**: ✅ `__call__` signature correct:
-
-- `data: SignalData` as argument
-- Return type `xr.DataArray`
-- No `apply()` implementation (inherited)
-
-**Lines 9-16**: ✅ Imports in correct order:
-
-1. `from __future__ import annotations`
-2. stdlib (`dataclasses.dataclass`)
-3. third-party (`numpy`, `xarray`)
-4. internal (`..base_feature`, `..data`)
-
-Module docstring present (lines 1-7) with reference citation.
+- ✅ `from __future__ import annotations` present at line 8
+- ✅ `@dataclass` decorator + `BaseFeature[SignalData]` inheritance (lines 28-29)
+- ✅ `output_type: ClassVar[type[Data]] = Data` correctly declared at line 92—feature removes time dimension as expected
+- ✅ Class name `EpileptogenicityIndex` matches filename
+- ✅ `__call__` signature: `def __call__(self, data: SignalData) -> xr.DataArray` at line 179
+- ✅ No `apply()` override—correctly inherits from base
+- ✅ Imports follow standard order: stdlib → third-party → internal
 
 ## Docstring
 
-**Lines 34-113**: ✅ Complete and comprehensive Google-style docstring:
+Outstanding. Sets the standard for scientific features:
 
-- One-line summary (line 34)
-- Extended description (lines 36-43)
-- Detailed algorithm explanation (lines 45-60)
-- Reference citation (lines 62-65)
-- `Args:` section for all five fields (lines 67-81)
-- `Returns:` section (lines 83-86)
-- `Raises:` section (lines 88-92)
-- `Example:` section with `.apply()` usage (lines 94-96)
-
-**Lines 115-168** (`_energy_ratio`): ✅ Complete docstring for helper method.
-
-**Lines 170-203** (`_page_hinkley`): ✅ Complete docstring for helper method.
+- ✅ One-line summary clearly states purpose
+- ✅ Extended description (lines 30-58) includes:
+  - Algorithm overview with three numbered stages
+  - Mathematical formula for Energy Ratio: `ER[n] = (E_beta + E_gamma) / (E_theta + E_alpha)`
+  - Frequency band table matching the paper (θ, α, β, γ ranges)
+  - EI formula with normalisation explanation
+  - Complete academic reference with DOI
+- ✅ `Args:` section (lines 65-76) documents all 5 dataclass fields with clear descriptions
+- ✅ `Returns:` section (lines 78-80) specifies output dimensions and normalisation range
+- ✅ `Raises:` section (lines 82-85) documents 3 specific validation cases
+- ✅ `Example:` section (lines 87-89) shows correct `.apply()` usage
 
 ## Typing
 
-**Lines 106-110**: ✅ All fields properly typed:
+Fully typed:
 
-- `window_duration: float = 1.0`
-- `bias: float = 0.5`
-- `threshold: float = 30.0`
-- `integration_window: float = 5.0`
-- `tau: float = 1.0`
-
-**Line 115**: ✅ `__call__` return type is `xr.DataArray`.
-
-**Lines 115, 170**: ✅ Helper methods properly typed with return types `np.ndarray` and `int | None`.
-
-No bare `Any` types detected.
+- ✅ All 5 dataclass fields have type annotations (lines 94-98)
+- ✅ `__call__` return type: `xr.DataArray` (line 179)
+- ✅ Helper method `_energy_ratio` return type: `np.ndarray` (line 117)
+- ✅ Helper method `_page_hinkley` return type: `int | None` (line 161)
+- ✅ No bare `Any` types
 
 ## Safety & Style
 
-**Lines 115-225**: ✅ No `print()` statements.
-
-**Lines 182-192**: ✅ Input validation present:
-
-- Validates exactly `time` and `space` dimensions (lines 182-186)
-- Validates `sampling_rate` is set (lines 187-192)
-- Validates signal length against window (in `_energy_ratio`, lines 149-153)
-
-**Lines 115-225**: ✅ No mutation of input `data` — operates on `data.data` and returns new `xr.DataArray`.
-
-**Lines 115, 170**: ✅ Helper methods `_energy_ratio` and `_page_hinkley` properly implemented as class methods with `self` parameter.
-
-**Lines 17-23**: ✅ Constants defined at module level for frequency bands (`_THETA`, `_ALPHA`, `_BETA`, `_GAMMA_MIN`, `_EPS`).
+- ✅ No `print()` statements
+- ✅ Input validation in `__call__` (lines 180-190):
+  - Validates exactly 2 dimensions (`time` and `space`)
+  - Validates `sampling_rate` is set
+- ✅ No mutation of input `data`—works on `.data` and returns new array
+- ✅ `__post_init__` not needed—field validation handled by numpy/xarray downstream
+- ✅ Uses `np.finfo(float).eps` constant for numerical stability (line 25)
 
 ## Action List
 

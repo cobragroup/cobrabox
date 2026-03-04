@@ -8,12 +8,13 @@ Brain (2008), 131:1818-1830. DOI: 10.1093/brain/awn111
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 # Frequency band boundaries (Hz) — Table 2, Bartolomei et al. (2008)
 _THETA = (3.5, 7.4)
@@ -87,6 +88,8 @@ class EpileptogenicityIndex(BaseFeature[SignalData]):
         >>> ei = cb.feature.EpileptogenicityIndex().apply(seizure_data)
         >>> ei_vals = ei.data  # (space,) values in [0, 1]
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     window_duration: float = 1.0
     bias: float = 0.5

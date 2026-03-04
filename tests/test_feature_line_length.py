@@ -21,11 +21,12 @@ def test_feature_line_length_expected_values_and_history() -> None:
     out = cb.feature.LineLength().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "time")
-    assert out.data.shape == (2, 1)
-    np.testing.assert_allclose(out.to_numpy(), expected)
+    assert out.data.dims == ("space",)
+    assert out.data.shape == (2,)
+    np.testing.assert_allclose(out.to_numpy(), expected.ravel())
     assert out.subjectID == "sub-02"
-    assert out.sampling_rate == 200.0
+    # sampling_rate is not preserved for Data without time dimension
+    assert out.sampling_rate is None
     assert out.history == ["LineLength"]
 
 
@@ -39,9 +40,9 @@ def test_feature_line_length_single_channel_timeseries() -> None:
     out = cb.feature.LineLength().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "time")
-    assert out.data.shape == (1, 1)
-    np.testing.assert_allclose(out.to_numpy(), expected)
+    assert out.data.dims == ("space",)
+    assert out.data.shape == (1,)
+    np.testing.assert_allclose(out.to_numpy(), expected.ravel())
     assert out.history == ["LineLength"]
 
 

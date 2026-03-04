@@ -101,7 +101,7 @@ def test_chord_multi_step_pipeline_via_pipe() -> None:
     out = (
         cb.feature.SlidingWindow(window_size=4, step_size=2)
         | cb.feature.LineLength()
-        | cb.feature.Min(dim="time")
+        | cb.feature.Mean(dim="space")
         | cb.feature.MeanAggregate()
     ).apply(data)
     assert isinstance(out, cb.Data)

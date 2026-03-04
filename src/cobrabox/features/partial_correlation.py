@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 
 @dataclass
@@ -33,6 +34,8 @@ class PartialCorrelation(BaseFeature[SignalData]):
         ...     coord_x=0, coord_y=1, control_vars=[2]
         ... ).apply(data)
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     coord_x: str
     coord_y: str
@@ -141,6 +144,8 @@ class PartialCorrelationMatrix(BaseFeature[SignalData]):
         ... ).apply(data)
     """
 
+    output_type: ClassVar[type[Data]] = Data
+
     coords: list[str]
     control_vars: list[str]
 
@@ -214,15 +219,8 @@ class PartialCorrelationMatrix(BaseFeature[SignalData]):
                 y_series = xr_data.sel({space_dim: coord_j}).values
                 result[i, j] = self._compute_partial_correlation(x_series, y_series, control_series)
 
-        time_coord = xr_data.coords[time_dim].values
-        return (
-            xr.DataArray(
-                result,
-                dims=["coord_i", "coord_j"],
-                coords={"coord_i": self.coords, "coord_j": self.coords},
-            )
-            .expand_dims(time_dim, axis=0)
-            .assign_coords({time_dim: [time_coord[0]]})
-            .expand_dims(space_dim, axis=0)
-            .assign_coords({space_dim: [self.coords[0]]})
+        return xr.DataArray(
+            result,
+            dims=["coord_i", "coord_j"],
+            coords={"coord_i": self.coords, "coord_j": self.coords},
         )

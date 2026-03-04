@@ -45,7 +45,7 @@ def test_partial_correlation_matrix_returns_square_matrix() -> None:
     result = cb.feature.PartialCorrelationMatrix(coords=[0, 1, 2], control_vars=[3]).apply(data)
 
     assert isinstance(result, cb.Data)
-    matrix_values = result.data.values[0, :, :, 0]
+    matrix_values = result.data.values
     assert matrix_values.shape == (3, 3)
 
 

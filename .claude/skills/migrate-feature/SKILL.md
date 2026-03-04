@@ -46,6 +46,7 @@ Those are the files to migrate.
 | `cb.feature.my_feature(data, param=val)`               | `cb.feature.MyFeature(param=val).apply(data)`                                |
 | `cb.feature.my_feature \| cb.feature.other`            | `cb.feature.MyFeature() \| cb.feature.Other()`                              |
 | `cb.from_numpy(arr, dims=[...])` in tests              | `cb.SignalData.from_numpy(arr, dims=[...])` for time-series tests            |
+| Feature returns correlation matrix (no time dim)       | `output_type: ClassVar[type[Data]] = Data`                                   |
 
 ## Procedure
 

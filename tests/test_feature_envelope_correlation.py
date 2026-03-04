@@ -30,7 +30,7 @@ def _make_data(
 
 
 def test_envelope_correlation_output_dims_and_shape() -> None:
-    """EnvelopeCorrelation returns (space, space_to) Data."""
+    """EnvelopeCorrelation returns (space, space_to, time) Data."""
     data = _make_data()
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
@@ -134,12 +134,13 @@ def test_envelope_correlation_history_appended() -> None:
 
 
 def test_envelope_correlation_metadata_preserved() -> None:
-    """subjectID and sampling_rate are carried through."""
+    """subjectID is carried through; sampling_rate not preserved for Data without time."""
     data = _make_data(subjectID="sub-99")
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     assert out.subjectID == "sub-99"
-    assert out.sampling_rate == 256.0
+    # sampling_rate is not preserved for Data without time dimension
+    assert out.sampling_rate is None
 
 
 # ---------------------------------------------------------------------------

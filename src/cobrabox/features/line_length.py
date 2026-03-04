@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import xarray as xr
 
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 
 @dataclass
@@ -14,6 +15,9 @@ class LineLength(BaseFeature[SignalData]):
 
     Line length is the sum of absolute differences between consecutive
     timepoints. A larger value indicates a more rapidly varying signal.
+
+    Args:
+        None
 
     Returns:
         xarray DataArray with the ``time`` dimension removed. Shape is
@@ -24,6 +28,8 @@ class LineLength(BaseFeature[SignalData]):
     Example:
         >>> result = cb.feature.LineLength().apply(data)
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data

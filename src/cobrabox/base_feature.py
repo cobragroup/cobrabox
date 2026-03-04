@@ -26,6 +26,9 @@ class BaseFeature(ABC, Generic[DataT]):
     """
 
     _is_cobrabox_feature: ClassVar[bool] = True
+    output_type: ClassVar[type[Data] | None] = None
+    """Output container type. None means same as input, Data means plain Data,
+    SignalData means SignalData with time dimension."""
 
     def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
         """Enable pipe syntax: Feature1() | Feature2()"""
@@ -36,14 +39,23 @@ class BaseFeature(ABC, Generic[DataT]):
         """Apply the feature transformation. Subclasses implement this."""
 
     def apply(self, data: DataT) -> Data:
-        """Apply feature and wrap result in Data with history tracking."""
+        """Apply feature and wrap result in Data with history tracking.
+
+        Returns:
+            Data: The output container. If output_type is set, returns that type.
+                If output_type is None, returns the same type as input.
+        """
         result = self(data)
         if not isinstance(result, (xr.DataArray, Data)):
             raise TypeError(
                 f"Feature '{self.__class__.__name__}' must return "
                 f"xarray.DataArray or Data, got {type(result)}"
             )
-        return data._copy_with_new_data(new_data=result, operation_name=self.__class__.__name__)
+        # Determine output container class (None means same as input)
+        output_cls = self.output_type if self.output_type is not None else type(data)
+        return output_cls._copy_with_new_data(
+            data, new_data=result, operation_name=self.__class__.__name__
+        )
 
 
 @dataclass

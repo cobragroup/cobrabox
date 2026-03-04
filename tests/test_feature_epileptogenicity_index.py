@@ -163,7 +163,8 @@ def test_ei_history_appended() -> None:
 
 
 def test_ei_metadata_preserved() -> None:
-    """subjectID, groupID, condition, and sampling_rate are preserved."""
+    """subjectID, groupID, condition are preserved; sampling_rate not preserved
+    for Data without time."""
     arr = np.stack([_gamma_onset_signal(onset=10.0)] * 2, axis=1)
     data = _make_data(arr, subjectID="sub-99", groupID="patients", condition="seizure")
     out = cb.feature.EpileptogenicityIndex().apply(data)
@@ -171,7 +172,8 @@ def test_ei_metadata_preserved() -> None:
     assert out.subjectID == "sub-99"
     assert out.groupID == "patients"
     assert out.condition == "seizure"
-    assert out.sampling_rate == _FS
+    # sampling_rate is not preserved for Data without time dimension
+    assert out.sampling_rate is None
 
 
 # ---------------------------------------------------------------------------

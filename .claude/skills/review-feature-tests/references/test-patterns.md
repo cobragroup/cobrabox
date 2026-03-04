@@ -103,13 +103,17 @@ def test_line_length_history_accumulates() -> None:
 
 ```python
 def test_line_length_metadata_preserved() -> None:
-    """LineLength preserves subjectID, groupID, condition, and sampling_rate."""
+    """LineLength preserves subjectID, groupID, condition; sampling_rate only if time dim present."""
     data = _make_data(sampling_rate=250.0, subjectID="s42", groupID="control", condition="task")
     result = cb.feature.LineLength().apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"
-    assert result.sampling_rate == pytest.approx(250.0)
+    # sampling_rate is only preserved if result has time dimension
+    if "time" in result.data.dims:
+        assert result.sampling_rate == pytest.approx(250.0)
+    else:
+        assert result.sampling_rate is None
 ```
 
 ---
