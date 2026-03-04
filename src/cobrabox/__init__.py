@@ -4,7 +4,9 @@ from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
-from .features import LineLength, MeanAggregate, SlidingWindow, coherence
+from .features.line_length import LineLength
+from .features.mean_aggregate import MeanAggregate
+from .features.sliding_window import SlidingWindow, coherence
 
 # Package-level aliases for class methods
 from_numpy = Data.from_numpy
