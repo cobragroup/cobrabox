@@ -70,3 +70,8 @@ Features are discovered automatically from the `cobrabox/features/` directory.
     options:
         show_root_heading: true
         show_source: true
+
+::: cobrabox.features.autocorr
+    options:
+        show_root_heading: true
+        show_source: true

@@ -200,6 +200,18 @@ Computes partial correlation between coordinates while controlling for others.
 `PartialCorrelationMatrix` computes all pairwise partial correlations for a set
 of coordinates. All coordinates must be from the space dimension.
 
+### `Autocorr`
+
+```python
+ac = cb.feature.Autocorr(dim="time", fs=1000.0).apply(data)           # default 5 ms lag
+ac = cb.feature.Autocorr(dim="time", fs=1000.0, lag_steps=5).apply(data)  # explicit steps
+ac = cb.feature.Autocorr(dim="time", fs=1000.0, lag_ms=10.0).apply(data)  # explicit ms
+```
+
+Computes normalized autocorrelation at a single lag along any dimension. The requested
+dimension is reduced to a scalar per remaining-dimension element. Specify `lag_steps`
+(samples) or `lag_ms` (milliseconds), but not both; defaults to 5 ms if neither is given.
+
 ### `SpikesCalc`
 
 ```python

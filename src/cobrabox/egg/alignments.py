@@ -86,6 +86,48 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "co",
         "lore":  "Seeks channel connection without imposing structure — empathic, unbiased",
     },
+    "Autocorr": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "ac",
+        "lore":  "Interrogates its own past with clockwork precision, faithful to every lag",
+    },
+    "Spectrogram": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "sg",
+        "lore":  "Unfolds time into frequency — the scholarly cartographer of oscillations",
+    },
+    "EnvelopeCorrelation": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "ec",
+        "lore":  "Exorcises zero-lag phantoms, revealing genuine kinship between channels",
+    },
+    "EpileptogenicityIndex": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "ei",
+        "lore":  "Follows Bartolomei's law to the letter; renders its verdict in [0, 1]",
+    },
+    "PartialCorrelation": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "pc",
+        "lore":  "Controls for the guilty bystanders, exonerating the true connection",
+    },
+    "PartialCorrelationMatrix": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "pm",
+        "lore":  "Maps the full tribunal of partial truths — no pair left unjudged",
+    },
 }
 # fmt: on
 
