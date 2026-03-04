@@ -10,8 +10,11 @@ For setup, use the onboarding:
 
 Short version:
 
+1. Install `git-lfs` on your system (`brew install git-lfs` / `apt-get install git-lfs`)
+2. Run:
+
 ```bash
-uv sync && uv run pre-commit install
+make setup
 ```
 
 ## Repository Layout

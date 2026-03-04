@@ -13,7 +13,10 @@ def main() -> None:
     print(datasets)
     print(f"Loaded parts: {len(datasets)}")
     print(f"First part shape: {datasets[0].data.shape}")
-    print(datasets[0].aspandas().head())
+    print(datasets[0].to_pandas().head())
+    data = datasets[0]
+    first_subject = data.subjectID
+    print(f"First subject: {first_subject}")
 
 
 if __name__ == "__main__":

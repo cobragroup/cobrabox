@@ -43,6 +43,7 @@ Copy the full output line.
 4. Click **Add SSH key**
 
 ### Notes
+
 - For the title you'd like to have something associated with your computer.
 - Authentication key is the right option in the dropdown
 
@@ -55,4 +56,4 @@ ssh -T git@github.com
 You should see a success/authenticated message.
 
 Official GitHub guide:
-https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
+<https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account>

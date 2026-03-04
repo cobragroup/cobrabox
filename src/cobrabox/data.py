@@ -62,15 +62,17 @@ class Data:
         """
         # Validate mandatory dimensions
         if "time" not in data.dims:
-            raise ValueError("data must have 'time' dimension")
+            raise ValueError("data must have `time` dimension")
         if "space" not in data.dims:
-            raise ValueError("data must have 'space' dimension")
+            raise ValueError("data must have `space` dimension")
 
         if sampling_rate is not None and sampling_rate <= 0:
             raise ValueError("sampling_rate must be positive when provided")
 
-        # Store xarray DataArray
-        self._data = data
+        # Store xarray DataArray, enforce float64
+        self._data = data.astype(np.float64)
+        # optimisation: time dimension is always last
+        self._data = self._data.transpose(..., "time")
 
         # Store metadata in xarray attrs for persistence
         attrs = dict(data.attrs) if data.attrs else {}
@@ -278,7 +280,7 @@ class Data:
             )
         super().__setattr__(name, value)
 
-    def asnumpy(
+    def to_numpy(
         self, style: str = "default"
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Convert data to numpy arrays.
@@ -300,7 +302,7 @@ class Data:
             return time, space, labels
         raise ValueError("Unknown style. Expected 'default' or 'gorkastyle'.")
 
-    def aspandas(self) -> pd.DataFrame:
+    def to_pandas(self) -> pd.DataFrame:
         """Convert to pandas DataFrame.
 
         Returns:

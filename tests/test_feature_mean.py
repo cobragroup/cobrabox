@@ -17,11 +17,11 @@ def test_feature_mean_reduces_requested_dimension() -> None:
     out = cb.feature.mean(wdata, dim="window_index")
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "space")
-    assert out.data.shape == (4, 2)
+    assert out.data.dims == ("space", "time")
+    assert out.data.shape == (2, 4)
 
-    expected = np.mean(np.stack([arr[0:4], arr[2:6], arr[4:8], arr[6:10]], axis=0), axis=0)
-    np.testing.assert_allclose(out.asnumpy(), expected)
+    expected = np.mean(np.stack([arr[0:4], arr[2:6], arr[4:8], arr[6:10]], axis=0), axis=1)
+    np.testing.assert_allclose(out.to_numpy(), expected.T)
     assert out.subjectID == "sub-01"
     assert out.history == ["sliding_window", "mean"]
 
@@ -41,8 +41,8 @@ def test_feature_mean_single_channel_timeseries_returns_single_value() -> None:
     out = cb.feature.mean(data, dim="time")
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("time", "space")
+    assert out.data.dims == ("space", "time")
     assert out.data.shape == (1, 1)
-    assert out.asnumpy().size == 1
-    np.testing.assert_allclose(out.asnumpy(), np.array([[2.5]]))
+    assert out.to_numpy().size == 1
+    np.testing.assert_allclose(out.to_numpy(), np.array([[2.5]]))
     assert out.history == ["mean"]

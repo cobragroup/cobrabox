@@ -9,8 +9,10 @@ from ..function_wrapper import feature
 def sliding_window(data: Data, window_size: int = 10, step_size: int = 5) -> xr.DataArray:
     """Apply sliding window to time-series data.
 
-    Adds a 'window_index' dimension to the data by creating overlapping
-    windows along the 'time' dimension.
+    Creates overlapping windows along the 'time' dimension.
+    Output uses:
+    - 'time': window sequence index (one entry per window)
+    - 'window_index': local index inside each window
 
     Args:
         data: Data with 'time' and 'space' dimensions
@@ -46,12 +48,12 @@ def sliding_window(data: Data, window_size: int = 10, step_size: int = 5) -> xr.
     windows = []
     for start in window_starts:
         end = start + window_size
-        # Normalize local window time coordinates so windows align on concat.
-        window = xr_data.isel(time=slice(start, end)).assign_coords(time=np.arange(window_size))
+        # Convert each [time, ...] slice into [window_index, ...] so reducing
+        # over window_index means "reduce within each window".
+        window = xr_data.isel(time=slice(start, end)).rename({"time": "window_index"})
+        window = window.assign_coords(window_index=np.arange(window_size))
         windows.append(window)
 
-    # Stack windows along new dimension
-    stacked = xr.concat(windows, dim="window_index", join="inner")
-
-    # Set window_index coordinates
-    return stacked.assign_coords(window_index=np.arange(len(windows)))
+    # Stack windows along the time axis (one timepoint per window start).
+    stacked = xr.concat(windows, dim="time", join="inner")
+    return stacked.assign_coords(time=xr_data.coords["time"].values[window_starts])
