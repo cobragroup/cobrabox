@@ -13,7 +13,11 @@ _discovered: dict[str, object] = {}
 for _mod in pkgutil.iter_modules(_features_pkg.__path__):
     _module = importlib.import_module(f"{_features_pkg.__name__}.{_mod.name}")
     for _name, _obj in vars(_module).items():
-        if callable(_obj) and getattr(_obj, "_is_cobrabox_feature", False):
+        if (
+            callable(_obj)
+            and getattr(_obj, "_is_cobrabox_feature", False)
+            and getattr(_obj, "__module__", "") == _module.__name__
+        ):
             if _name in _discovered:
                 raise ValueError(
                     f"Duplicate feature function name '{_name}' found while importing "

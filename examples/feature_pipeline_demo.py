@@ -5,12 +5,17 @@ import cobrabox as cb
 # cb.gorkastyle()
 
 data = cb.dataset("dummy_chain")[0]
-wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
-win_min = cb.feature.min(wdata, dim="window_index")
-wdata2 = cb.feature.sliding_window(data, window_size=10, step_size=5)
-win_max = cb.feature.max(wdata2, dim="window_index")
-feat = cb.feature.line_length(win_max)
-dummy = cb.feature.dummy(feat, mandatory_arg=1, optional_arg=2)
+
+pipeline = cb.feature.SlidingWindow(window_size=10, step_size=5) | cb.feature.Min(
+    dim="window_index"
+)
+win_min = pipeline.apply(data)
+
+win_max = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5) | cb.feature.Max(dim="window_index")
+).apply(data)
+feat = cb.feature.LineLength().apply(data)
+dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(feat)
 
 # Compute coherence
 coh = cb.feature.coherence(data)

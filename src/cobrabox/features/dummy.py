@@ -1,14 +1,17 @@
+from dataclasses import dataclass
+
+from ..base_feature import BaseFeature
 from ..data import Data
-from ..function_wrapper import feature
 
 
-@feature
-def dummy(data: Data, mandatory_arg: int, optional_arg: int = 0) -> Data:
+@dataclass
+class Dummy(BaseFeature):
     """Dummy feature that returns the input data."""
-    a = data.to_numpy()
-    sampling_rate = data.sampling_rate
-    whatever = data.extra.get("whatever", None)
 
-    print("whatever", whatever)
+    mandatory_arg: int
+    optional_arg: int = 0
 
-    return Data.from_numpy(a, dims=list(data.data.dims), sampling_rate=sampling_rate)
+    def __call__(self, data: Data) -> Data:
+        a = data.to_numpy()
+        sampling_rate = data.sampling_rate
+        return Data.from_numpy(a, dims=list(data.data.dims), sampling_rate=sampling_rate)

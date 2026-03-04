@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Hashable
 from typing import Any
 
 import numpy as np
@@ -108,7 +109,7 @@ class Data:
     def from_numpy(
         cls,
         arr: np.ndarray,
-        dims: list[str],
+        dims: list[Hashable],
         *,
         sampling_rate: float | None = None,
         subjectID: str | None = None,
@@ -306,13 +307,13 @@ class Data:
             return time, space, labels
         raise ValueError("Unknown style. Expected 'default' or 'gorkastyle'.")
 
-    def to_pandas(self) -> pd.DataFrame:
+    def to_pandas(self, name: str | None = None) -> pd.DataFrame:
         """Convert to pandas DataFrame.
 
         Returns:
             pandas DataFrame with MultiIndex from dimensions
         """
-        return self._data.to_dataframe()
+        return self._data.to_dataframe(name=name or "data")
 
     def _copy_with_new_data(
         self,

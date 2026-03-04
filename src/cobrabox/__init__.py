@@ -3,9 +3,21 @@ from . import feature  # noqa: F401
 from .data import EEG, FMRI, Data
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
+from .features import LineLength, SlidingWindow, coherence
 
 # Package-level aliases for class methods
 from_numpy = Data.from_numpy
 from_xarray = Data.from_xarray
 
-__all__ = ["EEG", "FMRI", "Data", "dataset", "from_numpy", "from_xarray", "gorkastyle"]
+__all__ = [
+    "EEG",
+    "FMRI",
+    "Data",
+    "LineLength",
+    "SlidingWindow",
+    "coherence",
+    "dataset",
+    "from_numpy",
+    "from_xarray",
+    "gorkastyle",
+]

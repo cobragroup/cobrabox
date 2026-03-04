@@ -17,6 +17,7 @@ def main() -> None:
     print(datasets)
     print(f"Loaded parts: {len(datasets)}")
     print(f"First part shape: {datasets[0].data.shape}")
+    print(datasets[0].to_pandas("custom_name").head())
     data = datasets[0]
     print(f"Sampling rate (from Settings['fs']): {data.sampling_rate} Hz")
     # Preview: first 2 time steps, first 4 space dims (to_pandas needs named DataArray)
