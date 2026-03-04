@@ -20,6 +20,23 @@ def _sidecar_json_for_csv(path: Path) -> Path:
     return path.with_name(f"info_{stem}.json.xz")
 
 
+def _sampling_rate_from_info(info: dict) -> float | None:
+    """Extract sampling rate from JSON info (Settings['fs'] or top-level 'fs')."""
+    settings = info.get("Settings")
+    if isinstance(settings, dict):
+        fs = settings.get("fs")
+    else:
+        fs = info.get("fs")
+    if fs is None:
+        return None
+    try:
+        return float(fs)
+    except TypeError as e:
+        raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
+    except ValueError as e:
+        raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
+
+
 def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> list[Data]:
     """Load dummy dataset parts from `data/dummy/struct`."""
     if repo_root is None:
@@ -55,6 +72,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
         )
         # Attach optional metadata from matching JSON sidecar
         extra = {}
+        info: dict = {}
         json_path = _sidecar_json_for_csv(path)
         if json_path.exists():
             try:
@@ -65,7 +83,8 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
             except Exception:
                 # Ignore JSON parsing issues and continue without extra metadata
                 pass
-        datasets.append(Data.from_xarray(da, extra=extra or None))
+        sampling_rate = _sampling_rate_from_info(info) if info else None
+        datasets.append(Data.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
@@ -100,6 +119,7 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
             attrs={"source_file": path.name, "identifier": identifier},
         )
         extra = {}
+        info: dict = {}
         json_path = _sidecar_json_for_csv(path)
         if json_path.exists():
             try:
@@ -109,7 +129,8 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
                     extra.update(info)
             except Exception:
                 pass
-        datasets.append(Data.from_xarray(da, extra=extra or None))
+        sampling_rate = _sampling_rate_from_info(info) if info else None
+        datasets.append(Data.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
@@ -149,6 +170,7 @@ def load_realistic_swiss(
             attrs={"source_file": path.name, "identifier": identifier},
         )
         extra = {}
+        info: dict = {}
         json_path = _sidecar_json_for_csv(path)
         if json_path.exists():
             try:
@@ -158,7 +180,8 @@ def load_realistic_swiss(
                     extra.update(info)
             except Exception:
                 pass
-        datasets.append(Data.from_xarray(da, extra=extra or None))
+        sampling_rate = _sampling_rate_from_info(info) if info else None
+        datasets.append(Data.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
