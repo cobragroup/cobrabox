@@ -61,7 +61,7 @@ def test_spikes_calc_preserves_metadata(rng: np.random.Generator) -> None:
     assert out.history == ["SpikesCalc"]
 
 
-def test_spikes_calc_returns_shape_1_1() -> None:
+def test_spikes_calc_returns_shape_1_1(rng: np.random.Generator) -> None:
     """SpikesCalc returns Data with shape (1, 1)."""
     arr = rng.standard_normal((30, 2))
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
@@ -73,7 +73,7 @@ def test_spikes_calc_returns_shape_1_1() -> None:
     assert isinstance(out.to_numpy().flat[0], (int, float, np.integer, np.floating))
 
 
-def test_spikes_calc_multivariate_data() -> None:
+def test_spikes_calc_multivariate_data(rng: np.random.Generator) -> None:
     """SpikesCalc works on multivariate data (multiple channels)."""
     # 3 channels with different spike patterns
     arr = rng.standard_normal((100, 3)) * 10

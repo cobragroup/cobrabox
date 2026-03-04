@@ -565,6 +565,7 @@ class SignalData(Data):
         cls,
         ar: xr.DataArray,
         *,
+        sampling_rate: float | None = None,
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
@@ -578,6 +579,8 @@ class SignalData(Data):
 
         Args:
             ar: xarray DataArray with 'time' dimension
+            sampling_rate: Sampling rate in Hz. If not provided, inferred from
+                time coordinates when they represent time in seconds.
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
@@ -596,6 +599,7 @@ class SignalData(Data):
         """
         return cls(
             data=ar,
+            sampling_rate=sampling_rate,
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
