@@ -1,0 +1,2 @@
+scripts/ascii_frames/.txt filter=lfs diff=lfs merge=lfs -text
+data/synthetic/** filter=lfs diff=lfs merge=lfs -text
