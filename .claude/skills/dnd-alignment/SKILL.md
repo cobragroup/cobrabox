@@ -70,11 +70,21 @@ for each axis before committing to a score.
 
 #### Law axis rubric
 
-| Score      | Meaning                                  | Indicators                                                                               |
-| ---------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| +1 Lawful  | Operates by strict, deterministic rules  | Fixed formula, no randomness, enforces structure (windowing, ordering, exact aggregation) |
-| 0 Neutral  | Neither imposes nor destroys structure   | Passes through dimensions, flexible reduction, agnostic to order                         |
-| -1 Chaotic | Disrupts or ignores conventions          | `print` statements, missing validation, unpredictable output shape                       |
+| Score      | Meaning                              | Indicators                                                                                          |
+| ---------- | ------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| +1 Lawful  | **Actively imposes** structure       | Creates segments (windowing), hard threshold classification (IQR), named category ontology (frequency bands), strict published-protocol adherence |
+| 0 Neutral  | **Passively describes** existing patterns | Correlation/synchrony measures, spectral descriptions, statistical summaries — even with fixed formulas |
+| -1 Chaotic | Disrupts or ignores conventions      | `print` statements, missing validation, unpredictable output shape                                  |
+
+> **Common trap:** A fixed, deterministic formula does **not** make a feature Lawful — almost all
+> signal processing is deterministic. Ask instead: does this feature *impose* structure onto the
+> data, or *describe* structure already present in it?
+>
+> Lawful examples: `SlidingWindow` (creates window segments), `Bandpower` (names frequency
+> categories), `SpikesCalc` (classifies by IQR rule).
+>
+> Neutral examples: `Coherence`, `PLV`, `Autocorr`, `Spectrogram`, `EnvelopeCorrelation`,
+> `PartialCorrelation` — all use precise formulas but measure existing patterns without imposing.
 
 #### Good axis rubric
 

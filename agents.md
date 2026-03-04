@@ -53,7 +53,7 @@ Class hierarchy: `Data` ← `SignalData` ← (`EEG`, `FMRI`)
 **Feature system** (`src/cobrabox/base_feature.py`, `src/cobrabox/feature.py`, `src/cobrabox/features/`): Features are `@dataclass` classes that inherit one of three base classes:
 
 - `BaseFeature` (`Data → Data`): standard feature; implement `__call__`; call `.apply(data)` which wraps the result via `_copy_with_new_data` and appends the class name to `history`. Supports pipe syntax: `Feature1() | Feature2()` produces a `Pipeline`.
-  - Use `output_type: ClassVar[type[Data]] = Data` to return plain `Data` without time dimension (e.g., correlation matrices).
+  - Use `output_type: ClassVar[type[Data]] = Data` when the output removes the time dimension — scalars, spatial matrices, frequency-only arrays. Without this, `apply()` tries to preserve the input container type and may fail.
   - Default (`output_type = None`) preserves input container type.
 - `SplitterFeature` (`Data → Iterator[Data]`): yields one `Data` per split (e.g. `SlidingWindow`). Lazy generator — does not materialise all splits in memory.
 - `AggregatorFeature` (`(Data, Iterator[Data]) → Data`): folds a stream back into one `Data` (e.g. `MeanAggregate`); responsible for merging per-window history into the result.
@@ -70,6 +70,7 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 - Feature classes live in `src/cobrabox/features/` as individual files, one class per file.
 - Each file defines a `@dataclass` class inheriting `BaseFeature`, `SplitterFeature`, or `AggregatorFeature` from `src/cobrabox/base_feature.py`.
 - Base classes are generic: `BaseFeature[DataT]` and `SplitterFeature[DataT]`. Features that require time dimension should use `BaseFeature[SignalData]` or `SplitterFeature[SignalData]`; generic features use `BaseFeature[Data]`.
+  - Use `[SignalData]` when the algorithm **inherently** needs time-series structure (uses `sampling_rate`, applies Hilbert/FFT on the time axis, etc.). Use `[Data]` when `dim` is a user-configurable parameter — even if callers always pass time-series data.
 - `BaseFeature.__call__` takes `DataT`, returns `xr.DataArray | Data`. Use `.apply(data)` externally — it handles wrapping and history.
 - `SplitterFeature.__call__` takes `DataT`, yields `Data` (generator). No `.apply()` — used inside `Chord`.
 - `AggregatorFeature.__call__` takes `(Data, Iterator[Data])`, returns `Data`. Must propagate per-window history manually.
@@ -88,8 +89,9 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 
 ## Agent skills
 
-Three project-level Claude Code skills are in `.claude/skills/`:
+Four project-level Claude Code skills are in `.claude/skills/`:
 
+- `/migrate-feature <path>` — migrates an old-style `@feature`-decorated function to the new `BaseFeature` dataclass pattern; also updates tests.
 - `/review-feature <path>` — audits a feature file for code quality; writes report to `docs/agent-reviews/<feature>.md`.
 - `/review-feature-tests <path>` — reviews or generates tests for a feature; writes plan to `docs/agent-reviews/<feature>-tests.md`.
 - `/dnd-alignment [features...]` — rates features/pipelines on the D&D 9-alignment grid; no args prints full roster.

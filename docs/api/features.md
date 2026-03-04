@@ -75,3 +75,8 @@ Features are discovered automatically from the `cobrabox/features/` directory.
     options:
         show_root_heading: true
         show_source: true
+
+::: cobrabox.features.phase_locking_value
+    options:
+        show_root_heading: true
+        show_source: true

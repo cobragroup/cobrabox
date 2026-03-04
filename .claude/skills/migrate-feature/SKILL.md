@@ -47,6 +47,7 @@ Those are the files to migrate.
 | `cb.feature.my_feature \| cb.feature.other`            | `cb.feature.MyFeature() \| cb.feature.Other()`                              |
 | `cb.from_numpy(arr, dims=[...])` in tests              | `cb.SignalData.from_numpy(arr, dims=[...])` for time-series tests            |
 | Feature returns correlation matrix (no time dim)       | `output_type: ClassVar[type[Data]] = Data`                                   |
+| Old output expands singleton `space`/`time` dims       | Drop the `expand_dims` — return the bare result DataArray                    |
 
 ## Procedure
 
@@ -74,7 +75,13 @@ Key rules:
 - **Convert private/helper functions to class methods**: If the old file has helper functions (e.g.,
   functions starting with `_`), convert them to private methods on the new class. Move the logic
   inside the class as `def _helper(self, ...)` methods. Only use `@staticmethod` if the helper
-  genuinely does not need access to `self` or any instance state.
+  genuinely does not need access to `self` or any instance state. If the helper is shared across
+  multiple feature functions in the same file, keep it as a module-level private function instead.
+- **Strip legacy singleton dimensions**: Old `@feature` functions often wrapped scalar or matrix
+  results in `.expand_dims("time").expand_dims("space")` to satisfy the old decorator's wrapping
+  contract. In the new pattern this is unnecessary — `apply()` handles wrapping via
+  `_copy_with_new_data`. Remove these `expand_dims` / `assign_coords` chains and return the bare
+  result DataArray (scalar `xr.DataArray(value)` or `xr.DataArray(matrix, dims=[...])`).
 
 ### 3. Update imports
 

@@ -212,6 +212,21 @@ Computes normalized autocorrelation at a single lag along any dimension. The req
 dimension is reduced to a scalar per remaining-dimension element. Specify `lag_steps`
 (samples) or `lag_ms` (milliseconds), but not both; defaults to 5 ms if neither is given.
 
+### `PhaseLockingValue` / `PhaseLockingValueMatrix`
+
+```python
+# Single pair
+plv = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
+
+# All pairwise
+plvm = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+```
+
+Computes phase locking value (PLV) between spatial channels using the Hilbert transform.
+PLV measures phase synchrony in [0, 1] where 1 indicates perfect phase locking.
+`PhaseLockingValue` returns a scalar `Data` object; `PhaseLockingValueMatrix` returns a
+`(coord_i, coord_j)` matrix of all pairwise PLV values.
+
 ### `SpikesCalc`
 
 ```python
