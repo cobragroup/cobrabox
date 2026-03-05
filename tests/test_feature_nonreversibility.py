@@ -11,7 +11,7 @@ from cobrabox.features.nonreversibility import Nonreversibility
 
 
 def test_nonreversibility_output_shape_dims_and_metadata() -> None:
-    """Nonreversibility returns Data with space='dc_norm', correct dims, and metadata."""
+    """Nonreversibility returns Data with space='d_norm', correct dims, and metadata."""
     rng = np.random.default_rng(seed=0)
     arr = rng.standard_normal((200, 5))
     data = cb.SignalData.from_numpy(
@@ -29,7 +29,7 @@ def test_nonreversibility_output_shape_dims_and_metadata() -> None:
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
     assert out.data.shape == (1,)
-    assert list(out.data.coords["space"].values) == ["dc_norm"]
+    assert list(out.data.coords["space"].values) == ["d_norm"]
     assert out.subjectID == "sub-01"
     assert out.groupID == "ctrl"
     assert out.condition == "rest"
@@ -39,15 +39,15 @@ def test_nonreversibility_output_shape_dims_and_metadata() -> None:
 
 
 def test_nonreversibility_scalar_is_nonnegative() -> None:
-    """dc_norm is always >= 0 (ratio of Frobenius norms)."""
+    """d_norm is always >= 0 (ratio of Frobenius norms)."""
     rng = np.random.default_rng(seed=42)
     arr = rng.standard_normal((300, 4))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     out = cb.feature.Nonreversibility().apply(data)
-    dc = float(out.data.values.flat[0])
+    d = float(out.data.values.flat[0])
 
-    assert dc >= 0.0
+    assert d >= 0.0
 
 
 def test_nonreversibility_raises_on_single_channel() -> None:
