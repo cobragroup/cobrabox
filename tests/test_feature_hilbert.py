@@ -48,35 +48,30 @@ def test_output_is_signal_data() -> None:
 
 def test_output_dims_preserved() -> None:
     data = _make_data()
-    for feat in ("envelope", "phase", "frequency"):
+    for feat in ("analytic", "envelope", "phase", "frequency"):
         out = cb.feature.Hilbert(feature=feat).apply(data)
         assert out.data.dims == data.data.dims, f"dims changed for feature={feat!r}"
 
 
 def test_output_shape_preserved() -> None:
     data = _make_data()
-    for feat in ("envelope", "phase", "frequency"):
+    for feat in ("analytic", "envelope", "phase", "frequency"):
         out = cb.feature.Hilbert(feature=feat).apply(data)
         assert out.data.shape == data.data.shape, f"shape changed for feature={feat!r}"
 
 
-def test_analytic_dims() -> None:
+def test_analytic_dtype_is_complex() -> None:
     data = _make_data()
     out = cb.feature.Hilbert(feature="analytic").apply(data)
-    assert out.data.dims[0] == "component"
-    assert out.data.dims[1:] == data.data.dims
+    assert np.iscomplexobj(out.data.values)
+    assert out.data.dtype == np.complex128
 
 
-def test_analytic_shape() -> None:
+def test_analytic_real_part_equals_input() -> None:
+    """Real part of the analytic signal equals the original signal."""
     data = _make_data()
     out = cb.feature.Hilbert(feature="analytic").apply(data)
-    assert out.data.shape == (2, N_SPACE, N_TIME)
-
-
-def test_analytic_component_coords() -> None:
-    data = _make_data()
-    out = cb.feature.Hilbert(feature="analytic").apply(data)
-    np.testing.assert_array_equal(out.data.coords["component"].values, ["real", "imag"])
+    np.testing.assert_allclose(out.data.values.real, data.data.values, atol=1e-10)
 
 
 def test_default_feature_is_analytic() -> None:
@@ -131,20 +126,6 @@ def test_frequency_pure_sine() -> None:
         np.full((N_SPACE, N_TIME - 2 * trim), FREQ_HZ),
         atol=0.5,  # allow 0.5 Hz tolerance
     )
-
-
-def test_analytic_is_float64() -> None:
-    """Analytic mode returns real-valued float64 (stacked, not complex)."""
-    data = _make_data()
-    out = cb.feature.Hilbert(feature="analytic").apply(data)
-    assert out.data.dtype == np.float64
-
-
-def test_analytic_real_component_equals_input() -> None:
-    """The 'real' component of the analytic output equals the original signal."""
-    data = _make_data()
-    out = cb.feature.Hilbert(feature="analytic").apply(data)
-    np.testing.assert_allclose(out.data.sel(component="real").values, data.data.values, atol=1e-10)
 
 
 # ---------------------------------------------------------------------------

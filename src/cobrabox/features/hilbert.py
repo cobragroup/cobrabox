@@ -25,10 +25,8 @@ class Hilbert(BaseFeature[SignalData]):
     Args:
         feature: Which representation to extract. One of:
 
-            * ``'analytic'``  — real and imaginary parts of the analytic signal
-              stacked along a new leading ``'component'`` dimension with
-              coords ``['real', 'imag']``. Output shape is
-              ``(component=2, *input_dims)``.
+            * ``'analytic'``  — the complex analytic signal as a ``complex128``
+              DataArray with the same dims and coords as the input.
             * ``'envelope'``  — amplitude envelope (``|analytic|``), always
               non-negative.
             * ``'phase'``     — instantaneous phase in radians (``∈ [-pi, pi]``).
@@ -37,9 +35,8 @@ class Hilbert(BaseFeature[SignalData]):
               ``data.sampling_rate`` to be set.
 
     Returns:
-        xarray DataArray with the same dims and coords as the input for all
-        modes except ``'analytic'``, which prepends a ``'component'`` dimension
-        with coords ``['real', 'imag']``. All outputs are float64.
+        xarray DataArray with the same dims and coords as the input. Dtype is
+        ``complex128`` for ``'analytic'``, ``float64`` for all other modes.
 
     Raises:
         ValueError: If ``feature`` is not one of the four valid options.
@@ -70,9 +67,7 @@ class Hilbert(BaseFeature[SignalData]):
         analytic = _scipy_hilbert(values, axis=time_axis)
 
         if self.feature == "analytic":
-            stacked = np.stack([analytic.real, analytic.imag], axis=0)
-            component_coords = {"component": ["real", "imag"], **xr_data.coords}
-            return xr.DataArray(stacked, dims=["component", *xr_data.dims], coords=component_coords)
+            return xr.DataArray(analytic, dims=xr_data.dims, coords=xr_data.coords)
         if self.feature == "envelope":
             result = np.abs(analytic)
         elif self.feature == "phase":
