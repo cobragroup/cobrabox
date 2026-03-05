@@ -24,9 +24,10 @@ def _sidecar_json_for_csv(path: Path) -> Path:
 def _sampling_rate_from_info(info: dict) -> float | None:
     """Extract sampling rate from JSON info (Settings['fs'] or top-level 'fs')."""
     settings = info.get("Settings")
+    fs = None
     if isinstance(settings, dict):
         fs = settings.get("fs")
-    else:
+    if fs is None:
         fs = info.get("fs")
     if fs is None:
         return None
