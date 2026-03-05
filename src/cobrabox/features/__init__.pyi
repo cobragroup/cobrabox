@@ -8,6 +8,7 @@ from .dummy import Dummy as Dummy
 from .envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
 from .epileptogenicity_index import EpileptogenicityIndex as EpileptogenicityIndex
 from .hilbert import Hilbert as Hilbert
+from .lempel_ziv import LempelZiv as LempelZiv
 from .line_length import LineLength as LineLength
 from .max import Max as Max
 from .mean import Mean as Mean
@@ -31,6 +32,7 @@ __all__ = [
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
     "Hilbert",
+    "LempelZiv",
     "LineLength",
     "Max",
     "Mean",
