@@ -9,6 +9,7 @@ The tests cover:
   * a multi channel average entropy case
   * a non integer band width sanity check
 """
+
 from __future__ import annotations  # Fixed asterisks to underscores
 
 import numpy as np
@@ -28,6 +29,7 @@ def make_cobrabox_data(arr: np.ndarray) -> cb.Data:  # Fixed syntax and NameErro
     """Wrap a (time, space) NumPy array in the cobrabox.Data class."""
     xr_arr = xr.DataArray(arr, dims=("time", "space"))
     return cb.Data(xr_arr)  # Added cb. prefix
+
 
 # ... (The rest of your test functions can remain exactly as they are) ...
 

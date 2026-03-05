@@ -77,8 +77,4 @@ class Ampent(BaseFeature[Data]):
 
         tabar = float(np.mean(ta))
 
-        return xr.DataArray(
-            [[tabar]],
-            dims=["time", "space"],
-            coords={"time": [0], "space": [0]},
-        )
+        return xr.DataArray([[tabar]], dims=["time", "space"], coords={"time": [0], "space": [0]})
