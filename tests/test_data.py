@@ -106,3 +106,55 @@ def test_data_to_pandas() -> None:
     ds = cb.Data.from_xarray(ar)
     df = ds.to_pandas()
     assert isinstance(df, pd.DataFrame)
+
+
+def test_data_repr() -> None:
+    """Data.__repr__ returns expected format with shape, dims, sr, subject."""
+    ds = cb.Data.from_numpy(
+        np.ones((10, 5)), dims=["time", "space"], sampling_rate=100.0, subjectID="sub-01"
+    )
+    r = repr(ds)
+    assert "shape=(10, 5)" in r
+    assert "dims=['time', 'space']" in r
+    assert "sr=100.0" in r
+    assert "subject='sub-01'" in r
+
+
+def test_data_repr_no_sampling_rate() -> None:
+    """Data.__repr__ omits sampling_rate when None."""
+    ds = cb.Data.from_numpy(np.ones((5, 3)), dims=["x", "y"])
+    r = repr(ds)
+    assert "shape=(5, 3)" in r
+    assert "sr=" not in r
+
+
+def test_data_str() -> None:
+    """Data.__str__ returns multi-line format with all metadata."""
+    ds = cb.Data.from_numpy(
+        np.ones((10, 5)),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        subjectID="sub-01",
+        groupID="group-a",
+        condition="rest",
+    )
+    s = str(ds)
+    assert "subjectID : sub-01" in s
+    assert "groupID   : group-a" in s
+    assert "condition : rest" in s
+    assert "sr        : 100.0 Hz" in s
+    assert "history   : []" in s
+
+
+def test_infer_sampling_rate_no_time_dim() -> None:
+    """_infer_sampling_rate returns None when no time dimension."""
+    ar = xr.DataArray(np.ones((3, 2)), dims=["x", "y"])
+    ds = cb.Data(ar)
+    assert ds.sampling_rate is None
+
+
+def test_infer_sampling_rate_single_time_point() -> None:
+    """_infer_sampling_rate returns None with only one time point."""
+    ar = xr.DataArray(np.ones((1, 2)), dims=["time", "space"])
+    ds = cb.Data(ar)
+    assert ds.sampling_rate is None

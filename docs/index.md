@@ -1,6 +1,6 @@
 # CobraBox
 
-**Lightweight toolbox for feature extraction from EEG and fMRI time-series data**
+## Lightweight toolbox for feature extraction from EEG and fMRI time-series data
 
 CobraBox provides a clean, immutable data model for neuroimaging time-series analysis with automatic history tracking and a flexible feature system.
 

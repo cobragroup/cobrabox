@@ -173,6 +173,12 @@ def test_sampling_rate_from_info_raises_for_unconvertible_type() -> None:
         _sampling_rate_from_info({"fs": [1, 2]})
 
 
+def test_sampling_rate_from_info_falls_back_to_top_level_fs() -> None:
+    """Top-level fs is used when Settings exists but has no fs key."""
+    info = {"Settings": {"Seizure start (sec)": 8}, "fs": 256}
+    assert _sampling_rate_from_info(info) == 256.0
+
+
 def test_load_structured_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
     """Malformed JSON sidecar is silently ignored; data still loads."""
     struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
