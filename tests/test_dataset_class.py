@@ -170,3 +170,17 @@ def test_dataset_groupby_returns_dataset_values() -> None:
     ds = Dataset([_make_data(groupID="A"), _make_data(groupID="B")])
     groups = ds.groupby("groupID")
     assert all(isinstance(v, Dataset) for v in groups.values())
+
+
+def test_dataset_importable_from_cobrabox() -> None:
+    import numpy as np
+    import xarray as xr
+
+    import cobrabox as cb
+    from cobrabox.data import Data
+
+    assert hasattr(cb, "Dataset")
+    da = xr.DataArray(np.zeros((3, 10)), dims=["space", "time"])
+    d = Data(da)
+    ds = cb.Dataset([d])
+    assert len(ds) == 1
