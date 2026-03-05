@@ -2,9 +2,25 @@
 
 Criteria for evaluating an existing test file for a cobrabox feature.
 
+---
+
+## 0. Coverage requirement
+
 The project targets **≥95% coverage**. Run `uv run pytest --cov-fail-under=95` to check.
 When reviewing tests, consider whether the scenarios below are sufficient to meet this bar
 for the feature under review.
+
+**Per-file coverage requirement:** Each feature file in `src/cobrabox/features/` must have
+≥95% coverage when running its dedicated test file. This ensures new features do not
+depend on incidental coverage from other tests.
+
+```bash
+# Check per-file coverage for a specific feature
+uv run pytest tests/test_feature_<feature_name>.py --cov=src/cobrabox/features/<feature_name>.py --cov-report=term-missing
+```
+
+If a feature has <95% coverage, the review must flag this as a **HIGH severity** issue
+and add missing test scenarios to the Action List.
 
 ---
 
