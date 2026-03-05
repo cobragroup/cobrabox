@@ -142,10 +142,6 @@ class GrangerCausality(BaseFeature[SignalData]):
         return xr.DataArray(results, dims=("lag_index",), coords={"lag_index": lags_to_test})
 
 
-_is_cobrabox_feature = True
-GrangerCausality._is_cobrabox_feature = True
-
-
 @dataclass
 class GrangerCausalityMatrix(BaseFeature[SignalData]):
     """Compute Granger causality matrix for all coordinate pairs.
@@ -241,6 +237,3 @@ class GrangerCausalityMatrix(BaseFeature[SignalData]):
             dims=("coord_i", "coord_j", "lag_index"),
             coords={"coord_i": coords_list, "coord_j": coords_list, "lag_index": lags_to_test},
         )
-
-
-GrangerCausalityMatrix._is_cobrabox_feature = True
