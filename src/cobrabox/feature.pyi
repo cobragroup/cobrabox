@@ -6,6 +6,7 @@ from .features import Coherence as Coherence
 from .features import Dummy as Dummy
 from .features import EnvelopeCorrelation as EnvelopeCorrelation
 from .features import EpileptogenicityIndex as EpileptogenicityIndex
+from .features import Hilbert as Hilbert
 from .features import LineLength as LineLength
 from .features import Max as Max
 from .features import Mean as Mean
@@ -26,6 +27,7 @@ __all__ = [
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
+    "Hilbert",
     "LineLength",
     "Max",
     "Mean",
