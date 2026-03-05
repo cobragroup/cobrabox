@@ -18,8 +18,10 @@ from .features import MeanAggregate as MeanAggregate
 from .features import Min as Min
 from .features import PartialCorrelation as PartialCorrelation
 from .features import PartialCorrelationMatrix as PartialCorrelationMatrix
+from .features import PartialDirectedCoherence as PartialDirectedCoherence
 from .features import PhaseLockingValue as PhaseLockingValue
 from .features import PhaseLockingValueMatrix as PhaseLockingValueMatrix
+from .features import ReciprocalConnectivity as ReciprocalConnectivity
 from .features import SlidingWindow as SlidingWindow
 from .features import SlidingWindowReduce as SlidingWindowReduce
 from .features import Spectrogram as Spectrogram
@@ -44,8 +46,10 @@ __all__ = [
     "Min",
     "PartialCorrelation",
     "PartialCorrelationMatrix",
+    "PartialDirectedCoherence",
     "PhaseLockingValue",
     "PhaseLockingValueMatrix",
+    "ReciprocalConnectivity",
     "SlidingWindow",
     "SlidingWindowReduce",
     "Spectrogram",

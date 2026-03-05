@@ -33,7 +33,7 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
             the mne-connectivity default of ``True``).
 
     Returns:
-        xarray DataArray with dims ``(space, space_to)`` containing
+        xarray DataArray with dims ``(space_to, space_from)`` containing
         Pearson correlation values between amplitude envelopes.
 
     Raises:
@@ -84,9 +84,9 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
         # get_data() → (n_epochs, n_nodes, n_nodes, n_times); take the single epoch and time
         mat = conn.get_data()[0, :, :, 0]
 
-        da = xr.DataArray(mat, dims=["space", "space_to"])
+        da = xr.DataArray(mat, dims=["space_to", "space_from"])
         coords: dict[str, np.ndarray] = {}
         if space_coords is not None:
-            coords["space"] = space_coords
             coords["space_to"] = space_coords
+            coords["space_from"] = space_coords
         return da.assign_coords(coords)
