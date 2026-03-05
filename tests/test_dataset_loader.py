@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import lzma
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +20,12 @@ from cobrabox.dataset_loader import (
     load_realistic_swiss,
     load_structured_dummy,
 )
-from cobrabox.remote_datasets import RemoteDatasetSpec, RemoteFile, ensure_remote_files
+from cobrabox.remote_datasets import (
+    RemoteDatasetSpec,
+    RemoteFile,
+    ensure_remote_files,
+    get_remote_dataset_spec,
+)
 
 
 def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
@@ -495,3 +501,36 @@ def test_ensure_remote_files_uses_index_when_no_files(
 
     assert (dataset_dir / "a.bin").read_bytes() == b"AAA"
     assert (dataset_dir / "b.bin").read_bytes() == b"BBB"
+
+
+def test_swiss_eeg_short_loader_reads_csv_from_zip(tmp_path: Path) -> None:
+    """Swiss short EEG loader reads numeric CSV inside a zip archive."""
+    from cobrabox.data import SignalData
+
+    dataset_dir = tmp_path / "data" / "remote" / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = dataset_dir / "ID1.zip"
+    with zipfile.ZipFile(zip_path, mode="w") as zf:
+        zf.writestr("ID1_signal.csv", "ch0,ch1\n1.0,2.0\n3.0,4.0\n")
+
+    spec = get_remote_dataset_spec("swiss_eeg_short")
+    assert spec is not None
+
+    out = spec.loader(dataset_dir)
+
+    assert len(out) == 1
+    assert isinstance(out[0], SignalData)
+    assert out[0].subjectID == "ID1"
+    np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 3.0], [2.0, 4.0]]))
+    assert out[0].data.attrs["source_archive"] == "ID1.zip"
+
+
+def test_swiss_eeg_short_loader_raises_when_no_zip_files(tmp_path: Path) -> None:
+    """Swiss short EEG loader raises when no zip files are available."""
+    dataset_dir = tmp_path / "data" / "remote" / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    spec = get_remote_dataset_spec("swiss_eeg_short")
+    assert spec is not None
+
+    with pytest.raises(FileNotFoundError, match=r"No \.zip files found"):
+        spec.loader(dataset_dir)
