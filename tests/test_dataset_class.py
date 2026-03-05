@@ -172,6 +172,30 @@ def test_dataset_groupby_returns_dataset_values() -> None:
     assert all(isinstance(v, Dataset) for v in groups.values())
 
 
+def test_dataset_add_non_dataset_returns_not_implemented() -> None:
+    ds = Dataset([_make_data()])
+    assert ds.__add__("not a dataset") is NotImplemented
+
+
+def test_dataset_groupby_invalid_attr_raises() -> None:
+    ds = Dataset([_make_data()])
+    with pytest.raises(ValueError, match="attr must be one of"):
+        ds.groupby("history")  # type: ignore[arg-type]
+
+
+def test_dataset_repr_mixed_types() -> None:
+    import xarray as xr
+
+    from cobrabox.data import SignalData
+
+    arr = np.zeros((10,))
+    da = xr.DataArray(arr, dims=["time"], coords={"time": arr})
+    sd = SignalData(da)
+    d = _make_data()
+    ds = Dataset([sd, d])
+    assert "Data" in repr(ds)  # falls back to "Data" for mixed types
+
+
 def test_dataset_importable_from_cobrabox() -> None:
     import numpy as np
     import xarray as xr

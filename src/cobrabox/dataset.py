@@ -66,7 +66,8 @@ class Dataset(Generic[T]):
     def _item_type_name(self) -> str:
         if not self._items:
             return "Data"
-        return type(self._items[0]).__name__
+        types = {type(item).__name__ for item in self._items}
+        return types.pop() if len(types) == 1 else "Data"
 
     def __repr__(self) -> str:
         return f"Dataset({len(self._items)} \u00d7 {self._item_type_name()})"
@@ -137,6 +138,8 @@ class Dataset(Generic[T]):
             result = [d for d in result if d.condition == condition]
         return Dataset(result)
 
+    _GROUPBY_ATTRS: frozenset[str] = frozenset({"subjectID", "groupID", "condition"})
+
     def groupby(self, attr: Literal["subjectID", "groupID", "condition"]) -> dict[str, Dataset[T]]:
         """Group items by a metadata attribute.
 
@@ -147,10 +150,15 @@ class Dataset(Generic[T]):
             Dict mapping attribute value (as string) to a Dataset of matching items.
             Items with None for the attribute are grouped under the key "None".
 
+        Raises:
+            ValueError: If attr is not one of the valid metadata attributes.
+
         Example:
             >>> by_group = ds.groupby("groupID")
             >>> by_group["control"]
         """
+        if attr not in self._GROUPBY_ATTRS:
+            raise ValueError(f"attr must be one of {sorted(self._GROUPBY_ATTRS)!r}, got {attr!r}")
         groups: dict[str, list[T]] = {}
         for item in self._items:
             key = str(getattr(item, attr))
