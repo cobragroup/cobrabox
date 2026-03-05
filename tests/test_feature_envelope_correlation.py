@@ -30,17 +30,17 @@ def _make_data(
 
 
 def test_envelope_correlation_output_dims_and_shape() -> None:
-    """EnvelopeCorrelation returns (space, space_to, time) Data."""
+    """EnvelopeCorrelation returns (space, space_from) Data."""
     data = _make_data()
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "space_to")
+    assert out.data.dims == ("space_to", "space_from")
     assert out.data.shape == (4, 4)
 
 
 def test_envelope_correlation_space_coords_preserved() -> None:
-    """space and space_to carry the original channel coordinates."""
+    """space and space_from carry the original channel coordinates."""
     import xarray as xr
 
     arr_xr = xr.DataArray(
@@ -51,8 +51,8 @@ def test_envelope_correlation_space_coords_preserved() -> None:
     data = cb.data.SignalData.from_xarray(arr_xr)
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
-    np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
+    np.testing.assert_array_equal(out.data.coords["space_from"].values, ["Fz", "Cz", "Pz"])
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ def test_envelope_correlation_orthogonalize_false_same_shape() -> None:
     out = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
 
     assert out.data.shape == (4, 4)
-    assert out.data.dims == ("space", "space_to")
+    assert out.data.dims == ("space_to", "space_from")
 
 
 def test_envelope_correlation_orthogonalize_changes_values() -> None:

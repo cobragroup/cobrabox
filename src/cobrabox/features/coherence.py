@@ -33,12 +33,12 @@ class Coherence(BaseFeature[SignalData]):
         >>> data = cb.dataset("dummy_random")[0]
         >>> coh = cb.feature.Coherence().apply(data)
         >>> coh.data.dims
-        ('space', 'space_to')
+        ('space_to', 'space_from')
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, space, space_to)`` (plus a
+        xarray DataArray with dims ``(*extra_dims, space_to, space_from)`` (plus a
         singleton ``time`` dimension added by ``BaseFeature.apply``). Both
-        ``space`` and ``space_to`` carry the original channel coordinates.
+        ``space_to`` and ``space_from`` carry the original channel coordinates.
         Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix
         is symmetric: ``result[i, j] == result[j, i]``.
     """
@@ -126,6 +126,6 @@ class Coherence(BaseFeature[SignalData]):
         extra_coords = {d: xr_data.coords[d].values for d in extra_dims if d in xr_data.coords}
         return xr.DataArray(
             coh_matrix,
-            dims=(*extra_dims, "space", "space_to"),
-            coords={**extra_coords, "space": space_coords, "space_to": space_coords},
+            dims=(*extra_dims, "space_to", "space_from"),
+            coords={**extra_coords, "space_to": space_coords, "space_from": space_coords},
         )
