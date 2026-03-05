@@ -22,19 +22,17 @@ class SampEn(BaseFeature[SignalData]):
 
     By default, the binary logarithm (base 2) is used, diverging from the
     original definition which uses the natural logarithm. This can be
-    configured via the ``base`` parameter.
+    configured via the ``log_base`` parameter.
 
-    The implementation follows the classic definition (Richman & Moorman,
-    2000) and works on any ``SignalData`` that contains a ``time`` dimension.
-    The result is an ``xarray.DataArray`` with the ``time`` dimension removed.
-    The feature can be used directly or as part of a pipeline.
+    The feature works on any ``SignalData`` that contains a ``time`` dimension.
+    The ``time`` dimension is collapsed and all other dimensions are preserved.
 
     Args:
         m: Embedding dimension (length of compared sequences). Must be >= 1.
         r: Tolerance for matching sequences. If ``None`` a default of
            ``0.2 * std(signal)`` is used, where ``std`` is the standard
            deviation of the time series.
-        base: Base of the logarithm used in the entropy calculation.
+        log_base: Base of the logarithm used in the entropy calculation.
            Defaults to 2 (binary logarithm). Use ``np.e`` for the natural
            logarithm (original definition) or 10 for base-10 logarithm.
 
@@ -44,7 +42,7 @@ class SampEn(BaseFeature[SignalData]):
 
     Example:
         >>> entropy = cb.feature.SampEn(m=2).apply(data)  # base-2 (default)
-        >>> entropy_nat = cb.feature.SampEn(m=2, base=np.e).apply(data)  # natural log
+        >>> entropy_nat = cb.feature.SampEn(m=2, log_base=np.e).apply(data)  # natural log
     """
 
     # Output is a DataArray without the time dim, i.e. a ``Data`` container.
@@ -52,13 +50,13 @@ class SampEn(BaseFeature[SignalData]):
 
     m: int = 2
     r: float | None = None
-    base: float = 2
+    log_base: float = 2
 
     def __post_init__(self) -> None:
         if self.m < 1:
             raise ValueError(f"Embedding dimension m must be >= 1, got {self.m}")
-        if self.base <= 0 or self.base == 1:
-            raise ValueError(f"Logarithm base must be > 0 and != 1, got {self.base}")
+        if self.log_base <= 0 or self.log_base == 1:
+            raise ValueError(f"Logarithm base must be > 0 and != 1, got {self.log_base}")
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         # Extract the raw time-series as an xarray DataArray.
@@ -66,8 +64,8 @@ class SampEn(BaseFeature[SignalData]):
         if "time" not in xr_data.dims:
             raise ValueError("Sample Entropy requires a 'time' dimension.")
 
-        # Precompute the log of the base for change-of-base formula.
-        log_base = np.log(self.base)
+        # Pre-compute the natural logarithm of the chosen base for the change-of-base formula.
+        ln_base = np.log(self.log_base)
 
         # Helper that computes SampEn on a 1-D NumPy array (single time series).
         def _sampen_one(ts: np.ndarray) -> float:
@@ -93,8 +91,8 @@ class SampEn(BaseFeature[SignalData]):
             matches_m1 = _count(self.m + 1)
             if matches_m == 0 or matches_m1 == 0:
                 return np.nan
-            # Use change-of-base: log_b(x) = ln(x) / ln(b)
-            return -np.log(matches_m1 / matches_m) / log_base
+            # Change-of-base: log_b(x) = ln(x) / ln(b)
+            return -np.log(matches_m1 / matches_m) / ln_base
 
         # Apply the helper across the ``time`` dimension, collapsing it.
         # ``vectorize=True`` broadcasts the function over all other dimensions.
