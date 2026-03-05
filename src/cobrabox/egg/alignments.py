@@ -72,12 +72,26 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "mn",
         "lore":  "Averages faithfully and without prejudice — the purest bureaucrat",
     },
+    "BandFilter": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "bf",
+        "lore":  "Imposes the classical order of brain rhythms upon chaotic oscillations",
+    },
     "Bandpower": {
         "law":   1,
         "good":  1,
         "label": "Lawful Good",
         "abbrev": "bp",
         "lore":  "Integrates the spectrum with precision and purpose — a scholar of oscillations",
+    },
+    "Hilbert": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "hi",
+        "lore":  "Reveals the hidden complex soul of oscillations without imposing form",
     },
     "Coherence": {
         "law":   0,
