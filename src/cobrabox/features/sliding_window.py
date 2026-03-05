@@ -1,59 +1,57 @@
+from __future__ import annotations
+
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+
 import numpy as np
-import xarray as xr
 
-from ..data import Data
-from ..function_wrapper import feature
+from ..base_feature import SplitterFeature
+from ..data import Data, SignalData
 
 
-@feature
-def sliding_window(data: Data, window_size: int = 10, step_size: int = 5) -> xr.DataArray:
-    """Apply sliding window to time-series data.
+@dataclass
+class SlidingWindow(SplitterFeature[SignalData]):
+    """Yield one Data per sliding window over the time dimension.
 
-    Creates overlapping windows along the 'time' dimension.
-    Output uses:
-    - 'time': window sequence index (one entry per window)
-    - 'window_index': local index inside each window
+    Lazily generates windows to avoid materialising all windows in memory at once.
 
     Args:
-        data: Data with 'time' and 'space' dimensions
-        window_size: Size of each window in timepoints
-        step_size: Step size between windows in timepoints
+        window_size: Number of timepoints per window. Must be >= 1.
+        step_size: Step between window starts in timepoints. Must be >= 1.
 
     Returns:
-        xarray DataArray with added 'window_index' dimension
+        Generator of ``Data`` objects. Each yielded item has the same
+        dimensions as the input with the ``time`` axis sliced to
+        ``window_size`` samples. The string ``"SlidingWindow"`` is appended
+        to ``history`` on each yielded window. All other metadata is
+        preserved.
 
     Example:
-        >>> data = cb.dataset("fMRI_sim2")
-        >>> wdata = cb.feature.sliding_window(data, window_size=20, step_size=10)
+        >>> windows = list(cb.feature.SlidingWindow(window_size=100, step_size=50)(data))
+        >>> len(windows)  # number of windows depends on data length
+        >>> windows[0].data.sizes["time"]
+        100
     """
-    # Extract xarray DataArray
-    xr_data = data.data
 
-    # Validate dimensions
-    if "time" not in xr_data.dims:
-        raise ValueError("data must have 'time' dimension")
+    window_size: int = field(default=10)
+    step_size: int = field(default=5)
 
-    n_time = xr_data.sizes["time"]
+    def __post_init__(self) -> None:
+        if self.window_size < 1:
+            raise ValueError(f"window_size must be >= 1, got {self.window_size}")
+        if self.step_size < 1:
+            raise ValueError(f"step_size must be >= 1, got {self.step_size}")
 
-    # Calculate number of windows
-    n_windows = (n_time - window_size) // step_size + 1
-    if n_windows <= 0:
-        raise ValueError(f"window_size ({window_size}) must be <= n_time ({n_time})")
+    def __call__(self, data: SignalData) -> Iterator[Data]:
+        xr_data = data.data
+        n_time = xr_data.sizes["time"]
+        n_windows = (n_time - self.window_size) // self.step_size + 1
+        if n_windows <= 0:
+            raise ValueError(f"window_size ({self.window_size}) must be <= n_time ({n_time})")
 
-    # Create window indices
-    window_starts = np.arange(0, n_time - window_size + 1, step_size)
-    window_starts = window_starts[:n_windows]  # Ensure we don't exceed
+        window_starts = np.arange(0, n_time - self.window_size + 1, self.step_size)
 
-    # Extract windows
-    windows = []
-    for start in window_starts:
-        end = start + window_size
-        # Convert each [time, ...] slice into [window_index, ...] so reducing
-        # over window_index means "reduce within each window".
-        window = xr_data.isel(time=slice(start, end)).rename({"time": "window_index"})
-        window = window.assign_coords(window_index=np.arange(window_size))
-        windows.append(window)
-
-    # Stack windows along the time axis (one timepoint per window start).
-    stacked = xr.concat(windows, dim="time", join="inner")
-    return stacked.assign_coords(time=xr_data.coords["time"].values[window_starts])
+        for start in window_starts:
+            end = start + self.window_size
+            window_data = xr_data.isel(time=slice(start, end))
+            yield data._copy_with_new_data(new_data=window_data, operation_name="SlidingWindow")

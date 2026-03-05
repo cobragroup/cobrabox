@@ -9,3 +9,6 @@ docs-build:
 
 docs-deploy:
 	uv run mkdocs gh-deploy --force
+
+run-examples:
+	@for f in examples/*.py; do echo "Running $$f..."; uv run python "$$f"; done

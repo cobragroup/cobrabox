@@ -1,43 +1,37 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import ClassVar
+
 import xarray as xr
 
-from ..data import Data
-from ..function_wrapper import feature
+from ..base_feature import BaseFeature
+from ..data import Data, SignalData
 
 
-@feature
-def line_length(data: Data) -> xr.DataArray:
-    """Compute line length feature.
+@dataclass
+class LineLength(BaseFeature[SignalData]):
+    """Compute line length over the time dimension.
 
     Line length is the sum of absolute differences between consecutive
-    timepoints, summed over the time dimension. This is a dummy implementation
-    for now.
+    timepoints. A larger value indicates a more rapidly varying signal.
 
     Args:
-        data: Data with 'time' and 'space' dimensions
-            (may also have 'window_index' if from sliding_window)
+        None
 
     Returns:
-        xarray DataArray with 'time' dimension removed (or 'window_index' preserved)
+        xarray DataArray with the ``time`` dimension removed. Shape is
+        ``(space,)`` for standard input, or ``(*extra_dims, space)`` if
+        additional dimensions are present (e.g. ``window_index``). Values
+        are in the same units as the input signal.
 
     Example:
-        >>> wdata = cb.feature.sliding_window(data)
-        >>> feature = cb.feature.line_length(wdata)
+        >>> result = cb.feature.LineLength().apply(data)
     """
-    # Extract xarray DataArray
-    xr_data = data.data
 
-    # Validate dimensions
-    if "time" not in xr_data.dims:
-        raise ValueError("data must have 'time' dimension")
+    output_type: ClassVar[type[Data]] = Data
 
-    # Compute line length: sum of absolute differences along time
-    # For each spatial location, compute sum(|x[t+1] - x[t]|)
-    diff = xr_data.diff(dim="time")
-    line_length_values = abs(diff).sum(dim="time")
-
-    # If window_index exists, preserve it
-    if "window_index" in xr_data.dims:
-        # Line length per window
-        return line_length_values
-    # Single line length value per spatial location
-    return line_length_values
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+        diff = xr_data.diff(dim="time")
+        return abs(diff).sum(dim="time")

@@ -85,7 +85,7 @@ datasets = cb.dataset("dummy_chain")
 results = []
 for data in datasets:
     # Apply pipeline
-    feat = cb.feature.line_length(data)
+    feat = cb.feature.LineLength().apply(data)
     results.append(feat)
 
 # Combine results

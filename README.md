@@ -40,16 +40,56 @@ import numpy as np
 my_array = np.random.default_rng(seed=0).normal(size=(100, 4))
 
 data = cb.from_numpy(arr=my_array, dims=["time", "space"], sampling_rate=100.0)
-feat = cb.feature.line_length(data)
 
-print(feat)
+# Single feature
+feat = cb.feature.LineLength().apply(data)
+
+# Pipeline with sliding window (chord: fan-out → map → fan-in)
+result = cb.Chord(
+    split=cb.feature.SlidingWindow(window_size=20, step_size=10),
+    pipeline=cb.feature.LineLength(),
+    aggregate=cb.feature.MeanAggregate(),
+).apply(data)
+
+print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
 ## Core Concepts
 
-- Data container: `cobrabox.Data` (with `EEG` and `FMRI` subclasses)
-- Features are functions under `cb.feature.*`
-- Features return new `Data` objects and append to `history`
+- **Data container**: `cobrabox.Data` (with `EEG` and `FMRI` subclasses) — immutable, xarray-backed
+- **Features** (`BaseFeature`): dataclasses under `cb.feature.*`; call `.apply(data)` or chain with `|`
+- **Splitters** (`SplitterFeature`): yield a lazy stream of `Data` per window (e.g. `SlidingWindow`)
+- **Aggregators** (`AggregatorFeature`): fold a stream back into one `Data` (e.g. `MeanAggregate`)
+- **Chord**: combines a splitter + pipeline + aggregator into a single composable feature
+- All features append to `history` automatically
+
+## Built-in Features
+
+### Standard Features
+
+- `LineLength` - Sum of absolute differences per channel
+- `Min` / `Max` / `Mean` - Reduce over any dimension
+- `Bandpower` - Power in frequency bands using Welch's method
+- `Coherence` - Magnitude-squared coherence between channel pairs
+- `Spectrogram` - Time-frequency power spectrogram
+- `SpikesCalc` - Outlier detection using IQR method
+- `Autocorr` - Normalized autocorrelation at a single lag
+
+### Connectivity Features
+
+- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
+- `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
+- `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
+
+### Specialized Features
+
+- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
+
+### Windowing & Aggregation
+
+- `SlidingWindow` - Split data into overlapping windows (splitter)
+- `MeanAggregate` - Average windowed results (aggregator)
+- `Chord` - Combine splitter + feature + aggregator
 
 ## Built-in Dummy Datasets
 

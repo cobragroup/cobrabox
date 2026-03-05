@@ -15,12 +15,11 @@ data = cb.from_numpy(
     dims=["time", "space"]
 )
 
-# This creates a NEW Data object; data is unchanged
-result = cb.feature.line_length(data)
+# Creates a NEW Data object; data is unchanged
+result = cb.feature.LineLength().apply(data)
 
-# Original data is preserved
 assert data.history == []
-assert len(result.history) == 1
+assert result.history == ["LineLength"]
 ```
 
 **Why immutability?**
@@ -32,7 +31,7 @@ assert len(result.history) == 1
 
 ## Metadata Preservation
 
-Every `Data` object carries metadata in its `attrs`:
+Every `Data` object carries metadata:
 
 ```python
 data = cb.from_numpy(
@@ -50,32 +49,63 @@ print(f"Condition: {data.condition}")
 print(f"Sampling rate: {data.sampling_rate}")
 ```
 
-When you apply features, this metadata is automatically preserved in the returned `Data` object.
+When you apply features, metadata is automatically preserved in the returned `Data` object.
 
 ## History Tracking
 
-Every operation applied to a `Data` object is recorded in its `history` attribute:
+Every operation appends its class name to `history`:
 
 ```python
 data = cb.from_numpy(arr, dims=["time", "space"])
 print(data.history)  # []
 
-result = cb.feature.line_length(data)
-print(result.history)  # ['line_length']
+result = cb.feature.LineLength().apply(data)
+print(result.history)  # ['LineLength']
 
-# Chain multiple operations
-wdata = cb.feature.sliding_window(data, window_size=10)
-win_min = cb.feature.min(wdata, dim="window_index")
-print(win_min.history)  # ['sliding_window', 'min']
+# Chord: SlidingWindow + per-window pipeline + aggregation
+result2 = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+).apply(data)
+print(result2.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
-This provides a complete audit trail of your preprocessing pipeline.
+## The Feature System
+
+CobraBox has three feature types, composable with `|`:
+
+```text
+BaseFeature      Data → Data          standard transformation
+SplitterFeature  Data → Iterator[Data]  lazy stream of windows
+AggregatorFeature  (Data, stream) → Data  fold stream back to Data
+```
+
+### Sequential pipeline
+
+```python
+pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+result = pipeline.apply(data)
+```
+
+### Chord (fan-out → map → fan-in)
+
+```python
+chord = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+)
+result = chord.apply(data)
+```
+
+The `|` operator knows which type is on the left and produces either a `Pipeline`, a `_ChordBuilder`, or a finalised `Chord` accordingly.
 
 ## The Data Model
 
 At its core, CobraBox wraps `xarray.DataArray`:
 
-```
+```text
 ┌─────────────────────────────────────┐
 │              Data                   │
 │  ┌───────────────────────────────┐  │
@@ -88,41 +118,38 @@ At its core, CobraBox wraps `xarray.DataArray`:
 │  - groupID                          │
 │  - condition                        │
 │  - sampling_rate                    │
-│  - history: ['op1', 'op2', ...]     │
+│  - history: ['Op1', 'Op2', ...]     │
 │  - extra: {custom fields}           │
 └─────────────────────────────────────┘
 ```
 
 ## Dimensions
 
-### Mandatory Dimensions
+### Mandatory
 
-- **`time`** - Temporal dimension (samples, timepoints)
-- **`space`** - Spatial dimension (electrodes, voxels, channels)
+- **`time`** — temporal dimension (samples, timepoints)
+- **`space`** — spatial dimension (electrodes, voxels, channels)
 
-### Optional Dimensions
+### Optional
 
-- **`spaceX`, `spaceY`, `spaceZ`** - Additional spatial dimensions (for fMRI)
-- **`run_index`** - Run/block index
-- **`window_index`** - Window index (from sliding window operations)
-- **`band_index`** - Frequency band index
+- **`spaceX`, `spaceY`, `spaceZ`** — additional spatial dimensions (fMRI)
+- **`run_index`** — run/block index
+- **`band_index`** — frequency band index
 
 ## Type Distinctions
 
-CobraBox provides three classes:
-
-- **`Data`** - Base class for all time-series data
-- **`EEG`** - Subclass for EEG data (type marker)
-- **`FMRI`** - Subclass for fMRI data (type marker)
+- **`Data`** — base class for all data (general multidimensional container)
+- **`SignalData`** — subclass for time-series data (requires 'time' dimension)
+- **`EEG`** — subclass for EEG data (type marker, inherits from SignalData)
+- **`FMRI`** — subclass for fMRI data (type marker, inherits from SignalData)
 
 ```python
-eeg_data = EEG.from_numpy(arr, dims=["time", "space"])
-fmri_data = FMRI.from_numpy(arr, dims=["time", "space", "spaceZ"])
+eeg_data = cb.EEG(base.data, sampling_rate=256.0)
 ```
 
 ## Extra Fields
 
-Use the `extra` dict for custom metadata that doesn't fit in standard attrs:
+Use the `extra` dict for custom metadata:
 
 ```python
 data = cb.from_numpy(
@@ -131,12 +158,10 @@ data = cb.from_numpy(
     extra={
         "preprocessing_notes": "Bandpass filtered 1-40 Hz",
         "bad_channels": ["E12", "E15"],
-        "custom_array": np.array([1, 2, 3])
     }
 )
 
-# Access extra fields
 notes = data.extra["preprocessing_notes"]
 ```
 
-The `extra` dict is preserved and merged across operations.
+The `extra` dict is preserved and merged across feature operations.

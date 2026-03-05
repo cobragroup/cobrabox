@@ -24,6 +24,11 @@ Follow these steps in order:
 
 Read `$ARGUMENTS` in full.
 
+**Special case**: If the file is `src/cobrabox/features/dummy.py`, skip the review and report:
+```text
+Review skipped — dummy.py is an intentional negative reference (not to be fixed)
+```
+
 ### 2. Run ruff
 
 Run both commands and capture full output:

@@ -10,7 +10,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cobrabox.dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
+from cobrabox.dataset_loader import (
+    _sampling_rate_from_info,
+    _sidecar_json_for_csv,
+    load_noise_dummy,
+    load_realistic_swiss,
+    load_structured_dummy,
+)
 
 
 def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
@@ -66,13 +72,14 @@ def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
     # Sidecar JSON with settings metadata
     a_json = noise_dir / "info_a.json.xz"
     with lzma.open(a_json, "wt", encoding="utf-8") as f:
-        json.dump({"Settings": {"Seizure start (sec)": 8, "SOZ": "[1 0 1 0]"}}, f)
+        json.dump({"Settings": {"Seizure start (sec)": 8, "SOZ": "[1 0 1 0]", "fs": 256}}, f)
 
     out = load_noise_dummy(repo_root=tmp_path)
 
     assert len(out) == 2
     np.testing.assert_allclose(out[0].to_numpy(), np.array([[0.1, 0.2]]))
     assert out[0].data.attrs["identifier"] == "dummy_noise"
+    assert out[0].sampling_rate == 256.0
     # Extra metadata propagated from JSON, including SOZ array string
     assert "Settings" in out[0].extra
     settings = out[0].extra["Settings"]
@@ -110,13 +117,14 @@ def test_load_realistic_swiss_reads_all_matching_files(tmp_path: Path) -> None:
 
     json1 = realistic_dir / "info_fit_Swiss_VAR_ID1_sz13_simulated_data_1.json.xz"
     with lzma.open(json1, "wt", encoding="utf-8") as f:
-        json.dump({"Settings": {"Seizure start (sec)": 5, "SOZ": "[0 1 0]"}}, f)
+        json.dump({"Settings": {"Seizure start (sec)": 5, "SOZ": "[0 1 0]", "fs": 512}}, f)
 
     out = load_realistic_swiss(repo_root=tmp_path)
 
     assert len(out) == 2
     np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 2.0]]))
     assert out[0].data.attrs["identifier"] == "realistic_swiss"
+    assert out[0].sampling_rate == 512.0
     assert "Settings" in out[0].extra
     settings = out[0].extra["Settings"]
     assert settings["Seizure start (sec)"] == 5
@@ -144,6 +152,70 @@ def test_load_realistic_swiss_raises_when_all_files_empty(tmp_path: Path) -> Non
 
     with pytest.raises(ValueError, match="All files for 'realistic_swiss' are empty"):
         load_realistic_swiss(repo_root=tmp_path)
+
+
+def test_sidecar_json_for_csv_non_csv_xz_extension(tmp_path: Path) -> None:
+    """_sidecar_json_for_csv falls back to path.stem for non-.csv.xz files."""
+    p = tmp_path / "myfile.csv"
+    result = _sidecar_json_for_csv(p)
+    assert result.name == "info_myfile.json.xz"
+
+
+def test_sampling_rate_from_info_raises_for_non_numeric_fs() -> None:
+    """_sampling_rate_from_info raises ValueError when fs is not numeric."""
+    with pytest.raises(ValueError, match="Invalid sampling rate"):
+        _sampling_rate_from_info({"fs": "not-a-number"})
+
+
+def test_sampling_rate_from_info_raises_for_unconvertible_type() -> None:
+    """_sampling_rate_from_info raises ValueError when fs cannot be float-cast."""
+    with pytest.raises(ValueError, match="Invalid sampling rate"):
+        _sampling_rate_from_info({"fs": [1, 2]})
+
+
+def test_load_structured_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
+    """Malformed JSON sidecar is silently ignored; data still loads."""
+    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
+    struct_dir.mkdir(parents=True)
+    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+        struct_dir / "dummy_struct_VAR_chain_1.csv.xz", index=False, compression="xz"
+    )
+    json_path = struct_dir / "info_dummy_struct_VAR_chain_1.json.xz"
+    with lzma.open(json_path, "wt", encoding="utf-8") as f:
+        f.write("not valid json {{{")
+
+    out = load_structured_dummy("dummy_chain", repo_root=tmp_path)
+    assert len(out) == 1
+    assert out[0].sampling_rate is None
+
+
+def test_load_noise_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
+    """Malformed JSON sidecar in noise loader is silently ignored."""
+    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
+    noise_dir.mkdir(parents=True)
+    pd.DataFrame({"n0": [1.0, 2.0]}).to_csv(noise_dir / "a.csv.xz", index=False, compression="xz")
+    json_path = noise_dir / "info_a.json.xz"
+    with lzma.open(json_path, "wt", encoding="utf-8") as f:
+        f.write("{{invalid")
+
+    out = load_noise_dummy(repo_root=tmp_path)
+    assert len(out) == 1
+    assert out[0].sampling_rate is None
+
+
+def test_load_realistic_swiss_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
+    """Malformed JSON sidecar in realistic loader is silently ignored."""
+    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
+    realistic_dir.mkdir(parents=True)
+    csv_path = realistic_dir / "fit_Swiss_VAR_ID1_sz1_simulated_data_1.csv.xz"
+    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(csv_path, index=False, compression="xz")
+    json_path = realistic_dir / "info_fit_Swiss_VAR_ID1_sz1_simulated_data_1.json.xz"
+    with lzma.open(json_path, "wt", encoding="utf-8") as f:
+        f.write("{{invalid")
+
+    out = load_realistic_swiss(repo_root=tmp_path)
+    assert len(out) == 1
+    assert out[0].sampling_rate is None
 
 
 def test_load_structured_dummy_default_repo_root() -> None:
