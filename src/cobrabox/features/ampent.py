@@ -12,13 +12,14 @@ from ..data import Data
 
 @dataclass
 class Ampent(BaseFeature[Data]):
-    output_type: ClassVar[Data] = Data
+    output_type: ClassVar[type[Data]] = Data
 
     data_window: Data
     band_width: float
 
-    def __call__(self, data_window: Data) -> xr.DataArray:
-        a = data_window.to_numpy()
+    def __call__(self, data: Data) -> xr.DataArray:
+        raw = data.to_numpy()
+        a = np.asarray(raw)
 
         # MATLAB size(data_window, 1) is the number of rows.
         # NumPy equivalent is a.shape[0].
