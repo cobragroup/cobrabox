@@ -9,6 +9,8 @@ Classes:
     HeatmapPlotter: Heatmap visualization from Data objects.
     HistogramPlotter: Histogram visualization from Data objects.
     TopoPlotter: Topographical map visualization from Data objects.
+    ConnectivityPlotter: Connectivity matrix visualization from Data objects.
+    InteractiveConnectivityExplorer: Interactive exploration of 3D+ connectivity data.
 
 Functions:
     time_window: Extract time window around position
@@ -19,10 +21,17 @@ Functions:
     plot_heatmap: Convenience function to create heatmap plots
     plot_histogram: Convenience function to create histogram plots
     plot_topomap: Convenience function to create topographical maps
+    plot_connectivity: Convenience function to create connectivity matrix plots
 """
 
 from __future__ import annotations
 
+from .connectivity import ConnectivityPlotter, InteractiveConnectivityExplorer, plot_connectivity
 from .interactive import InteractiveExplorer
 
-__all__ = ["InteractiveExplorer"]
+__all__ = [
+    "ConnectivityPlotter",
+    "InteractiveConnectivityExplorer",
+    "InteractiveExplorer",
+    "plot_connectivity",
+]
