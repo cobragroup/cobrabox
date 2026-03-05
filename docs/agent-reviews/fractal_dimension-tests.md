@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 FractalDimHiguchi: 100% (48 statements, 0 missing)
 FractalDimKatz: 100% (48 statements, 0 missing)
 ```
