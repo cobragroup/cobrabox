@@ -7,6 +7,8 @@ from .features import Coherence as Coherence
 from .features import Dummy as Dummy
 from .features import EnvelopeCorrelation as EnvelopeCorrelation
 from .features import EpileptogenicityIndex as EpileptogenicityIndex
+from .features import GrangerCausality as GrangerCausality
+from .features import GrangerCausalityMatrix as GrangerCausalityMatrix
 from .features import Hilbert as Hilbert
 from .features import LempelZiv as LempelZiv
 from .features import LineLength as LineLength
@@ -31,6 +33,8 @@ __all__ = [
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
+    "GrangerCausality",
+    "GrangerCausalityMatrix",
     "Hilbert",
     "LempelZiv",
     "LineLength",
