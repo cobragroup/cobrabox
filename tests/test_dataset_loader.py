@@ -221,6 +221,7 @@ def test_load_realistic_swiss_ignores_malformed_json_sidecar(tmp_path: Path) -> 
     assert out[0].sampling_rate is None
 
 
+@pytest.mark.slow
 def test_load_structured_dummy_default_repo_root() -> None:
     """load_structured_dummy infers repo_root from package path and loads real data."""
     from cobrabox.data import Data
@@ -230,6 +231,7 @@ def test_load_structured_dummy_default_repo_root() -> None:
     assert all(isinstance(d, Data) for d in out)
 
 
+@pytest.mark.slow
 def test_load_noise_dummy_default_repo_root() -> None:
     """load_noise_dummy infers repo_root from package path and loads real data."""
     from cobrabox.data import Data
@@ -242,6 +244,7 @@ def test_load_noise_dummy_default_repo_root() -> None:
     assert all(isinstance(d, Data) for d in out)
 
 
+@pytest.mark.slow
 def test_load_realistic_swiss_default_repo_root() -> None:
     """load_realistic_swiss infers repo_root and loads real data."""
     from cobrabox.data import Data
@@ -252,6 +255,19 @@ def test_load_realistic_swiss_default_repo_root() -> None:
         pytest.skip("Real realistic_swiss dataset files not available (likely LFS not fetched).")
     assert len(out) > 0
     assert all(isinstance(d, Data) for d in out)
+
+
+class _NoOpBar:
+    """Silent stand-in for tqdm progress bars used in remote-download tests."""
+
+    def __enter__(self) -> _NoOpBar:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        pass
+
+    def update(self, n: int) -> None:
+        pass
 
 
 def test_ensure_remote_files_downloads_missing_files(
@@ -273,7 +289,13 @@ def test_ensure_remote_files_downloads_missing_files(
     # Fake HTTP responses with small byte payloads.
     payloads = {"http://example.com/a.bin": b"AAA", "http://example.com/b.bin": b"BBB"}
 
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return default
+
     class _FakeResponse(io.BytesIO):
+        headers = _FakeHeaders()
+
         def __enter__(self) -> _FakeResponse:
             return self
 
@@ -289,6 +311,7 @@ def test_ensure_remote_files_downloads_missing_files(
     import cobrabox.remote_datasets as remote_datasets
 
     monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(remote_datasets, "tqdm", lambda *a, **kw: _NoOpBar())
 
     # Act
     dataset_dir = ensure_remote_files(spec, repo_root=tmp_path)
@@ -403,8 +426,6 @@ def test_dataset_uses_remote_spec_for_known_identifier(
         loader=_fake_loader,
     )
 
-    import cobrabox.remote_datasets as remote_datasets
-
     def _fake_get_remote_dataset_spec(identifier: str) -> RemoteDatasetSpec | None:
         return fake_spec if identifier == "swiss_eeg_short" else None
 
@@ -417,8 +438,9 @@ def test_dataset_uses_remote_spec_for_known_identifier(
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    monkeypatch.setattr(remote_datasets, "get_remote_dataset_spec", _fake_get_remote_dataset_spec)
-    monkeypatch.setattr(remote_datasets, "ensure_remote_files", _fake_ensure_remote_files)
+    # datasets.py imports these names directly, so patch them in that module's namespace.
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", _fake_get_remote_dataset_spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure_remote_files)
 
     out = datasets.dataset("swiss_eeg_short")
 
@@ -445,7 +467,13 @@ def test_ensure_remote_files_uses_index_when_no_files(
         "http://example.com/b.bin": b"BBB",
     }
 
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return default
+
     class _FakeResponse(io.BytesIO):
+        headers = _FakeHeaders()
+
         def __enter__(self) -> _FakeResponse:
             return self
 
@@ -461,6 +489,7 @@ def test_ensure_remote_files_uses_index_when_no_files(
     import cobrabox.remote_datasets as remote_datasets
 
     monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(remote_datasets, "tqdm", lambda *a, **kw: _NoOpBar())
 
     dataset_dir = ensure_remote_files(spec, repo_root=tmp_path)
 

@@ -52,7 +52,10 @@ ignore = ["E731", "RET503", "ANN401", "UP040", "UP046", "UP047"]
 split-on-trailing-comma = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=cobrabox --cov-report=term-missing"
+addopts = "--cov=cobrabox --cov-report=term-missing -m 'not slow'"
+markers = [
+    "slow: tests that read real data files from disk (opt-in with -m slow)",
+]
 
 [tool.coverage.run]
 source = ["src/cobrabox"]
