@@ -135,6 +135,45 @@ to be set on the `Data` object.
 Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
 
+### `BandFilter`
+
+```python
+# Filter into all five default EEG bands
+filtered = cb.feature.BandFilter().apply(data)
+
+# Filter into specific bands only
+filtered = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
+
+# Custom filter order and keep original signal
+filtered = cb.feature.BandFilter(ord=4, keep_orig=True).apply(data)
+```
+
+Applies Butterworth bandpass filters to separate the signal into frequency bands.
+Returns a DataArray with a new `band` dimension containing the filtered signals.
+By default includes the five standard EEG bands (delta, theta, alpha, beta, gamma).
+Requires `sampling_rate` to be set on the data.
+
+### `Hilbert`
+
+```python
+# Extract analytic signal (complex)
+analytic = cb.feature.Hilbert().apply(data)
+
+# Extract amplitude envelope
+envelope = cb.feature.Hilbert(feature="envelope").apply(data)
+
+# Extract instantaneous phase
+phase = cb.feature.Hilbert(feature="phase").apply(data)
+
+# Extract instantaneous frequency (requires sampling_rate)
+freq = cb.feature.Hilbert(feature="frequency").apply(data)
+```
+
+Computes the analytic signal via Hilbert transform along the time axis.
+Returns the same shape as input; the time dimension is preserved.
+Supports four representations: `analytic` (complex signal, default), `envelope`
+(amplitude), `phase` (radians), and `frequency` (Hz, requires `sampling_rate`).
+
 ### `Coherence`
 
 ```python

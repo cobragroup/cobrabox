@@ -37,6 +37,12 @@ class BandFilter(BaseFeature[SignalData]):
     Raises:
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
 
+    Returns:
+        xarray.DataArray: The bandpass-filtered signals stacked along a new
+            ``band`` dimension. The ``band`` coordinate contains the band names
+            (and "original" if ``keep_orig=True``). The shape is the same as
+            the input data with an additional ``band`` dimension.
+
     Example:
         >>> result = cb.feature.BandFilter().apply(data)
         >>> result = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
@@ -45,6 +51,25 @@ class BandFilter(BaseFeature[SignalData]):
     bands: dict[str, list[float]] = field(default_factory=lambda: dict(_DEFAULTS))
     ord: int = 3
     keep_orig: bool = False
+
+    def __post_init__(self) -> None:
+        """Validate parameters after initialization."""
+        if self.ord <= 0:
+            raise ValueError(f"ord must be positive, got {self.ord}")
+        if not self.bands:
+            raise ValueError("bands cannot be empty")
+        for band_name, freqs in self.bands.items():
+            if len(freqs) != 2:
+                raise ValueError(f"Band '{band_name}' must have exactly 2 frequencies [low, high]")
+            low, high = freqs
+            if low < 0 or high < 0:
+                raise ValueError(
+                    f"Band '{band_name}' frequencies must be non-negative, got [{low}, {high}]"
+                )
+            if low >= high:
+                raise ValueError(
+                    f"Band '{band_name}' low frequency must be less than high, got [{low}, {high}]"
+                )
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         if data.sampling_rate is None:
