@@ -59,6 +59,16 @@ Pre-commit hooks (ruff) run automatically on commit. Install once with `uvx pre-
 - Ruff line length is 100; target Python 3.14+ (`target-version = "py314"`); `requires-python = ">=3.11"` (dependency floor: numpy/pandas/xarray all require 3.11; code itself only needs 3.10).
 - `src/cobrabox/features/dummy.py` is a negative reference (bad docstring, has `print`, no validation) — do not model new features after it.
 
+## Visualization code requirements
+
+When developing visualization code (`src/cobrabox/visualization/`):
+
+- **Use established neuroscience notation and standards**: Follow standard conventions in neurophysiology and neuroimaging (e.g., time in milliseconds or seconds, frequency in Hz, amplitude in µV or mV for EEG).
+- **Adhere to neuroscience visualization practices**: Use color schemes and plot layouts that are standard in the field. Consider perceptual uniformity and accessibility (colorblind-friendly palettes where possible).
+- **Document neuroimaging context**: Include docstrings that explain what each visualization component represents in neuroscience terms (e.g., "Upper plot shows global field power; lower plot shows individual electrode traces").
+- **Preserve data integrity**: Ensure visualizations do not distort or misrepresent the underlying neurophysiological data (e.g., proper axis scaling, no misleading interpolation).
+- **Support standard analysis workflows**: Design interactive features and exports that align with typical neuroscience data exploration and analysis pipelines.
+
 ## Build & CI
 
 - Build backend: `uv_build` — auto-discovers `src/cobrabox` from the project name; use `uv publish` for PyPI.

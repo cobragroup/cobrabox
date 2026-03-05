@@ -16,8 +16,9 @@ import numpy as np
 # Add src directory to path so we can import cobrabox
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import cobrabox as cb
 from cobrabox.visualization import InteractiveExplorer
+
+import cobrabox as cb
 
 
 def main() -> None:
