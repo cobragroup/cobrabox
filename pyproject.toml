@@ -1,6 +1,6 @@
 [project]
 name = "cobrabox"
-version = "0.2.5"
+version = "0.2.8"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -10,6 +10,7 @@ dependencies = [
     "pandas>=3.0.1",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.1",
+    "statsmodels>=0.14",
     "xarray>=2026.2.0",
 ]
 

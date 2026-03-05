@@ -37,6 +37,12 @@ class BandFilter(BaseFeature[SignalData]):
     Raises:
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
 
+    Returns:
+        xarray.DataArray: The bandpass-filtered signals stacked along a new
+            ``band`` dimension. The ``band`` coordinate contains the band names
+            (and "original" if ``keep_orig=True``). The shape is the same as
+            the input data with an additional ``band`` dimension.
+
     Example:
         >>> result = cb.feature.BandFilter().apply(data)
         >>> result = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
@@ -46,6 +52,25 @@ class BandFilter(BaseFeature[SignalData]):
     ord: int = 3
     keep_orig: bool = False
 
+    def __post_init__(self) -> None:
+        """Validate parameters after initialization."""
+        if self.ord <= 0:
+            raise ValueError(f"ord must be positive, got {self.ord}")
+        if not self.bands:
+            raise ValueError("bands cannot be empty")
+        for band_name, freqs in self.bands.items():
+            if len(freqs) != 2:
+                raise ValueError(f"Band '{band_name}' must have exactly 2 frequencies [low, high]")
+            low, high = freqs
+            if low < 0 or high < 0:
+                raise ValueError(
+                    f"Band '{band_name}' frequencies must be non-negative, got [{low}, {high}]"
+                )
+            if low >= high:
+                raise ValueError(
+                    f"Band '{band_name}' low frequency must be less than high, got [{low}, {high}]"
+                )
+
     def __call__(self, data: SignalData) -> xr.DataArray:
         if data.sampling_rate is None:
             raise ValueError("BandFilter requires a known sampling_rate on the input Data object")
@@ -54,9 +79,9 @@ class BandFilter(BaseFeature[SignalData]):
         if self.keep_orig:
             band_arrays.append(data.data.assign_coords({"band": "original"}).expand_dims("band"))
         for band_name, freqs in self.bands.items():
-            b, a = signal.butter(  # type: ignore[misc]
-                self.ord, freqs, btype="band", fs=data.sampling_rate
-            )
+            # Pylance/pyright: scipy.signal.butter return type stubs are incomplete
+            # This returns (b, a) for valid inputs, never None with btype="band"
+            b, a = signal.butter(self.ord, freqs, btype="band", fs=data.sampling_rate)
             # apply_ufunc routes lfilter along the "time" dimension by label
             filtered = xr.apply_ufunc(
                 signal.lfilter,

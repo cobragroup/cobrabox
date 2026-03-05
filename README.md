@@ -112,6 +112,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
+- `AmpVar` - Amplitude variation (standard deviation) over time
 - `Bandpower` - Power in frequency bands using Welch's method
 - `Coherence` - Magnitude-squared coherence between channel pairs
 - `Spectrogram` - Time-frequency power spectrogram
@@ -131,6 +132,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 ### Windowing & Aggregation
 
 - `SlidingWindow` - Split data into overlapping windows (splitter)
+- `SlidingWindowReduce` - Single-step windowing + aggregation (simpler alternative to Chord)
 - `MeanAggregate` - Average windowed results (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
 

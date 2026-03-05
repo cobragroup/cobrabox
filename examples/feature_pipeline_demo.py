@@ -30,6 +30,21 @@ dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(data)
 # Compute coherence
 coh = cb.feature.Coherence().apply(data)
 
+# SlidingWindowReduce — simpler alternative to Chord for basic windowed stats
+win_reduce = cb.feature.SlidingWindowReduce(
+    window_size=10, step_size=5, dim="time", agg="mean"
+).apply(data)
+
+# AmpVar — amplitude variation (std) over time
+amp_var = cb.feature.AmpVar().apply(data)
+
+# AmpVar in a Chord — windowed amplitude variation
+win_amp_var = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.AmpVar()
+    | cb.feature.MeanAggregate()
+).apply(data)
+
 print("min over windows shape:", win_min.data.shape)
 print("min over windows history:", win_min.history)
 print("max over windows shape:", win_max.data.shape)
@@ -38,5 +53,11 @@ print("feature.data.shape:", feat.data.shape)
 print("feature.history:", feat.history)
 print("coherence shape:", coh.data.shape)
 print("coherence history:", coh.history)
+print("SlidingWindowReduce shape:", win_reduce.data.shape)
+print("SlidingWindowReduce history:", win_reduce.history)
+print("AmpVar shape:", amp_var.data.shape)
+print("AmpVar history:", amp_var.history)
+print("windowed AmpVar shape:", win_amp_var.data.shape)
+print("windowed AmpVar history:", win_amp_var.history)
 
 print("dummy", dummy.data)
