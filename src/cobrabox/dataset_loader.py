@@ -7,7 +7,8 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 
-from .data import Data, SignalData
+from .data import SignalData
+from .dataset import Dataset
 
 
 def _sidecar_json_for_csv(path: Path) -> Path:
@@ -37,7 +38,7 @@ def _sampling_rate_from_info(info: dict) -> float | None:
         raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
 
 
-def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> list[SignalData]:
+def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dataset[SignalData]:
     """Load dummy dataset parts from `data/dummy/struct`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
@@ -51,7 +52,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
             f"(expected: dummy_struct_VAR_{variant}_*.csv.xz)."
         )
 
-    datasets: list[SignalData] = []
+    items: list[SignalData] = []
     for path in candidates:
         df = pd.read_csv(path, compression="xz")
         if df.empty:
@@ -84,16 +85,16 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
                 # Ignore JSON parsing issues and continue without extra metadata
                 pass
         sampling_rate = _sampling_rate_from_info(info) if info else None
-        datasets.append(
-            SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
-        )
+        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
 
-    if not datasets:
+    if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
-    return datasets
+    return Dataset(items)
 
 
-def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = None) -> list[Data]:
+def load_noise_dummy(
+    identifier: str = "dummy_noise", repo_root: Path | None = None
+) -> Dataset[SignalData]:
     """Load dummy noise dataset parts from `data/dummy/noise`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
@@ -103,7 +104,7 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
     if not candidates:
         raise FileNotFoundError(f"No .csv.xz files found for '{identifier}' in {noise_dir}.")
 
-    datasets: list[Data] = []
+    items: list[SignalData] = []
     for path in candidates:
         df = pd.read_csv(path, compression="xz")
         if df.empty:
@@ -132,18 +133,16 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
             except Exception:
                 pass
         sampling_rate = _sampling_rate_from_info(info) if info else None
-        datasets.append(
-            SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
-        )
+        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
 
-    if not datasets:
+    if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
-    return datasets
+    return Dataset(items)
 
 
 def load_realistic_swiss(
     identifier: str = "realistic_swiss", repo_root: Path | None = None
-) -> list[Data]:
+) -> Dataset[SignalData]:
     """Load realistic Swiss VAR dataset parts from `data/synthetic/realistic`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
@@ -156,7 +155,7 @@ def load_realistic_swiss(
             "matching pattern 'fit_Swiss_VAR_ID1_*.csv.xz'."
         )
 
-    datasets: list[Data] = []
+    items: list[SignalData] = []
     for path in candidates:
         df = pd.read_csv(path, compression="xz")
         if df.empty:
@@ -185,10 +184,8 @@ def load_realistic_swiss(
             except Exception:
                 pass
         sampling_rate = _sampling_rate_from_info(info) if info else None
-        datasets.append(
-            SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
-        )
+        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
 
-    if not datasets:
+    if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
-    return datasets
+    return Dataset(items)
