@@ -43,46 +43,54 @@ class SampEn(BaseFeature[SignalData]):
 
     m: int = 2
     r: float | None = None
+    base: int = 2
 
     def __post_init__(self) -> None:
         if self.m < 1:
             raise ValueError(f"Embedding dimension m must be >= 1, got {self.m}")
 
     def __call__(self, data: SignalData) -> xr.DataArray:
-        # Extract the raw time-series as a 1-D NumPy array.
+        # Extract the raw time-series as an xarray DataArray.
         xr_data = data.data
         if "time" not in xr_data.dims:
-            raise ValueError("Sample Entropy requires a 'time' dimension.")
-        # Flatten all non-time dimensions and compute entropy on the concatenated series.
-        ts: np.ndarray = xr_data.values.astype(float).reshape(-1)
+            raise ValueError("Sample Entropy requires 'time' dimension.")
 
-        n = len(ts)
-        if n <= self.m:
-            raise ValueError(
-                f"Time series length ({n}) must be greater than embedding dimension m ({self.m})."
-            )
+        # Helper that computes SampEn on a 1-D NumPy array (single time series).
+        def _sampen_one(ts: np.ndarray) -> float:
+            n = len(ts)
+            if n <= self.m:
+                raise ValueError(
+                    f"Time series length ({n}) must be greater than embedding dimension m ({self.m})."
+                )
+            # Tolerance: use provided r or default 0.2 * std of this slice.
+            r_local = 0.2 * np.std(ts, ddof=0) if self.r is None else self.r
 
-        # Default tolerance as a fraction of the standard deviation.
-        r = 0.2 * np.std(ts, ddof=0) if self.r is None else self.r
+            def _count(seq_len: int) -> int:
+                cnt = 0
+                max_start = n - seq_len
+                for i in range(max_start):
+                    template = ts[i : i + seq_len]
+                    for j in range(i + 1, max_start + 1):
+                        if np.max(np.abs(template - ts[j : j + seq_len])) < r_local:
+                            cnt += 1
+                return cnt
 
-        def _count_matches(seq_len: int) -> int:
-            """Count the number of template pairs of length ``seq_len`` within tolerance."""
-            count = 0
-            max_start = n - seq_len
-            for i in range(max_start):
-                template = ts[i : i + seq_len]
-                for j in range(i + 1, max_start + 1):
-                    if np.max(np.abs(template - ts[j : j + seq_len])) < r:
-                        count += 1
-            return count
+            matches_m = _count(self.m)
+            matches_m1 = _count(self.m + 1)
+            if matches_m == 0 or matches_m1 == 0:
+                return np.nan
+            return -np.log(matches_m1 / matches_m)
 
-        matches_m = _count_matches(self.m)
-        matches_m1 = _count_matches(self.m + 1)
-
-        if matches_m == 0 or matches_m1 == 0:
-            sampen_val = np.nan
-        else:
-            sampen_val = -np.log(matches_m1 / matches_m)
-
-        # Return as a scalar DataArray (no dimensions) preserving original attrs.
-        return xr.DataArray(sampen_val, attrs=data.data.attrs)
+        # Apply the helper across the ``time`` dimension, collapsing it.
+        # ``vectorize=True`` broadcasts the function over all other dimensions.
+        result = xr.apply_ufunc(
+            _sampen_one,
+            xr_data,
+            input_core_dims=[["time"]],
+            output_core_dims=[[]],
+            vectorize=True,
+            dask="parallelized",
+            output_dtypes=[float],
+        )
+        # Preserve original attributes (excluding the time coordinate which is gone).
+        return xr.DataArray(result, attrs=data.data.attrs)
