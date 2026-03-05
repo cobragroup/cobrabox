@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from cobrabox import Data, SignalData
+from cobrabox import SignalData
 from cobrabox.features.sample_entropy import SampEn
 
 
@@ -49,12 +49,25 @@ def test_sampen_raises_on_short_series():
         SampEn(m=2)(data)
 
 
-def test_sampen_missing_time_dimension():
-    """The feature must reject inputs that lack a 'time' dimension."""
-    arr = np.random.rand(5, 5)
-    generic = Data.from_numpy(arr, dims=["x", "y"])
-    # Construct a SignalData that lacks the required 'time' dim
-    bad_signal = SignalData(generic.data, sampling_rate=None)
+def test_sampen_multi_dim_preserves_other_dims():
+    """Sample entropy should be computed per non-time dimension and time collapsed."""
+    # Two channels: one constant, one alternating pattern.
+    const = np.zeros(12)
+    alt = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1], dtype=float)
+    arr = np.stack([const, alt])  # shape (2, 12)
+    data = SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=1.0)
 
-    with pytest.raises(ValueError, match="must have a 'time' dimension"):
-        SampEn()(bad_signal)
+    feat = SampEn(m=2, r=0.5)
+    result = feat(data)
+
+    # Result should have only the 'space' dimension.
+    assert set(result.dims) == {"space"}
+
+    # Both channels should return finite values with r=0.5.
+    # Constant channel: all templates identical, so all match -> finite entropy.
+    expected_const = _naive_sampen(const, m=2, r=0.5)
+    assert np.allclose(result.sel(space=0).item(), expected_const, atol=1e-12)
+
+    # Alternating channel should match the known scalar value.
+    expected_alt = _naive_sampen(alt, m=2, r=0.5)
+    assert np.allclose(result.sel(space=1).item(), expected_alt, atol=1e-12)
