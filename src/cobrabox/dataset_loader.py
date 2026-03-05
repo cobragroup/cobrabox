@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import lzma
 from pathlib import Path
 
 import pandas as pd
@@ -12,13 +11,15 @@ from .dataset import Dataset
 
 
 def _sidecar_json_for_csv(path: Path) -> Path:
-    """Return expected JSON sidecar path for a given CSV.xz file."""
+    """Return expected JSON sidecar path for a given CSV file."""
     name = path.name
     if name.endswith(".csv.xz"):
         stem = name[: -len(".csv.xz")]
+    elif name.endswith(".csv"):
+        stem = name[: -len(".csv")]
     else:
         stem = path.stem
-    return path.with_name(f"info_{stem}.json.xz")
+    return path.with_name(f"info_{stem}.json")
 
 
 def _sampling_rate_from_info(info: dict) -> float | None:
@@ -78,7 +79,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dat
         json_path = _sidecar_json_for_csv(path)
         if json_path.exists():
             try:
-                with lzma.open(json_path, "rt", encoding="utf-8") as f:
+                with open(json_path, encoding="utf-8") as f:
                     info = json.load(f)
                 if isinstance(info, dict):
                     extra.update(info)
@@ -127,7 +128,7 @@ def load_noise_dummy(
         json_path = _sidecar_json_for_csv(path)
         if json_path.exists():
             try:
-                with lzma.open(json_path, "rt", encoding="utf-8") as f:
+                with open(json_path, encoding="utf-8") as f:
                     info = json.load(f)
                 if isinstance(info, dict):
                     extra.update(info)
@@ -178,7 +179,7 @@ def load_realistic_swiss(
         json_path = _sidecar_json_for_csv(path)
         if json_path.exists():
             try:
-                with lzma.open(json_path, "rt", encoding="utf-8") as f:
+                with open(json_path, encoding="utf-8") as f:
                     info = json.load(f)
                 if isinstance(info, dict):
                     extra.update(info)
