@@ -1,115 +1,152 @@
 # Working with Datasets
 
-CobraBox provides built-in dummy datasets for testing and development.
+CobraBox provides built-in dummy datasets and a `Dataset[T]` collection class for working with groups of `Data` objects.
 
 ## Loading Datasets
 
 ```python
 import cobrabox as cb
 
-# Load a dataset (returns list[Data])
-datasets = cb.dataset("dummy_chain")
+# Load a dataset — returns Dataset[SignalData]
+ds = cb.dataset("dummy_chain")
 
-# Access individual subjects
-data = datasets[0]
-print(f"Subject: {data.subjectID}")
-print(f"Shape: {data.data.shape}")
+# Inspect at a glance
+ds.describe()
+# Dataset  3 items  [SignalData]
+#   subjectIDs : None, None, None
+#   groupIDs   : None, None, None
+#   conditions : None, None, None
+#   shapes     : (4, 200) × 3
 ```
 
-## Available Datasets
+## The `Dataset[T]` Class
 
-### dummy_chain
+`Dataset[T]` is an immutable, typed collection of `Data` objects. It behaves like a read-only sequence.
 
-Chain-like pattern data for testing pipelines.
-
-### dummy_random
-
-Random noise data for baseline testing.
-
-### dummy_star
-
-Star-shaped pattern for spatial analysis testing.
-
-### dummy_noise
-
-Pure noise data for null hypothesis testing.
-
-## Dataset Structure
-
-Each dataset returns a list of `Data` objects, one per subject:
+### Indexing and iteration
 
 ```python
-datasets = cb.dataset("dummy_chain")
+ds = cb.dataset("dummy_chain")
 
-for i, data in enumerate(datasets):
-    print(f"Subject {i}:")
-    print(f"  Shape: {data.data.shape}")
-    print(f"  SubjectID: {data.subjectID}")
-    print(f"  Sampling rate: {data.sampling_rate}")
+# Integer index → single item
+item = ds[0]
+print(item.data.shape)
+
+# Slice → new Dataset
+subset = ds[1:3]
+
+# Iteration
+for item in ds:
+    print(item.sampling_rate)
+
+# Length and membership
+print(len(ds))
+print(item in ds)
 ```
 
-## Data Location
+### Combining datasets
 
-Dummy datasets are stored in `data/dummy/` as compressed CSV files. The dataset loader reads and converts them to `Data` objects.
+```python
+ds1 = cb.dataset("dummy_chain")
+ds2 = cb.dataset("dummy_random")
 
-## Creating Custom Datasets
+combined = ds1 + ds2   # → Dataset[SignalData]
+print(len(combined))
+```
 
-To load your own data:
+### Representation
+
+```python
+repr(ds)    # 'Dataset(3 × SignalData)'
+str(ds)     # multi-line summary with shapes and metadata
+ds.describe()  # prints str(ds)
+```
+
+## Filtering
+
+Filter by any combination of metadata fields (AND semantics):
+
+```python
+ds = cb.Dataset([
+    cb.from_numpy(arr, dims=["time", "space"], subjectID="S1", groupID="control"),
+    cb.from_numpy(arr, dims=["time", "space"], subjectID="S2", groupID="patient"),
+    cb.from_numpy(arr, dims=["time", "space"], subjectID="S3", groupID="control"),
+])
+
+controls = ds.filter(groupID="control")   # Dataset with S1 and S3
+s1_only  = ds.filter(subjectID="S1", groupID="control")  # Dataset with S1
+
+# Returns empty Dataset (not an error) if nothing matches
+empty = ds.filter(groupID="nonexistent")
+print(len(empty))  # 0
+```
+
+## Grouping
+
+Split a `Dataset` into sub-datasets keyed by a metadata attribute:
+
+```python
+groups = ds.groupby("groupID")
+# {'control': Dataset(2 × Data), 'patient': Dataset(1 × Data)}
+
+for name, group_ds in groups.items():
+    print(f"{name}: {len(group_ds)} subjects")
+
+# Items with no value for the attribute go to key "None"
+groups_with_none = ds.groupby("condition")
+print("None" in groups_with_none)
+```
+
+Valid attributes: `"subjectID"`, `"groupID"`, `"condition"`.
+
+## Available Dummy Datasets
+
+| Identifier | Description |
+|---|---|
+| `dummy_chain` | Chain-like pattern for pipeline testing |
+| `dummy_random` | Random noise for baseline testing |
+| `dummy_star` | Star-shaped pattern for spatial analysis |
+| `dummy_noise` | Pure noise for null hypothesis testing |
+
+## Building a Custom Dataset
+
+Wrap any list of `Data` objects:
 
 ```python
 import cobrabox as cb
 import numpy as np
-import pandas as pd
 
-# Load your data
-df = pd.read_csv("my_data.csv")
-arr = df.values
+items = []
+for i in range(5):
+    arr = np.random.default_rng(i).normal(size=(100, 4))
+    items.append(cb.from_numpy(
+        arr=arr,
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        subjectID=f"S{i+1:02d}",
+        groupID="control" if i < 3 else "patient",
+        condition="rest",
+    ))
 
-# Wrap in Data
-data = cb.from_numpy(
-    arr=arr,
-    dims=["time", "space"],
-    sampling_rate=100.0,
-    subjectID="sub-01",
-    condition="task"
-)
+ds = cb.Dataset(items)
+ds.describe()
 ```
 
 ## Batch Processing
 
-Process multiple subjects:
-
 ```python
-datasets = cb.dataset("dummy_chain")
+ds = cb.dataset("dummy_chain")
 
-results = []
-for data in datasets:
-    # Apply pipeline
-    feat = cb.feature.LineLength().apply(data)
-    results.append(feat)
-
-# Combine results
-all_results = cb.from_numpy(
-    arr=np.stack([r.data.values for r in results]),
-    dims=["subject", "space"]
+pipeline = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
 )
+
+results = cb.Dataset([pipeline.apply(item) for item in ds])
+results.describe()
 ```
 
-## Inspecting Datasets
+## Data Location
 
-```python
-data = cb.dataset("dummy_chain")[0]
-
-# View summary
-print(data)
-
-# Access coordinates
-print(data.data.coords)
-
-# Check metadata
-print(f"Subject: {data.subjectID}")
-print(f"Condition: {data.condition}")
-
-# View history (empty for raw data)
-print(f"History: {data.history}")
-```
+Dummy datasets are stored in `data/synthetic/dummy/` as compressed CSV files (`.csv.xz`) with optional JSON sidecar files for metadata.

@@ -93,7 +93,20 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 
 ## Built-in Dummy Datasets
 
-Use `cb.dataset(name)` with:
+`cb.dataset(name)` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
+
+```python
+ds = cb.dataset("dummy_chain")
+
+ds.describe()                        # print summary: shapes, metadata
+ds.filter(groupID="control")         # Dataset[SignalData] with matching items
+ds.groupby("condition")              # dict[str, Dataset[SignalData]]
+ds[0]                                # first item
+ds[1:3]                              # slice → Dataset[SignalData]
+ds1 + ds2                            # concatenate two Datasets
+```
+
+Available identifiers:
 
 - `dummy_chain`
 - `dummy_random`
