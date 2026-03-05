@@ -119,10 +119,9 @@ class CobraboxApp(pn.viewable.Viewer):
 
     def _sync_tabs(self, plots: dict[int, Any]) -> None:
         self._tabs.clear()
-        for i, comp in enumerate(self._pipeline.components):
+        for _i, comp in enumerate(self._pipeline.components):
             if isinstance(comp, VisualizationComponent):
-                plot = plots.get(i, pn.pane.Markdown("*No data*"))
-                self._tabs.append((f"{comp.display_name} #{comp._instance_id}", plot))
+                self._tabs.append((f"{comp.display_name} #{comp._instance_id}", comp.plot_view()))
 
     # -- handlers ------------------------------------------------------------
 

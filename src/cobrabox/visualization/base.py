@@ -55,9 +55,30 @@ class VisualizationComponent(PipelineComponent):
 
     component_kind: ClassVar[str] = "visualization"
 
+    _last_data = param.Parameter(precedence=-1, doc="Data from last process() call")
+
     def get_plot(self, data: Data) -> pn.viewable.Viewable:
         """Create a visualization of *data*. Override in subclasses."""
         raise NotImplementedError
 
     def process(self, data: Data) -> Data:
+        self._last_data = data
         return data
+
+    def plot_view(self) -> pn.viewable.Viewable:
+        """Return a reactive pane that re-renders when component params change."""
+        # Collect user-facing params that should trigger a re-render
+        reactive_params = {}
+        for name in self.param:
+            if name.startswith("_") or name == "name":
+                continue
+            reactive_params[name] = getattr(self.param, name)
+
+        def _render(**kwargs: Any) -> pn.viewable.Viewable:
+            if self._last_data is None:
+                return pn.pane.Markdown("*No data*")
+            return self.get_plot(self._last_data)
+
+        if reactive_params:
+            return pn.bind(_render, **reactive_params)
+        return _render()
