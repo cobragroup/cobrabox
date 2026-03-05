@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 import xarray as xr
 from scipy import signal
 
 from ..base_feature import BaseFeature
-from ..data import Data, SignalData
+from ..data import SignalData
 
 _DEFAULTS: dict[str, list[float]] = {
     "delta": [1.0, 4.0],
@@ -22,7 +21,7 @@ _DEFAULTS: dict[str, list[float]] = {
 class BandFilter(BaseFeature[SignalData]):
     """Filter a signal into frequency bands.
 
-    Applies a 3rd-order Butterworth bandpass filter for each band and stacks
+    Applies a Butterworth bandpass filter for each band and stacks
     the results along a new ``band`` dimension.
 
     Args:
@@ -30,6 +29,8 @@ class BandFilter(BaseFeature[SignalData]):
             Defaults to the five standard EEG bands:
             delta (1-4 Hz), theta (4-8 Hz), alpha (8-12 Hz),
             beta (12-30 Hz), gamma (30-45 Hz).
+        ord: Order of the filter.
+            Defaults to 3.
         keep_orig: Whether to keep the original signal as a "band" named "original".
             Defaults to ``False``.
 
@@ -42,8 +43,8 @@ class BandFilter(BaseFeature[SignalData]):
     """
 
     bands: dict[str, list[float]] = field(default_factory=lambda: dict(_DEFAULTS))
+    ord: int = 3
     keep_orig: bool = False
-    output_type: ClassVar[type[Data]] = Data
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         if data.sampling_rate is None:
@@ -54,10 +55,9 @@ class BandFilter(BaseFeature[SignalData]):
             band_arrays.append(data.data.assign_coords({"band": "original"}).expand_dims("band"))
         for band_name, freqs in self.bands.items():
             b, a = signal.butter(  # type: ignore[misc]
-                3, freqs, btype="band", fs=data.sampling_rate
+                self.ord, freqs, btype="band", fs=data.sampling_rate
             )
-            # apply_ufunc routes lfilter along the "time" dimension by label —
-            # no axis arithmetic needed.
+            # apply_ufunc routes lfilter along the "time" dimension by label
             filtered = xr.apply_ufunc(
                 signal.lfilter,
                 b,
@@ -69,6 +69,4 @@ class BandFilter(BaseFeature[SignalData]):
             )
             band_arrays.append(filtered.assign_coords({"band": band_name}).expand_dims("band"))
 
-        # concat places "band" first; apply_ufunc keeps "time" last —
-        # giving the (band, ..., space, time) convention automatically.
         return xr.concat(band_arrays, dim="band")
