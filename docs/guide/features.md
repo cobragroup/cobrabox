@@ -120,6 +120,18 @@ for window in windows:
 
 Used inside a `Chord` — not called directly in typical pipelines.
 
+### `SlidingWindowReduce`
+
+```python
+# Single-step sliding window with aggregation
+result = cb.feature.SlidingWindowReduce(
+    window_size=100, step_size=50, dim="time", agg="mean"
+).apply(data)
+# Returns Data with 'window' dimension, 'time' is reduced
+```
+
+Combines windowing and aggregation in one step — simpler than a Chord for basic windowed statistics. Supports aggregations: `mean`, `std`, `sum`, `min`, `max`.
+
 ### `Bandpower`
 
 ```python

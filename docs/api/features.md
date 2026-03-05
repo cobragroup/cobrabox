@@ -41,6 +41,11 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.sliding_window_reduce
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.mean_aggregate
     options:
         show_root_heading: true

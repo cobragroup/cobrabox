@@ -131,6 +131,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 ### Windowing & Aggregation
 
 - `SlidingWindow` - Split data into overlapping windows (splitter)
+- `SlidingWindowReduce` - Single-step windowing + aggregation (simpler alternative to Chord)
 - `MeanAggregate` - Average windowed results (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
 

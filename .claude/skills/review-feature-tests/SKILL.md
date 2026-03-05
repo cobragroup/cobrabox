@@ -16,10 +16,11 @@ plan document for a coding agent or developer to implement.
 
 ## Procedure
 
-### 1. Read inputs
+### 1. Read inputs and check coverage
 
 - Read the feature file at `$ARGUMENTS`
 - Derive the expected test path: `tests/test_feature_<feature_name>.py`
+- **Check per-file coverage**: Run `uv run pytest tests/test_feature_<feature_name>.py --cov=src/cobrabox/features/<feature_name>.py --cov-report=term-missing` and note the coverage percentage. If <95%, flag as HIGH severity issue.
 
 ### 2. Branch on test file existence
 
@@ -82,6 +83,16 @@ Brief description of what the feature does and what the tests will verify.
 **Date**: YYYY-MM-DD
 **Verdict**: PASS | NEEDS WORK
 
+## Coverage
+
+Report the per-file coverage percentage and any uncovered lines:
+
+```
+SlidingWindowReduce: 100% (34 statements, 0 missing)
+```
+
+If coverage is <95%, list the missing lines and flag as HIGH severity in Action List.
+
 ## Summary
 
 One paragraph on overall test quality and key gaps.
@@ -120,7 +131,7 @@ Missing scenarios — new tests to add:
 
 Severity guide:
 
-- **HIGH** — missing required scenario, no docstring, missing metadata preservation test
+- **HIGH** — missing required scenario, no docstring, missing metadata preservation test, **coverage <95%**
 - **MEDIUM** — incomplete assertion, wrong naming convention, missing `-> None`
 - **LOW** — style, minor improvements
 

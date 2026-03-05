@@ -23,6 +23,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "sw",
         "lore":  "Rigidly structured, principled expansion of data — serves understanding",
     },
+    "SlidingWindowReduce": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "sr",
+        "lore":  "Methodically carves time into windows, then summarizes without prejudice",
+    },
     "SpikesCalc": {
         "law":   1,
         "good":  -1,
