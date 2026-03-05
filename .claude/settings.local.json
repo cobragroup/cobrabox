@@ -5,7 +5,8 @@
       "Bash(npx markdownlint-cli2:*)",
       "Skill(commit-commands:commit)",
       "Bash(git push:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(uv run:*)"
     ]
   }
 }

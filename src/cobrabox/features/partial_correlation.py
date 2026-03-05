@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import ClassVar
+
 import numpy as np
 import xarray as xr
 
-from ..data import Data
-from ..function_wrapper import feature
+from ..base_feature import BaseFeature
+from ..data import Data, SignalData
 
 
 def _compute_partial_correlation(x: np.ndarray, y: np.ndarray, controls: list[np.ndarray]) -> float:
@@ -15,6 +20,9 @@ def _compute_partial_correlation(x: np.ndarray, y: np.ndarray, controls: list[np
 
     Returns:
         Partial correlation coefficient (float)
+
+    Raises:
+        ValueError: If correlation matrix is singular (non-invertible)
     """
     x = np.asarray(x).ravel()
     y = np.asarray(y).ravel()
@@ -27,24 +35,29 @@ def _compute_partial_correlation(x: np.ndarray, y: np.ndarray, controls: list[np
 
     corr_matrix = np.corrcoef(all_vars_arr, rowvar=False)
 
-    precision_matrix = np.linalg.inv(corr_matrix)
+    try:
+        precision_matrix = np.linalg.inv(corr_matrix)
+    except np.linalg.LinAlgError as e:
+        raise ValueError(
+            f"Correlation matrix is singular (non-invertible). "
+            f"This can happen when variables are perfectly correlated or "
+            f"when there are insufficient samples. "
+            f"Original error: {e}"
+        ) from e
 
     r_xy_z = -precision_matrix[0, 1] / np.sqrt(precision_matrix[0, 0] * precision_matrix[1, 1])
 
     return float(r_xy_z)
 
 
-@feature
-def partial_correlation(
-    data: Data, coord_x: str, coord_y: str, control_vars: list[str]
-) -> xr.DataArray:
+@dataclass
+class PartialCorrelation(BaseFeature[SignalData]):
     """Compute partial correlation between two coordinates while controlling for others.
 
     All variables (x, y, controls) are coordinate names from the space dimension.
     Samples are drawn from the time dimension.
 
     Args:
-        data: Data object with time and space dimensions
         coord_x: Name of first coordinate (from space dimension)
         coord_y: Name of second coordinate (from space dimension)
         control_vars: List of coordinate names to control for (from space dimension, min 1)
@@ -55,54 +68,69 @@ def partial_correlation(
     Raises:
         ValueError: If space dimension not in data
         ValueError: If any coordinate not found in space dimension
+
+    Example:
+        >>> result = cb.feature.PartialCorrelation(
+        ...     coord_x=0, coord_y=1, control_vars=[2]
+        ... ).apply(data)
     """
-    xr_data = data.data
-    space_dim = "space"
 
-    if space_dim not in xr_data.dims:
-        raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
+    output_type: ClassVar[type[Data]] = Data
 
-    time_dim = "time"
-    if time_dim not in xr_data.dims:
-        raise ValueError(f"data must have '{time_dim}' dimension")
+    coord_x: str | int
+    coord_y: str | int
+    control_vars: list[str] | list[int]
 
-    space_coords = xr_data.coords[space_dim].values
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+        space_dim = "space"
 
-    if coord_x not in space_coords:
-        raise ValueError(f"coordinate '{coord_x}' not found in space dimension: {space_coords}")
-    if coord_y not in space_coords:
-        raise ValueError(f"coordinate '{coord_y}' not found in space dimension: {space_coords}")
+        if space_dim not in xr_data.dims:
+            raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
 
-    if not control_vars:
-        raise ValueError("control_vars must have at least one coordinate")
+        time_dim = "time"
+        if time_dim not in xr_data.dims:
+            raise ValueError(f"data must have '{time_dim}' dimension")
 
-    for cv in control_vars:
-        if cv not in space_coords:
+        space_coords = xr_data.coords[space_dim].values
+
+        if self.coord_x not in space_coords:
             raise ValueError(
-                f"control coordinate '{cv}' not found in space dimension: {space_coords}"
+                f"coordinate '{self.coord_x}' not found in space dimension: {space_coords}"
+            )
+        if self.coord_y not in space_coords:
+            raise ValueError(
+                f"coordinate '{self.coord_y}' not found in space dimension: {space_coords}"
             )
 
-    x_series = xr_data.sel({space_dim: coord_x}).values
-    y_series = xr_data.sel({space_dim: coord_y}).values
+        if not self.control_vars:
+            raise ValueError("control_vars must have at least one coordinate")
 
-    control_series = [xr_data.sel({space_dim: cv}).values for cv in control_vars]
+        for cv in self.control_vars:
+            if cv not in space_coords:
+                raise ValueError(
+                    f"control coordinate '{cv}' not found in space dimension: {space_coords}"
+                )
 
-    result = _compute_partial_correlation(x_series, y_series, control_series)
+        x_series = xr_data.sel({space_dim: self.coord_x}).values
+        y_series = xr_data.sel({space_dim: self.coord_y}).values
 
-    time_coord = xr_data.coords[time_dim].values
-    return (
-        xr.DataArray(result, dims=[])
-        .expand_dims(time_dim, axis=0)
-        .assign_coords({time_dim: [time_coord[0]]})
-        .expand_dims(space_dim, axis=0)
-        .assign_coords({space_dim: [coord_x]})
-    )
+        control_series = [xr_data.sel({space_dim: cv}).values for cv in self.control_vars]
+
+        result = _compute_partial_correlation(x_series, y_series, control_series)
+
+        time_coord = xr_data.coords[time_dim].values
+        return (
+            xr.DataArray(result, dims=[])
+            .expand_dims(time_dim, axis=0)
+            .assign_coords({time_dim: [time_coord[0]]})
+            .expand_dims(space_dim, axis=0)
+            .assign_coords({space_dim: [self.coord_x]})
+        )
 
 
-@feature
-def partial_correlation_matrix(
-    data: Data, coords: list[str], control_vars: list[str]
-) -> xr.DataArray:
+@dataclass
+class PartialCorrelationMatrix(BaseFeature[SignalData]):
     """Compute pairwise partial correlation matrix for multiple coordinates.
 
     Computes partial correlation for every pair of coordinates in coords,
@@ -110,7 +138,6 @@ def partial_correlation_matrix(
     from the space dimension.
 
     Args:
-        data: Data object with time and space dimensions
         coords: List of coordinate names to compute pairwise correlations
         control_vars: List of coordinate names to control for (from space dimension)
 
@@ -120,53 +147,60 @@ def partial_correlation_matrix(
     Raises:
         ValueError: If coords or control_vars is empty
         ValueError: If any coordinate not found in space dimension
+
+    Example:
+        >>> result = cb.feature.PartialCorrelationMatrix(
+        ...     coords=[0, 1, 2], control_vars=[3]
+        ... ).apply(data)
     """
-    xr_data = data.data
-    space_dim = "space"
 
-    if space_dim not in xr_data.dims:
-        raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
+    output_type: ClassVar[type[Data]] = Data
 
-    time_dim = "time"
-    if time_dim not in xr_data.dims:
-        raise ValueError(f"data must have '{time_dim}' dimension")
+    coords: list[str] | list[int]
+    control_vars: list[str] | list[int]
 
-    if not coords:
-        raise ValueError("coords must have at least one coordinate")
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+        space_dim = "space"
 
-    if not control_vars:
-        raise ValueError("control_vars must have at least one coordinate")
+        if space_dim not in xr_data.dims:
+            raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
 
-    space_coords = xr_data.coords[space_dim].values
+        time_dim = "time"
+        if time_dim not in xr_data.dims:
+            raise ValueError(f"data must have '{time_dim}' dimension")
 
-    for c in coords:
-        if c not in space_coords:
-            raise ValueError(f"coordinate '{c}' not found in space dimension: {space_coords}")
+        if not self.coords:
+            raise ValueError("coords must have at least one coordinate")
 
-    for cv in control_vars:
-        if cv not in space_coords:
-            raise ValueError(
-                f"control coordinate '{cv}' not found in space dimension: {space_coords}"
-            )
+        if not self.control_vars:
+            raise ValueError("control_vars must have at least one coordinate")
 
-    n = len(coords)
-    result = np.full((n, n), np.nan)
+        space_coords = xr_data.coords[space_dim].values
 
-    control_series = [xr_data.sel({space_dim: cv}).values for cv in control_vars]
+        for c in self.coords:
+            if c not in space_coords:
+                raise ValueError(f"coordinate '{c}' not found in space dimension: {space_coords}")
 
-    for i, coord_i in enumerate(coords):
-        x_series = xr_data.sel({space_dim: coord_i}).values
-        for j, coord_j in enumerate(coords):
-            y_series = xr_data.sel({space_dim: coord_j}).values
-            result[i, j] = _compute_partial_correlation(x_series, y_series, control_series)
+        for cv in self.control_vars:
+            if cv not in space_coords:
+                raise ValueError(
+                    f"control coordinate '{cv}' not found in space dimension: {space_coords}"
+                )
 
-    time_coord = xr_data.coords[time_dim].values
-    return (
-        xr.DataArray(
-            result, dims=["coord_i", "coord_j"], coords={"coord_i": coords, "coord_j": coords}
+        n = len(self.coords)
+        result = np.full((n, n), np.nan)
+
+        control_series = [xr_data.sel({space_dim: cv}).values for cv in self.control_vars]
+
+        for i, coord_i in enumerate(self.coords):
+            x_series = xr_data.sel({space_dim: coord_i}).values
+            for j, coord_j in enumerate(self.coords):
+                y_series = xr_data.sel({space_dim: coord_j}).values
+                result[i, j] = _compute_partial_correlation(x_series, y_series, control_series)
+
+        return xr.DataArray(
+            result,
+            dims=["coord_i", "coord_j"],
+            coords={"coord_i": self.coords, "coord_j": self.coords},
         )
-        .expand_dims(time_dim, axis=0)
-        .assign_coords({time_dim: [time_coord[0]]})
-        .expand_dims(space_dim, axis=0)
-        .assign_coords({space_dim: [coords[0]]})
-    )

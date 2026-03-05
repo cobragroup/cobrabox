@@ -122,3 +122,24 @@ jobs:
 
       - name: Ruff format
         run: uvx ruff format --check
+
+  examples:
+    name: Run Examples
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run examples
+        run: make run-examples

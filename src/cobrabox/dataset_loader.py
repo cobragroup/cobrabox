@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 
-from .data import Data
+from .data import Data, SignalData
 
 
 def _sidecar_json_for_csv(path: Path) -> Path:
@@ -37,7 +37,7 @@ def _sampling_rate_from_info(info: dict) -> float | None:
         raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
 
 
-def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> list[Data]:
+def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> list[SignalData]:
     """Load dummy dataset parts from `data/dummy/struct`."""
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
@@ -51,13 +51,13 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
             f"(expected: dummy_struct_VAR_{variant}_*.csv.xz)."
         )
 
-    datasets: list[Data] = []
+    datasets: list[SignalData] = []
     for path in candidates:
         df = pd.read_csv(path, compression="xz")
         if df.empty:
             continue
         columns = list(df.columns)
-        if not columns:
+        if not columns:  # pragma: no cover
             raise ValueError(f"{path.name}: expected at least one column")
 
         # For these dummy datasets, time is implicit row index.
@@ -84,7 +84,9 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> lis
                 # Ignore JSON parsing issues and continue without extra metadata
                 pass
         sampling_rate = _sampling_rate_from_info(info) if info else None
-        datasets.append(Data.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
+        datasets.append(
+            SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
+        )
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
@@ -107,7 +109,7 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
         if df.empty:
             continue
         columns = list(df.columns)
-        if not columns:
+        if not columns:  # pragma: no cover
             raise ValueError(f"{path.name}: expected at least one column")
 
         time = df.index.to_numpy(dtype=float)
@@ -130,7 +132,9 @@ def load_noise_dummy(identifier: str = "dummy_noise", repo_root: Path | None = N
             except Exception:
                 pass
         sampling_rate = _sampling_rate_from_info(info) if info else None
-        datasets.append(Data.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
+        datasets.append(
+            SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
+        )
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
@@ -158,7 +162,7 @@ def load_realistic_swiss(
         if df.empty:
             continue
         columns = list(df.columns)
-        if not columns:
+        if not columns:  # pragma: no cover
             raise ValueError(f"{path.name}: expected at least one column")
 
         time = df.index.to_numpy(dtype=float)
@@ -181,7 +185,9 @@ def load_realistic_swiss(
             except Exception:
                 pass
         sampling_rate = _sampling_rate_from_info(info) if info else None
-        datasets.append(Data.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
+        datasets.append(
+            SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
+        )
 
     if not datasets:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")

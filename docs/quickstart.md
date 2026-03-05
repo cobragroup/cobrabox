@@ -13,7 +13,6 @@ import numpy as np
 # Create synthetic data: 100 timepoints, 4 channels
 my_array = np.random.default_rng(seed=0).normal(size=(100, 4))
 
-# Wrap in Data container
 data = cb.from_numpy(
     arr=my_array,
     dims=["time", "space"],
@@ -21,63 +20,72 @@ data = cb.from_numpy(
     subjectID="sub-01",
     condition="baseline"
 )
-
-print(data)
 ```
 
-## 2. Apply Features
+## 2. Apply a Feature
 
-Use built-in features or create your own:
+Call `.apply(data)` on any feature class:
 
 ```python
-# Apply line length feature
-line_len = cb.feature.line_length(data)
+feat = cb.feature.LineLength().apply(data)
 
-print(f"Shape: {line_len.data.shape}")
-print(f"History: {line_len.history}")
+print(f"Shape: {feat.data.shape}")
+print(f"History: {feat.history}")  # ['LineLength']
 ```
 
-## 3. Chain Operations
+## 3. Chain Features with `|`
 
-Features return new `Data` objects, so you can chain them:
+Use `|` to build a sequential `Pipeline`:
 
 ```python
-# Sliding window → compute min/max per window → line length
-wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
-win_min = cb.feature.min(wdata, dim="window_index")
-win_max = cb.feature.max(wdata, dim="window_index")
+pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+result = pipeline.apply(data)
+print(result.history)  # ['Min', 'Max']
 ```
 
-## 4. Access Data
+## 4. Windowed Pipelines with Chord
 
-Extract data in different formats:
+Pipe a `SplitterFeature` into a pipeline and close it with an `AggregatorFeature`:
+
+```python
+chord = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+)
+result = chord.apply(data)
+print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
+```
+
+A `Chord` is itself a `BaseFeature`, so it composes with `|` like any other step.
+
+## 5. Apply to a Dataset
+
+```python
+datasets = cb.dataset("dummy_chain")
+
+pipeline = (
+    cb.feature.SlidingWindow(window_size=20, step_size=10)
+    | cb.feature.LineLength()
+    | cb.feature.MeanAggregate()
+)
+
+results = [pipeline.apply(d) for d in datasets]
+```
+
+## 6. Access Data
 
 ```python
 # As numpy array
-arr = data.to_numpy()
-
-# As pandas DataFrame
-df = data.to_pandas()
+arr = result.to_numpy()
 
 # Access underlying xarray.DataArray
-xr_data = data.data
-```
-
-## 5. Load Built-in Datasets
-
-Try the dummy datasets:
-
-```python
-# Load a dataset
-datasets = cb.dataset("dummy_chain")
-data = datasets[0]
-
-# Apply your pipeline
-result = cb.feature.line_length(data)
+xr_data = result.data
 ```
 
 ## What's Next?
 
-- [Core Concepts](guide/core-concepts.md) - Understand immutability and metadata
-- [Data Containers](guide/data-containers.md) - Deep dive into the Data class
-- [Feature Guide](guide/features.md) - Learn all available features
+- [Core Concepts](guide/core-concepts.md) — Immutability, metadata, history, and the feature system
+- [Feature Guide](guide/features.md) — All feature types and how to create custom ones
+- [Pipelines](guide/pipelines.md) — `|` syntax, Chord, and batch processing
+- [Data Containers](guide/data-containers.md) — Deep dive into the `Data` class

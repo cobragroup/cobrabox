@@ -5,15 +5,30 @@ import cobrabox as cb
 # cb.gorkastyle()
 
 data = cb.dataset("dummy_chain")[0]
-wdata = cb.feature.sliding_window(data, window_size=10, step_size=5)
-win_min = cb.feature.min(wdata, dim="window_index")
-wdata2 = cb.feature.sliding_window(data, window_size=10, step_size=5)
-win_max = cb.feature.max(wdata2, dim="window_index")
-feat = cb.feature.line_length(win_max)
-dummy = cb.feature.dummy(feat, mandatory_arg=1, optional_arg=2)
+
+# Simple pipeline using | syntax
+pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+simple_out = pipeline.apply(data)
+print("simple pipeline history:", simple_out.history)
+print("simple pipeline shape:", simple_out.data.shape)
+
+win_min = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.Min(dim="time")
+    | cb.feature.MeanAggregate()
+).apply(data)
+
+win_max = (
+    cb.feature.SlidingWindow(window_size=10, step_size=5)
+    | cb.feature.Max(dim="time")
+    | cb.feature.MeanAggregate()
+).apply(data)
+
+feat = cb.feature.LineLength().apply(data)
+dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(data)
 
 # Compute coherence
-coh = cb.feature.coherence(data)
+coh = cb.feature.Coherence().apply(data)
 
 print("min over windows shape:", win_min.data.shape)
 print("min over windows history:", win_min.history)

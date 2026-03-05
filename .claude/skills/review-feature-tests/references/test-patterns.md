@@ -3,13 +3,14 @@
 Concrete pytest snippets for each required scenario. Adapt by substituting the
 target feature name and adjusting shapes/dims/params as needed.
 
-Examples use `line_length` (no params) and `sliding_window` (has params).
+Examples use `LineLength` (no params) and `SlidingWindow` + `MeanAggregate` (have params).
 
 ---
 
 ## Helper
 
-A small helper keeps tests concise. Returns a fresh `Data` object each call.
+A small helper keeps tests concise. Returns a fresh `SignalData` object each call.
+Use `cb.SignalData.from_numpy` (not `cb.from_numpy`, which returns plain `Data`).
 
 ```python
 def _make_data(
@@ -19,9 +20,9 @@ def _make_data(
     subjectID: str = "s1",
     groupID: str = "g1",
     condition: str = "rest",
-) -> cb.Data:
+) -> cb.SignalData:
     arr = np.random.randn(n_time, n_space)
-    return cb.from_numpy(
+    return cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],
         sampling_rate=sampling_rate,
@@ -37,48 +38,63 @@ def _make_data(
 
 ```python
 def test_line_length_basic() -> None:
-    """line_length returns a Data object with time dimension removed."""
+    """LineLength returns a Data object with time dimension removed."""
     data = _make_data()
-    result = cb.feature.line_length(data)
+    result = cb.feature.LineLength().apply(data)
     assert isinstance(result, cb.Data)
     assert "time" not in result.data.dims
     assert result.data.sizes["space"] == 10
-    assert not np.any(np.isnan(result.asnumpy()))
+    assert not np.any(np.isnan(result.to_numpy()))
 ```
 
 For features that keep `time` but change other dims, adjust the assertion:
 
 ```python
-# sliding_window adds window_index, keeps time
+# SlidingWindow is a SplitterFeature — test via a Chord
 def test_sliding_window_basic() -> None:
-    """sliding_window returns a Data object with window_index dimension added."""
+    """SlidingWindow inside a Chord produces windowed output."""
     data = _make_data()
-    result = cb.feature.sliding_window(data, window_size=20, step_size=10)
+    chord = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
+    result = chord.apply(data)
     assert isinstance(result, cb.Data)
-    assert "window_index" in result.data.dims
-    assert "time" in result.data.dims
     assert result.data.sizes["space"] == 10
+```
+
+For a `SplitterFeature` tested directly (as a generator):
+
+```python
+def test_sliding_window_yields_data() -> None:
+    """SlidingWindow yields Data objects as a generator."""
+    data = _make_data()
+    windows = list(cb.feature.SlidingWindow(window_size=20, step_size=10)(data))
+    assert len(windows) > 0
+    assert all(isinstance(w, cb.Data) for w in windows)
+    assert all("time" in w.data.dims for w in windows)
 ```
 
 ---
 
 ## History updated
 
+History entry is the **class name** (PascalCase), appended by `BaseFeature.apply`.
+
 ```python
 def test_line_length_history_updated() -> None:
-    """line_length appends 'line_length' to history."""
+    """LineLength appends 'LineLength' to history."""
     data = _make_data()
-    result = cb.feature.line_length(data)
-    assert result.history[-1] == "line_length"
+    result = cb.feature.LineLength().apply(data)
+    assert result.history[-1] == "LineLength"
 
 
 def test_line_length_history_accumulates() -> None:
     """Chained features accumulate in history in order."""
     data = _make_data()
-    windowed = cb.feature.sliding_window(data, window_size=20, step_size=10)
-    result = cb.feature.line_length(windowed)
-    assert "sliding_window" in result.history
-    assert result.history[-1] == "line_length"
+    chord = cb.feature.SlidingWindow(window_size=20, step_size=10) | \
+            cb.feature.LineLength() | \
+            cb.feature.MeanAggregate()
+    result = chord.apply(data)
+    assert "LineLength" in result.history
+    assert result.history[-1] == "MeanAggregate"
 ```
 
 ---
@@ -87,122 +103,103 @@ def test_line_length_history_accumulates() -> None:
 
 ```python
 def test_line_length_metadata_preserved() -> None:
-    """line_length preserves subjectID, groupID, condition, and sampling_rate."""
+    """LineLength preserves subjectID, groupID, condition; sampling_rate only if time dim present."""
     data = _make_data(sampling_rate=250.0, subjectID="s42", groupID="control", condition="task")
-    result = cb.feature.line_length(data)
+    result = cb.feature.LineLength().apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"
-    assert result.sampling_rate == pytest.approx(250.0)
+    # sampling_rate is only preserved if result has time dimension
+    if "time" in result.data.dims:
+        assert result.sampling_rate == pytest.approx(250.0)
+    else:
+        assert result.sampling_rate is None
 ```
 
 ---
 
 ## Invalid dims — missing `time`
 
-```python
-def test_line_length_missing_time_dim() -> None:
-    """line_length raises ValueError when input has no time dimension."""
-    # Build a DataArray without time by selecting a single timepoint
-    arr = np.random.randn(10)
-    # Construct Data via xarray to bypass the from_numpy time requirement
-    import xarray as xr
-    xr_data = xr.DataArray(arr, dims=["space"])
-    # Wrap manually — Data.__init__ will raise because 'time' is missing
-    with pytest.raises(ValueError, match="time"):
-        cb.Data(xr_data)
-```
-
-Alternatively, if the feature checks dims itself before Data validation triggers:
-
-```python
-def test_line_length_missing_time_dim() -> None:
-    """line_length raises ValueError when time dimension is absent."""
-    data = _make_data()
-    # Drop time by selecting a scalar — produces a space-only DataArray
-    import xarray as xr
-    no_time = xr.DataArray(data.asnumpy()[0], dims=["space"])
-    with pytest.raises(ValueError, match="time"):
-        # Feature should catch missing dim before xarray does
-        cb.feature.line_length(cb.from_xarray(
-            no_time.expand_dims("time").isel(time=0).drop_vars("time")
-        ))
-```
-
-Simplest pattern — just test via the feature's own guard:
+Test the feature's own `__call__` guard clause (the `ValueError` it raises before xarray does).
 
 ```python
 def test_line_length_missing_time_raises() -> None:
-    """line_length raises ValueError if time dimension is missing."""
-    data = _make_data()
-    # Rename time → t to simulate missing required dim
-    renamed = data.data.rename({"time": "t"})
-    with pytest.raises((ValueError, KeyError)):
-        cb.feature.line_length.__wrapped__(
-            cb.Data.__new__(cb.Data)  # bypass — test internal guard directly
-        )
+    """LineLength raises ValueError when 'time' dimension is missing."""
+    import xarray as xr
+    arr = np.random.randn(10)
+    # Build a Data-like object whose underlying array lacks 'time'
+    xr_data = xr.DataArray(arr, dims=["space"])
+    # Bypass Data.__init__ validation to isolate the feature guard
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", xr_data)
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.LineLength().apply(raw)
 ```
 
-Recommended approach — exercise the actual public API guard:
+Simpler alternative — rename dims on a valid Data object and call directly:
+
+```python
+def test_line_length_missing_time_raises() -> None:
+    """LineLength raises ValueError when 'time' dimension is absent."""
+    data = _make_data()
+    # Construct feature and call __call__ directly with a bad xr.DataArray
+    import xarray as xr
+    bad = xr.DataArray(np.ones((10,)), dims=["space"])
+    with pytest.raises((ValueError, KeyError)):
+        cb.feature.LineLength()(data)  # still valid; test guard via monkeypatch if needed
+```
+
+Recommended: test via the actual public guard in `__call__`:
 
 ```python
 def test_line_length_validates_time_dim() -> None:
-    """line_length raises ValueError when 'time' dimension is missing."""
-    arr = np.random.randn(100, 10)
+    """LineLength raises ValueError when 'time' is not in data.data.dims."""
     import xarray as xr
-    # Create a DataArray with time renamed so it passes Data() but fails the feature
-    xr_data = xr.DataArray(arr, dims=["t", "space"])
-    xr_data = xr_data.assign_coords(t=np.arange(100, dtype=float))
-    # Data requires time — so test the feature guard by monkeypatching or
-    # use sliding_window output that has lost the time dim (not applicable here).
-    # Simplest: confirm the feature raises on data where time was consumed.
-    data = _make_data(n_time=5)
-    # line_length consumes time — calling it twice should still work on the result
-    # since _copy_with_new_data adds a singleton time back.
-    result = cb.feature.line_length(data)
-    # Verify time is gone from meaningful dims even if singleton exists
-    assert result.data.sizes.get("time", 1) == 1
+    # Build a fresh Data with time renamed to 't' via __new__ bypass
+    bad_xr = xr.DataArray(np.random.randn(100, 10), dims=["t", "space"])
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", bad_xr)
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.LineLength()(raw)
 ```
-
-> **Note:** The simplest reliable pattern is to test the `ValueError` raised inside
-> the feature's own guard clause (e.g. `if "time" not in xr_data.dims: raise ValueError`).
-> Construct a Data-like object where the check fails, or mock the dims.
 
 ---
 
 ## Invalid params (features with parameters only)
 
+`__post_init__` validation fires at construction time; runtime guards fire in `__call__`.
+
 ```python
 def test_sliding_window_zero_window_size() -> None:
-    """sliding_window raises ValueError for window_size of 0."""
-    data = _make_data()
+    """SlidingWindow raises ValueError for window_size of 0."""
     with pytest.raises(ValueError):
-        cb.feature.sliding_window(data, window_size=0)
-
-
-def test_sliding_window_window_larger_than_signal() -> None:
-    """sliding_window raises ValueError when window_size exceeds signal length."""
-    data = _make_data(n_time=10)
-    with pytest.raises(ValueError):
-        cb.feature.sliding_window(data, window_size=100, step_size=5)
+        cb.feature.SlidingWindow(window_size=0, step_size=10)
 
 
 def test_sliding_window_zero_step_size() -> None:
-    """sliding_window raises ValueError for step_size of 0."""
-    data = _make_data()
+    """SlidingWindow raises ValueError for step_size of 0."""
     with pytest.raises(ValueError):
-        cb.feature.sliding_window(data, window_size=10, step_size=0)
+        cb.feature.SlidingWindow(window_size=10, step_size=0)
+
+
+def test_sliding_window_window_larger_than_signal() -> None:
+    """SlidingWindow raises ValueError when window_size exceeds signal length."""
+    data = _make_data(n_time=10)
+    with pytest.raises(ValueError):
+        list(cb.feature.SlidingWindow(window_size=100, step_size=5)(data))
 ```
 
 ---
 
 ## Output type is `Data`
 
+`.apply()` always returns a `Data` instance (`_copy_with_new_data` wraps the result).
+
 ```python
 def test_line_length_returns_data_instance() -> None:
-    """line_length always returns a Data instance (decorator repacks result)."""
+    """LineLength.apply() always returns a Data instance."""
     data = _make_data()
-    result = cb.feature.line_length(data)
+    result = cb.feature.LineLength().apply(data)
     assert isinstance(result, cb.Data)
 ```
 
@@ -212,17 +209,69 @@ def test_line_length_returns_data_instance() -> None:
 
 ```python
 def test_line_length_does_not_mutate_input() -> None:
-    """line_length leaves the input Data object unchanged."""
+    """LineLength.apply() leaves the input Data object unchanged."""
     data = _make_data()
     original_history = list(data.history)
     original_shape = data.data.shape
-    original_values = data.asnumpy().copy()
+    original_values = data.to_numpy().copy()
 
-    _ = cb.feature.line_length(data)
+    _ = cb.feature.LineLength().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
-    np.testing.assert_array_equal(data.asnumpy(), original_values)
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+```
+
+---
+
+## Lazy generator (SplitterFeature)
+
+For features that return generators, verify they are truly lazy.
+
+```python
+def test_sliding_window_is_lazy() -> None:
+    """Generator should not materialise all windows upfront."""
+    import inspect
+    data = _make_data(n_time=100)
+    gen = cb.feature.SlidingWindow(window_size=10, step_size=1)(data)
+    assert inspect.isgenerator(gen)
+```
+
+---
+
+## Output type handling (`output_type = Data`)
+
+When a feature sets `output_type: ClassVar[type[Data]] = Data` (removing the time
+dimension), test that `sampling_rate` becomes `None`.
+
+```python
+def test_line_length_sampling_rate_none() -> None:
+    """LineLength sets sampling_rate to None when time dimension is removed."""
+    data = _make_data(sampling_rate=250.0)
+    result = cb.feature.LineLength().apply(data)
+    assert result.sampling_rate is None
+```
+
+---
+
+## Chord composition
+
+For features commonly used in Chord pipelines, verify they work correctly in that context.
+
+```python
+def test_line_length_via_chord() -> None:
+    """LineLength applied per window via Chord produces correct results."""
+    data = _make_data(n_time=20)
+    chord = cb.Chord(
+        split=cb.feature.SlidingWindow(window_size=5, step_size=2),
+        pipeline=cb.feature.LineLength(),
+        aggregate=cb.feature.MeanAggregate(),
+    )
+    result = chord.apply(data)
+    assert isinstance(result, cb.Data)
+    assert "LineLength" in result.history
+    assert "MeanAggregate" in result.history
+    assert "SlidingWindow" in result.history
 ```
 
 ---
@@ -233,7 +282,7 @@ Use this as the starting template when generating from scratch. Replace
 `<feature_name>` and `<FeatureName>` throughout, and remove inapplicable sections.
 
 ```python
-"""Tests for cb.feature.<feature_name>."""
+"""Tests for cb.feature.<FeatureName>."""
 
 from __future__ import annotations
 
@@ -255,9 +304,9 @@ def _make_data(
     subjectID: str = "s1",
     groupID: str = "g1",
     condition: str = "rest",
-) -> cb.Data:
+) -> cb.SignalData:
     arr = np.random.randn(n_time, n_space)
-    return cb.from_numpy(
+    return cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],
         sampling_rate=sampling_rate,
@@ -273,53 +322,57 @@ def _make_data(
 
 
 def test_<feature_name>_basic() -> None:
-    """<feature_name> returns a Data object with expected shape."""
+    """<FeatureName> returns a Data object with expected shape."""
     data = _make_data()
-    result = cb.feature.<feature_name>(data)
+    result = cb.feature.<FeatureName>().apply(data)
     assert isinstance(result, cb.Data)
     # TODO: assert output shape/dims
 
 
 def test_<feature_name>_history_updated() -> None:
-    """<feature_name> appends its name to history."""
+    """<FeatureName> appends '<FeatureName>' to history."""
     data = _make_data()
-    result = cb.feature.<feature_name>(data)
-    assert result.history[-1] == "<feature_name>"
+    result = cb.feature.<FeatureName>().apply(data)
+    assert result.history[-1] == "<FeatureName>"
 
 
 def test_<feature_name>_metadata_preserved() -> None:
-    """<feature_name> preserves subjectID, groupID, condition, and sampling_rate."""
+    """<FeatureName> preserves subjectID, groupID, condition, and sampling_rate."""
     data = _make_data(sampling_rate=250.0, subjectID="s42", groupID="ctrl", condition="task")
-    result = cb.feature.<feature_name>(data)
+    result = cb.feature.<FeatureName>().apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "ctrl"
     assert result.condition == "task"
-    assert result.sampling_rate == pytest.approx(250.0)
+    # sampling_rate is None if time dimension was removed, otherwise preserved
+    if "time" in result.data.dims:
+        assert result.sampling_rate == pytest.approx(250.0)
+    else:
+        assert result.sampling_rate is None
 
 
 def test_<feature_name>_missing_time_raises() -> None:
-    """<feature_name> raises ValueError when time dimension is missing."""
-    # TODO: construct input without time dim appropriate to this feature
+    """<FeatureName> raises ValueError when time dimension is missing."""
+    # TODO: construct input without time dim and assert ValueError
     with pytest.raises(ValueError, match="time"):
         pass  # replace with actual call
 
 
-# Add test_<feature_name>_invalid_params() if feature has constrained parameters.
+# Add test_<feature_name>_invalid_params() if feature has constrained fields.
 
 
 def test_<feature_name>_returns_data_instance() -> None:
-    """<feature_name> always returns a Data instance."""
+    """<FeatureName>.apply() always returns a Data instance."""
     data = _make_data()
-    result = cb.feature.<feature_name>(data)
+    result = cb.feature.<FeatureName>().apply(data)
     assert isinstance(result, cb.Data)
 
 
 def test_<feature_name>_does_not_mutate_input() -> None:
-    """<feature_name> does not modify the input Data object."""
+    """<FeatureName> does not modify the input Data object."""
     data = _make_data()
     original_history = list(data.history)
     original_shape = data.data.shape
-    _ = cb.feature.<feature_name>(data)
+    _ = cb.feature.<FeatureName>().apply(data)
     assert data.history == original_history
     assert data.data.shape == original_shape
 ```

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Hashable
 from typing import Any
 
 import numpy as np
@@ -8,16 +9,15 @@ import xarray as xr
 
 
 class Data:
-    """Container for labelled multidimensional time-series data.
+    """Container for labelled multidimensional data.
 
-    Immutable container wrapping xarray.DataArray with mandatory dimensions
-    (time, space) and metadata attributes for EEG/fMRI analysis.
+    Immutable container wrapping xarray.DataArray with metadata attributes.
+    This is the most general data container with no assumptions about dimensions.
+    For time-series data, use SignalData subclass instead.
 
-    Mandatory dimensions:
+    Optional dimensions (examples):
         - time: Temporal dimension
         - space: Spatial dimension (electrode/voxel)
-
-    Optional dimensions:
         - spaceX, spaceY, spaceZ: Additional spatial dimensions
         - run_index: Run/block index
         - window_index: Window index (e.g., from sliding window)
@@ -25,7 +25,6 @@ class Data:
 
     Metadata attributes:
         - subjectID: Subject identifier
-        - sampling_rate: Sampling rate in Hz (inferred from time coordinates)
         - groupID: Group identifier
         - condition: Experimental condition
         - history: List of operations applied (automatically maintained)
@@ -36,7 +35,7 @@ class Data:
         return new Data instances (e.g., features create new Data objects).
     """
 
-    __slots__ = ("_data", "_extra", "_frozen")
+    __slots__ = ("_data", "_extra", "_frozen", "_has_time")
 
     def __init__(
         self,
@@ -51,28 +50,22 @@ class Data:
         """Initialize Data.
 
         Args:
-            data: xarray DataArray with at least 'time' and 'space' dimensions
-            sampling_rate: Sampling rate in Hz. If not provided, inferred from
-                time coordinates when they represent time in seconds.
+            data: xarray DataArray with arbitrary dimensions
+            sampling_rate: Sampling rate in Hz (only meaningful for time-series data)
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
             history: List of operation names applied (default: empty list)
             extra: Optional dict for additional fields and arrays (e.g. xr.DataArray, scalars)
         """
-        # Validate mandatory dimensions
-        if "time" not in data.dims:
-            raise ValueError("data must have `time` dimension")
-        if "space" not in data.dims:
-            raise ValueError("data must have `space` dimension")
-
         if sampling_rate is not None and sampling_rate <= 0:
             raise ValueError("sampling_rate must be positive when provided")
 
+        # Track if this data has a time dimension
+        self._has_time = "time" in data.dims
+
         # Store xarray DataArray, enforce float64
         self._data = data.astype(np.float64)
-        # optimisation: time dimension is always last
-        self._data = self._data.transpose(..., "time")
 
         # Store metadata in xarray attrs for persistence
         attrs = dict(data.attrs) if data.attrs else {}
@@ -89,10 +82,13 @@ class Data:
             history = []
         attrs["history"] = history
 
-        # Sampling rate: use provided value, else try to infer from time coordinates
+        # Sampling rate: use provided value only if data has time dimension
         if sampling_rate is not None:
-            attrs["sampling_rate"] = sampling_rate
-        else:
+            if self._has_time:
+                attrs["sampling_rate"] = sampling_rate
+            # Silently ignore sampling_rate for non-time data
+        elif self._has_time:
+            # Try to infer from time coordinates only if time dimension exists
             inferred = self._infer_sampling_rate(data)
             if inferred is not None:
                 attrs["sampling_rate"] = inferred
@@ -108,7 +104,7 @@ class Data:
     def from_numpy(
         cls,
         arr: np.ndarray,
-        dims: list[str],
+        dims: list[Hashable],
         *,
         sampling_rate: float | None = None,
         subjectID: str | None = None,
@@ -118,25 +114,38 @@ class Data:
     ) -> Data:
         """Create a Data object from a numpy array.
 
-        Requires at least 2 dimensions and that resulting dims include `time` and `space`.
+        Creates a general Data container. For time-series data, use
+        SignalData.from_numpy() which provides additional validation.
+
+        Args:
+            arr: Numpy array with arbitrary shape
+            dims: Dimension names matching array shape
+            sampling_rate: Sampling rate in Hz (only used if 'time' in dims)
+            subjectID: Subject identifier
+            groupID: Group identifier
+            condition: Experimental condition
+            extra: Optional extra dict
+
+        Returns:
+            Data instance
+
+        Raises:
+            ValueError: If dims length doesn't match array ndim
         """
         arr = np.asarray(arr)
-        if arr.ndim < 2:
-            raise ValueError("array must have at least 2 dimensions (time, space)")
 
         if len(dims) != arr.ndim:
             raise ValueError("dims length must match array ndim")
 
-        if "time" not in dims:
-            raise ValueError("dims must include 'time'")
-
-        time_axis = dims.index("time")
-
         coords: dict[str, Any] = {}
-        if sampling_rate is not None and sampling_rate > 0:
-            coords["time"] = np.arange(arr.shape[time_axis], dtype=float) / sampling_rate
-        else:
-            coords["time"] = np.arange(arr.shape[time_axis], dtype=float)
+
+        # Only create time coordinates if time dimension is present
+        if "time" in dims:
+            time_axis = dims.index("time")
+            if sampling_rate is not None and sampling_rate > 0:
+                coords["time"] = np.arange(arr.shape[time_axis], dtype=float) / sampling_rate
+            else:
+                coords["time"] = np.arange(arr.shape[time_axis], dtype=float)
 
         data = xr.DataArray(arr, dims=dims, coords=coords)
         return cls(
@@ -162,8 +171,8 @@ class Data:
     ) -> Data:
         """Create a Data object from an xarray DataArray.
 
-        The DataArray must have 'time' and 'space' dimensions. Time coordinates
-        should be in seconds if you want sampling_rate to be inferred.
+        Creates a general Data container with arbitrary dimensions.
+        For time-series data with validation, use SignalData.from_xarray().
 
         Args:
             ar: xarray DataArray with dims (time, space) and optional coords.
@@ -176,7 +185,7 @@ class Data:
             extra: Optional extra dict.
 
         Returns:
-            Data instance.
+            Data instance
 
         Example:
             >>> ar = xr.DataArray(...)
@@ -213,6 +222,10 @@ class Data:
         if "sampling_rate" in data.attrs:
             return data.attrs.get("sampling_rate")
 
+        # Only infer if time dimension exists
+        if "time" not in data.dims:
+            return None
+
         # Try to infer from time coordinates
         time_coords = data.coords["time"]
 
@@ -248,7 +261,11 @@ class Data:
 
     @property
     def sampling_rate(self) -> float | None:
-        """Sampling rate in Hz (stored at creation, inferred from time coords when possible)."""
+        """Sampling rate in Hz.
+
+        Returns None if data has no time dimension or if sampling rate
+        was not provided and could not be inferred.
+        """
         return self._data.attrs.get("sampling_rate")
 
     @property
@@ -296,23 +313,31 @@ class Data:
 
         Returns:
             Either the raw data array, or ``(time, space, labels)``.
+
+        Raises:
+            ValueError: If style is unknown or if "gorkastyle" is used
+                without required dimensions.
         """
         if style == "default":
             return self._data.to_numpy()
         if style == "gorkastyle":
+            if "time" not in self._data.dims:
+                raise ValueError("gorkastyle requires 'time' dimension")
+            if "space" not in self._data.dims:
+                raise ValueError("gorkastyle requires 'space' dimension")
             time = np.asarray(self._data.coords["time"].values)
             space = np.asarray(self._data.coords["space"].values)
             labels = np.asarray(self._data.values)
             return time, space, labels
         raise ValueError("Unknown style. Expected 'default' or 'gorkastyle'.")
 
-    def to_pandas(self) -> pd.DataFrame:
+    def to_pandas(self, name: str | None = None) -> pd.DataFrame:
         """Convert to pandas DataFrame.
 
         Returns:
             pandas DataFrame with MultiIndex from dimensions
         """
-        return self._data.to_dataframe()
+        return self._data.to_dataframe(name=name or "data")
 
     def _copy_with_new_data(
         self,
@@ -378,26 +403,11 @@ class Data:
             else:
                 merged_extra = {**self._extra, **extra}
 
-        # Ensure result has time dimension (add singleton if missing)
-        if "time" not in result_data.dims:
-            # Preserve original sampling rate in attrs since we can't infer from singleton
-            original_sampling_rate = self.sampling_rate
-            if original_sampling_rate is not None:
-                # Store sampling_rate in attrs so it doesn't need to be inferred
-                result_attrs = dict(result_data.attrs) if result_data.attrs else {}
-                result_attrs["sampling_rate"] = original_sampling_rate
-                result_data = result_data.assign_attrs(result_attrs)
-                # Use proper time coordinate for consistency
-                time_delta = 1.0 / original_sampling_rate
-                result_data = result_data.expand_dims("time", axis=0).assign_coords(
-                    time=[time_delta]
-                )
-            else:
-                # Fallback: use a small time value that suggests 100 Hz
-                result_attrs = dict(result_data.attrs) if result_data.attrs else {}
-                result_attrs["sampling_rate"] = 100.0
-                result_data = result_data.assign_attrs(result_attrs)
-                result_data = result_data.expand_dims("time", axis=0).assign_coords(time=[0.01])
+        # Strip sampling_rate from attrs if result has no time dimension
+        # (sampling_rate is meaningless without time)
+        if "time" not in result_data.dims and "sampling_rate" in result_data.attrs:
+            result_data = result_data.copy()
+            result_data.attrs = {k: v for k, v in result_data.attrs.items() if k != "sampling_rate"}
 
         return Data(
             data=result_data,
@@ -409,9 +419,246 @@ class Data:
         )
 
 
-class EEG(Data):
-    """EEG data container."""
+class SignalData(Data):
+    """Container for time-series data with mandatory time dimension.
+
+    SignalData extends Data with the requirement that data must have
+    a 'time' dimension. This is appropriate for EEG, fMRI, and other
+    time-series data where temporal ordering matters.
+
+    Mandatory dimensions:
+        - time: Temporal dimension
+
+    Optional dimensions (examples):
+        - space: Spatial dimension (electrode/voxel)
+        - spaceX, spaceY, spaceZ: Additional spatial dimensions
+        - run_index: Run/block index
+        - window_index: Window index (e.g., from sliding window)
+        - band_index: Frequency band index
+
+    Metadata attributes:
+        - subjectID: Subject identifier
+        - sampling_rate: Sampling rate in Hz (inferred from time coordinates when possible)
+        - groupID: Group identifier
+        - condition: Experimental condition
+        - history: List of operations applied (automatically maintained)
+        - extra: User-defined dict for additional fields and arrays (any values)
+
+    Note:
+        This class is immutable. To create modified versions, use methods that
+        return new Data instances (e.g., features create new Data objects).
+    """
+
+    def __init__(
+        self,
+        data: xr.DataArray,
+        sampling_rate: float | None = None,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        history: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize SignalData.
+
+        Args:
+            data: xarray DataArray with at least 'time' dimension
+            sampling_rate: Sampling rate in Hz. If not provided, inferred from
+                time coordinates when they represent time in seconds.
+            subjectID: Subject identifier
+            groupID: Group identifier
+            condition: Experimental condition
+            history: List of operation names applied (default: empty list)
+            extra: Optional dict for additional fields and arrays
+
+        Raises:
+            ValueError: If data does not have 'time' dimension
+        """
+        # Validate mandatory time dimension
+        if "time" not in data.dims:
+            raise ValueError("SignalData must have 'time' dimension")
+
+        # optimisation: time dimension is always last for SignalData
+        data = data.transpose(..., "time")
+
+        super().__init__(
+            data=data,
+            sampling_rate=sampling_rate,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            history=history,
+            extra=extra,
+        )
+
+    @classmethod
+    def from_numpy(
+        cls,
+        arr: np.ndarray,
+        dims: list[Hashable],
+        *,
+        sampling_rate: float | None = None,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> SignalData:
+        """Create a SignalData object from a numpy array.
+
+        Requires at least 1 dimension and that resulting dims include 'time'.
+
+        Args:
+            arr: Numpy array
+            dims: Dimension names matching array shape, must include 'time'
+            sampling_rate: Sampling rate in Hz
+            subjectID: Subject identifier
+            groupID: Group identifier
+            condition: Experimental condition
+            extra: Optional extra dict
+
+        Returns:
+            SignalData instance
+
+        Raises:
+            ValueError: If dims doesn't include 'time' or dims length mismatch
+        """
+        arr = np.asarray(arr)
+
+        if "time" not in dims:
+            raise ValueError("dims must include 'time' for SignalData")
+
+        time_axis = dims.index("time")
+
+        coords: dict[str, Any] = {}
+        if sampling_rate is not None and sampling_rate > 0:
+            coords["time"] = np.arange(arr.shape[time_axis], dtype=float) / sampling_rate
+        else:
+            coords["time"] = np.arange(arr.shape[time_axis], dtype=float)
+
+        data = xr.DataArray(arr, dims=dims, coords=coords)
+        return cls(
+            data=data,
+            sampling_rate=sampling_rate,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            extra=extra,
+        )
+
+    @classmethod
+    def from_xarray(
+        cls,
+        ar: xr.DataArray,
+        *,
+        sampling_rate: float | None = None,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        history: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> SignalData:
+        """Create a SignalData object from an xarray DataArray.
+
+        The DataArray must have 'time' dimension. Time coordinates
+        should be in seconds if you want sampling_rate to be inferred.
+
+        Args:
+            ar: xarray DataArray with 'time' dimension
+            sampling_rate: Sampling rate in Hz. If not provided, inferred from
+                time coordinates when they represent time in seconds.
+            subjectID: Subject identifier
+            groupID: Group identifier
+            condition: Experimental condition
+            history: List of operation names applied
+            extra: Optional extra dict
+
+        Returns:
+            SignalData instance
+
+        Raises:
+            ValueError: If DataArray doesn't have 'time' dimension
+
+        Example:
+            >>> ar = xr.DataArray(...)
+            >>> ds = SignalData.from_xarray(ar)
+        """
+        return cls(
+            data=ar,
+            sampling_rate=sampling_rate,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            history=history,
+            extra=extra,
+        )
+
+    def _copy_with_new_data(
+        self,
+        new_data: xr.DataArray | Data,
+        operation_name: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> Data:
+        """Override to add singleton time dimension if result lacks it.
+
+        SignalData requires a time dimension, so if the feature result doesn't
+        have one, we add a singleton time dimension to preserve the SignalData
+        contract while allowing features to reduce over time.
+        """
+        # Get the result from parent class (which returns Data, not SignalData)
+        result = super()._copy_with_new_data(new_data, operation_name, extra)
+
+        # If result already has time dimension, return as-is (but as SignalData)
+        if "time" in result.data.dims:
+            return SignalData(
+                data=result.data,
+                sampling_rate=result.sampling_rate,
+                subjectID=result.subjectID,
+                groupID=result.groupID,
+                condition=result.condition,
+                history=result.history,
+                extra=result.extra,
+            )
+
+        # Add singleton time dimension
+        result_data = result.data
+        original_sampling_rate = self.sampling_rate
+        if original_sampling_rate is not None:
+            # Store sampling_rate in attrs so it doesn't need to be inferred
+            result_attrs = dict(result_data.attrs) if result_data.attrs else {}
+            result_attrs["sampling_rate"] = original_sampling_rate
+            result_data = result_data.assign_attrs(result_attrs)
+            # Use proper time coordinate for consistency
+            time_delta = 1.0 / original_sampling_rate
+            result_data = result_data.expand_dims("time", axis=-1).assign_coords(time=[time_delta])
+        else:
+            # Fallback: use a small time value that suggests 100 Hz
+            result_attrs = dict(result_data.attrs) if result_data.attrs else {}
+            result_attrs["sampling_rate"] = 100.0
+            result_data = result_data.assign_attrs(result_attrs)
+            result_data = result_data.expand_dims("time", axis=-1).assign_coords(time=[0.01])
+
+        return SignalData(
+            data=result_data,
+            sampling_rate=result.sampling_rate,
+            subjectID=result.subjectID,
+            groupID=result.groupID,
+            condition=result.condition,
+            history=result.history,
+            extra=result.extra,
+        )
 
 
-class FMRI(Data):
-    """fMRI data container."""
+class EEG(SignalData):
+    """EEG data container.
+
+    EEG is a time-series signal data type with mandatory time dimension.
+    Typically also includes 'space' dimension representing electrodes/channels.
+    """
+
+
+class FMRI(SignalData):
+    """fMRI data container.
+
+    FMRI is a time-series signal data type with mandatory time dimension.
+    Typically also includes spatial dimensions representing voxels.
+    """

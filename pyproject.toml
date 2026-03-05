@@ -1,6 +1,6 @@
 [project]
 name = "cobrabox"
-version = "0.1.3"
+version = "0.2.5"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,7 +27,7 @@ docs = [
     "mkdocs-jupyter>=0.25.0",
 ]
 [build-system]
-requires = ["uv_build"]
+requires = ["uv_build>=0.1,<0.11"]
 build-backend = "uv_build"
 
 [tool.ruff]
@@ -55,7 +55,7 @@ addopts = "--cov=cobrabox --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src/cobrabox"]
-omit = ["src/cobrabox/features/dummy.py"]
+omit = ["src/cobrabox/features/dummy.py", "src/cobrabox/egg/*"]
 relative_files = true
 
 [tool.coverage.report]

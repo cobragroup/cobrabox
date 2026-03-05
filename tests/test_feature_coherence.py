@@ -1,27 +1,21 @@
-"""Tests for the coherence feature."""
+"""Tests for the Coherence feature."""
 
 from __future__ import annotations
-
-from typing import Any
 
 import numpy as np
 import pytest
 import xarray as xr
 
 import cobrabox as cb
-from cobrabox.features.coherence import coherence as _coherence_fn
-
-# ParamSpec from the @feature decorator is opaque to Pyright; Any silences call-site issues.
-coherence: Any = _coherence_fn
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.Data:
+def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.SignalData:
     """Create Data from a (time, space) array."""
-    return cb.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
 
 # ---------------------------------------------------------------------------
@@ -30,17 +24,16 @@ def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.Data:
 
 
 def test_coherence_output_dims_and_shape() -> None:
-    """coherence returns Data with (space, space_to, time) dims and NxN matrix."""
+    """Coherence returns Data with (space, space_to, time=1) dims and NxN matrix."""
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((300, 4)))
 
-    out = coherence(data)
+    out = cb.feature.Coherence().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "space_to", "time")
+    assert out.data.dims == ("space", "space_to")
     assert out.data.sizes["space"] == 4
     assert out.data.sizes["space_to"] == 4
-    assert out.data.sizes["time"] == 1  # singleton added by _copy_with_new_data
 
 
 def test_coherence_space_coords_are_preserved() -> None:
@@ -50,9 +43,9 @@ def test_coherence_space_coords_are_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(300, dtype=float) / 100.0},
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
-    out = coherence(data)
+    out = cb.feature.Coherence().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
@@ -71,8 +64,8 @@ def test_coherence_identical_channels_give_unity_coherence() -> None:
     arr = np.stack([sig, sig, sig], axis=1)
     data = _make_data(arr, sampling_rate=200.0)
 
-    out = coherence(data)
-    mat = out.data.isel(time=0).values  # (3, 3)
+    out = cb.feature.Coherence().apply(data)
+    mat = out.data.values  # (3, 3)
 
     for i in range(3):
         for j in range(3):
@@ -85,8 +78,8 @@ def test_coherence_diagonal_is_nan() -> None:
     rng = np.random.default_rng(3)
     data = _make_data(rng.standard_normal((300, 5)))
 
-    out = coherence(data)
-    mat = out.data.isel(time=0).values
+    out = cb.feature.Coherence().apply(data)
+    mat = out.data.values
 
     assert np.all(np.isnan(np.diag(mat)))
 
@@ -96,8 +89,8 @@ def test_coherence_matrix_is_symmetric() -> None:
     rng = np.random.default_rng(4)
     data = _make_data(rng.standard_normal((400, 6)))
 
-    out = coherence(data)
-    mat = out.data.isel(time=0).values
+    out = cb.feature.Coherence().apply(data)
+    mat = out.data.values
 
     mask = ~np.isnan(mat)
     np.testing.assert_allclose(mat[mask], mat.T[mask])
@@ -108,8 +101,8 @@ def test_coherence_values_are_in_unit_range() -> None:
     rng = np.random.default_rng(5)
     data = _make_data(rng.standard_normal((512, 8)))
 
-    out = coherence(data)
-    mat = out.data.isel(time=0).values
+    out = cb.feature.Coherence().apply(data)
+    mat = out.data.values
     off_diag = mat[~np.isnan(mat)]
 
     assert np.all(off_diag >= 0.0)
@@ -122,25 +115,26 @@ def test_coherence_values_are_in_unit_range() -> None:
 
 
 def test_coherence_preserves_metadata_and_history() -> None:
-    """coherence propagates subjectID, groupID, condition, sampling_rate, extra, and history."""
+    """Coherence propagates subjectID, groupID, condition, sampling_rate, extra, and history."""
     rng = np.random.default_rng(6)
-    data = cb.from_numpy(
+    data = cb.SignalData.from_numpy(
         rng.standard_normal((200, 3)),
         dims=["time", "space"],
         sampling_rate=100.0,
         subjectID="sub-01",
         groupID="control",
         condition="rest",
-        extra={"session": 1},  # type: ignore[arg-type]
+        extra={"session": 1},
     )
 
-    out = coherence(data)
+    out = cb.feature.Coherence().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "control"
     assert out.condition == "rest"
-    assert out.sampling_rate == 100.0
-    assert out.history == ["coherence"]
+    # sampling_rate is not preserved for Data without time dimension
+    assert out.sampling_rate is None
+    assert out.history == ["Coherence"]
     assert out.extra.get("session") == 1
 
 
@@ -163,9 +157,9 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
             "space": [f"ch{k}" for k in range(n_space)],
         },
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr, sampling_rate=100.0)
 
-    out = coherence(data)
+    out = cb.feature.Coherence().apply(data)
 
     assert "run_index" in out.data.dims
     assert out.data.sizes["run_index"] == n_runs
@@ -173,7 +167,7 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
     assert out.data.sizes["space_to"] == n_space
     # Each run's diagonal must be NaN
     for r in range(n_runs):
-        mat = out.data.isel(run_index=r, time=0).values
+        mat = out.data.isel(run_index=r).values
         assert np.all(np.isnan(np.diag(mat)))
 
 
@@ -187,10 +181,10 @@ def test_coherence_custom_nperseg_produces_valid_output() -> None:
     rng = np.random.default_rng(8)
     data = _make_data(rng.standard_normal((200, 3)))
 
-    out = coherence(data, nperseg=32)
+    out = cb.feature.Coherence(nperseg=32).apply(data)
 
     assert isinstance(out, cb.Data)
-    mat = out.data.isel(time=0).values
+    mat = out.data.values
     off_diag = mat[~np.isnan(mat)]
     assert np.all(off_diag >= 0.0)
     assert np.all(off_diag <= 1.0)
@@ -201,13 +195,11 @@ def test_coherence_results_depend_on_nperseg() -> None:
     rng = np.random.default_rng(9)
     data = _make_data(rng.standard_normal((512, 3)))
 
-    out32 = coherence(data, nperseg=32)
-    out128 = coherence(data, nperseg=128)
+    out32 = cb.feature.Coherence(nperseg=32).apply(data)
+    out128 = cb.feature.Coherence(nperseg=128).apply(data)
 
     # Values will differ because segment length affects the estimate
-    assert not np.allclose(
-        out32.data.isel(time=0).values, out128.data.isel(time=0).values, equal_nan=True
-    )
+    assert not np.allclose(out32.data.values, out128.data.values, equal_nan=True)
 
 
 # ---------------------------------------------------------------------------
@@ -216,27 +208,27 @@ def test_coherence_results_depend_on_nperseg() -> None:
 
 
 def test_coherence_raises_when_fewer_than_two_channels() -> None:
-    """coherence raises ValueError for data with a single spatial channel."""
+    """Coherence raises ValueError for data with a single spatial channel."""
     data = _make_data(np.ones((100, 1)))
 
     with pytest.raises(ValueError, match="at least 2 spatial channels"):
-        coherence(data)
+        cb.feature.Coherence().apply(data)
 
 
 def test_coherence_raises_when_nperseg_exceeds_n_time() -> None:
-    """coherence raises ValueError when nperseg is larger than the time axis."""
+    """Coherence raises ValueError when nperseg is larger than the time axis."""
     data = _make_data(np.ones((50, 3)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        coherence(data, nperseg=100)
+        cb.feature.Coherence(nperseg=100).apply(data)
 
 
 def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
-    """coherence raises ValueError when nperseg < 2."""
+    """Coherence raises ValueError when nperseg < 2."""
     data = _make_data(np.ones((50, 3)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        coherence(data, nperseg=1)
+        cb.feature.Coherence(nperseg=1).apply(data)
 
 
 # ---------------------------------------------------------------------------
@@ -245,5 +237,5 @@ def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
 
 
 def test_coherence_accessible_via_feature_module() -> None:
-    """coherence is accessible as both cb.coherence and cb.feature.coherence."""
-    assert callable(cb.feature.coherence)  # type: ignore[attr-defined]
+    """Coherence is accessible as cb.feature.Coherence."""
+    assert callable(cb.feature.Coherence)

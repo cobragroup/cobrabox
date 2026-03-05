@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from .data import Data
+from .data import Data, SignalData
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
 
 
-def dataset(identifier: str) -> list[Data]:
+def dataset(identifier: str) -> list[Data] | list[SignalData]:
     """Load one logical dataset identifier as a list of Data parts."""
     if identifier in {"dummy_chain", "dummy_random", "dummy_star"}:
         return load_structured_dummy(identifier)

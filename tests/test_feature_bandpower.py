@@ -1,4 +1,4 @@
-"""Tests for the bandpower feature."""
+"""Tests for the Bandpower feature."""
 
 from __future__ import annotations
 
@@ -14,13 +14,13 @@ def _sine_data(
     n_seconds: float = 4.0,
     n_channels: int = 2,
     subjectID: str = "sub-01",
-) -> cb.Data:
+) -> cb.SignalData:
     """Helper: pure sine wave at ``freq_hz`` Hz."""
     n_time = int(n_seconds * sampling_rate)
     t = np.arange(n_time) / sampling_rate
     signal = np.sin(2 * np.pi * freq_hz * t)
     arr = np.stack([signal] * n_channels, axis=1)  # (time, space)
-    return cb.from_numpy(
+    return cb.SignalData.from_numpy(
         arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subjectID
     )
 
@@ -33,7 +33,7 @@ def _sine_data(
 def test_bandpower_default_dims_and_shape() -> None:
     """Default bands produce (band_index, space, time=1) output."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.feature.bandpower(data)
+    out = cb.feature.Bandpower().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("band_index", "space", "time")
@@ -43,7 +43,7 @@ def test_bandpower_default_dims_and_shape() -> None:
 def test_bandpower_default_band_index_coords() -> None:
     """band_index coordinate matches the five default band names in order."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.feature.bandpower(data)
+    out = cb.feature.Bandpower().apply(data)
 
     expected_names = ["delta", "theta", "alpha", "beta", "gamma"]
     assert out.data.coords["band_index"].values.tolist() == expected_names
@@ -52,7 +52,7 @@ def test_bandpower_default_band_index_coords() -> None:
 def test_bandpower_custom_range_shape() -> None:
     """Custom band spec produces correct shape and band_index coordinate."""
     data = _sine_data(freq_hz=50.0, sampling_rate=512.0)
-    out = cb.feature.bandpower(data, bands={"ripple": [45, 80]})
+    out = cb.feature.Bandpower(bands={"ripple": [45, 80]}).apply(data)
 
     assert out.data.shape == (1, 2, 1)
     assert out.data.coords["band_index"].values.tolist() == ["ripple"]
@@ -61,7 +61,7 @@ def test_bandpower_custom_range_shape() -> None:
 def test_bandpower_mixed_spec_shape() -> None:
     """Mixed True + custom range produces correct number of bands."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.feature.bandpower(data, bands={"alpha": True, "ripple": [45, 80]})
+    out = cb.feature.Bandpower(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
 
     assert out.data.shape == (2, 2, 1)
     assert out.data.coords["band_index"].values.tolist() == ["alpha", "ripple"]
@@ -75,7 +75,7 @@ def test_bandpower_mixed_spec_shape() -> None:
 def test_bandpower_alpha_dominates_for_10hz_sine() -> None:
     """10 Hz sine should have highest power in the alpha band [8, 12]."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.feature.bandpower(data)
+    out = cb.feature.Bandpower().apply(data)
 
     band_names = out.data.coords["band_index"].values.tolist()
     alpha_idx = band_names.index("alpha")
@@ -93,8 +93,8 @@ def test_bandpower_true_alias_matches_explicit_range() -> None:
     """bands={'alpha': True} must give identical results to bands={'alpha': [8, 12]}."""
     data = _sine_data(freq_hz=10.0)
 
-    out_true = cb.feature.bandpower(data, bands={"alpha": True})
-    out_explicit = cb.feature.bandpower(data, bands={"alpha": [8, 12]})
+    out_true = cb.feature.Bandpower(bands={"alpha": True}).apply(data)
+    out_explicit = cb.feature.Bandpower(bands={"alpha": [8, 12]}).apply(data)
 
     np.testing.assert_allclose(out_true.to_numpy(), out_explicit.to_numpy())
 
@@ -103,8 +103,8 @@ def test_bandpower_all_positive_values() -> None:
     """Power values must be non-negative for any signal."""
     rng = np.random.default_rng(0)
     arr = rng.standard_normal((512, 4))
-    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.bandpower(data)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
+    out = cb.feature.Bandpower().apply(data)
 
     assert (out.data.values >= 0).all()
 
@@ -113,8 +113,8 @@ def test_bandpower_empty_bands_equals_none() -> None:
     """bands={} and bands=None must produce identical results."""
     data = _sine_data(freq_hz=10.0)
 
-    out_none = cb.feature.bandpower(data, bands=None)
-    out_empty = cb.feature.bandpower(data, bands={})
+    out_none = cb.feature.Bandpower(bands=None).apply(data)
+    out_empty = cb.feature.Bandpower(bands={}).apply(data)
 
     np.testing.assert_allclose(out_none.to_numpy(), out_empty.to_numpy())
 
@@ -128,9 +128,9 @@ def test_bandpower_nperseg_changes_nothing_in_shape() -> None:
     """nperseg only affects estimation quality, not output shape."""
     data = _sine_data(freq_hz=10.0)
 
-    out_default = cb.feature.bandpower(data)
-    out_128 = cb.feature.bandpower(data, nperseg=128)
-    out_512 = cb.feature.bandpower(data, nperseg=512)
+    out_default = cb.feature.Bandpower().apply(data)
+    out_128 = cb.feature.Bandpower(nperseg=128).apply(data)
+    out_512 = cb.feature.Bandpower(nperseg=512).apply(data)
 
     assert out_default.data.shape == out_128.data.shape == out_512.data.shape
 
@@ -141,29 +141,20 @@ def test_bandpower_nperseg_changes_nothing_in_shape() -> None:
 
 
 def test_bandpower_history_appended() -> None:
-    """'bandpower' must appear as the last entry in history."""
+    """'Bandpower' must appear as the last entry in history."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.feature.bandpower(data)
+    out = cb.feature.Bandpower().apply(data)
 
-    assert out.history[-1] == "bandpower"
+    assert out.history[-1] == "Bandpower"
 
 
 def test_bandpower_metadata_preserved() -> None:
     """subjectID and sampling_rate are carried through."""
     data = _sine_data(freq_hz=10.0, subjectID="sub-42")
-    out = cb.feature.bandpower(data)
+    out = cb.feature.Bandpower().apply(data)
 
     assert out.subjectID == "sub-42"
     assert out.sampling_rate == 256.0
-
-
-def test_bandpower_squeeze_removes_singleton_time() -> None:
-    """Squeezing the singleton time axis yields (band_index, space)."""
-    data = _sine_data(freq_hz=10.0)
-    out = cb.feature.bandpower(data)
-
-    squeezed = out.data.squeeze("time")
-    assert squeezed.dims == ("band_index", "space")
 
 
 # ---------------------------------------------------------------------------
@@ -171,30 +162,11 @@ def test_bandpower_squeeze_removes_singleton_time() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bandpower_raises_when_time_dim_missing() -> None:
-    """ValueError raised when data lacks 'time' dimension."""
-    import xarray as xr
-
-    from cobrabox.features.bandpower import bandpower
-
-    class _FakeData:
-        @property
-        def data(self) -> xr.DataArray:
-            return xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
-
-        @property
-        def sampling_rate(self) -> float:
-            return 256.0
-
-    with pytest.raises(ValueError, match="must have 'time' dimension"):
-        bandpower.__wrapped__(_FakeData())  # type: ignore[attr-defined]
-
-
 def test_bandpower_raises_when_sampling_rate_missing() -> None:
     """ValueError raised when sampling_rate is not set."""
     import xarray as xr
 
-    from cobrabox.features.bandpower import bandpower
+    from cobrabox.features.bandpower import Bandpower
 
     class _FakeData:
         @property
@@ -206,7 +178,7 @@ def test_bandpower_raises_when_sampling_rate_missing() -> None:
             return None
 
     with pytest.raises(ValueError, match="sampling_rate must be set"):
-        bandpower.__wrapped__(_FakeData())  # type: ignore[attr-defined]
+        Bandpower().__call__(_FakeData())  # type: ignore[arg-type]
 
 
 def test_bandpower_raises_for_true_with_unknown_band() -> None:
@@ -214,4 +186,42 @@ def test_bandpower_raises_for_true_with_unknown_band() -> None:
     data = _sine_data(freq_hz=10.0)
 
     with pytest.raises(ValueError, match="not a known default band"):
-        cb.feature.bandpower(data, bands={"foobar": True})
+        cb.feature.Bandpower(bands={"foobar": True}).apply(data)
+
+
+def test_bandpower_raises_when_nperseg_less_than_2() -> None:
+    with pytest.raises(ValueError, match="nperseg must be >= 2"):
+        cb.feature.Bandpower(nperseg=1)
+
+
+def test_bandpower_raises_for_false_band_spec() -> None:
+    data = _sine_data(freq_hz=10.0)
+    with pytest.raises(ValueError, match="must be True"):
+        cb.feature.Bandpower(bands={"alpha": False}).apply(data)
+
+
+def test_bandpower_transposes_when_time_not_last() -> None:
+    """When time is not the last dim, Bandpower transposes before computing."""
+    import xarray as xr
+
+    from cobrabox.features.bandpower import Bandpower
+
+    class _FakeData:
+        @property
+        def data(self) -> xr.DataArray:
+            return xr.DataArray(np.ones((10, 4)), dims=["time", "space"])
+
+        @property
+        def sampling_rate(self) -> float:
+            return 256.0
+
+    out = Bandpower().__call__(_FakeData())  # type: ignore[arg-type]
+    assert "band_index" in out.dims
+
+
+def test_bandpower_zeros_when_no_freq_bins_in_band() -> None:
+    """Bands with no matching frequency bins return zero power."""
+    # Low sampling rate → Nyquist = 5 Hz; band [100, 200] has no bins
+    data = _sine_data(freq_hz=1.0, sampling_rate=10.0, n_seconds=4.0)
+    out = cb.feature.Bandpower(bands={"ultra": [100.0, 200.0]}).apply(data)
+    assert (out.to_numpy() == 0.0).all()

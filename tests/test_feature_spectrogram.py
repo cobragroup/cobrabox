@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 import pytest
 import xarray as xr
 
 import cobrabox as cb
-from cobrabox.features.spectrogram import spectrogram as _spectrogram_fn
-
-# ParamSpec from the @feature decorator is opaque to Pyright; Any silences call-site issues.
-spectrogram: Any = _spectrogram_fn
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_data(arr: np.ndarray, *, sampling_rate: float = 256.0) -> cb.Data:
+def _make_data(arr: np.ndarray, *, sampling_rate: float = 256.0) -> cb.SignalData:
     """Create Data from a (time, space) array."""
-    return cb.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +28,7 @@ def test_spectrogram_output_dims() -> None:
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((512, 3)))
 
-    out = spectrogram(data)
+    out = cb.feature.Spectrogram().apply(data)
 
     assert isinstance(out, cb.Data)
     assert set(out.data.dims) == {"space", "frequency", "time"}
@@ -47,9 +41,9 @@ def test_spectrogram_space_dim_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz", "Oz"], "time": np.arange(512) / 256.0},
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
-    out = spectrogram(data)
+    out = cb.feature.Spectrogram().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz", "Oz"])
 
@@ -60,7 +54,7 @@ def test_spectrogram_frequency_coords_are_nonneg_and_bounded() -> None:
     fs = 256.0
     data = _make_data(rng.standard_normal((512, 2)), sampling_rate=fs)
 
-    out = spectrogram(data)
+    out = cb.feature.Spectrogram().apply(data)
 
     freqs = out.data.coords["frequency"].values
     assert np.all(freqs >= 0.0)
@@ -72,7 +66,7 @@ def test_spectrogram_time_coords_are_positive() -> None:
     rng = np.random.default_rng(3)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out = spectrogram(data)
+    out = cb.feature.Spectrogram().apply(data)
 
     t = out.data.coords["time"].values
     assert np.all(t > 0)
@@ -87,7 +81,7 @@ def test_spectrogram_output_shape_matches_scipy() -> None:
     arr = rng.standard_normal((n_time, n_space))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = spectrogram(data, nperseg=seg)
+    out = cb.feature.Spectrogram(nperseg=seg).apply(data)
 
     f, t, _ = _sp(arr[:, 0], fs=fs, nperseg=seg, window="hann")
     assert out.data.sizes["frequency"] == len(f)
@@ -109,7 +103,7 @@ def test_spectrogram_log_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((512, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = spectrogram(data, nperseg=seg, scaling="log")
+    out = cb.feature.Spectrogram(nperseg=seg, scaling="log").apply(data)
 
     for ch in range(2):
         _, _, Sxx = _sp(arr[:, ch], fs=fs, nperseg=seg, window="hann", scaling="density")
@@ -126,7 +120,7 @@ def test_spectrogram_density_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((256, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = spectrogram(data, nperseg=seg, scaling="density")
+    out = cb.feature.Spectrogram(nperseg=seg, scaling="density").apply(data)
 
     for ch in range(2):
         _, _, Sxx = _sp(arr[:, ch], fs=fs, nperseg=seg, window="hann", scaling="density")
@@ -142,7 +136,7 @@ def test_spectrogram_spectrum_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((256, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = spectrogram(data, nperseg=seg, scaling="spectrum")
+    out = cb.feature.Spectrogram(nperseg=seg, scaling="spectrum").apply(data)
 
     for ch in range(2):
         _, _, Sxx = _sp(arr[:, ch], fs=fs, nperseg=seg, window="hann", scaling="spectrum")
@@ -158,7 +152,7 @@ def test_spectrogram_magnitude_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((256, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = spectrogram(data, nperseg=seg, scaling="magnitude")
+    out = cb.feature.Spectrogram(nperseg=seg, scaling="magnitude").apply(data)
 
     for ch in range(2):
         _, _, Zxx = _stft(arr[:, ch], fs=fs, nperseg=seg, window="hann")
@@ -171,7 +165,7 @@ def test_spectrogram_log_no_neg_inf() -> None:
     arr[0, 0] = 1e-20
     data = _make_data(arr)
 
-    out = spectrogram(data, scaling="log")
+    out = cb.feature.Spectrogram(scaling="log").apply(data)
 
     assert np.all(np.isfinite(out.data.values))
 
@@ -181,7 +175,7 @@ def test_spectrogram_density_values_nonneg() -> None:
     rng = np.random.default_rng(9)
     data = _make_data(rng.standard_normal((512, 4)))
 
-    out = spectrogram(data, scaling="density")
+    out = cb.feature.Spectrogram(scaling="density").apply(data)
 
     assert np.all(out.data.values >= 0.0)
 
@@ -195,7 +189,7 @@ def test_spectrogram_pure_tone_has_peak_at_correct_freq() -> None:
     arr = sig[:, np.newaxis]  # (1024, 1)
     data = _make_data(arr, sampling_rate=fs)
 
-    out = spectrogram(data, nperseg=256, scaling="density")
+    out = cb.feature.Spectrogram(nperseg=256, scaling="density").apply(data)
     psd = out.data.isel(space=0).values  # (n_freq, n_t)
     mean_psd = psd.mean(axis=-1)
     peak_freq = out.data.coords["frequency"].values[np.argmax(mean_psd)]
@@ -211,23 +205,23 @@ def test_spectrogram_pure_tone_has_peak_at_correct_freq() -> None:
 def test_spectrogram_preserves_metadata() -> None:
     """spectrogram propagates subjectID, groupID, condition, sampling_rate, extra, history."""
     rng = np.random.default_rng(10)
-    data = cb.from_numpy(
+    data = cb.SignalData.from_numpy(
         rng.standard_normal((256, 2)),
         dims=["time", "space"],
         sampling_rate=128.0,
         subjectID="sub-01",
         groupID="ctrl",
         condition="rest",
-        extra={"session": 2},  # type: ignore[arg-type]
+        extra={"session": 2},
     )
 
-    out = spectrogram(data)
+    out = cb.feature.Spectrogram().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "ctrl"
     assert out.condition == "rest"
     assert out.sampling_rate == 128.0
-    assert out.history == ["spectrogram"]
+    assert out.history == ["Spectrogram"]
     assert out.extra.get("session") == 2
 
 
@@ -250,9 +244,9 @@ def test_spectrogram_preserves_extra_dim() -> None:
             "space": [f"ch{k}" for k in range(n_space)],
         },
     )
-    data = cb.from_xarray(arr_xr)
+    data = cb.data.SignalData.from_xarray(arr_xr)
 
-    out = spectrogram(data, nperseg=32)
+    out = cb.feature.Spectrogram(nperseg=32).apply(data)
 
     assert "window_index" in out.data.dims
     assert out.data.sizes["window_index"] == n_windows
@@ -271,8 +265,8 @@ def test_spectrogram_custom_nperseg_changes_freq_resolution() -> None:
     rng = np.random.default_rng(12)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out32 = spectrogram(data, nperseg=32)
-    out128 = spectrogram(data, nperseg=128)
+    out32 = cb.feature.Spectrogram(nperseg=32).apply(data)
+    out128 = cb.feature.Spectrogram(nperseg=128).apply(data)
 
     assert out32.data.sizes["frequency"] < out128.data.sizes["frequency"]
 
@@ -282,8 +276,8 @@ def test_spectrogram_noverlap_changes_time_resolution() -> None:
     rng = np.random.default_rng(13)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out_lo = spectrogram(data, nperseg=64, noverlap=0)
-    out_hi = spectrogram(data, nperseg=64, noverlap=60)
+    out_lo = cb.feature.Spectrogram(nperseg=64, noverlap=0).apply(data)
+    out_hi = cb.feature.Spectrogram(nperseg=64, noverlap=60).apply(data)
 
     assert out_lo.data.sizes["time"] < out_hi.data.sizes["time"]
 
@@ -293,8 +287,8 @@ def test_spectrogram_different_windows_produce_different_results() -> None:
     rng = np.random.default_rng(14)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out_hann = spectrogram(data, window="hann")
-    out_hamming = spectrogram(data, window="hamming")
+    out_hann = cb.feature.Spectrogram(window="hann").apply(data)
+    out_hamming = cb.feature.Spectrogram(window="hamming").apply(data)
 
     assert not np.allclose(out_hann.data.values, out_hamming.data.values)
 
@@ -309,7 +303,7 @@ def test_spectrogram_raises_on_invalid_scaling() -> None:
     data = _make_data(np.ones((64, 2)))
 
     with pytest.raises(ValueError, match="scaling"):
-        spectrogram(data, scaling="invalid")
+        cb.feature.Spectrogram(scaling="invalid").apply(data)
 
 
 def test_spectrogram_raises_when_nperseg_exceeds_n_time() -> None:
@@ -317,7 +311,7 @@ def test_spectrogram_raises_when_nperseg_exceeds_n_time() -> None:
     data = _make_data(np.ones((32, 2)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        spectrogram(data, nperseg=64)
+        cb.feature.Spectrogram(nperseg=64).apply(data)
 
 
 def test_spectrogram_raises_when_nperseg_is_less_than_two() -> None:
@@ -325,7 +319,7 @@ def test_spectrogram_raises_when_nperseg_is_less_than_two() -> None:
     data = _make_data(np.ones((64, 2)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        spectrogram(data, nperseg=1)
+        cb.feature.Spectrogram(nperseg=1).apply(data)
 
 
 def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
@@ -333,7 +327,7 @@ def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
     data = _make_data(np.ones((128, 2)))
 
     with pytest.raises(ValueError, match="noverlap"):
-        spectrogram(data, nperseg=32, noverlap=32)
+        cb.feature.Spectrogram(nperseg=32, noverlap=32).apply(data)
 
 
 # ---------------------------------------------------------------------------
@@ -342,5 +336,5 @@ def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
 
 
 def test_spectrogram_accessible_via_feature_module() -> None:
-    """spectrogram is accessible as cb.feature.spectrogram."""
-    assert callable(cb.feature.spectrogram)  # type: ignore[attr-defined]
+    """Spectrogram is accessible as cb.feature.Spectrogram."""
+    assert callable(cb.feature.Spectrogram)

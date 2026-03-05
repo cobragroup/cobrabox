@@ -5,165 +5,167 @@ description: Rank cobrabox features and pipelines on the D&D 9-alignment grid (L
 
 # DnD Alignment
 
-Determine the D&D alignment of cobrabox features — individually or as a pipeline.
+Determine the D&D 9-alignment of a cobrabox feature and append it to the canonical table.
+
+**Pipeline and roster rendering are handled by the Python script — do not compute them here.**
 
 ## Invocation
 
 ```text
-/dnd-alignment [feature1 feature2 ...]
+/dnd-alignment <FeatureName>
 ```
-
-- **No arguments** → print the full feature roster with all alignments and a 3×3 chart
-- **With feature names** → compute pipeline aggregate, print chart and label
 
 ---
 
-## Canonical Alignment Table
+## Responsibility split
 
-These alignments are fixed lore. Do not recompute them — look them up.
+| Task                                                       | Owner                                                          |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| Rank an individual feature (assign Law/Good scores + lore) | This skill                                                     |
+| Append ranking to the canonical table                      | This skill                                                     |
+| Print the full roster                                      | `uv run python -m cobrabox.egg.dnd_alignment --roster`         |
+| Compute pipeline aggregate                                 | `uv run python -m cobrabox.egg.dnd_alignment F1 F2 F3`         |
+| Compute Chord pipeline aggregate                           | `uv run python -m cobrabox.egg.dnd_alignment --chord F1 F2 F3` |
 
-| Feature | Law | Good | Alignment | Lore |
-|---|---|---|---|---|
-| `sliding_window` | +1 | +1 | Lawful Good | Rigidly structured, principled expansion of data — serves understanding |
-| `mean` | +1 | 0 | Lawful Neutral | Collapses by strict rule; neither creates nor destroys meaning |
-| `max` | +1 | -1 | Lawful Evil | Obeys the law of the maximum, ruthlessly discards everything else |
-| `min` | 0 | -1 | Neutral Evil | Seeks only the lowest — no principle beyond pessimism |
-| `line_length` | 0 | +1 | Neutral Good | Measures without judgement, in service of signal |
-| `dummy` | -1 | 0 | Chaotic Neutral | Print statements, no validation — chaos without malice, just bad practice |
+---
+
+## Canonical alignment table
+
+The source of truth is **`src/cobrabox/egg/alignments.py`**.
+
+Read that file before ranking a new feature — the feature may already be present.
 
 ### Axis encoding
 
 - **Law axis:** Lawful = +1, Neutral = 0, Chaotic = −1
 - **Good axis:** Good = +1, Neutral = 0, Evil = −1
 
-### Cell labels
+### Label grid
 
 ```
-        LAW (+1)         NEUTRAL (0)       CHAOS (-1)
-GOOD(+1)  Lawful Good      Neutral Good      Chaotic Good
-NEUT (0)  Lawful Neutral   True Neutral      Chaotic Neutral
-EVIL(-1)  Lawful Evil      Neutral Evil      Chaotic Evil
+             LAW (+1)          NEUTRAL (0)        CHAOS (-1)
+GOOD  (+1)   Lawful Good       Neutral Good       Chaotic Good
+NEUT  ( 0)   Lawful Neutral    True Neutral       Chaotic Neutral
+EVIL  (-1)   Lawful Evil       Neutral Evil       Chaotic Evil
 ```
 
 ---
 
 ## Procedure
 
-### Mode A — No arguments (full roster)
+### 1. Read the alignment table
 
-1. Print the header line: `## Cobrabox Feature Alignment Roster`
-2. For each feature in the table (in the order listed), print:
-   ```
-   feature_name  —  Alignment Label
-     "lore sentence"
-   ```
-3. Print the ASCII grid (see Grid Format below) with every feature's abbreviation placed in its cell.
+Read `src/cobrabox/egg/alignments.py`. Check whether the feature is already present
+in `ALIGNMENTS`. If it is, print its existing entry and stop — do not re-rank.
 
-### Mode B — Pipeline mode (feature names given as arguments)
+### 2. Read the feature file
 
-1. Parse `$ARGUMENTS` as a space-separated list of feature names.
-2. For each name, look up its Law and Good scores from the table. If a name is not in the table, print a warning: `⚠ Unknown feature: <name> — skipped` and continue.
-3. Compute averages:
-   - `law_avg = mean of all Law scores for valid features`
-   - `good_avg = mean of all Good scores for valid features`
-4. Snap each average to {+1, 0, −1}:
-   - ≥ 0.34 → +1
-   - ≤ −0.34 → −1
-   - else → 0
-5. Look up the aggregate alignment label from the cell labels table.
-6. Print the pipeline sequence line:
-   ```
-   Pipeline: feat1 → feat2 → feat3
-   ```
-7. Print the ASCII grid (see Grid Format below) with:
-   - Each feature's abbreviation in its own cell
-   - `[★]` in the aggregate cell (if no individual feature already occupies it; if overlap, add ★ after the abbrev: `[sw ★]`)
-8. Print the aggregate label:
-   ```
-   Aggregate Alignment: Lawful Good  ★
-   ```
+Read `src/cobrabox/features/<feature_snake_case>.py` to understand what the feature
+actually does before assigning an alignment.
+
+### 3. Assign scores
+
+Choose Law and Good scores using the rubrics below. Write 1–2 sentences of reasoning
+for each axis before committing to a score.
+
+#### Law axis rubric
+
+| Score      | Meaning                              | Indicators                                                                                          |
+| ---------- | ------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| +1 Lawful  | **Actively imposes** structure       | Creates segments (windowing), hard threshold classification (IQR), named category ontology (frequency bands), strict published-protocol adherence |
+| 0 Neutral  | **Passively describes** existing patterns | Correlation/synchrony measures, spectral descriptions, statistical summaries — even with fixed formulas |
+| -1 Chaotic | Disrupts or ignores conventions      | `print` statements, missing validation, unpredictable output shape                                  |
+
+> **Common trap:** A fixed, deterministic formula does **not** make a feature Lawful — almost all
+> signal processing is deterministic. Ask instead: does this feature *impose* structure onto the
+> data, or *describe* structure already present in it?
+>
+> Lawful examples: `SlidingWindow` (creates window segments), `Bandpower` (names frequency
+> categories), `SpikesCalc` (classifies by IQR rule).
+>
+> Neutral examples: `Coherence`, `PLV`, `Autocorr`, `Spectrogram`, `EnvelopeCorrelation`,
+> `PartialCorrelation` — all use precise formulas but measure existing patterns without imposing.
+
+#### Good axis rubric
+
+| Score     | Meaning                               | Indicators                                                                 |
+| --------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| +1 Good   | Preserves or enhances signal meaning  | Increases interpretability, faithful to data, good metadata practice       |
+| 0 Neutral | Indifferent to meaning                | Mechanical reduction with no semantic intent (pure aggregation)            |
+| -1 Evil   | Discards or distorts signal meaning   | Selects extremes ruthlessly, drops metadata, lossy without documentation   |
+
+### 4. Write one lore sentence
+
+One punchy sentence (≤ 15 words) in the style of the existing entries. It should
+capture the *moral character* of what the feature does to data, not just describe it
+technically.
+
+### 5. Choose a 2-char abbreviation
+
+Use the first two lowercase letters of the class name, unless that conflicts with an
+existing abbreviation in the table — in that case pick the most recognisable 2-char
+substring.
+
+### 6. Append to the table
+
+Edit `src/cobrabox/egg/alignments.py` — add a new entry to the `ALIGNMENTS` dict
+following the existing format exactly:
+
+```python
+"FeatureName": {
+    "law":    <+1|0|-1>,
+    "good":   <+1|0|-1>,
+    "label":  "<Alignment Label>",
+    "abbrev": "<2-char>",
+    "lore":   "<lore sentence>",
+},
+```
+
+Place it alphabetically by key, or at the end if alphabetical order is not obvious.
+
+### 7. Run the roster to confirm
+
+```bash
+uv run python -m cobrabox.egg.dnd_alignment --roster
+```
+
+Confirm the new feature appears correctly in the output.
+
+### 8. Report to conversation
+
+Print:
+
+```
+<FeatureName>  —  <Alignment Label>
+  Law:  <score>  (<reasoning>)
+  Good: <score>  (<reasoning>)
+  "<lore sentence>"
+
+Table updated: src/cobrabox/egg/alignments.py
+Run `uv run python -m cobrabox.egg.dnd_alignment --roster` to see the full grid.
+```
 
 ---
 
-## Grid Format
+## Pipeline alignment — delegate to script
 
-Use this exact template. Replace cell contents appropriately.
+When the user asks about a pipeline or sequence of features, do **not** compute it
+yourself. Instead, tell them to run:
 
+```bash
+# Sequential pipeline
+uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
+
+# Chord pipeline (splitter + map + aggregator, framing features weighted ×2)
+uv run python -m cobrabox.egg.dnd_alignment --chord SlidingWindow LineLength MeanAggregate
 ```
-         LAW        NEUTRAL      CHAOS
-         ─────────────────────────────────
-GOOD  │  [      ]   [      ]   [      ]  │
-NEUT  │  [      ]   [      ]   [      ]  │
-EVIL  │  [      ]   [      ]   [      ]  │
-```
-
-Cell contents (6 chars wide):
-- Empty cell: `      ` (6 spaces)
-- Single feature: 2-char abbreviation centered: `  sw  `
-- Multiple features in same cell: comma-separated: `sw,mn `
-- Aggregate marker only: `  ★   `
-- Feature + aggregate: `sw ★  `
-
-### Feature abbreviations
-
-| Feature | Abbrev |
-|---|---|
-| `sliding_window` | `sw` |
-| `mean` | `mn` |
-| `max` | `mx` |
-| `min` | `mi` |
-| `line_length` | `ll` |
-| `dummy` | `du` |
-
-For unknown/user features not in the table, use first 2 chars of the name.
 
 ---
 
-## Example outputs
+## Roster — delegate to script
 
-### Roster mode (`/dnd-alignment`)
+When the user asks for the full roster or grid:
 
-```
-## Cobrabox Feature Alignment Roster
-
-sliding_window  —  Lawful Good
-  "Rigidly structured, principled expansion of data — serves understanding"
-
-mean  —  Lawful Neutral
-  "Collapses by strict rule; neither creates nor destroys meaning"
-
-max  —  Lawful Evil
-  "Obeys the law of the maximum, ruthlessly discards everything else"
-
-min  —  Neutral Evil
-  "Seeks only the lowest — no principle beyond pessimism"
-
-line_length  —  Neutral Good
-  "Measures without judgement, in service of signal"
-
-dummy  —  Chaotic Neutral
-  "Print statements, no validation — chaos without malice, just bad practice"
-
-         LAW        NEUTRAL      CHAOS
-         ─────────────────────────────────
-GOOD  │  [  sw  ]   [  ll  ]   [      ]  │
-NEUT  │  [  mn  ]   [      ]   [  du  ]  │
-EVIL  │  [  mx  ]   [  mi  ]   [      ]  │
-```
-
-### Pipeline mode (`/dnd-alignment sliding_window line_length mean`)
-
-```
-Pipeline: sliding_window → line_length → mean
-
-Law scores:  +1, 0, +1  →  avg +0.67  →  Lawful
-Good scores: +1, +1, 0  →  avg +0.67  →  Good
-
-         LAW        NEUTRAL      CHAOS
-         ─────────────────────────────────
-GOOD  │  [sw ★ ]   [  ll  ]   [      ]  │
-NEUT  │  [  mn  ]   [      ]   [      ]  │
-EVIL  │  [      ]   [      ]   [      ]  │
-
-Aggregate Alignment: Lawful Good  ★
+```bash
+uv run python -m cobrabox.egg.dnd_alignment --roster
 ```

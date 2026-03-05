@@ -3,6 +3,13 @@ minimum_pre_commit_version: "4.5.0"
 repos:
 - repo: local
   hooks:
+    - id: gen-feature-stubs
+      name: generate feature stubs
+      entry: uv run python scripts/gen_stubs.py
+      language: system
+      pass_filenames: false
+      files: ^src/cobrabox/features/.*\.py$
+
     - id: ty-check
       name: ty check
       entry: uv run ty check src
@@ -18,7 +25,7 @@ repos:
     - id: ruff-format
 
 - repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.10.7
+  rev: 0.10.8
   hooks:
     # run uv lock and upgrade - on par with `uv lock && uv lock --upgrade`
     - id: uv-lock

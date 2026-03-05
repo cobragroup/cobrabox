@@ -1,20 +1,25 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import ClassVar
+
 import numpy as np
 import xarray as xr
 from scipy.signal import hilbert
 
-from ..data import Data
-from ..function_wrapper import feature
+from ..base_feature import BaseFeature
+from ..data import Data, SignalData
 
 
-def _compute_phase_locking_value(x: np.ndarray, y: np.ndarray) -> float:
+def _compute_plv(x: np.ndarray, y: np.ndarray) -> float:
     """Compute phase locking value between x and y.
 
     Args:
-        x: 1D array of shape (n_samples,)
-        y: 1D array of shape (n_samples,)
+        x: 1D array of shape (n_samples,).
+        y: 1D array of shape (n_samples,).
 
     Returns:
-        Phase locking value (float)
+        Phase locking value (float).
     """
     x = np.asarray(x).ravel()
     y = np.asarray(y).ravel()
@@ -22,113 +27,113 @@ def _compute_phase_locking_value(x: np.ndarray, y: np.ndarray) -> float:
     if np.allclose(x, y):
         return 1.0
 
-    return np.abs(np.mean(np.exp(1j * (np.angle(hilbert(x)) - np.angle(hilbert(y))))))
+    return float(np.abs(np.mean(np.exp(1j * (np.angle(hilbert(x)) - np.angle(hilbert(y)))))))
 
 
-@feature
-def phase_locking_value(data: Data, coord_x: str, coord_y: str) -> xr.DataArray:
+@dataclass
+class PhaseLockingValue(BaseFeature[SignalData]):
     """Compute phase locking value (PLV) between two coordinates.
 
-    All variables (x, y) are coordinate names from the `space` dimension.
-    Samples are drawn from the `time` dimension.
+    Both coordinates must come from the ``space`` dimension; samples are drawn
+    from the ``time`` dimension. PLV measures phase synchrony between two signals
+    in [0, 1], where 1 indicates perfect phase locking.
 
     Args:
-        data: Data object with time and space dimensions
-        coord_x: Name of first coordinate (from space dimension)
-        coord_y: Name of second coordinate (from space dimension)
+        coord_x: Name of the first coordinate (from space dimension).
+        coord_y: Name of the second coordinate (from space dimension).
 
     Returns:
-        xarray DataArray with a single value (PLV)
+        Scalar xarray DataArray (0-dimensional) containing the PLV value.
 
     Raises:
-        ValueError: If space dimension not in data
-        ValueError: If any coordinate not found in space dimension
+        ValueError: If ``space`` dimension is not in data or either coordinate is missing.
+
+    Example:
+        >>> result = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
     """
-    xr_data = data.data
-    space_dim = "space"
 
-    if space_dim not in xr_data.dims:
-        raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
+    output_type: ClassVar[type[Data]] = Data
 
-    time_dim = "time"
-    if time_dim not in xr_data.dims:
-        raise ValueError(f"data must have '{time_dim}' dimension")
+    coord_x: str | int
+    coord_y: str | int
 
-    space_coords = xr_data.coords[space_dim].values
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+        space_dim = "space"
 
-    if coord_x not in space_coords:
-        raise ValueError(f"coordinate '{coord_x}' not found in space dimension: {space_coords}")
-    if coord_y not in space_coords:
-        raise ValueError(f"coordinate '{coord_y}' not found in space dimension: {space_coords}")
+        if space_dim not in xr_data.dims:
+            raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
 
-    x_series = xr_data.sel({space_dim: coord_x}).values
-    y_series = xr_data.sel({space_dim: coord_y}).values
+        space_coords = xr_data.coords[space_dim].values
 
-    result = _compute_phase_locking_value(x_series, y_series)
+        if self.coord_x not in space_coords:
+            raise ValueError(
+                f"coordinate '{self.coord_x}' not found in space dimension: {space_coords}"
+            )
+        if self.coord_y not in space_coords:
+            raise ValueError(
+                f"coordinate '{self.coord_y}' not found in space dimension: {space_coords}"
+            )
 
-    time_coord = xr_data.coords[time_dim].values
-    return (
-        xr.DataArray(result, dims=[])
-        .expand_dims(time_dim, axis=0)
-        .assign_coords({time_dim: [time_coord[0]]})
-        .expand_dims(space_dim, axis=0)
-        .assign_coords({space_dim: [coord_x]})
-    )
+        x_series = xr_data.sel({space_dim: self.coord_x}).values
+        y_series = xr_data.sel({space_dim: self.coord_y}).values
+
+        return xr.DataArray(_compute_plv(x_series, y_series))
 
 
-@feature
-def phase_locking_value_matrix(data: Data, coords: list[str]) -> xr.DataArray:
-    """Compute pairwise phase locking value matrix.
+@dataclass
+class PhaseLockingValueMatrix(BaseFeature[SignalData]):
+    """Compute pairwise phase locking value matrix for multiple coordinates.
 
-    Computes phase locking value for every pair of coordinates in coords.
-    All coordinates must be from the space dimension.
+    Computes PLV for every pair of coordinates in ``coords``. All coordinates
+    must be from the ``space`` dimension.
 
     Args:
-        data: Data object with time and space dimensions
-        coords: List of coordinate names to compute pairwise phase locking values
+        coords: List of coordinate names to compute pairwise PLV for.
 
     Returns:
-        xarray DataArray with shape (len(coords), len(coords))
+        xarray DataArray with dims ``(coord_i, coord_j)`` and shape
+        ``(len(coords), len(coords))``.
 
     Raises:
-        ValueError: If coords is empty
-        ValueError: If any coordinate not found in space dimension
+        ValueError: If ``coords`` is empty.
+        ValueError: If any coordinate is not found in the space dimension.
+
+    Example:
+        >>> result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
     """
-    xr_data = data.data
-    space_dim = "space"
 
-    if space_dim not in xr_data.dims:
-        raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
+    output_type: ClassVar[type[Data]] = Data
 
-    time_dim = "time"
-    if time_dim not in xr_data.dims:
-        raise ValueError(f"data must have '{time_dim}' dimension")
+    coords: list[str] | list[int]
 
-    if not coords:
-        raise ValueError("coords must have at least one coordinate")
+    def __call__(self, data: SignalData) -> xr.DataArray:
+        xr_data = data.data
+        space_dim = "space"
 
-    space_coords = xr_data.coords[space_dim].values
+        if space_dim not in xr_data.dims:
+            raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
 
-    for c in coords:
-        if c not in space_coords:
-            raise ValueError(f"coordinate '{c}' not found in space dimension: {space_coords}")
+        if not self.coords:
+            raise ValueError("coords must have at least one coordinate")
 
-    n = len(coords)
-    result = np.full((n, n), np.nan)
+        space_coords = xr_data.coords[space_dim].values
 
-    for i, coord_i in enumerate(coords):
-        x_series = xr_data.sel({space_dim: coord_i}).values
-        for j, coord_j in enumerate(coords):
-            y_series = xr_data.sel({space_dim: coord_j}).values
-            result[i, j] = _compute_phase_locking_value(x_series, y_series)
+        for c in self.coords:
+            if c not in space_coords:
+                raise ValueError(f"coordinate '{c}' not found in space dimension: {space_coords}")
 
-    time_coord = xr_data.coords[time_dim].values
-    return (
-        xr.DataArray(
-            result, dims=["coord_i", "coord_j"], coords={"coord_i": coords, "coord_j": coords}
+        n = len(self.coords)
+        result = np.full((n, n), np.nan)
+
+        for i, coord_i in enumerate(self.coords):
+            x_series = xr_data.sel({space_dim: coord_i}).values
+            for j, coord_j in enumerate(self.coords):
+                y_series = xr_data.sel({space_dim: coord_j}).values
+                result[i, j] = _compute_plv(x_series, y_series)
+
+        return xr.DataArray(
+            result,
+            dims=["coord_i", "coord_j"],
+            coords={"coord_i": self.coords, "coord_j": self.coords},
         )
-        .expand_dims(time_dim, axis=0)
-        .assign_coords({time_dim: [time_coord[0]]})
-        .expand_dims(space_dim, axis=0)
-        .assign_coords({space_dim: [coords[0]]})
-    )

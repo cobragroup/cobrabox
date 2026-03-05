@@ -1,40 +1,51 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import ClassVar
+
 import numpy as np
 import xarray as xr
 
+from ..base_feature import BaseFeature
 from ..data import Data
-from ..function_wrapper import feature
 
 
-@feature
-def spikes_calc(data: Data, mandatory_arg: int) -> xr.DataArray:
+@dataclass
+class SpikesCalc(BaseFeature[Data]):
     """Calculate spikes in the input data using the IQR method.
+
     Detects outliers as values falling outside ±1.5*IQR from Q1/Q3.
-    Returns a 2D array shaped (1, 1) containing the spike count.
-    Parameters:
-    -----------
-    data : Data
-        Input data with 'time' and 'space' dimensions.
-    mandatory_arg : int
-        Placeholder for potential future use (not used currently).
+    Returns a scalar count of detected spikes.
+
+    Args:
+        None
+
     Returns:
-    --------
-    xr.DataArray
-        2D array of shape (1, 1) containing the count of detected spikes.
+        xr.DataArray with shape (), dims (),
+        containing the spike count as a scalar float value.
+
+    Example:
+        >>> result = SpikesCalc().apply(data)
     """
-    a = data.to_numpy()
 
-    # Calculate IQR bounds
-    q1 = np.quantile(a, 0.25)
-    q3 = np.quantile(a, 0.75)
-    iqr = q3 - q1
+    output_type: ClassVar[type[Data]] = Data
 
-    low_bound = q1 - 1.5 * iqr
-    up_bound = q3 + 1.5 * iqr
+    def __call__(self, data: Data) -> xr.DataArray:
+        a = data.data.values
 
-    # Count outliers
-    spike_count = np.sum((a > up_bound) | (a < low_bound))
+        if a.size == 0:
+            raise ValueError("Input data cannot be empty")
 
-    # Reshape to 2D array (1, 1) required by Data architecture
-    result = np.array([[spike_count]], dtype=float)
+        # Calculate IQR bounds
+        q1 = np.quantile(a, 0.25)
+        q3 = np.quantile(a, 0.75)
+        iqr = q3 - q1
 
-    return xr.DataArray(result, dims=["time", "space"], coords={"time": [0]})
+        low_bound = q1 - 1.5 * iqr
+        up_bound = q3 + 1.5 * iqr
+
+        # Count outliers
+        spike_count = np.sum((a > up_bound) | (a < low_bound))
+
+        # Return as 0-dimensional scalar array
+        return xr.DataArray(float(spike_count))
