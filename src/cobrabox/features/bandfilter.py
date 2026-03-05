@@ -28,8 +28,8 @@ class BandFilter(BaseFeature[SignalData]):
     Args:
         bands: Mapping of band name to ``[low_hz, high_hz]`` frequency edges.
             Defaults to the five standard EEG bands:
-            delta (1–4 Hz), theta (4–8 Hz), alpha (8–12 Hz),
-            beta (12–30 Hz), gamma (30–45 Hz).
+            delta (1-4 Hz), theta (4-8 Hz), alpha (8-12 Hz),
+            beta (12-30 Hz), gamma (30-45 Hz).
         keep_orig: Whether to keep the original signal as a "band" named "original".
             Defaults to ``False``.
 
