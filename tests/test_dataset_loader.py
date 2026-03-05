@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import lzma
 from pathlib import Path
@@ -10,6 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from cobrabox import datasets
 from cobrabox.dataset_loader import (
     _sampling_rate_from_info,
     _sidecar_json_for_csv,
@@ -17,6 +19,7 @@ from cobrabox.dataset_loader import (
     load_realistic_swiss,
     load_structured_dummy,
 )
+from cobrabox.remote_datasets import RemoteDatasetSpec, RemoteFile, ensure_remote_files
 
 
 def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
@@ -249,3 +252,217 @@ def test_load_realistic_swiss_default_repo_root() -> None:
         pytest.skip("Real realistic_swiss dataset files not available (likely LFS not fetched).")
     assert len(out) > 0
     assert all(isinstance(d, Data) for d in out)
+
+
+def test_ensure_remote_files_downloads_missing_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ensure_remote_files downloads missing remote files into the dataset directory."""
+    # Arrange a simple spec with two files.
+    files = [
+        RemoteFile(url="http://example.com/a.bin", filename="a.bin"),
+        RemoteFile(url="http://example.com/b.bin", filename="b.bin"),
+    ]
+    spec = RemoteDatasetSpec(
+        identifier="test_remote",
+        local_rel_dir=Path("data") / "remote" / "test_remote",
+        files=files,
+        loader=lambda _p: [],
+    )
+
+    # Fake HTTP responses with small byte payloads.
+    payloads = {"http://example.com/a.bin": b"AAA", "http://example.com/b.bin": b"BBB"}
+
+    class _FakeResponse(io.BytesIO):
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
+            self.close()
+
+    def _fake_urlopen(url: str, *args: object, **kwargs: object) -> _FakeResponse:
+        try:
+            return _FakeResponse(payloads[url])
+        except KeyError as exc:
+            raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
+
+    import cobrabox.remote_datasets as remote_datasets
+
+    monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _fake_urlopen)
+
+    # Act
+    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path)
+
+    # Assert
+    assert dataset_dir == tmp_path / spec.local_rel_dir
+    a_path = dataset_dir / "a.bin"
+    b_path = dataset_dir / "b.bin"
+    assert a_path.exists()
+    assert b_path.exists()
+    assert a_path.read_bytes() == b"AAA"
+    assert b_path.read_bytes() == b"BBB"
+
+
+def test_ensure_remote_files_skips_existing_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Existing files are not re-downloaded by ensure_remote_files."""
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    spec = RemoteDatasetSpec(
+        identifier="test_remote",
+        local_rel_dir=Path("data") / "remote" / "test_remote",
+        files=files,
+        loader=lambda _p: [],
+    )
+
+    dataset_dir = tmp_path / spec.local_rel_dir
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    a_path = dataset_dir / "a.bin"
+    a_path.write_bytes(b"ORIGINAL")
+
+    import cobrabox.remote_datasets as remote_datasets
+
+    def _failing_urlopen(url: str, *args: object, **kwargs: object) -> io.BytesIO:
+        raise AssertionError("urlopen should not be called when files already exist")
+
+    monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _failing_urlopen)
+
+    result_dir = ensure_remote_files(spec, repo_root=tmp_path)
+
+    assert result_dir == dataset_dir
+    assert a_path.read_bytes() == b"ORIGINAL"
+
+
+def test_ensure_remote_files_auth_hint_shown_on_401_403(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """auth_hint is surfaced when the server responds with a 401 or 403."""
+    files = [RemoteFile(url="https://example.com/dataset.zip", filename="dataset.zip")]
+    spec = RemoteDatasetSpec(
+        identifier="some_dataset",
+        local_rel_dir=Path("data") / "remote" / "some_dataset",
+        files=files,
+        loader=lambda _p: [],
+        auth_hint="You need credentials to download this dataset.",
+    )
+
+    import cobrabox.remote_datasets as remote_datasets
+
+    def _raise_http_error(url: str, *args: object, **kwargs: object) -> io.BytesIO:
+        raise remote_datasets.urllib.error.HTTPError(
+            url=url, code=403, msg="Forbidden", hdrs=None, fp=None
+        )
+
+    monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _raise_http_error)
+
+    with pytest.raises(RuntimeError, match="credentials") as excinfo:
+        ensure_remote_files(spec, repo_root=tmp_path)
+
+    assert "Expected file location" in str(excinfo.value)
+
+
+def test_ensure_remote_files_no_auth_hint_generic_error_on_401_403(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without auth_hint, a generic HTTP error is raised for 401/403."""
+    files = [RemoteFile(url="https://example.com/dataset.zip", filename="dataset.zip")]
+    spec = RemoteDatasetSpec(
+        identifier="some_dataset",
+        local_rel_dir=Path("data") / "remote" / "some_dataset",
+        files=files,
+        loader=lambda _p: [],
+    )
+
+    import cobrabox.remote_datasets as remote_datasets
+
+    def _raise_http_error(url: str, *args: object, **kwargs: object) -> io.BytesIO:
+        raise remote_datasets.urllib.error.HTTPError(
+            url=url, code=403, msg="Forbidden", hdrs=None, fp=None
+        )
+
+    monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _raise_http_error)
+
+    with pytest.raises(RuntimeError, match="HTTP 403"):
+        ensure_remote_files(spec, repo_root=tmp_path)
+
+
+def test_dataset_uses_remote_spec_for_known_identifier(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """dataset() consults the remote dataset registry for known remote identifiers."""
+    called: list[str] = []
+
+    def _fake_loader(path: Path) -> list[object]:
+        called.append(str(path))
+        return [object()]
+
+    fake_spec = RemoteDatasetSpec(
+        identifier="swiss_eeg_short",
+        local_rel_dir=Path("data") / "remote" / "swiss_eeg_short",
+        files=[],
+        loader=_fake_loader,
+    )
+
+    import cobrabox.remote_datasets as remote_datasets
+
+    def _fake_get_remote_dataset_spec(identifier: str) -> RemoteDatasetSpec | None:
+        return fake_spec if identifier == "swiss_eeg_short" else None
+
+    def _fake_ensure_remote_files(
+        spec: RemoteDatasetSpec, *, repo_root: Path | None = None
+    ) -> Path:
+        assert spec is fake_spec
+        base = tmp_path if repo_root is None else repo_root
+        path = base / spec.local_rel_dir
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    monkeypatch.setattr(remote_datasets, "get_remote_dataset_spec", _fake_get_remote_dataset_spec)
+    monkeypatch.setattr(remote_datasets, "ensure_remote_files", _fake_ensure_remote_files)
+
+    out = datasets.dataset("swiss_eeg_short")
+
+    assert len(out) == 1
+    assert called
+
+
+def test_ensure_remote_files_uses_index_when_no_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ensure_remote_files resolves files from a remote index when files is None."""
+    spec = RemoteDatasetSpec(
+        identifier="test_index",
+        local_rel_dir=Path("data") / "remote" / "test_index",
+        files=None,
+        loader=lambda _p: [],
+        file_index_url="http://example.com/index.txt",
+    )
+
+    index_body = b"http://example.com/a.bin\nhttp://example.com/b.bin\n"
+    payloads = {
+        "http://example.com/index.txt": index_body,
+        "http://example.com/a.bin": b"AAA",
+        "http://example.com/b.bin": b"BBB",
+    }
+
+    class _FakeResponse(io.BytesIO):
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
+            self.close()
+
+    def _fake_urlopen(url: str, *args: object, **kwargs: object) -> _FakeResponse:
+        try:
+            return _FakeResponse(payloads[url])
+        except KeyError as exc:
+            raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
+
+    import cobrabox.remote_datasets as remote_datasets
+
+    monkeypatch.setattr(remote_datasets.urllib.request, "urlopen", _fake_urlopen)
+
+    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path)
+
+    assert (dataset_dir / "a.bin").read_bytes() == b"AAA"
+    assert (dataset_dir / "b.bin").read_bytes() == b"BBB"

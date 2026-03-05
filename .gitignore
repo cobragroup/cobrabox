@@ -53,5 +53,6 @@ data/raw/*
 !data/raw/README.md
 data/processed/*
 !data/processed/README.md
+data/remote/
 #data/synthetic/*
 #!data/synthetic/README.md
