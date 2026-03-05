@@ -6,6 +6,8 @@ from .coherence import Coherence as Coherence
 from .dummy import Dummy as Dummy
 from .envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
 from .epileptogenicity_index import EpileptogenicityIndex as EpileptogenicityIndex
+from .granger_causality import GrangerCausality as GrangerCausality
+from .granger_causality import GrangerCausalityMatrix as GrangerCausalityMatrix
 from .line_length import LineLength as LineLength
 from .max import Max as Max
 from .mean import Mean as Mean
@@ -26,6 +28,8 @@ __all__ = [
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
+    "GrangerCausality",
+    "GrangerCausalityMatrix",
     "LineLength",
     "Max",
     "Mean",
