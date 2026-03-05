@@ -2,12 +2,20 @@
 
 **Feature**: `src/cobrabox/features/phase_locking_value.py`
 **Test file**: `tests/test_feature_phase_locking_value.py`
-**Date**: 2025-03-04
+**Date**: 2026-03-05
 **Verdict**: NEEDS WORK
+
+## Coverage
+
+```
+phase_locking_value: 100% (55 statements, 0 missing)
+```
+
+Excellent per-file coverage! The feature file is fully covered.
 
 ## Summary
 
-The test file covers both `PhaseLockingValue` and `PhaseLockingValueMatrix` features with 12 tests. Core functionality is tested including happy paths, error cases, history updates, and mathematical correctness (diagonal = 1.0). However, **2 required scenarios are missing**: metadata preservation and input immutability tests. Additionally, `sampling_rate` behavior is not verified for features that remove the time dimension.
+The test file covers both `PhaseLockingValue` and `PhaseLockingValueMatrix` features with 11 tests. Core functionality is tested including happy paths, error cases, history updates, and mathematical correctness (diagonal = 1.0). However, **4 required scenarios are missing**: metadata preservation (2 tests) and input immutability (2 tests).
 
 ## Keep
 
@@ -17,11 +25,11 @@ Tests that are correct and complete — no changes needed:
 - `test_phase_locking_value_matrix_returns_square_matrix` — Validates matrix dimensions and output type.
 - `test_phase_locking_value_diagonal_is_one` — Mathematical correctness test; PLV of a signal with itself should be 1.0.
 - `test_phase_locking_value_raises_invalid_coordinate` — Tests ValueError for missing coord_x.
+- `test_phase_locking_value_raises_when_coord_y_not_found` — Tests ValueError for missing coord_y (different from coord_x).
 - `test_phase_locking_value_matrix_raises_empty_coords` — Tests ValueError for empty coords list.
 - `test_phase_locking_value_preserves_history` — Validates history is updated with class name.
 - `test_phase_locking_value_matrix_preserves_history` — Validates history for matrix variant.
 - `test_phase_locking_value_raises_when_no_space_dim` — Tests ValueError when space dimension is missing.
-- `test_phase_locking_value_raises_when_coord_y_not_found` — Tests ValueError for missing coord_y (different from coord_x).
 - `test_phase_locking_value_matrix_raises_when_no_space_dim` — Tests ValueError for matrix variant without space dim.
 - `test_phase_locking_value_matrix_raises_when_coord_not_found` — Tests ValueError when a coord in coords is not found.
 
@@ -125,7 +133,7 @@ def test_phase_locking_value_matrix_does_not_mutate_input() -> None:
 
 ## Action List
 
-1. [Severity: HIGH] Add `test_phase_locking_value_metadata_preserved` to verify subjectID, groupID, condition, and sampling_rate handling (`tests/test_feature_phase_locking_value.py`)
-2. [Severity: HIGH] Add `test_phase_locking_value_matrix_metadata_preserved` to verify metadata preservation for matrix variant (`tests/test_feature_phase_locking_value.py`)
-3. [Severity: HIGH] Add `test_phase_locking_value_does_not_mutate_input` to verify input Data is not modified (`tests/test_feature_phase_locking_value.py`)
-4. [Severity: HIGH] Add `test_phase_locking_value_matrix_does_not_mutate_input` to verify input immutability for matrix variant (`tests/test_feature_phase_locking_value.py`)
+1. [Severity: MEDIUM] Add `test_phase_locking_value_metadata_preserved` to verify subjectID, groupID, condition, and sampling_rate handling (`tests/test_feature_phase_locking_value.py`)
+2. [Severity: MEDIUM] Add `test_phase_locking_value_matrix_metadata_preserved` to verify metadata preservation for matrix variant (`tests/test_feature_phase_locking_value.py`)
+3. [Severity: MEDIUM] Add `test_phase_locking_value_does_not_mutate_input` to verify input Data is not modified (`tests/test_feature_phase_locking_value.py`)
+4. [Severity: MEDIUM] Add `test_phase_locking_value_matrix_does_not_mutate_input` to verify input immutability for matrix variant (`tests/test_feature_phase_locking_value.py`)

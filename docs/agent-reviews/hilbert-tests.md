@@ -1,9 +1,17 @@
 # Test Review: hilbert
 
-**Feature**: `src/cobrabox/features/hilbert.py`
-**Test file**: `tests/test_feature_hilbert.py`
-**Date**: 2025-03-05
+**Feature**: `src/cobrabox/features/hilbert.py`  
+**Test file**: `tests/test_feature_hilbert.py`  
+**Date**: 2025-03-05  
 **Verdict**: PASS
+
+## Coverage
+
+```
+hilbert.py: 100% (31 statements, 0 missing)
+```
+
+All lines covered. No missing statements.
 
 ## Summary
 

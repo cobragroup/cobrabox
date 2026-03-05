@@ -1,7 +1,7 @@
 # Feature Review: autocorr
 
 **File**: `src/cobrabox/features/autocorr.py`
-**Date**: 2026-03-04
+**Date**: 2026-03-05
 **Verdict**: PASS
 
 ## Summary

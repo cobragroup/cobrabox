@@ -16,7 +16,7 @@ from __future__ import annotations
 
 # fmt: off
 ALIGNMENTS: dict[str, dict] = {
-    "AmpVar": {
+    "AmplitudeVariation": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
@@ -64,6 +64,13 @@ ALIGNMENTS: dict[str, dict] = {
         "label": "Lawful Evil",
         "abbrev": "mi",
         "lore":  "The mirror of Max — same cold devotion to order, different floor",
+    },
+    "LempelZiv": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "lz",
+        "lore":  "Reads the entropy of patterns without imposing order",
     },
     "LineLength": {
         "law":   0,
@@ -134,6 +141,20 @@ ALIGNMENTS: dict[str, dict] = {
         "label": "Neutral Good",
         "abbrev": "ec",
         "lore":  "Exorcises zero-lag phantoms, revealing genuine kinship between channels",
+    },
+    "GrangerCausality": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "gc",
+        "lore":  "Tests if the past of one channel predicts another — honest temporal judge",
+    },
+    "GrangerCausalityMatrix": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "gm",
+        "lore":  "Maps the web of temporal influence — thorough and without prejudice",
     },
     "EpileptogenicityIndex": {
         "law":   1,

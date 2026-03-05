@@ -6,67 +6,49 @@
 
 ## Summary
 
-Excellent, production-ready feature. The Hilbert transform implementation is clean, well-documented, and fully compliant with cobrabox conventions. All four feature modes (analytic, envelope, phase, frequency) are properly implemented with appropriate validation.
+Excellent feature implementation. Hilbert is a clean, well-documented `BaseFeature[SignalData]` that applies the scipy Hilbert transform to extract various signal representations. The code follows all cobrabox conventions: proper dataclass structure, complete Google-style docstring with all required sections, strong typing, and appropriate validation. No issues found.
 
 ## Ruff
 
 ### `uvx ruff check`
-
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
-
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-Perfect structure:
+Clean structure (line 16-17): `@dataclass` decorator with `BaseFeature[SignalData]` inheritance — correct for a time-series feature that operates on the time axis. Class name `Hilbert` matches filename.
 
-- Line 1: `from __future__ import annotations` present
-- Line 16: `@dataclass` decorator correct
-- Line 17: Inherits `BaseFeature[SignalData]` — appropriate since this operates on time-series data
-- Line 62: `__call__` takes `data: SignalData` with return type `xr.DataArray`
-- Lines 10-11: Correct import order (internal imports after third-party)
-- No custom `apply()` — correctly uses inherited method
+`__call__` signature (line 62): `def __call__(self, data: SignalData) -> xr.DataArray:` — correct return type for `BaseFeature`. No custom `apply()` — properly inherited.
 
-The class name `Hilbert` matches the filename `hilbert.py`.
+Imports (lines 1-11): Correct order — `__future__`, stdlib, third-party, internal. No unused imports.
 
 ## Docstring
 
-Comprehensive Google-style docstring (lines 18-51) with all required sections:
+Complete Google-style docstring with all required sections:
 
-- **One-line summary**: Clear verb phrase ("Apply the Hilbert transform...")
-- **Extended description**: Explains the underlying scipy function and output shape
-- **Args**: Documents the `feature` field with detailed descriptions of each option
-- **Returns**: Describes dtype variations and dimension preservation
-- **Raises**: Documents both ValueError cases (invalid feature, missing sampling_rate)
-- **Example**: Shows all four modes with `.apply()` syntax
+- **One-line summary** (line 18): Clear, descriptive.
+- **Extended description** (lines 20-23): Explains what the feature does and notes that the time dimension is preserved.
+- **Args** (lines 25-35): Documents the `feature` field with all four valid options clearly explained.
+- **Returns** (lines 37-39): Specifies dtype and shape preservation.
+- **Raises** (lines 41-44): Documents both validation errors.
+- **Example** (lines 46-50): Four working examples showing different feature modes via `.apply()`.
 
 ## Typing
 
-Fully typed:
-
-- Line 53: `feature: Literal["analytic", "envelope", "phase", "frequency"] = "analytic"` — excellent use of Literal for constrained string options
-- Line 55: `__post_init__` has `-> None` return annotation
-- Line 62: `__call__` has proper `SignalData` argument and `xr.DataArray` return type
-- No bare `Any` types
+- **Field typing** (line 53): `feature: Literal["analytic", "envelope", "phase", "frequency"] = "analytic"` — precise Literal type with default.
+- **Return type** (line 62): `xr.DataArray` — correct.
+- **No bare `Any`**: All types explicit.
 
 ## Safety & Style
 
-Clean and safe implementation:
-
-- **No print statements**: None found
+- **No print statements**: Clean.
 - **Input validation**:
-  - Lines 56-60: `__post_init__` validates `feature` against `_VALID_FEATURES` tuple
-  - Lines 76-79: Validates `sampling_rate` is not None when `feature='frequency'`
-- **No mutation**: Lines 63-66 extract values and work on a copy; returns new DataArray
-- **Line length**: All lines within 100 character limit
-
-The frequency calculation (line 81) correctly uses `np.gradient` with the proper time step derived from `sampling_rate`, and divides by 2π to convert from rad/s to Hz.
-
-## Type Checker Notes
-
-LSP reports false-positive type errors on lines 72, 74, and 80 related to `scipy.signal.hilbert` return type compatibility with `np.abs`, `np.angle`, and `np.unwrap`. These are upstream typing stub issues with scipy/numpy — the code runs correctly and the runtime types are compatible. No action needed.
+  - `__post_init__` (lines 55-60): Validates `feature` is in `_VALID_FEATURES` with clear error message.
+  - `__call__` (lines 76-79): Validates `sampling_rate` is set when `feature='frequency'`.
+- **No mutation**: Creates new `xr.DataArray` instances, never mutates input (lines 70, 83).
+- **Line length**: Within 100 char limit.
 
 ## Action List
 

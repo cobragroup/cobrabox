@@ -2,8 +2,16 @@
 
 **Feature**: `src/cobrabox/features/envelope_correlation.py`
 **Test file**: `tests/test_feature_envelope_correlation.py`
-**Date**: 2025-03-04
+**Date**: 2025-03-05
 **Verdict**: NEEDS WORK
+
+## Coverage
+
+```
+envelope_correlation.py: 100% (31 statements, 0 missing)
+```
+
+Coverage is excellent at 100%.
 
 ## Summary
 
@@ -73,6 +81,6 @@ def test_envelope_correlation_no_mutation() -> None:
 
 ## Action List
 
-1. [Severity: HIGH] Add `test_envelope_correlation_no_mutation` to verify input is not mutated (`tests/test_feature_envelope_correlation.py`, after line 143)
+1. [Severity: MEDIUM] Add `test_envelope_correlation_no_mutation` to verify input is not mutated (`tests/test_feature_envelope_correlation.py`, after line 143)
 
 2. [Severity: MEDIUM] Update `test_envelope_correlation_metadata_preserved` to also assert `groupID` and `condition` are preserved (`tests/test_feature_envelope_correlation.py`, line 136)

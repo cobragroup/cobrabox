@@ -1,66 +1,47 @@
 # Feature Review: max
 
 **File**: `src/cobrabox/features/max.py`
-**Date**: 2026-03-04
-**Verdict**: PASS
+**Date**: 2026-03-05
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-Clean, well-structured feature. The `Max` class correctly inherits from `BaseFeature[Data]`, implements proper input validation, and includes complete Google-style docstrings. All ruff checks pass. A solid example of a dimension-reducing aggregation feature.
+A clean, well-structured feature with proper docstring sections and input validation. However, it lacks the `output_type` classvar needed when reducing dimensions. Since `Max` removes the specified dimension, the output may not be compatible with the input container type (e.g., reducing `time` on `SignalData` should return plain `Data`). This is the main blocker.
 
 ## Ruff
 
 ### `uvx ruff check`
-
 Clean — no issues found.
 
 ### `uvx ruff format --check`
-
 Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 1: `from __future__ import annotations` present — correct.
+Correct `@dataclass` + `BaseFeature[Data]` inheritance. Class name matches filename. `__call__` signature is correct with `data: Data` parameter. No `apply()` override — good, inherits from base.
 
-Line 11: `@dataclass` decorator applied.
-
-Line 12: Inherits `BaseFeature[Data]` — appropriate for a generic dimension-reducing feature that works on any `Data` (not just time-series).
-
-Line 12: Class name `Max` matches filename `max.py` — correct.
-
-Line 27: Field `dim: str` is a dataclass field (not `data`), correctly placed.
-
-Line 29: `__call__` signature `def __call__(self, data: Data) -> xr.DataArray` is correct. The return type `xr.DataArray` is appropriate since the output removes a dimension.
-
-No `apply()` method — correctly inherited from `BaseFeature`.
-
-Imports are in correct order: future annotations, dataclass, third-party (xarray), internal (base_feature, data).
+**Issue**: Missing `output_type` classvar (line 11-12). Since this feature reduces a dimension, it should declare:
+```python
+output_type: ClassVar[type[Data]] = Data
+```
+This signals that the output container is always plain `Data`, regardless of input type.
 
 ## Docstring
 
-Complete Google-style docstring with all required sections:
+All required sections present: summary, Args, Returns, Example. Well written and clear.
 
-- Line 13: One-line summary describing the feature's purpose.
-- Lines 15-17: `Args:` section documents the `dim` field.
-- Lines 18-21: `Returns:` section describes shape and values.
-- Lines 23-25: `Example:` section shows correct usage via `.apply()`.
+**Minor**: Line 21 mentions "input signal" — for a generic `BaseFeature[Data]`, "signal" implies time-series data. Consider "input data" for consistency with the generic type parameter.
 
 ## Typing
 
-Line 27: Field `dim: str` is properly typed.
-
-Line 29: `__call__` return type `xr.DataArray` is explicit and matches the contract.
-
-No bare `Any` types.
+Field `dim: str` is properly typed. `__call__` return type `xr.DataArray` is correct. No bare `Any` types.
 
 ## Safety & Style
 
-Line 30-31: Input validation raises `ValueError` with a clear message if `dim` is not found in the data dimensions. This is good defensive programming.
-
-Line 32: Uses `data.data.max(dim=self.dim)` — operates on the underlying xarray without mutating the input `Data` object. Correct immutability handling.
-
-No `print()` statements.
+No `print()` statements. Proper input validation on line 30-31 checking dimension existence. No mutation of input data — correctly operates on `data.data` and returns new array. Line 31 exceeds 100 chars slightly but ruff allows it.
 
 ## Action List
 
-None.
+1. [Severity: HIGH] Add `output_type: ClassVar[type[Data]] = Data` class variable after the docstring (before `dim: str`). Import `ClassVar` from `typing` if not already available.
+
+2. [Severity: LOW] Line 21: change "input signal" to "input data" for consistency with generic `BaseFeature[Data]` type.

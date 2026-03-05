@@ -107,6 +107,7 @@ class GrangerCausality(BaseFeature[SignalData]):
     """
 
     output_type: ClassVar[type[Data]] = Data
+    _is_cobrabox_feature = True
 
     coord_x: str | int | None = None
     coord_y: str | int | None = None
@@ -181,12 +182,16 @@ class GrangerCausalityMatrix(BaseFeature[SignalData]):
     lag: int | None = None
     maxlag: int = 1
 
+    _is_cobrabox_feature = True
+
     def __post_init__(self) -> None:
         """Validate parameters."""
         if self.maxlag < 1:
             raise ValueError(f"maxlag must be >= 1, got {self.maxlag}")
         if self.lag is not None and self.lag < 1:
             raise ValueError(f"lag must be >= 1, got {self.lag}")
+        if self.coords is not None and len(self.coords) == 0:
+            raise ValueError("coords cannot be an empty list")
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         """Apply Granger causality test to all coordinate pairs using log-ratio method."""

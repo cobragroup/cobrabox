@@ -2,109 +2,116 @@
 
 **Feature**: `src/cobrabox/features/min.py`
 **Test file**: `tests/test_feature_min.py`
-**Date**: 2026-03-04
+**Date**: 2025-03-05
 **Verdict**: NEEDS WORK
+
+## Coverage
+
+```
+Min: 100% (12 statements, 0 missing)
+```
 
 ## Summary
 
-The Min feature tests cover 4 out of 7 required scenarios. The test suite correctly validates dimension reduction, error handling for unknown dimensions, and history tracking. However, it lacks critical tests for input immutability and has incomplete metadata preservation coverage (only checks `subjectID`, missing `groupID`, `condition`, and `sampling_rate` handling when time dimension is removed).
+The `Min` feature has 100% coverage and tests the core functionality well. However, there are naming convention violations (using `test_feature_min_*` instead of `test_min_*`), incomplete metadata preservation tests (only `subjectID` checked), and a missing "no mutation of input" test. The tests use inconsistent data construction patterns (some use `cb.SignalData` constructor, others use `cb.SignalData.from_numpy`).
 
 ## Keep
 
-Tests that are correct and complete — no changes needed:
-
-- `test_feature_min_reduces_extra_dimension` — correctly tests reducing non-time dimensions and verifies history, output shape, and basic metadata preservation (subjectID)
-- `test_feature_min_raises_for_unknown_dimension` — correctly tests the ValueError guard with match pattern
-- `test_feature_min_finds_smallest_value_with_negative_numbers` — correctly validates min computation with negative values
+Tests that are correct and complete:
+- `test_feature_min_reduces_extra_dimension` — correctly tests reduction over non-time dim and history
+- `test_feature_min_raises_for_unknown_dimension` — proper error case with `match=`
+- `test_feature_min_single_channel_timeseries_returns_single_value` — good edge case for single-value output
+- `test_feature_min_finds_smallest_value_with_negative_numbers` — correctly verifies min with negative values
 
 ## Fix
 
-Tests that exist but need changes:
-
 ### `test_feature_min_reduces_extra_dimension`
-
-Issue: Incomplete metadata preservation check
-
+Issue: Incomplete metadata preservation check. Only verifies `subjectID`, missing `groupID`, `condition`, `sampling_rate`.
 ```python
-# Current only checks:
-assert out.subjectID == "sub-01"
+def test_min_reduces_extra_dimension() -> None:
+    """Min reduces an extra dimension (run_index) and updates history."""
+    import xarray as xr
 
-# Should check all metadata fields:
-assert out.subjectID == "sub-01"
-assert out.groupID == "g1"  # needs to be set in test data
-assert out.condition == "rest"  # needs to be set in test data
-# sampling_rate behavior depends on whether time dim exists in output
-if "time" in out.data.dims:
+    arr = np.arange(24, dtype=float).reshape(3, 4, 2)  # run_index, time, space
+    xr_data = xr.DataArray(arr, dims=["run_index", "time", "space"])
+    data = cb.SignalData(
+        xr_data,
+        sampling_rate=100.0,
+        subjectID="sub-01",
+        groupID="group-A",
+        condition="rest",
+    )
+
+    out = cb.feature.Min(dim="run_index").apply(data)
+
+    assert isinstance(out, cb.Data)
+    assert "run_index" not in out.data.dims
+    assert out.data.shape == (2, 4)
+    np.testing.assert_allclose(out.to_numpy(), arr.min(axis=0).T)
+    # Metadata preservation
+    assert out.subjectID == "sub-01"
+    assert out.groupID == "group-A"
+    assert out.condition == "rest"
     assert out.sampling_rate == pytest.approx(100.0)
-else:
-    assert out.sampling_rate is None
+    assert out.history == ["Min"]
 ```
 
-### `test_feature_min_single_channel_timeseries_returns_single_value`
-
-Issue: Line 44 assertion `out.data.dims == ("space", "time")` looks incorrect — when reducing over "time", the time dimension should be removed. This assertion passes but suggests the data structure may be unexpected. Verify this is intentional.
+### Naming convention
+Issue: All test functions use `test_feature_min_*` instead of `test_min_*` per project conventions.
+Fix: Rename all functions:
+- `test_feature_min_reduces_extra_dimension` → `test_min_reduces_extra_dimension`
+- `test_feature_min_raises_for_unknown_dimension` → `test_min_raises_for_unknown_dimension`
+- `test_feature_min_single_channel_timeseries_returns_single_value` → `test_min_single_channel_timeseries_returns_single_value`
+- `test_feature_min_finds_smallest_value_with_negative_numbers` → `test_min_finds_smallest_value_with_negative_numbers`
 
 ## Add
 
-Missing scenarios — new tests to add:
+Missing scenarios:
 
-### `test_feature_min_does_not_mutate_input`
-
+### `test_min_does_not_mutate_input`
 ```python
-def test_feature_min_does_not_mutate_input() -> None:
+def test_min_does_not_mutate_input() -> None:
     """Min.apply() leaves the input Data object unchanged."""
-    arr = np.arange(24, dtype=float).reshape(3, 4, 2)
     data = cb.SignalData.from_numpy(
-        arr,
-        dims=["run_index", "time", "space"],
+        np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+        dims=["time", "space"],
         sampling_rate=100.0,
-        subjectID="s1",
-        groupID="g1",
-        condition="rest"
     )
     original_history = list(data.history)
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Min(dim="run_index").apply(data)
+    _ = cb.feature.Min(dim="time").apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
     np.testing.assert_array_equal(data.to_numpy(), original_values)
 ```
 
-### `test_feature_min_metadata_preserved`
-
+### `test_min_preserves_metadata`
+Dedicated test for metadata preservation (even though partially covered in existing tests):
 ```python
-def test_feature_min_metadata_preserved() -> None:
+def test_min_preserves_metadata() -> None:
     """Min preserves all metadata fields correctly."""
-    arr = np.arange(24, dtype=float).reshape(3, 4, 2)
     data = cb.SignalData.from_numpy(
-        arr,
-        dims=["run_index", "time", "space"],
+        np.array([[1.0, 2.0], [3.0, 4.0]]),
+        dims=["time", "space"],
         sampling_rate=250.0,
-        subjectID="sub-42",
+        subjectID="s42",
         groupID="control",
-        condition="task"
+        condition="task",
     )
-
-    # Reduce over run_index - time should still exist
-    out = cb.feature.Min(dim="run_index").apply(data)
-    assert out.subjectID == "sub-42"
-    assert out.groupID == "control"
-    assert out.condition == "task"
-    assert out.sampling_rate == pytest.approx(250.0)
-
-    # Reduce over time - sampling_rate should become None
-    out2 = cb.feature.Min(dim="time").apply(data)
-    assert out2.subjectID == "sub-42"
-    assert out2.groupID == "control"
-    assert out2.condition == "task"
-    assert out2.sampling_rate is None
+    result = cb.feature.Min(dim="time").apply(data)
+    assert result.subjectID == "s42"
+    assert result.groupID == "control"
+    assert result.condition == "task"
+    # sampling_rate preserved since time dim is removed, so None
+    assert result.sampling_rate is None
 ```
 
 ## Action List
 
-1. [Severity: HIGH] Add `test_feature_min_does_not_mutate_input` to verify input immutability
-2. [Severity: MEDIUM] Add `test_feature_min_metadata_preserved` to verify all metadata fields and sampling_rate behavior
-3. [Severity: MEDIUM] Update existing tests to include full metadata in test data (groupID, condition) so metadata preservation can be properly tested
+1. [Severity: MEDIUM] Rename all test functions from `test_feature_min_*` to `test_min_*` pattern (file: `tests/test_feature_min.py`)
+2. [Severity: MEDIUM] Add complete metadata preservation assertions (`groupID`, `condition`, `sampling_rate`) to existing tests or add dedicated `test_min_preserves_metadata` test
+3. [Severity: MEDIUM] Add `test_min_does_not_mutate_input` to verify input data is not modified
+4. [Severity: LOW] Standardize data construction to use `cb.SignalData.from_numpy()` consistently instead of mixing `cb.SignalData()` constructor and `.from_numpy()`

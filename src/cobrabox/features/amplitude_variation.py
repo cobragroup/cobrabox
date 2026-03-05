@@ -10,7 +10,7 @@ from ..data import Data, SignalData
 
 
 @dataclass
-class AmpVar(BaseFeature[SignalData]):
+class AmplitudeVariation(BaseFeature[SignalData]):
     """Compute amplitude variation over the time dimension.
 
     Amplitude variation is the standard deviation of the EEG signal within
@@ -26,7 +26,7 @@ class AmpVar(BaseFeature[SignalData]):
         are in the same units as the input signal.
 
     Example:
-        >>> result = cb.feature.AmpVar().apply(data)
+        >>> result = cb.feature.AmplitudeVariation().apply(data)
     """
 
     output_type: ClassVar[type[Data]] = Data  # pyright: ignore[reportIncompatibleVariableOverride]

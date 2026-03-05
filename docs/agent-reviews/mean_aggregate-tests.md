@@ -2,7 +2,7 @@
 
 **Feature**: `src/cobrabox/features/mean_aggregate.py`
 **Test file**: `tests/test_feature_mean_aggregate.py` (does not exist)
-**Date**: 2026-03-04
+**Date**: 2026-03-05
 **Verdict**: MISSING
 
 ## Summary

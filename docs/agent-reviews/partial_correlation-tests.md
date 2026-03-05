@@ -2,12 +2,22 @@
 
 **Feature**: `src/cobrabox/features/partial_correlation.py`
 **Test file**: `tests/test_feature_partial_correlation.py`
-**Date**: 2026-03-04
+**Date**: 2026-03-05
 **Verdict**: NEEDS WORK
+
+## Coverage
+
+Per-file coverage: **95%** (84 statements, 4 missing)
+Missing lines:
+- 40-41: LinAlgError handling in `_compute_partial_correlation`
+- 93: Missing time dimension check in `PartialCorrelation`
+- 171: Missing time dimension check in `PartialCorrelationMatrix`
+
+Coverage is at the threshold but missing critical error paths. Flagged as HIGH severity.
 
 ## Summary
 
-The test file covers both `PartialCorrelation` and `PartialCorrelationMatrix` classes with good coverage of basic functionality and error cases. However, it is missing several required scenarios including metadata preservation, output type handling (sampling_rate), and input mutation tests. The history assertions use `in` instead of `==` for the last element.
+The test file covers both `PartialCorrelation` and `PartialCorrelationMatrix` classes with good coverage of basic functionality and error cases. However, it is missing several required scenarios including metadata preservation, output type handling (sampling_rate), input mutation tests, and the singular matrix error handling. The history assertions use `in` instead of `==` for the last element.
 
 ## Keep
 
@@ -21,9 +31,8 @@ Tests that are correct and complete:
 - `test_partial_correlation_raises_invalid_control_coordinate` — control var validation
 - `test_partial_correlation_matrix_raises_empty_coords` — empty coords validation
 - `test_partial_correlation_raises_when_no_space_dim` — missing space dimension
-- `test_partial_correlation_raises_when_no_time_dim` — missing time dimension
+- `test_partial_correlation_raises_when_coord_y_not_found` — coord_y validation
 - `test_partial_correlation_matrix_raises_when_no_space_dim` — matrix missing space
-- `test_partial_correlation_matrix_raises_when_no_time_dim` — matrix missing time
 - `test_partial_correlation_matrix_raises_empty_control_vars` — matrix empty controls
 - `test_partial_correlation_matrix_raises_invalid_coord` — matrix invalid coord
 - `test_partial_correlation_matrix_raises_invalid_control_var` — matrix invalid control
@@ -57,14 +66,59 @@ assert "PartialCorrelationMatrix" in result.history
 assert result.history[-1] == "PartialCorrelationMatrix"
 ```
 
-### `test_partial_correlation_diagonal_is_one`
-
-Issue: Only tests PartialCorrelation, should also test PartialCorrelationMatrix diagonal
-Consider adding a test for matrix diagonal or renaming to be more specific.
-
 ## Add
 
 Missing scenarios to implement:
+
+### `test_partial_correlation_raises_singular_matrix`
+
+Lines 40-41: Add test for singular matrix error handling.
+
+```python
+def test_partial_correlation_raises_singular_matrix() -> None:
+    """PartialCorrelation raises ValueError when correlation matrix is singular."""
+    # Create perfectly correlated data
+    base = np.ones((10,))
+    data = cb.SignalData.from_numpy(
+        np.column_stack([base, base, base, base]),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+    )
+    with pytest.raises(ValueError, match="singular"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+```
+
+### `test_partial_correlation_raises_missing_time_dim`
+
+Line 93: Add test for missing time dimension.
+
+```python
+def test_partial_correlation_raises_missing_time_dim() -> None:
+    """PartialCorrelation raises ValueError when time dimension is missing."""
+    import xarray as xr
+    # Create DataArray without time dimension
+    xr_data = xr.DataArray(np.ones((5, 3)), dims=["space", "channels"])
+    # Bypass Data validation to test feature guard
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", xr_data)
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(raw)
+```
+
+### `test_partial_correlation_matrix_raises_missing_time_dim`
+
+Line 171: Add test for missing time dimension in matrix.
+
+```python
+def test_partial_correlation_matrix_raises_missing_time_dim() -> None:
+    """PartialCorrelationMatrix raises ValueError when time dimension is missing."""
+    import xarray as xr
+    xr_data = xr.DataArray(np.ones((5, 3)), dims=["space", "channels"])
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", xr_data)
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(raw)
+```
 
 ### `test_partial_correlation_metadata_preserved`
 
@@ -192,28 +246,14 @@ def test_partial_correlation_matrix_is_symmetric() -> None:
     np.testing.assert_allclose(matrix, matrix.T)
 ```
 
-### `test_partial_correlation_singular_matrix_raises`
-
-```python
-def test_partial_correlation_singular_matrix_raises() -> None:
-    """PartialCorrelation raises ValueError when correlation matrix is singular."""
-    # Create perfectly correlated data
-    base = np.ones((10,))
-    data = cb.SignalData.from_numpy(
-        np.column_stack([base, base, base, base]),
-        dims=["time", "space"],
-        sampling_rate=100.0,
-    )
-    with pytest.raises(ValueError, match="singular"):
-        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
-```
-
 ## Action List
 
 1. [Severity: MEDIUM] Fix history assertions to use `==` instead of `in` (lines 103, 114)
-2. [Severity: HIGH] Add metadata preservation tests for both classes
-3. [Severity: HIGH] Add sampling_rate=None tests for both classes (output_type handling)
-4. [Severity: HIGH] Add input mutation tests for both classes
-5. [Severity: MEDIUM] Add PartialCorrelationMatrix diagonal test
-6. [Severity: MEDIUM] Add PartialCorrelationMatrix symmetry test
-7. [Severity: MEDIUM] Add singular matrix error test
+2. [Severity: HIGH] Add singular matrix error test (lines 40-41)
+3. [Severity: HIGH] Add missing time dimension test for PartialCorrelation (line 93)
+4. [Severity: HIGH] Add missing time dimension test for PartialCorrelationMatrix (line 171)
+5. [Severity: HIGH] Add metadata preservation tests for both classes
+6. [Severity: HIGH] Add sampling_rate=None tests for both classes (output_type handling)
+7. [Severity: HIGH] Add input mutation tests for both classes
+8. [Severity: MEDIUM] Add PartialCorrelationMatrix diagonal test
+9. [Severity: MEDIUM] Add PartialCorrelationMatrix symmetry test

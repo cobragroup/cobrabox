@@ -41,8 +41,7 @@ def test_feature_max_single_channel_timeseries_returns_single_value() -> None:
     out = cb.feature.Max(dim="time").apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "time")
-    assert out.data.shape == (1, 1)
-    assert out.to_numpy().size == 1
-    np.testing.assert_allclose(out.to_numpy(), np.array([[4.0]]))
+    assert out.data.dims == ("space",)
+    assert out.data.shape == (1,)
+    np.testing.assert_allclose(out.to_numpy(), np.array([4.0]))
     assert out.history == ["Max"]

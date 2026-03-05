@@ -1,76 +1,66 @@
 # Feature Review: coherence
 
 **File**: `src/cobrabox/features/coherence.py`
-**Date**: 2026-03-04
+**Date**: 2026-03-05
 **Verdict**: PASS
 
 ## Summary
 
-The `Coherence` feature is a high-quality implementation that computes magnitude-squared coherence between all pairwise channel combinations using Welch's method. It correctly inherits from `BaseFeature[SignalData]`, sets `output_type = Data` (since coherence removes the time dimension), and produces a symmetric matrix output with proper handling of extra dimensions. The code is well-structured, thoroughly documented, and passes all linting checks.
+Clean, well-structured feature implementing Welch's method for magnitude-squared coherence computation. Follows all project conventions with excellent docstring coverage, proper typing, and comprehensive input validation. The feature correctly uses `BaseFeature[SignalData]` since it operates on the time axis, and sets `output_type = Data` appropriately since the output is a correlation matrix (no time dimension).
 
 ## Ruff
 
 ### `uvx ruff check`
-
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
-
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-Line 1: `from __future__ import annotations` — correct.
+Line 1: `from __future__ import annotations` present.
 
-Line 14-15: `@dataclass` decorator with `BaseFeature[SignalData]` inheritance — correct. Uses `SignalData` because the algorithm inherently operates on time-series data.
+Line 14-15: Correctly decorated with `@dataclass` and inherits `BaseFeature[SignalData]` — appropriate for a time-series feature.
 
-Line 46: `output_type: ClassVar[type[Data]] = Data` — correctly declared since the output is a correlation matrix without time dimension.
+Line 46: `output_type: ClassVar[type[Data]] = Data` correctly set since coherence produces a spatial correlation matrix without time dimension.
 
-Line 48: `nperseg: int | None = field(default=None)` — properly typed dataclass field.
+Line 90: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray:`.
 
-Line 90: `def __call__(self, data: SignalData) -> xr.DataArray:` — correct signature, return type matches base class contract.
+No `apply()` override — correctly inherits from `BaseFeature`.
 
-Imports are clean and in correct order: future annotations, stdlib (itertools, dataclasses, typing), third-party (numpy, xarray), internal (base_feature, data).
+Imports are in correct order: stdlib → third-party → internal.
 
 ## Docstring
 
-Excellent Google-style docstring with all required sections:
+Comprehensive Google-style docstring with all required sections:
+- One-line summary (line 16)
+- Extended description explaining the algorithm and symmetry (lines 17-26)
+- Args section documenting `nperseg` field (lines 28-30)
+- Example section showing typical usage (lines 32-36)
+- Returns section describing output dimensions and properties (lines 38-43)
 
-- **One-line summary** (line 16): "Compute magnitude-squared coherence for all pairwise channel combinations."
-- **Extended description** (lines 18-26): Explains Welch's method, symmetric matrix output, handling of extra dimensions.
-- **Args** (lines 28-30): Documents `nperseg` with type, default behavior, and constraints.
-- **Example** (lines 32-36): Working snippet using `.apply()` with typical usage pattern.
-- **Returns** (lines 38-43): Describes output dimensions, coordinates, value range, and symmetry property.
+Note: The Returns section correctly documents the extra singleton `time` dimension added by `BaseFeature.apply`.
 
 ## Typing
 
 All fields are typed:
+- Line 48: `nperseg: int | None = field(default=None)`
 
-- Line 46: `output_type: ClassVar[type[Data]]`
-- Line 48: `nperseg: int | None`
+Line 90: `__call__` has proper return type annotation `-> xr.DataArray`.
 
-Line 50: `def __post_init__(self) -> None:` — proper return type.
-
-Line 54: `def _mean_squared_coherence(self, x: np.ndarray, y: np.ndarray, nperseg: int) -> np.ndarray:` — fully typed private helper.
-
-Line 90: `def __call__(self, data: SignalData) -> xr.DataArray:` — correct.
-
-No bare `Any` types found.
+No bare `Any` types present.
 
 ## Safety & Style
 
 No `print()` statements — clean.
 
-Input validation is comprehensive:
+Input validation is thorough:
+- `__post_init__` (lines 50-52): Validates `nperseg >= 2` at construction time
+- `__call__` (lines 91-109): Validates presence of 'space' dimension, minimum 2 channels, and `nperseg` constraints against actual data length
 
-- Line 51-52: `__post_init__` validates `nperseg >= 2`
-- Line 93-94: Validates presence of 'space' dimension
-- Line 100-101: Validates at least 2 spatial channels
-- Lines 103-109: Validates `nperseg` against data length
+No mutation of input `data` — operates on `data.data` and returns new `xr.DataArray`.
 
-No mutation of input data — the feature works on `data.data` and returns a new `xr.DataArray` (lines 127-131).
-
-Line length is within 100 characters throughout.
+Line length within 100 character limit.
 
 ## Action List
 
