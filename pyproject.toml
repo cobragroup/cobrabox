@@ -24,6 +24,14 @@ docs = [
     "mkdocstrings[python]>=0.28.0",
     "mkdocs-jupyter>=0.25.0",
 ]
+
+[project.optional-dependencies]
+viz = [
+    "panel>=1.4",
+    "hvplot>=0.10",
+    "holoviews>=1.19",
+    "bokeh>=3.4",
+]
 [build-system]
 requires = ["uv_build"]
 build-backend = "uv_build"
@@ -53,7 +61,7 @@ addopts = "--cov=cobrabox --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src/cobrabox"]
-omit = ["src/cobrabox/features/dummy.py"]
+omit = ["src/cobrabox/features/dummy.py", "src/cobrabox/visualization/*"]
 relative_files = true
 
 [tool.coverage.report]
