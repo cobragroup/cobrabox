@@ -1,12 +1,12 @@
 # Feature Review: max
 
 **File**: `src/cobrabox/features/max.py`
-**Date**: 2026-03-05
-**Verdict**: NEEDS WORK
+**Date**: 2025-03-05
+**Verdict**: PASS
 
 ## Summary
 
-A clean, well-structured feature with proper docstring sections and input validation. However, it lacks the `output_type` classvar needed when reducing dimensions. Since `Max` removes the specified dimension, the output may not be compatible with the input container type (e.g., reducing `time` on `SignalData` should return plain `Data`). This is the main blocker.
+Clean, well-structured feature that computes the maximum value across a specified dimension. Follows all conventions with proper docstring, type annotations, input validation, and correctly sets `output_type` since this feature removes the reduced dimension.
 
 ## Ruff
 
@@ -18,30 +18,34 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Correct `@dataclass` + `BaseFeature[Data]` inheritance. Class name matches filename. `__call__` signature is correct with `data: Data` parameter. No `apply()` override — good, inherits from base.
-
-**Issue**: Missing `output_type` classvar (line 11-12). Since this feature reduces a dimension, it should declare:
-```python
-output_type: ClassVar[type[Data]] = Data
-```
-This signals that the output container is always plain `Data`, regardless of input type.
+- ✅ `from __future__ import annotations` present (line 1)
+- ✅ `@dataclass` decorator with `BaseFeature[Data]` inheritance (lines 12-13)
+- ✅ Correct `output_type: ClassVar[type[Data]] = Data` set (line 28) — appropriate since the feature reduces over a dimension
+- ✅ `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray` (line 32)
+- ✅ Class name `Max` matches filename `max.py`
 
 ## Docstring
 
-All required sections present: summary, Args, Returns, Example. Well written and clear.
-
-**Minor**: Line 21 mentions "input signal" — for a generic `BaseFeature[Data]`, "signal" implies time-series data. Consider "input data" for consistency with the generic type parameter.
+Complete Google-style docstring with all required sections:
+- ✅ One-line summary (line 14)
+- ✅ `Args:` section documents the `dim` field (lines 16-17)
+- ✅ `Returns:` section describes output shape and values (lines 19-22)
+- ✅ `Example:` section shows `.apply()` usage (lines 24-25)
 
 ## Typing
 
-Field `dim: str` is properly typed. `__call__` return type `xr.DataArray` is correct. No bare `Any` types.
+- ✅ Field `dim: str` properly typed (line 30)
+- ✅ `__call__` return type `xr.DataArray` correctly annotated (line 32)
+- ✅ `ClassVar` type annotation for `output_type` (line 28)
+- ✅ No bare `Any` types
 
 ## Safety & Style
 
-No `print()` statements. Proper input validation on line 30-31 checking dimension existence. No mutation of input data — correctly operates on `data.data` and returns new array. Line 31 exceeds 100 chars slightly but ruff allows it.
+- ✅ No `print()` statements
+- ✅ Input validation checks if dimension exists (lines 33-34)
+- ✅ No mutation of input `data` — operates on `data.data` and returns new array
+- ✅ Line length within 100 characters
 
 ## Action List
 
-1. [Severity: HIGH] Add `output_type: ClassVar[type[Data]] = Data` class variable after the docstring (before `dim: str`). Import `ClassVar` from `typing` if not already available.
-
-2. [Severity: LOW] Line 21: change "input signal" to "input data" for consistency with generic `BaseFeature[Data]` type.
+None.

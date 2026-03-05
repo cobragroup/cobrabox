@@ -282,3 +282,10 @@ def test_bandfilter_negative_frequency_raises() -> None:
     data = _make_data()
     with pytest.raises(ValueError, match="frequencies must be non-negative"):
         cb.feature.BandFilter(bands={"bad": [-5, 10]}).apply(data)
+
+
+def test_bandfilter_band_wrong_number_of_frequencies_raises() -> None:
+    """BandFilter raises ValueError when band doesn't have exactly 2 frequencies."""
+    data = _make_data()
+    with pytest.raises(ValueError, match="exactly 2"):
+        cb.feature.BandFilter(bands={"bad": [1, 10, 20]}).apply(data)

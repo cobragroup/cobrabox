@@ -99,3 +99,35 @@ def test_feature_lempel_ziv_multichannel_independent() -> None:
     assert out.data.shape == (2,)
     # Random channel should be more complex than sinusoidal channel
     assert out.to_numpy()[0] > out.to_numpy()[1]
+
+
+def test_feature_lempel_ziv_missing_time_raises() -> None:
+    """LempelZiv raises error when time dimension is missing."""
+    import xarray as xr
+
+    rng = np.random.default_rng(42)
+    arr = rng.standard_normal(10)
+    xr_data = xr.DataArray(arr, dims=["space"])
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", xr_data)
+    # xarray raises ValueError when core dim is missing
+    with pytest.raises(ValueError, match="not in tuple"):
+        cb.feature.LempelZiv().apply(raw)
+
+
+def test_feature_lempel_ziv_does_not_mutate_input() -> None:
+    """LempelZiv does not modify the input Data object."""
+    rng = np.random.default_rng(8)
+    arr = rng.standard_normal((100, 3))
+    data = cb.SignalData.from_numpy(
+        arr, dims=["time", "space"], sampling_rate=100.0, subjectID="s1"
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.LempelZiv().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)

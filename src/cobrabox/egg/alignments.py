@@ -93,6 +93,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "mn",
         "lore":  "Averages faithfully and without prejudice — the purest bureaucrat",
     },
+    "ConcatAggregate": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "ca",
+        "lore":  "Stacks windows faithfully, preserving every shard of meaning",
+    },
     "BandFilter": {
         "law":   1,
         "good":  1,

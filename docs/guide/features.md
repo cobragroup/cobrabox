@@ -296,6 +296,47 @@ spikes = cb.feature.SpikesCalc().apply(data)
 Detects spikes (outliers) using the IQR method. Values outside ±1.5×IQR from Q1/Q3
 are counted as spikes. Returns a single value with the spike count.
 
+### `LempelZiv`
+
+```python
+lzc = cb.feature.LempelZiv().apply(data)
+```
+
+Computes Lempel-Ziv complexity (LZC) per channel — a measure of signal complexity
+based on the number of distinct patterns in the binary sequence. Higher values
+indicate more complex/irregular signals. The signal is binarized around the median
+before LZC calculation.
+
+### `GrangerCausality` / `GrangerCausalityMatrix`
+
+```python
+# Single pair causality test
+p_val = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2).apply(data)
+
+# Full matrix for multiple channels
+matrix = cb.feature.GrangerCausalityMatrix(coords=[0, 1, 2], maxlag=4).apply(data)
+```
+
+Tests whether past values of one channel help predict another (Granger causality).
+Uses a log-ratio test statistic based on prediction error variances.
+`GrangerCausality` returns a scalar p-value; `GrangerCausalityMatrix` returns
+a 3D array `(coord_x, coord_y, lag_index)` with p-values for all pairs and lags.
+
+### `ConcatAggregate` (aggregator)
+
+```python
+# Alternative aggregator that preserves all windows
+result = cb.Chord(
+    split=cb.feature.SlidingWindow(window_size=20, step_size=10),
+    pipeline=cb.feature.LineLength(),
+    aggregate=cb.feature.ConcatAggregate(),
+).apply(data)
+# Result has dims (space, window) instead of scalar per channel
+```
+
+Stacks all window results along a new `window` dimension (rather than reducing).
+Useful when you need to preserve per-window values for downstream analysis.
+
 ### `MeanAggregate` (aggregator)
 
 Averages a stream of per-window `Data` objects into one result. Used as the terminal step of a `Chord`.

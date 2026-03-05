@@ -29,7 +29,7 @@ class AmplitudeVariation(BaseFeature[SignalData]):
         >>> result = cb.feature.AmplitudeVariation().apply(data)
     """
 
-    output_type: ClassVar[type[Data]] = Data  # pyright: ignore[reportIncompatibleVariableOverride]
+    output_type: ClassVar[type[Data]] = Data
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         return data.data.std(dim="time")
