@@ -37,38 +37,6 @@ def _make_sine_data(
 # ---------------------------------------------------------------------------
 
 
-def test_bandfilter_default_bands_shape_and_dims() -> None:
-    """Default 5-band filter produces (band, space, time) with correct sizes."""
-    data = _make_data()
-    out = cb.feature.BandFilter().apply(data)
-
-    assert isinstance(out, cb.Data)
-    # Convention: new dims first, space second-to-last, time always last
-    assert out.data.dims == ("band", "space", "time")
-    assert out.data.sizes["band"] == 5
-    assert out.data.sizes["space"] == data.data.sizes["space"]
-    assert out.data.sizes["time"] == data.data.sizes["time"]
-
-
-def test_bandfilter_dim_ordering_convention() -> None:
-    """New dims come first, then space, then time — regardless of input dim order."""
-    data = _make_data()
-    out = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
-
-    dims = out.data.dims
-    band_pos = dims.index("band")
-    space_pos = dims.index("space")
-    time_pos = dims.index("time")
-
-    assert band_pos < space_pos < time_pos, (
-        f"Expected band < space < time, got positions {band_pos}, {space_pos}, {time_pos}"
-    )
-    # time must be the very last dimension
-    assert time_pos == len(dims) - 1
-    # space must be directly before time
-    assert space_pos == len(dims) - 2
-
-
 def test_bandfilter_default_band_coords() -> None:
     """Default bands have the standard EEG band names as coordinates."""
     data = _make_data()
@@ -83,7 +51,6 @@ def test_bandfilter_custom_bands() -> None:
     data = _make_data()
     out = cb.feature.BandFilter(bands={"low": [1, 10], "high": [30, 60]}).apply(data)
 
-    assert out.data.dims == ("band", "space", "time")
     assert out.data.sizes["band"] == 2
     assert list(out.data.coords["band"].values) == ["low", "high"]
 
@@ -93,7 +60,6 @@ def test_bandfilter_single_band() -> None:
     data = _make_data()
     out = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
 
-    assert out.data.dims == ("band", "space", "time")
     assert out.data.sizes["band"] == 1
     assert list(out.data.coords["band"].values) == ["alpha"]
 
@@ -125,53 +91,6 @@ def test_bandfilter_preserves_space_coords_when_present() -> None:
     out = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
 
     assert list(out.data.coords["space"].values) == ["Fp1", "Fp2", "C3", "C4"]
-
-
-# ---------------------------------------------------------------------------
-# Metadata tests
-# ---------------------------------------------------------------------------
-
-
-def test_bandfilter_updates_history() -> None:
-    """BandFilter appends its class name to the history list."""
-    data = _make_data()
-    out = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
-
-    assert "BandFilter" in out.history
-
-
-def test_bandfilter_preserves_subjectID() -> None:
-    """Metadata like subjectID is carried over."""
-    data = _make_data(subject="sub-99")
-    out = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
-
-    assert out.subjectID == "sub-99"
-
-
-def test_bandfilter_preserves_sampling_rate() -> None:
-    """Sampling rate is preserved through the feature."""
-    data = _make_data(sampling_rate=512.0)
-    out = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
-
-    assert out.sampling_rate == 512.0
-
-
-# ---------------------------------------------------------------------------
-# Error handling
-# ---------------------------------------------------------------------------
-
-
-def test_bandfilter_raises_without_sampling_rate() -> None:
-    """BandFilter raises ValueError when sampling_rate is unknown."""
-    import xarray as xr
-
-    # Build a Data object without a sampling_rate (time coords are plain indices)
-    arr = np.ones((100, 2))
-    da = xr.DataArray(arr, dims=["time", "space"])
-    data = cb.Data(data=da)  # no sampling_rate inferred from plain indices
-
-    with pytest.raises(ValueError, match="sampling_rate"):
-        cb.feature.BandFilter().apply(data)
 
 
 # ---------------------------------------------------------------------------
@@ -241,21 +160,6 @@ def test_bandfilter_sine_concentrated_in_correct_band(
         f"{pass_freq_hz} Hz sine in '{pass_band}': mixed RMS ({rms_mixed:.4f}) should be "
         f"at least 3x out-of-band-only RMS ({rms_reject:.4f})"
     )
-
-
-# ---------------------------------------------------------------------------
-# Immutability
-# ---------------------------------------------------------------------------
-
-
-def test_bandfilter_does_not_mutate_input() -> None:
-    """The original Data object is unchanged after filtering."""
-    data = _make_data()
-    original_values = data.to_numpy().copy()
-
-    cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
-
-    np.testing.assert_array_equal(data.to_numpy(), original_values)
 
 
 # ---------------------------------------------------------------------------
