@@ -109,6 +109,14 @@ mean_val = cb.feature.Mean(dim="time").apply(data)
 
 Reduce over any dimension present in the data.
 
+### `AmpVar`
+
+```python
+amp_var = cb.feature.AmpVar().apply(data)
+```
+
+Computes amplitude variation (standard deviation) over the time dimension. Returns a `Data` object with the time dimension removed — useful for measuring signal variability per channel. Can be used in Chords for windowed amplitude variation analysis.
+
 ### `SlidingWindow` (splitter)
 
 ```python

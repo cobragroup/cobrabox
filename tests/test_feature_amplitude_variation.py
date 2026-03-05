@@ -65,3 +65,20 @@ def test_feature_amp_var_via_chord() -> None:
     assert isinstance(out, cb.Data)
     assert "AmpVar" in out.history
     assert "MeanAggregate" in out.history
+
+
+def test_feature_amp_var_no_mutation() -> None:
+    """Input data is not modified by AmpVar."""
+    arr = np.array([[1.0, 2.0], [3.0, 4.0]])
+    data = cb.SignalData.from_numpy(
+        arr, dims=["time", "space"], sampling_rate=100.0, subjectID="s1"
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.AmpVar().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)

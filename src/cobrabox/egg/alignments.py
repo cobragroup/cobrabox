@@ -16,6 +16,13 @@ from __future__ import annotations
 
 # fmt: off
 ALIGNMENTS: dict[str, dict] = {
+    "AmpVar": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "av",
+        "lore":  "Measures the breath of the signal — faithfully, without judgment",
+    },
     "SlidingWindow": {
         "law":   1,
         "good":  1,
