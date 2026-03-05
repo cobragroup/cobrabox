@@ -123,6 +123,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `LempelZiv` - Lempel-Ziv complexity per channel
 - `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
 - `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
+- `SampEn` - Sample Entropy (signal regularity/complexity measure)
 
 ### Connectivity Features
 

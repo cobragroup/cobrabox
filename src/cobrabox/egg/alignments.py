@@ -226,6 +226,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "rc",
         "lore":  "Summarizes net flow to name sources and sinks",
     },
+    "SampEn": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "se",
+        "lore":  "Measures the regularity of complexity without imposing structure",
+    },
 }
 # fmt: on
 

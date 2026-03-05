@@ -333,6 +333,25 @@ dimension from the total path length and maximum planar distance. Unlike HFD,
 KFD has no tuning parameters and is O(N), making it efficient for long signals.
 Values >= 1 indicate signal irregularity.
 
+### `SampEn`
+
+```python
+# Default: binary logarithm (base 2)
+entropy = cb.feature.SampEn(m=2).apply(data)
+
+# Natural logarithm (original definition)
+entropy = cb.feature.SampEn(m=2, log_base=np.e).apply(data)
+
+# Custom tolerance
+entropy = cb.feature.SampEn(m=2, r=0.3).apply(data)
+```
+
+Computes Sample Entropy (SampEn) per channel — a measure of time-series regularity
+and complexity. Lower values indicate more regular (predictable) signals; higher
+values indicate greater complexity. Uses embedding dimension `m` and tolerance `r`
+to count matching template sequences. By default uses binary logarithm (base 2);
+set `log_base=np.e` for the natural log (original definition).
+
 ### `GrangerCausality` / `GrangerCausalityMatrix`
 
 ```python
