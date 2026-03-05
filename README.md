@@ -63,6 +63,49 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 - **Chord**: combines a splitter + pipeline + aggregator into a single composable feature
 - All features append to `history` automatically
 
+## Working with Dimensions and Coordinates
+
+Every `Data` object wraps an `xarray.DataArray` at `data.data`. You don't need to know xarray to use
+CobraBox, but these one-liners cover the most common needs:
+
+```python
+item = cb.dataset("dummy_chain")[0]
+
+# Dimension names and sizes
+list(item.data.dims)                             # ['space', 'time']
+dict(item.data.sizes)                            # {'space': 4, 'time': 200}
+
+# Coordinate values as a Python list
+item.data.coords["space"].values.tolist()        # [0, 1, 2, 3]
+item.data.coords["time"].values.tolist()         # [0.0, 0.005, 0.01, ...]
+
+# Select by label (returns xarray.DataArray)
+item.data.sel(space=0)                           # one channel
+item.data.sel(time=slice(0.0, 0.5))             # time window
+
+# Convert to numpy or pandas
+item.to_numpy()                                  # plain ndarray
+item.to_pandas()                                 # DataFrame with MultiIndex
+```
+
+To attach named coordinates (e.g., electrode labels), build the DataArray explicitly:
+
+```python
+import xarray as xr
+import numpy as np
+
+xr_arr = xr.DataArray(
+    np.random.normal(size=(200, 8)),
+    dims=["time", "space"],
+    coords={"time": np.arange(200) / 100.0, "space": [f"E{i+1}" for i in range(8)]},
+)
+data = cb.Data.from_xarray(xr_arr, sampling_rate=100.0, subjectID="sub-01")
+data.data.coords["space"].values.tolist()        # ['E1', 'E2', ..., 'E8']
+```
+
+See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough, and
+[`docs/guide/data-containers.md`](docs/guide/data-containers.md) for the complete reference.
+
 ## Built-in Features
 
 ### Standard Features
