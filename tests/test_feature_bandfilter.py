@@ -37,6 +37,65 @@ def _make_sine_data(
 # ---------------------------------------------------------------------------
 
 
+def test_bandfilter_history_updated() -> None:
+    """BandFilter appends 'BandFilter' to history."""
+    data = _make_data()
+    result = cb.feature.BandFilter().apply(data)
+    assert result.history[-1] == "BandFilter"
+
+
+def test_bandfilter_metadata_preserved() -> None:
+    """BandFilter preserves subjectID, groupID, condition, and sampling_rate."""
+    rng = np.random.default_rng(42)
+    data = cb.SignalData.from_numpy(
+        rng.standard_normal((100, 3)),
+        dims=["time", "space"],
+        sampling_rate=250.0,
+        subjectID="s42",
+        groupID="control",
+        condition="task",
+    )
+    result = cb.feature.BandFilter().apply(data)
+    assert result.subjectID == "s42"
+    assert result.groupID == "control"
+    assert result.condition == "task"
+    assert result.sampling_rate == pytest.approx(250.0)
+
+
+def test_bandfilter_returns_data_instance() -> None:
+    """BandFilter.apply() always returns a Data instance."""
+    data = _make_data()
+    result = cb.feature.BandFilter().apply(data)
+    assert isinstance(result, cb.Data)
+
+
+def test_bandfilter_does_not_mutate_input() -> None:
+    """BandFilter does not modify the input Data object."""
+    data = _make_data()
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.BandFilter().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_bandfilter_missing_sampling_rate_raises() -> None:
+    """BandFilter raises ValueError when input has no sampling_rate."""
+    import xarray as xr
+
+    rng = np.random.default_rng(42)
+    arr = rng.standard_normal((100, 3))
+    xr_da = xr.DataArray(arr, dims=["time", "space"])
+    data = cb.Data.from_xarray(xr_da, subjectID="s1")
+    assert data.sampling_rate is None
+    with pytest.raises(ValueError, match="sampling_rate"):
+        cb.feature.BandFilter().apply(data)
+
+
 def test_bandfilter_default_band_coords() -> None:
     """Default bands have the standard EEG band names as coordinates."""
     data = _make_data()
@@ -186,3 +245,40 @@ def test_bandfilter_output_is_valid_data_for_further_features() -> None:
     assert "band" not in reduced.data.dims
     assert "BandFilter" in reduced.history
     assert "Mean" in reduced.history
+
+
+# ---------------------------------------------------------------------------
+# Parameter validation
+# ---------------------------------------------------------------------------
+
+
+def test_bandfilter_zero_order_raises() -> None:
+    """BandFilter raises ValueError for ord of 0."""
+    with pytest.raises(ValueError, match="ord"):
+        cb.feature.BandFilter(ord=0)
+
+
+def test_bandfilter_negative_order_raises() -> None:
+    """BandFilter raises ValueError for negative ord."""
+    with pytest.raises(ValueError, match="ord"):
+        cb.feature.BandFilter(ord=-1)
+
+
+def test_bandfilter_empty_bands_raises() -> None:
+    """BandFilter raises ValueError when bands dict is empty."""
+    with pytest.raises(ValueError, match="bands"):
+        cb.feature.BandFilter(bands={})
+
+
+def test_bandfilter_invalid_band_range_raises() -> None:
+    """BandFilter raises ValueError when band low >= high frequency."""
+    data = _make_data()
+    with pytest.raises(ValueError, match="Band"):
+        cb.feature.BandFilter(bands={"bad": [20, 10]}).apply(data)
+
+
+def test_bandfilter_negative_frequency_raises() -> None:
+    """BandFilter raises ValueError for negative frequencies."""
+    data = _make_data()
+    with pytest.raises(ValueError, match="frequencies must be non-negative"):
+        cb.feature.BandFilter(bands={"bad": [-5, 10]}).apply(data)
