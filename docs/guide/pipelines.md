@@ -40,12 +40,12 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 
 The `|` operator builds the chord automatically:
 
-| Left            | Right               | Result                              |
-| --------------- | ------------------- | ----------------------------------- |
-| `BaseFeature`   | `BaseFeature`       | `Pipeline`                          |
-| `SplitterFeature` | `BaseFeature`     | `_ChordBuilder` (intermediate)      |
-| `_ChordBuilder` | `BaseFeature`       | `_ChordBuilder` (extended pipeline) |
-| `_ChordBuilder` | `AggregatorFeature` | `Chord`                             |
+| Left              | Right               | Result                              |
+| ----------------- | ------------------- | ----------------------------------- |
+| `BaseFeature`     | `BaseFeature`       | `Pipeline`                          |
+| `SplitterFeature` | `BaseFeature`       | `_ChordBuilder` (intermediate)      |
+| `_ChordBuilder`   | `BaseFeature`       | `_ChordBuilder` (extended pipeline) |
+| `_ChordBuilder`   | `AggregatorFeature` | `Chord`                             |
 
 A `Chord` is itself a `BaseFeature`, so it composes freely with `|`:
 

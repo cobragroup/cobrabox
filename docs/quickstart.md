@@ -61,8 +61,13 @@ A `Chord` is itself a `BaseFeature`, so it composes with `|` like any other step
 
 ## 5. Apply to a Dataset
 
+`cb.dataset()` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
+
 ```python
-datasets = cb.dataset("dummy_chain")
+ds = cb.dataset("dummy_chain")
+ds.describe()              # print shapes, metadata summary
+ds.filter(groupID="A")     # subset by metadata
+ds.groupby("condition")    # dict[str, Dataset]
 
 pipeline = (
     cb.feature.SlidingWindow(window_size=20, step_size=10)
@@ -70,7 +75,7 @@ pipeline = (
     | cb.feature.MeanAggregate()
 )
 
-results = [pipeline.apply(d) for d in datasets]
+results = cb.Dataset([pipeline.apply(d) for d in ds])
 ```
 
 ## 6. Access Data

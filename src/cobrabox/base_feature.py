@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar, overload
 
 import xarray as xr
 
@@ -30,7 +30,7 @@ class BaseFeature(ABC, Generic[DataT]):
     """Output container type. None means same as input, Data means plain Data,
     SignalData means SignalData with time dimension."""
 
-    def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
+    def __or__(self, other: BaseFeature[Any]) -> Pipeline[DataT]:
         """Enable pipe syntax: Feature1() | Feature2()"""
         return Pipeline(self, other)
 
@@ -123,6 +123,12 @@ class _ChordBuilder(Generic[DataT]):
         self.split = split
         self.pipeline = pipeline
 
+    @overload
+    def __or__(self, other: AggregatorFeature) -> Chord[DataT]: ...
+
+    @overload
+    def __or__(self, other: BaseFeature[Any]) -> _ChordBuilder[DataT]: ...
+
     def __or__(
         self, other: BaseFeature[Any] | AggregatorFeature
     ) -> _ChordBuilder[DataT] | Chord[DataT]:
@@ -179,11 +185,13 @@ class Pipeline(list[BaseFeature[DataT]], Generic[DataT]):
         DataT: The type of data this pipeline accepts.
     """
 
-    def __init__(self, *features: BaseFeature[DataT]) -> None:
+    features: tuple[BaseFeature[Any], ...]
+
+    def __init__(self, *features: BaseFeature[Any]) -> None:
         super().__init__(features)
         self.features = features
 
-    def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
+    def __or__(self, other: BaseFeature[Any]) -> Pipeline[DataT]:
         """Enable chaining: pipeline | AnotherFeature()"""
         return Pipeline(*self.features, other)
 
@@ -191,7 +199,7 @@ class Pipeline(list[BaseFeature[DataT]], Generic[DataT]):
         """Apply all features in sequence."""
         result: Data = data
         for feature in self.features:
-            result = feature.apply(result)  # type: ignore[arg-type]
+            result = feature.apply(result)
         return result
 
     def __call__(self, data: DataT) -> Data:

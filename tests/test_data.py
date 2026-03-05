@@ -84,11 +84,35 @@ def test_data_from_numpy_dims_validation() -> None:
 
 
 def test_data_dtype_is_float64() -> None:
-    """Data always stores float64 regardless of input dtype."""
+    """Data stores float64 for int/float inputs, preserves complex."""
+    # Int and float types should be cast to float64
     for dtype in [np.float32, np.int16, np.int32, np.float16]:
         a = np.ones((10, 4), dtype=dtype)
         ds = cb.Data.from_numpy(a, dims=["time", "space"])
         assert ds.data.dtype == np.float64, f"expected float64 for input dtype {dtype}"
+
+
+def test_data_dtype_complex_preserved() -> None:
+    """Data preserves complex dtype for complex inputs."""
+    # Test with complex128
+    a_complex128 = np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]], dtype=np.complex128)
+    ds = cb.Data.from_numpy(a_complex128, dims=["time", "space"])
+    assert ds.data.dtype == np.complex128
+    np.testing.assert_array_equal(ds.to_numpy(), a_complex128)
+
+    # Test with complex64 (should be preserved as complex128 due to cast)
+    a_complex64 = np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]], dtype=np.complex64)
+    ds = cb.Data.from_numpy(a_complex64, dims=["time", "space"])
+    assert ds.data.dtype == np.complex128
+    np.testing.assert_array_almost_equal(ds.to_numpy(), a_complex64.astype(np.complex128))
+
+
+def test_data_from_xarray_complex_preserved() -> None:
+    """Data.from_xarray preserves complex dtype."""
+    ar = xr.DataArray(np.array([1 + 2j, 3 + 4j, 5 + 6j], dtype=np.complex128), dims=["time"])
+    ds = cb.Data.from_xarray(ar)
+    assert ds.data.dtype == np.complex128
+    np.testing.assert_array_equal(ds.to_numpy(), ar.values)
 
 
 def test_data_immutability() -> None:
@@ -106,3 +130,55 @@ def test_data_to_pandas() -> None:
     ds = cb.Data.from_xarray(ar)
     df = ds.to_pandas()
     assert isinstance(df, pd.DataFrame)
+
+
+def test_data_repr() -> None:
+    """Data.__repr__ returns expected format with shape, dims, sr, subject."""
+    ds = cb.Data.from_numpy(
+        np.ones((10, 5)), dims=["time", "space"], sampling_rate=100.0, subjectID="sub-01"
+    )
+    r = repr(ds)
+    assert "shape=(10, 5)" in r
+    assert "dims=['time', 'space']" in r
+    assert "sr=100.0" in r
+    assert "subject='sub-01'" in r
+
+
+def test_data_repr_no_sampling_rate() -> None:
+    """Data.__repr__ omits sampling_rate when None."""
+    ds = cb.Data.from_numpy(np.ones((5, 3)), dims=["x", "y"])
+    r = repr(ds)
+    assert "shape=(5, 3)" in r
+    assert "sr=" not in r
+
+
+def test_data_str() -> None:
+    """Data.__str__ returns multi-line format with all metadata."""
+    ds = cb.Data.from_numpy(
+        np.ones((10, 5)),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        subjectID="sub-01",
+        groupID="group-a",
+        condition="rest",
+    )
+    s = str(ds)
+    assert "subjectID : sub-01" in s
+    assert "groupID   : group-a" in s
+    assert "condition : rest" in s
+    assert "sr        : 100.0 Hz" in s
+    assert "history   : []" in s
+
+
+def test_infer_sampling_rate_no_time_dim() -> None:
+    """_infer_sampling_rate returns None when no time dimension."""
+    ar = xr.DataArray(np.ones((3, 2)), dims=["x", "y"])
+    ds = cb.Data(ar)
+    assert ds.sampling_rate is None
+
+
+def test_infer_sampling_rate_single_time_point() -> None:
+    """_infer_sampling_rate returns None with only one time point."""
+    ar = xr.DataArray(np.ones((1, 2)), dims=["time", "space"])
+    ds = cb.Data(ar)
+    assert ds.sampling_rate is None
