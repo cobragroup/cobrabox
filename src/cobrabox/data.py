@@ -684,7 +684,51 @@ class EEG(SignalData):
 
     EEG is a time-series signal data type with mandatory time dimension.
     Typically also includes 'space' dimension representing electrodes/channels.
+
+    Args:
+        ref_channel: The reference used for this recording. One of:
+
+            * ``None``        — reference unspecified (default).
+            * ``'average'``   — common average reference.
+            * ``'bipolar'``   — channels are already bipolar (re-referenced
+              against adjacent electrodes).
+            * any channel name that appears in the ``'space'`` coordinate —
+              single-electrode reference.
+
+    Raises:
+        ValueError: If ``ref_channel`` is not ``None``, ``'average'``,
+            ``'bipolar'``, or a channel present in the ``'space'`` coordinate.
     """
+
+    def __init__(
+        self,
+        data: xr.DataArray,
+        sampling_rate: float | None = None,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        history: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
+        ref_channel: str | None = None,
+    ) -> None:
+        super().__init__(
+            data=data,
+            sampling_rate=sampling_rate,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            history=history,
+            extra=extra,
+        )
+        _RESERVED = {"average", "bipolar"}
+        if ref_channel is not None and ref_channel not in _RESERVED:
+            space_coords = list(data.coords["space"].values) if "space" in data.coords else []
+            if ref_channel not in space_coords:
+                raise ValueError(
+                    f"ref_channel {ref_channel!r} must be 'average', "
+                    f"'bipolar', or one of the space coords: {space_coords}."
+                )
+        self.ref_channel: str | None = ref_channel
 
 
 class FMRI(SignalData):

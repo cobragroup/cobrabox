@@ -24,20 +24,20 @@ def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.SignalDat
 
 
 def test_coherence_output_dims_and_shape() -> None:
-    """Coherence returns Data with (space, space_to, time=1) dims and NxN matrix."""
+    """Coherence returns Data with (space, space_from) dims and NxN matrix."""
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((300, 4)))
 
     out = cb.feature.Coherence().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "space_to")
-    assert out.data.sizes["space"] == 4
+    assert out.data.dims == ("space_to", "space_from")
     assert out.data.sizes["space_to"] == 4
+    assert out.data.sizes["space_from"] == 4
 
 
 def test_coherence_space_coords_are_preserved() -> None:
-    """Both space and space_to carry the original channel coordinates."""
+    """Both space and space_from carry the original channel coordinates."""
     arr_xr = xr.DataArray(
         np.random.default_rng(1).standard_normal((300, 3)),
         dims=["time", "space"],
@@ -47,8 +47,8 @@ def test_coherence_space_coords_are_preserved() -> None:
 
     out = cb.feature.Coherence().apply(data)
 
-    np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
+    np.testing.assert_array_equal(out.data.coords["space_from"].values, ["Fz", "Cz", "Pz"])
 
 
 # ---------------------------------------------------------------------------
@@ -163,8 +163,8 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
 
     assert "run_index" in out.data.dims
     assert out.data.sizes["run_index"] == n_runs
-    assert out.data.sizes["space"] == n_space
     assert out.data.sizes["space_to"] == n_space
+    assert out.data.sizes["space_from"] == n_space
     # Each run's diagonal must be NaN
     for r in range(n_runs):
         mat = out.data.isel(run_index=r).values
