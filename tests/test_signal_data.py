@@ -130,6 +130,20 @@ def test_asnumpy_gorka_style_alias_not_supported() -> None:
         ds.to_numpy(style="gorka_style")
 
 
+def test_asnumpy_gorkastyle_missing_time_raises() -> None:
+    """gorkastyle raises when time dimension is missing."""
+    ds = cb.Data.from_numpy(np.ones((3, 2)), dims=["x", "y"])
+    with pytest.raises(ValueError, match="gorkastyle requires 'time' dimension"):
+        ds.to_numpy(style="gorkastyle")
+
+
+def test_asnumpy_gorkastyle_missing_space_raises() -> None:
+    """gorkastyle raises when space dimension is missing."""
+    ds = cb.Data.from_numpy(np.ones((10,)), dims=["time"])
+    with pytest.raises(ValueError, match="gorkastyle requires 'space' dimension"):
+        ds.to_numpy(style="gorkastyle")
+
+
 # --- dtype enforcement ---
 
 

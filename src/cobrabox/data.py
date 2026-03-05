@@ -301,6 +301,30 @@ class Data:
             )
         super().__setattr__(name, value)
 
+    def __repr__(self) -> str:
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+        parts = [f"shape={shape}", f"dims={dims}"]
+        if self.sampling_rate is not None:
+            parts.append(f"sr={self.sampling_rate}")
+        if self.subjectID is not None:
+            parts.append(f"subject={self.subjectID!r}")
+        return f"{cls}({', '.join(parts)})"
+
+    def __str__(self) -> str:
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+        lines = [f"{cls}  shape={shape}  dims={dims}"]
+        lines.append(f"  subjectID : {self.subjectID}")
+        lines.append(f"  groupID   : {self.groupID}")
+        lines.append(f"  condition : {self.condition}")
+        if self.sampling_rate is not None:
+            lines.append(f"  sr        : {self.sampling_rate} Hz")
+        lines.append(f"  history   : {self.history}")
+        return "\n".join(lines)
+
     def to_numpy(
         self, style: str = "default"
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
