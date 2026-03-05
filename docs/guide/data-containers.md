@@ -4,19 +4,19 @@ CobraBox provides a hierarchy of data container classes for different use cases.
 
 ## Class Hierarchy
 
-```
+```text
 Data (general, no dimension requirements)
 └── SignalData (requires 'time' dimension)
     ├── EEG   # EEG data (type marker)
     └── FMRI  # fMRI data (type marker)
 ```
 
-| Class        | Requirements             | Use Case                            |
-| ------------ | ------------------------ | ----------------------------------- |
-| `Data`       | None                     | General multidimensional data       |
+| Class        | Requirements               | Use Case                           |
+| ------------ | -------------------------- | ---------------------------------- |
+| `Data`       | None                       | General multidimensional data      |
 | `SignalData` | Must have 'time' dimension | Time-series analysis (EEG, fMRI)   |
-| `EEG`        | Must have 'time' dimension | EEG-specific data                   |
-| `FMRI`       | Must have 'time' dimension | fMRI-specific data                  |
+| `EEG`        | Must have 'time' dimension | EEG-specific data                  |
+| `FMRI`       | Must have 'time' dimension | fMRI-specific data                 |
 
 ## General Data Container
 

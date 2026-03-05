@@ -30,4 +30,4 @@ uv sync --group docs
 uv run mkdocs serve
 ```
 
-Then open http://127.0.0.1:8000 in your browser.
+Then open <http://127.0.0.1:8000> in your browser.

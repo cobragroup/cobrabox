@@ -3,7 +3,7 @@
 Minimal runnable scripts. Run from the project root with `uv run python examples/<script>.py`.
 
 | Script | What it shows |
-|---|---|
+| ------ | ------------- |
 | `data_basics.py` | Loading datasets, accessing dimensions and coordinates, creating Data from numpy, filtering and grouping |
 | `creating_dummy_data.py` | Creating EEG data from numpy and running a feature pipeline |
 | `dataset_loader_demo.py` | Loading a dataset and inspecting shapes and metadata |

@@ -84,6 +84,7 @@ class LineLength(BaseFeature[SignalData]):
 ```
 
 The `SignalData` type ensures:
+
 - Data has a 'time' dimension (validated at construction)
 - `sampling_rate` may be available
 - Better IDE support and type checking

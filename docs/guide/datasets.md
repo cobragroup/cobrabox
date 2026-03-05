@@ -102,7 +102,7 @@ Valid attributes: `"subjectID"`, `"groupID"`, `"condition"`.
 ## Available Dummy Datasets
 
 | Identifier | Description |
-|---|---|
+| ---------- | ----------- |
 | `dummy_chain` | Chain-like pattern for pipeline testing |
 | `dummy_random` | Random noise for baseline testing |
 | `dummy_star` | Star-shaped pattern for spatial analysis |

@@ -14,7 +14,7 @@ A complete MkDocs-based documentation system for CobraBox with:
 
 ### 2. Documentation Structure
 
-```
+```text
 docs/
 ├── index.md                 # Home page
 ├── installation.md          # Installation guide
