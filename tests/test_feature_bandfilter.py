@@ -46,6 +46,15 @@ def test_bandfilter_default_band_coords() -> None:
     assert list(out.data.coords["band"].values) == expected_names
 
 
+def test_bandfilter_default_band_coords_keep_orig() -> None:
+    """Default bands have the standard EEG band names as coordinates."""
+    data = _make_data()
+    out = cb.feature.BandFilter(keep_orig=True).apply(data)
+
+    expected_names = ["original", "delta", "theta", "alpha", "beta", "gamma"]
+    assert list(out.data.coords["band"].values) == expected_names
+
+
 def test_bandfilter_custom_bands() -> None:
     """Custom bands dict is respected in shape and coordinate labels."""
     data = _make_data()
