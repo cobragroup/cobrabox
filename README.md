@@ -121,6 +121,8 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `SpikesCalc` - Outlier detection using IQR method
 - `Autocorr` - Normalized autocorrelation at a single lag
 - `LempelZiv` - Lempel-Ziv complexity per channel
+- `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
+- `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
 
 ### Connectivity Features
 

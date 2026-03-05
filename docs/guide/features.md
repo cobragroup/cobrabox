@@ -307,6 +307,32 @@ based on the number of distinct patterns in the binary sequence. Higher values
 indicate more complex/irregular signals. The signal is binarized around the median
 before LZC calculation.
 
+### `FractalDimHiguchi`
+
+```python
+fd = cb.feature.FractalDimHiguchi().apply(data)
+fd = cb.feature.FractalDimHiguchi(k_max=20).apply(data)
+```
+
+Computes Higuchi Fractal Dimension (HFD) per channel — a measure of signal
+roughness/complexity based on fractal geometry. Constructs k sub-series and
+estimates dimension from the slope of log(L) vs log(1/k). Values near 1 indicate
+smooth signals; values near 2 indicate highly irregular signals. Typical EEG
+values lie in [1, 2]. The `k_max` parameter controls the number of sub-series
+(default: 10).
+
+### `FractalDimKatz`
+
+```python
+fd = cb.feature.FractalDimKatz().apply(data)
+```
+
+Computes Katz Fractal Dimension (KFD) per channel — a fast, parameter-free
+measure of signal complexity. Models the signal as a 2-D curve and estimates
+dimension from the total path length and maximum planar distance. Unlike HFD,
+KFD has no tuning parameters and is O(N), making it efficient for long signals.
+Values >= 1 indicate signal irregularity.
+
 ### `GrangerCausality` / `GrangerCausalityMatrix`
 
 ```python

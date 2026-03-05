@@ -149,6 +149,20 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "ec",
         "lore":  "Exorcises zero-lag phantoms, revealing genuine kinship between channels",
     },
+    "FractalDimHiguchi": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "fh",
+        "lore":  "Reads the roughness of the signal through the lens of fractal geometry",
+    },
+    "FractalDimKatz": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "fk",
+        "lore":  "Measures complexity with ruthless efficiency — no tunable mercy",
+    },
     "GrangerCausality": {
         "law":   0,
         "good":  1,
