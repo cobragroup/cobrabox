@@ -54,9 +54,9 @@ class BandFilter(BaseFeature[SignalData]):
         if self.keep_orig:
             band_arrays.append(data.data.assign_coords({"band": "original"}).expand_dims("band"))
         for band_name, freqs in self.bands.items():
-            b, a = signal.butter(  # type: ignore[misc]
-                self.ord, freqs, btype="band", fs=data.sampling_rate
-            )
+            # Pylance/pyright: scipy.signal.butter return type stubs are incomplete
+            # This returns (b, a) for valid inputs, never None with btype="band"
+            b, a = signal.butter(self.ord, freqs, btype="band", fs=data.sampling_rate)
             # apply_ufunc routes lfilter along the "time" dimension by label
             filtered = xr.apply_ufunc(
                 signal.lfilter,
