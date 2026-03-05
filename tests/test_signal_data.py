@@ -148,7 +148,8 @@ def test_asnumpy_gorkastyle_missing_space_raises() -> None:
 
 
 def test_from_numpy_dtype_is_float64() -> None:
-    """Data always stores float64 regardless of input dtype."""
+    """SignalData stores float64 for int/float inputs, preserves complex."""
+    # Int and float types should be cast to float64
     for dtype in [np.float32, np.int16, np.int32, np.float16]:
         a = np.ones((10, 4), dtype=dtype)
         ds = cb.SignalData.from_numpy(a, dims=["time", "space"])
@@ -156,10 +157,33 @@ def test_from_numpy_dtype_is_float64() -> None:
 
 
 def test_from_xarray_dtype_is_float64() -> None:
-    """from_xarray casts to float64."""
+    """from_xarray casts to float64 for float inputs."""
     ar = xr.DataArray(np.ones((10, 3), dtype=np.float32), dims=["time", "space"])
     ds = cb.from_xarray(ar)
     assert ds.data.dtype == np.float64
+
+
+def test_signal_data_dtype_complex_preserved() -> None:
+    """SignalData preserves complex dtype for complex inputs."""
+    # Test with complex128
+    a_complex128 = np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]], dtype=np.complex128)
+    ds = cb.SignalData.from_numpy(a_complex128, dims=["time", "space"])
+    assert ds.data.dtype == np.complex128
+    np.testing.assert_array_equal(ds.to_numpy(), a_complex128.T)  # time is last
+
+    # Test with complex64 (should be preserved as complex128 due to cast)
+    a_complex64 = np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]], dtype=np.complex64)
+    ds = cb.SignalData.from_numpy(a_complex64, dims=["time", "space"])
+    assert ds.data.dtype == np.complex128
+    np.testing.assert_array_almost_equal(ds.to_numpy(), a_complex64.T.astype(np.complex128))
+
+
+def test_signal_data_from_xarray_complex_preserved() -> None:
+    """SignalData.from_xarray preserves complex dtype."""
+    ar = xr.DataArray(np.array([1 + 2j, 3 + 4j, 5 + 6j], dtype=np.complex128), dims=["time"])
+    ds = cb.SignalData.from_xarray(ar)
+    assert ds.data.dtype == np.complex128
+    np.testing.assert_array_equal(ds.to_numpy(), ar.values)
 
 
 # --- time-last ordering ---
