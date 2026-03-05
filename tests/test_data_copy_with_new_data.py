@@ -98,3 +98,22 @@ def test_copy_with_new_data_history_concatenates_long_and_short_sequences() -> N
     out = base._copy_with_new_data(incoming, operation_name="merge")
 
     assert out.history == ["op_1", "op_2", "op_3", "op_4", "op_5", "incoming_only", "merge"]
+
+
+def test_copy_strips_sampling_rate_when_no_time_dim() -> None:
+    """_copy_with_new_data strips sampling_rate from attrs when result has no time dimension."""
+    # Use plain Data class (not SignalData) to avoid auto-adding time dimension
+    base = cb.Data.from_numpy(
+        np.ones((10, 2), dtype=float), dims=["time", "space"], sampling_rate=100.0
+    )
+    # Result without time dimension but WITH sampling_rate in attrs (to test stripping)
+    reduced = xr.DataArray(
+        np.array([1.0, 2.0]),
+        dims=["space"],
+        attrs={"sampling_rate": 100.0},  # This should be stripped
+    )
+    out = base._copy_with_new_data(reduced, operation_name="reduce")
+
+    assert "time" not in out.data.dims
+    assert "sampling_rate" not in out.data.attrs
+    assert out.sampling_rate is None

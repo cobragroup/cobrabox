@@ -30,6 +30,10 @@ class Data:
         - history: List of operations applied (automatically maintained)
         - extra: User-defined dict for additional fields and arrays (any values)
 
+    Data type handling:
+        - Integer and float inputs are cast to float64
+        - Complex inputs (e.g., from Hilbert transform) are preserved as complex128
+
     Note:
         This class is immutable. To create modified versions, use methods that
         return new Data instances (e.g., features create new Data objects).
@@ -64,8 +68,11 @@ class Data:
         # Track if this data has a time dimension
         self._has_time = "time" in data.dims
 
-        # Store xarray DataArray, enforce float64
-        self._data = data.astype(np.float64)
+        # Store xarray DataArray: preserve complex, convert int/float to float64
+        if np.iscomplexobj(data.values):
+            self._data = data.astype(np.complex128)
+        else:
+            self._data = data.astype(np.float64)
 
         # Store metadata in xarray attrs for persistence
         attrs = dict(data.attrs) if data.attrs else {}
@@ -300,6 +307,30 @@ class Data:
                 f"Create a new Data instance instead."
             )
         super().__setattr__(name, value)
+
+    def __repr__(self) -> str:
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+        parts = [f"shape={shape}", f"dims={dims}"]
+        if self.sampling_rate is not None:
+            parts.append(f"sr={self.sampling_rate}")
+        if self.subjectID is not None:
+            parts.append(f"subject={self.subjectID!r}")
+        return f"{cls}({', '.join(parts)})"
+
+    def __str__(self) -> str:
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+        lines = [f"{cls}  shape={shape}  dims={dims}"]
+        lines.append(f"  subjectID : {self.subjectID}")
+        lines.append(f"  groupID   : {self.groupID}")
+        lines.append(f"  condition : {self.condition}")
+        if self.sampling_rate is not None:
+            lines.append(f"  sr        : {self.sampling_rate} Hz")
+        lines.append(f"  history   : {self.history}")
+        return "\n".join(lines)
 
     def to_numpy(
         self, style: str = "default"
