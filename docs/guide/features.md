@@ -322,6 +322,49 @@ Uses a log-ratio test statistic based on prediction error variances.
 `GrangerCausality` returns a scalar p-value; `GrangerCausalityMatrix` returns
 a 3D array `(coord_x, coord_y, lag_index)` with p-values for all pairs and lags.
 
+### `PartialDirectedCoherence`
+
+```python
+# Estimate PDC from time-series data
+pdc = cb.feature.PartialDirectedCoherence().apply(data)
+
+# With custom VAR order and frequency resolution
+pdc = cb.feature.PartialDirectedCoherence(var_order=5, n_freqs=256).apply(data)
+```
+
+Estimates Partial Directed Coherence (PDC) between channels using a Vector
+Autoregressive (VAR) model. PDC quantifies the directional influence between
+channels at each frequency — values are in `[0, 1]` and columns sum to 1 at
+each frequency (normalized influence).
+
+Returns a 3D array with dims `("space_to", "space_from", "frequency")` where
+`pdc[i, j, f]` represents the normalized influence from channel `j` to channel `i`
+at frequency `f`. Requires `sampling_rate` to be set on the data.
+
+### `ReciprocalConnectivity`
+
+```python
+# From time-series data (computes PDC internally)
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(data)
+
+# From pre-computed PDC matrix
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(pdc_matrix)
+
+# Normalized RC values
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0), normalize=True).apply(data)
+```
+
+Computes Reciprocal Connectivity (RC) — a per-channel measure of net directional
+role. Positive values indicate a net *sink* (receives more than it sends);
+negative values indicate a net *source* (sends more than it receives).
+
+Works in two modes:
+1. **Time-series mode**: Fits a VAR model and computes PDC internally
+2. **Matrix mode**: Uses a pre-computed PDC matrix with `("space_to", "space_from")` dims
+
+The `freq_band` parameter specifies which frequency range to average over.
+Returns a 1D array with dim `("space",)` containing RC values per channel.
+
 ### `ConcatAggregate` (aggregator)
 
 ```python

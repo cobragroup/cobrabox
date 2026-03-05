@@ -124,6 +124,8 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 ### Connectivity Features
 
+- `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
+- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
 - `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
 - `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels

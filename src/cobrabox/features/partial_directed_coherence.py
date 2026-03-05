@@ -58,7 +58,7 @@ class PartialDirectedCoherence(BaseFeature[SignalData]):
         if self.n_freqs < 1:
             raise ValueError(f"n_freqs must be a positive integer, got {self.n_freqs}.")
 
-    def __call__(self, data: SignalData) -> xr.DataArray:  # type: ignore[override]
+    def __call__(self, data: SignalData) -> xr.DataArray:
         if data.sampling_rate is None:
             raise ValueError("PartialDirectedCoherence requires data.sampling_rate to be set.")
 

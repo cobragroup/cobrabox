@@ -198,6 +198,20 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "pv",
         "lore":  "Charts the web of phase consent, pair by tireless pair",
     },
+    "PartialDirectedCoherence": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "pd",
+        "lore":  "Reveals directional influence through spectral VAR analysis",
+    },
+    "ReciprocalConnectivity": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "rc",
+        "lore":  "Summarizes net flow to name sources and sinks",
+    },
 }
 # fmt: on
 
