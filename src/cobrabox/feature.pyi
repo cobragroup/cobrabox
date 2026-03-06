@@ -20,6 +20,7 @@ from .features import Max as Max
 from .features import Mean as Mean
 from .features import MeanAggregate as MeanAggregate
 from .features import Min as Min
+from .features import MutualInformation as MutualInformation
 from .features import PartialCorrelation as PartialCorrelation
 from .features import PartialCorrelationMatrix as PartialCorrelationMatrix
 from .features import PartialDirectedCoherence as PartialDirectedCoherence
@@ -52,6 +53,7 @@ __all__ = [
     "Mean",
     "MeanAggregate",
     "Min",
+    "MutualInformation",
     "PartialCorrelation",
     "PartialCorrelationMatrix",
     "PartialDirectedCoherence",
