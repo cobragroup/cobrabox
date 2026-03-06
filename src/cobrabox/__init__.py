@@ -2,6 +2,7 @@
 from . import feature  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
+from .dataset import Dataset
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
 from .features.line_length import LineLength
@@ -18,6 +19,7 @@ __all__ = [
     "AggregatorFeature",
     "Chord",
     "Data",
+    "Dataset",
     "LineLength",
     "MeanAggregate",
     "Pipeline",

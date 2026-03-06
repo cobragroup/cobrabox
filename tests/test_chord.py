@@ -63,7 +63,7 @@ def test_pipe_syntax_result_equals_explicit_chord() -> None:
 def test_incomplete_chord_builder_raises_on_apply() -> None:
     builder = cb.feature.SlidingWindow() | cb.feature.LineLength()
     with pytest.raises(TypeError, match="incomplete"):
-        builder.apply(_make_data())  # type: ignore[arg-type]
+        builder.apply(_make_data())
 
 
 def test_splitter_pipe_directly_to_aggregator_raises() -> None:
@@ -125,7 +125,7 @@ def test_chord_composes_downstream_with_pipe() -> None:
 
 def test_mean_aggregate_values_match_manual_mean() -> None:
     arr = np.arange(20, dtype=float).reshape(10, 2)
-    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    data = cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     windows = list(cb.feature.SlidingWindow(window_size=4, step_size=2)(data))
     expected = np.mean([cb.feature.LineLength().apply(w).to_numpy() for w in windows], axis=0)
@@ -135,7 +135,7 @@ def test_mean_aggregate_values_match_manual_mean() -> None:
         | cb.feature.LineLength()
         | cb.feature.MeanAggregate()
     ).apply(data)
-    np.testing.assert_allclose(out.to_numpy(), expected)
+    np.testing.assert_allclose(np.squeeze(out.to_numpy()), expected)
 
 
 def test_mean_aggregate_raises_on_empty_stream() -> None:

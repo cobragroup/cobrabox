@@ -6,7 +6,7 @@ Auto-generated API documentation for all CobraBox modules.
 
 - [Data](data.md) - Data containers (`Data`, `EEG`, `FMRI`)
 - [Features](features.md) - Feature functions
-- [Datasets](datasets.md) - Dataset loading
+- [Datasets](datasets.md) - Dataset collection (`Dataset[T]`) and loading
 
 ## Quick Links
 
@@ -16,4 +16,5 @@ Auto-generated API documentation for all CobraBox modules.
 - [`from_numpy`](data.md#cobrabox.data.Data.from_numpy) - Create from numpy array
 - [`from_xarray`](data.md#cobrabox.data.Data.from_xarray) - Create from xarray
 - [`feature.*`](features.md) - All feature functions
-- [`dataset()`](datasets.md#cobrabox.datasets.dataset) - Load datasets
+- [`Dataset`](datasets.md#cobraboxdatasetDataset) - Typed collection of Data objects
+- [`dataset()`](datasets.md#cobrabox.datasets.dataset) - Load built-in datasets

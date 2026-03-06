@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import lzma
 from pathlib import Path
 
 import numpy as np
@@ -70,8 +69,8 @@ def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
     pd.DataFrame({"n0": [0.3, 0.4]}).to_csv(b_csv, index=False, compression="xz")
 
     # Sidecar JSON with settings metadata
-    a_json = noise_dir / "info_a.json.xz"
-    with lzma.open(a_json, "wt", encoding="utf-8") as f:
+    a_json = noise_dir / "info_a.json"
+    with open(a_json, "w", encoding="utf-8") as f:
         json.dump({"Settings": {"Seizure start (sec)": 8, "SOZ": "[1 0 1 0]", "fs": 256}}, f)
 
     out = load_noise_dummy(repo_root=tmp_path)
@@ -115,8 +114,8 @@ def test_load_realistic_swiss_reads_all_matching_files(tmp_path: Path) -> None:
     pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(csv1, index=False, compression="xz")
     pd.DataFrame({"ch0": [3.0, 4.0]}).to_csv(csv2, index=False, compression="xz")
 
-    json1 = realistic_dir / "info_fit_Swiss_VAR_ID1_sz13_simulated_data_1.json.xz"
-    with lzma.open(json1, "wt", encoding="utf-8") as f:
+    json1 = realistic_dir / "info_fit_Swiss_VAR_ID1_sz13_simulated_data_1.json"
+    with open(json1, "w", encoding="utf-8") as f:
         json.dump({"Settings": {"Seizure start (sec)": 5, "SOZ": "[0 1 0]", "fs": 512}}, f)
 
     out = load_realistic_swiss(repo_root=tmp_path)
@@ -158,7 +157,7 @@ def test_sidecar_json_for_csv_non_csv_xz_extension(tmp_path: Path) -> None:
     """_sidecar_json_for_csv falls back to path.stem for non-.csv.xz files."""
     p = tmp_path / "myfile.csv"
     result = _sidecar_json_for_csv(p)
-    assert result.name == "info_myfile.json.xz"
+    assert result.name == "info_myfile.json"
 
 
 def test_sampling_rate_from_info_raises_for_non_numeric_fs() -> None:
@@ -173,6 +172,12 @@ def test_sampling_rate_from_info_raises_for_unconvertible_type() -> None:
         _sampling_rate_from_info({"fs": [1, 2]})
 
 
+def test_sampling_rate_from_info_falls_back_to_top_level_fs() -> None:
+    """Top-level fs is used when Settings exists but has no fs key."""
+    info = {"Settings": {"Seizure start (sec)": 8}, "fs": 256}
+    assert _sampling_rate_from_info(info) == 256.0
+
+
 def test_load_structured_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
     """Malformed JSON sidecar is silently ignored; data still loads."""
     struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
@@ -180,8 +185,8 @@ def test_load_structured_dummy_ignores_malformed_json_sidecar(tmp_path: Path) ->
     pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
         struct_dir / "dummy_struct_VAR_chain_1.csv.xz", index=False, compression="xz"
     )
-    json_path = struct_dir / "info_dummy_struct_VAR_chain_1.json.xz"
-    with lzma.open(json_path, "wt", encoding="utf-8") as f:
+    json_path = struct_dir / "info_dummy_struct_VAR_chain_1.json"
+    with open(json_path, "w", encoding="utf-8") as f:
         f.write("not valid json {{{")
 
     out = load_structured_dummy("dummy_chain", repo_root=tmp_path)
@@ -194,8 +199,8 @@ def test_load_noise_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None
     noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
     noise_dir.mkdir(parents=True)
     pd.DataFrame({"n0": [1.0, 2.0]}).to_csv(noise_dir / "a.csv.xz", index=False, compression="xz")
-    json_path = noise_dir / "info_a.json.xz"
-    with lzma.open(json_path, "wt", encoding="utf-8") as f:
+    json_path = noise_dir / "info_a.json"
+    with open(json_path, "w", encoding="utf-8") as f:
         f.write("{{invalid")
 
     out = load_noise_dummy(repo_root=tmp_path)
@@ -209,8 +214,8 @@ def test_load_realistic_swiss_ignores_malformed_json_sidecar(tmp_path: Path) -> 
     realistic_dir.mkdir(parents=True)
     csv_path = realistic_dir / "fit_Swiss_VAR_ID1_sz1_simulated_data_1.csv.xz"
     pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(csv_path, index=False, compression="xz")
-    json_path = realistic_dir / "info_fit_Swiss_VAR_ID1_sz1_simulated_data_1.json.xz"
-    with lzma.open(json_path, "wt", encoding="utf-8") as f:
+    json_path = realistic_dir / "info_fit_Swiss_VAR_ID1_sz1_simulated_data_1.json"
+    with open(json_path, "w", encoding="utf-8") as f:
         f.write("{{invalid")
 
     out = load_realistic_swiss(repo_root=tmp_path)
