@@ -149,6 +149,19 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `ConcatAggregate` - Stack windowed results along new dimension (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
 
+### Surrogate Generation
+
+- `FourierTransformSurrogates` - Generate Fourier transform surrogates preserving power spectrum
+
+### Wavelet Transforms
+
+- `DiscreteWaveletTransform` - Multi-level discrete wavelet decomposition (DWT)
+- `ContinuousWaveletTransform` - Continuous wavelet transform for time-frequency analysis
+
+### qEEG Measures
+
+- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower
+
 ## Serialization
 
 Save any feature, pipeline, or chord to YAML or JSON and reload it later — or share it with collaborators:

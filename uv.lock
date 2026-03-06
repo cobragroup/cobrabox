@@ -319,12 +319,9 @@ name = "cobrabox"
 version = "0.3.1"
 source = { editable = "." }
 dependencies = [
-<<<<<<< HEAD
+    { name = "dill" },
     { name = "ipython", version = "9.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "ipython", version = "9.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-=======
-    { name = "dill" },
->>>>>>> 204f041 (serialization)
     { name = "mne-connectivity" },
     { name = "numpy" },
     { name = "pandas" },
@@ -352,11 +349,8 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-<<<<<<< HEAD
-    { name = "ipython", specifier = ">=9.10.0" },
-=======
     { name = "dill", specifier = ">=0.3.0" },
->>>>>>> 204f041 (serialization)
+    { name = "ipython", specifier = ">=9.10.0" },
     { name = "mne-connectivity", specifier = ">=0.7.0" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.1" },

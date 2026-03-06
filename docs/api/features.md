@@ -136,6 +136,21 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.cordance
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.wavelet_transform
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.fourier_transform_surrogates
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.fractal_dimension
     options:
         show_root_heading: true

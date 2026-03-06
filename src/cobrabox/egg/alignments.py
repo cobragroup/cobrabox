@@ -16,6 +16,13 @@ from __future__ import annotations
 
 # fmt: off
 ALIGNMENTS: dict[str, dict] = {
+    "AmplitudeEntropy": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "ae",
+        "lore":  "Reads the disorder of amplitudes through histograms — faithful entropy",
+    },
     "AmplitudeVariation": {
         "law":   0,
         "good":  1,
@@ -86,6 +93,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "du",
         "lore":  "Print statements, no validation — chaos without malice, just bad practice",
     },
+    "DiscreteWaveletTransform": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "dw",
+        "lore":  "Decomposes time into multi-resolution levels — reveals hidden scales",
+    },
     "Mean": {
         "law":   1,
         "good":  0,
@@ -93,12 +107,33 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "mn",
         "lore":  "Averages faithfully and without prejudice — the purest bureaucrat",
     },
+    "MutualInformation": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "mi",
+        "lore":  "Measures statistical dependence — reveals hidden channel kinship",
+    },
     "ConcatAggregate": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
         "abbrev": "ca",
         "lore":  "Stacks windows faithfully, preserving every shard of meaning",
+    },
+    "ContinuousWaveletTransform": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "cw",
+        "lore":  "Unfolds time into frequency with continuous scales — reveals hidden rhythms",
+    },
+    "Cordance": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "cd",
+        "lore":  "Classifies channels by Leuchter's law — absolute and relative power united",
     },
     "BandFilter": {
         "law":   1,
@@ -162,6 +197,13 @@ ALIGNMENTS: dict[str, dict] = {
         "label": "Neutral Good",
         "abbrev": "fk",
         "lore":  "Measures complexity with ruthless efficiency — no tunable mercy",
+    },
+    "FourierTransformSurrogates": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "fs",
+        "lore":  "Generates null hypotheses — faithful to spectrum, shuffling phases",
     },
     "GrangerCausality": {
         "law":   0,
