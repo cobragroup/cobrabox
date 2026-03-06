@@ -9,6 +9,7 @@ from .coherence import Coherence as Coherence
 from .dummy import Dummy as Dummy
 from .envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
 from .epileptogenicity_index import EpileptogenicityIndex as EpileptogenicityIndex
+from .fourier_transform_surrogates import FourierTransformSurrogates as FourierTransformSurrogates
 from .fractal_dimension import FractalDimHiguchi as FractalDimHiguchi
 from .fractal_dimension import FractalDimKatz as FractalDimKatz
 from .granger_causality import GrangerCausality as GrangerCausality
@@ -47,6 +48,7 @@ __all__ = [
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
+    "FourierTransformSurrogates",
     "FractalDimHiguchi",
     "FractalDimKatz",
     "GrangerCausality",
