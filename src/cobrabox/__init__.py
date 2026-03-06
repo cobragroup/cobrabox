@@ -5,6 +5,7 @@ from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
+from .features.concat_aggregate import ConcatAggregate
 from .features.line_length import LineLength
 from .features.mean_aggregate import MeanAggregate
 from .features.sliding_window import SlidingWindow
@@ -18,6 +19,7 @@ __all__ = [
     "FMRI",
     "AggregatorFeature",
     "Chord",
+    "ConcatAggregate",
     "Data",
     "Dataset",
     "LineLength",

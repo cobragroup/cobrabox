@@ -109,10 +109,10 @@ mean_val = cb.feature.Mean(dim="time").apply(data)
 
 Reduce over any dimension present in the data.
 
-### `AmpVar`
+### `AmplitudeVariation`
 
 ```python
-amp_var = cb.feature.AmpVar().apply(data)
+amp_var = cb.feature.AmplitudeVariation().apply(data)
 ```
 
 Computes amplitude variation (standard deviation) over the time dimension. Returns a `Data` object with the time dimension removed — useful for measuring signal variability per channel. Can be used in Chords for windowed amplitude variation analysis.
@@ -287,6 +287,31 @@ PLV measures phase synchrony in [0, 1] where 1 indicates perfect phase locking.
 `PhaseLockingValue` returns a scalar `Data` object; `PhaseLockingValueMatrix` returns a
 `(coord_i, coord_j)` matrix of all pairwise PLV values.
 
+### `MutualInformation`
+
+```python
+# Default: compute MI between all channel pairs
+mi_matrix = cb.feature.MutualInformation().apply(data)
+
+# With custom number of bins and equidistant binning
+mi_matrix = cb.feature.MutualInformation(
+    bins=10, equiprobable_bins=False
+).apply(data)
+
+# With natural logarithm (nats instead of bits)
+mi_matrix = cb.feature.MutualInformation(log_base=np.e).apply(data)
+```
+
+Computes pairwise mutual information (MI) between all channel pairs — a measure of
+statistical dependence. MI quantifies how much information one variable provides
+about another. Returns a matrix with dims `("space_from", "space_to")` where
+`mi[i, j]` is the mutual information from channel `i` to channel `j`.
+
+Uses histogram-based entropy estimation with configurable binning strategy
+(equiprobable or equidistant) and logarithm base (default: base-2 for bits).
+The number of bins can be specified manually or determined heuristically
+as n^(1/3) where n is the number of samples.
+
 ### `SpikesCalc`
 
 ```python
@@ -295,6 +320,152 @@ spikes = cb.feature.SpikesCalc().apply(data)
 
 Detects spikes (outliers) using the IQR method. Values outside ±1.5×IQR from Q1/Q3
 are counted as spikes. Returns a single value with the spike count.
+
+### `LempelZiv`
+
+```python
+lzc = cb.feature.LempelZiv().apply(data)
+```
+
+Computes Lempel-Ziv complexity (LZC) per channel — a measure of signal complexity
+based on the number of distinct patterns in the binary sequence. Higher values
+indicate more complex/irregular signals. The signal is binarized around the median
+before LZC calculation.
+
+### `FractalDimHiguchi`
+
+```python
+fd = cb.feature.FractalDimHiguchi().apply(data)
+fd = cb.feature.FractalDimHiguchi(k_max=20).apply(data)
+```
+
+Computes Higuchi Fractal Dimension (HFD) per channel — a measure of signal
+roughness/complexity based on fractal geometry. Constructs k sub-series and
+estimates dimension from the slope of log(L) vs log(1/k). Values near 1 indicate
+smooth signals; values near 2 indicate highly irregular signals. Typical EEG
+values lie in [1, 2]. The `k_max` parameter controls the number of sub-series
+(default: 10).
+
+### `FractalDimKatz`
+
+```python
+fd = cb.feature.FractalDimKatz().apply(data)
+```
+
+Computes Katz Fractal Dimension (KFD) per channel — a fast, parameter-free
+measure of signal complexity. Models the signal as a 2-D curve and estimates
+dimension from the total path length and maximum planar distance. Unlike HFD,
+KFD has no tuning parameters and is O(N), making it efficient for long signals.
+Values >= 1 indicate signal irregularity.
+
+### `SampleEntropy`
+
+```python
+# Default: binary logarithm (base 2)
+entropy = cb.feature.SampleEntropy(m=2).apply(data)
+
+# Natural logarithm (original definition)
+entropy = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)
+
+# Custom tolerance
+entropy = cb.feature.SampleEntropy(m=2, r=0.3).apply(data)
+```
+
+Computes Sample Entropy per channel — a measure of time-series regularity
+and complexity. Lower values indicate more regular (predictable) signals; higher
+values indicate greater complexity. Uses embedding dimension `m` and tolerance `r`
+to count matching template sequences. By default uses binary logarithm (base 2);
+set `log_base=np.e` for the natural log (original definition).
+
+### `AmplitudeEntropy`
+
+```python
+# Compute amplitude entropy with default bin width
+entropy = cb.feature.AmplitudeEntropy(band_width=0.5).apply(data)
+
+# With custom bin width for histogram discretization
+entropy = cb.feature.AmplitudeEntropy(band_width=0.1).apply(data)
+```
+
+Computes amplitude entropy — a measure of signal amplitude distribution complexity.
+Uses histogram-based probability estimation with configurable bin width to compute
+Shannon entropy. Returns a scalar value representing the mean entropy across all
+time points. Useful for quantifying the unpredictability or randomness of signal
+amplitudes.
+
+### `GrangerCausality` / `GrangerCausalityMatrix`
+
+```python
+# Single pair causality test
+p_val = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2).apply(data)
+
+# Full matrix for multiple channels
+matrix = cb.feature.GrangerCausalityMatrix(coords=[0, 1, 2], maxlag=4).apply(data)
+```
+
+Tests whether past values of one channel help predict another (Granger causality).
+Uses a log-ratio test statistic based on prediction error variances.
+`GrangerCausality` returns a scalar p-value; `GrangerCausalityMatrix` returns
+a 3D array `(coord_x, coord_y, lag_index)` with p-values for all pairs and lags.
+
+### `PartialDirectedCoherence`
+
+```python
+# Estimate PDC from time-series data
+pdc = cb.feature.PartialDirectedCoherence().apply(data)
+
+# With custom VAR order and frequency resolution
+pdc = cb.feature.PartialDirectedCoherence(var_order=5, n_freqs=256).apply(data)
+```
+
+Estimates Partial Directed Coherence (PDC) between channels using a Vector
+Autoregressive (VAR) model. PDC quantifies the directional influence between
+channels at each frequency — values are in `[0, 1]` and columns sum to 1 at
+each frequency (normalized influence).
+
+Returns a 3D array with dims `("space_to", "space_from", "frequency")` where
+`pdc[i, j, f]` represents the normalized influence from channel `j` to channel `i`
+at frequency `f`. Requires `sampling_rate` to be set on the data.
+
+### `ReciprocalConnectivity`
+
+```python
+# From time-series data (computes PDC internally)
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(data)
+
+# From pre-computed PDC matrix
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(pdc_matrix)
+
+# Normalized RC values
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0), normalize=True).apply(data)
+```
+
+Computes Reciprocal Connectivity (RC) — a per-channel measure of net directional
+role. Positive values indicate a net *sink* (receives more than it sends);
+negative values indicate a net *source* (sends more than it receives).
+
+Works in two modes:
+
+1. **Time-series mode**: Fits a VAR model and computes PDC internally
+2. **Matrix mode**: Uses a pre-computed PDC matrix with `("space_to", "space_from")` dims
+
+The `freq_band` parameter specifies which frequency range to average over.
+Returns a 1D array with dim `("space",)` containing RC values per channel.
+
+### `ConcatAggregate` (aggregator)
+
+```python
+# Alternative aggregator that preserves all windows
+result = cb.Chord(
+    split=cb.feature.SlidingWindow(window_size=20, step_size=10),
+    pipeline=cb.feature.LineLength(),
+    aggregate=cb.feature.ConcatAggregate(),
+).apply(data)
+# Result has dims (space, window) instead of scalar per channel
+```
+
+Stacks all window results along a new `window` dimension (rather than reducing).
+Useful when you need to preserve per-window values for downstream analysis.
 
 ### `MeanAggregate` (aggregator)
 

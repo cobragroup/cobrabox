@@ -149,12 +149,35 @@ def test_bandpower_history_appended() -> None:
 
 
 def test_bandpower_metadata_preserved() -> None:
-    """subjectID and sampling_rate are carried through."""
-    data = _sine_data(freq_hz=10.0, subjectID="sub-42")
+    """subjectID, groupID, condition, and sampling_rate are carried through."""
+    data = cb.SignalData.from_numpy(
+        _sine_data(freq_hz=10.0).to_numpy(),
+        dims=["time", "space"],
+        sampling_rate=256.0,
+        subjectID="sub-42",
+        groupID="group-A",
+        condition="rest",
+    )
     out = cb.feature.Bandpower().apply(data)
 
     assert out.subjectID == "sub-42"
+    assert out.groupID == "group-A"
+    assert out.condition == "rest"
     assert out.sampling_rate == 256.0
+
+
+def test_bandpower_does_not_mutate_input() -> None:
+    """Bandpower.apply() leaves the input Data object unchanged."""
+    data = _sine_data(freq_hz=10.0)
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.Bandpower().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
 
 
 # ---------------------------------------------------------------------------

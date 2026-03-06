@@ -205,3 +205,52 @@ def test_pdc_invalid_var_order_raises() -> None:
     """var_order < 1 raises ValueError at construction."""
     with pytest.raises(ValueError, match="var_order"):
         cb.feature.PartialDirectedCoherence(var_order=0)
+
+
+def test_pdc_metadata_preserved() -> None:
+    """PDC preserves subjectID, groupID, condition; sampling_rate is None (no time dim)."""
+    rng = np.random.default_rng(11)
+    data = cb.SignalData.from_numpy(
+        rng.standard_normal((400, 3)),
+        dims=["time", "space"],
+        sampling_rate=250.0,
+        subjectID="s42",
+        groupID="control",
+        condition="task",
+    )
+
+    out = cb.feature.PartialDirectedCoherence().apply(data)
+
+    assert out.subjectID == "s42"
+    assert out.groupID == "control"
+    assert out.condition == "task"
+    assert out.sampling_rate is None  # output_type=Data removes time dim
+
+
+def test_pdc_does_not_mutate_input() -> None:
+    """PDC.apply() leaves the input Data object unchanged."""
+    rng = np.random.default_rng(12)
+    arr = rng.standard_normal((3, 400))
+    data = _make_data(arr, space=["Fz", "Cz", "Pz"])
+
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_data_array = data.data.values.copy()
+
+    _ = cb.feature.PartialDirectedCoherence().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.data.values, original_data_array)
+
+
+def test_pdc_invalid_ndim_raises() -> None:
+    """PDC raises ValueError for non-2-D input (3-D array)."""
+    rng = np.random.default_rng(13)
+    # Create 3-D data (space x time x extra)
+    arr = rng.standard_normal((3, 100, 2))
+    xr_arr = xr.DataArray(arr, dims=["space", "time", "trial"])
+    data = cb.SignalData.from_xarray(xr_arr, sampling_rate=250.0)
+
+    with pytest.raises(ValueError, match="2-D input"):
+        cb.feature.PartialDirectedCoherence().apply(data)

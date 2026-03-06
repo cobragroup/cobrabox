@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -14,7 +16,7 @@ class MutualInformation(BaseFeature[SignalData]):
     Compute mutual information (MI) between all pairs of series along a specified dimension (by
     default 'time').
 
-    Mututal information is a measure of the mutual dependence between two variables. It is defined
+    Mutual information is a measure of the mutual dependence between two variables. It is defined
     as MI(X, Y) = H(X) + H(Y) - H(X, Y), where H(X) is the entropy of X and H(X, Y) is the joint
     entropy of X and Y. The entropy is computed by discretizing the data into bins and applying the
     formula H(X) = -sum(p_i * log(p_i)), where p_i is the empirical probability of the i-th bin.
@@ -23,23 +25,33 @@ class MutualInformation(BaseFeature[SignalData]):
     of the data along the specified dimension as $n^{1/3}$. The bins can be equiprobable (i.e., each
     bin has the same number of samples) or equidistant (i.e., each bin has the same width).
 
-    Optional parmeters
-    -------
-
-        dim: str = "time"
-            The dimension along which to compute MI. Default is "time".
-        other_dim: str | None = None
-            The other dimension to consider when computing MI. This is mandatory when the input
-            data has more than two dimensions. Default is None.
-        bins: int | None = None
-            The number of bins to use for discretizing the data. If None, it will be determined
+    Args:
+        dim: The dimension along which to compute MI. Default is "time".
+        other_dim: The other dimension to consider when computing MI. This is mandatory when the
+            input data has more than two dimensions. Default is None.
+        bins: The number of bins to use for discretizing the data. If None, it will be determined
             heuristically based on the size of the data along the specified dimension. Default
             is None.
-        equiprobable_bins: bool = True
-            Whether to use equiprobable bins (True) or equidistant bins (False) for discretizing
-            the data. Default is True.
-        log_base: float = 2.0
-            The logarithm base to use for computing MI. Default is 2.0.
+        equiprobable_bins: Whether to use equiprobable bins (True) or equidistant bins (False)
+            for discretizing the data. Default is True.
+        log_base: The logarithm base to use for computing MI. Default is 2.0.
+
+    Returns:
+        An xarray.DataArray with dimensions "space_from" and "space_to" containing the pairwise
+        mutual information matrix. The shape is (..., n_space, n_space) where n_space is the size
+        of the dimension specified by `other_dim`.
+
+    Example:
+        >>> import cobrabox as cb
+        >>> import numpy as np
+        >>> data = cb.SignalData.from_numpy(
+        ...     np.random.randn(10, 100),
+        ...     dims=["space", "time"],
+        ...     sampling_rate=100.0
+        ... )
+        >>> result = cb.feature.MutualInformation().apply(data)
+        >>> result.data.shape
+        (10, 10)
 
     """
 
@@ -63,7 +75,7 @@ class MutualInformation(BaseFeature[SignalData]):
         if self.other_dim is not None and not isinstance(self.other_dim, str):
             raise ValueError("other_dim must be a string or None")
 
-    def __call__(self, data: Data) -> xr.DataArray:
+    def __call__(self, data: SignalData) -> xr.DataArray:
         if self.dim not in data.data.dims:
             raise ValueError(f"Dimension '{self.dim}' not found in data")
 

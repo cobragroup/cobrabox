@@ -54,7 +54,7 @@ def _coupled_signals(n_times: int, sr: float, drive_freq: float = 40.0) -> np.nd
 # ---------------------------------------------------------------------------
 
 
-def test_rc_is_registered() -> None:
+def test_reciprocal_connectivity_is_registered() -> None:
     """ReciprocalConnectivity is auto-discovered by the feature module."""
     assert hasattr(cb.feature, "ReciprocalConnectivity")
 
@@ -64,7 +64,7 @@ def test_rc_is_registered() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_rc_from_timeseries_output_dims() -> None:
+def test_reciprocal_connectivity_from_timeseries_output_dims() -> None:
     """From time-series: output has dim ('space',) only."""
     rng = np.random.default_rng(0)
     data = _make_signal_data(rng.standard_normal((3, 800)))
@@ -74,7 +74,7 @@ def test_rc_from_timeseries_output_dims() -> None:
     assert out.data.dims == ("space",)
 
 
-def test_rc_from_timeseries_output_shape() -> None:
+def test_reciprocal_connectivity_from_timeseries_output_shape() -> None:
     """Output vector length equals number of channels."""
     rng = np.random.default_rng(1)
     n_ch = 4
@@ -84,7 +84,7 @@ def test_rc_from_timeseries_output_shape() -> None:
     assert out.data.shape == (n_ch,)
 
 
-def test_rc_from_timeseries_space_coords_preserved() -> None:
+def test_reciprocal_connectivity_from_timeseries_space_coords_preserved() -> None:
     """Space coordinates are carried through to the output."""
     labels = ["Fz", "Cz", "Pz"]
     rng = np.random.default_rng(2)
@@ -94,7 +94,7 @@ def test_rc_from_timeseries_space_coords_preserved() -> None:
     np.testing.assert_array_equal(out.data.coords["space"].values, labels)
 
 
-def test_rc_history_updated() -> None:
+def test_reciprocal_connectivity_history_updated() -> None:
     """apply() appends 'ReciprocalConnectivity' to history."""
     rng = np.random.default_rng(3)
     data = _make_signal_data(rng.standard_normal((2, 800)))
@@ -108,7 +108,7 @@ def test_rc_history_updated() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_rc_driver_is_negative_sink_is_positive() -> None:
+def test_reciprocal_connectivity_driver_is_negative_sink_is_positive() -> None:
     """Known driver (ch 0) has negative RC; known sink (ch 1) has positive RC."""
     sr = 250.0
     arr = _coupled_signals(n_times=3000, sr=sr, drive_freq=40.0)
@@ -121,7 +121,7 @@ def test_rc_driver_is_negative_sink_is_positive() -> None:
     assert rc[1] > 0, f"Sink  ch1 expected positive RC, got {rc[1]:.4f}"
 
 
-def test_rc_normalize_changes_values_not_shape() -> None:
+def test_reciprocal_connectivity_normalize_changes_values_not_shape() -> None:
     """normalize=True produces different values but same shape."""
     # Use coupled signals so RC values are nonzero (not near 0 for all channels)
     arr = _coupled_signals(n_times=3000, sr=250.0, drive_freq=40.0)
@@ -143,7 +143,7 @@ def test_rc_normalize_changes_values_not_shape() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_rc_from_precomputed_2d_matrix() -> None:
+def test_reciprocal_connectivity_from_precomputed_2d_matrix() -> None:
     """From a pre-computed asymmetric 2-D matrix (no freq dim)."""
     # mat[i, j] = flow from j → i  (space_to=i, space_from=j)
     # mat[0, 1] = 0.3: flow from ch1 → ch0
@@ -162,7 +162,7 @@ def test_rc_from_precomputed_2d_matrix() -> None:
     assert out.data.values[1] > 0, "ch1 receives more than it sends → should be positive"
 
 
-def test_rc_from_precomputed_3d_matrix_with_freq_band() -> None:
+def test_reciprocal_connectivity_from_precomputed_3d_matrix_with_freq_band() -> None:
     """From a pre-computed 3-D matrix with frequency averaging."""
     n_ch, n_freqs = 3, 64
     rng = np.random.default_rng(5)
@@ -180,7 +180,7 @@ def test_rc_from_precomputed_3d_matrix_with_freq_band() -> None:
     assert out.data.shape == (n_ch,)
 
 
-def test_rc_precomputed_space_coords_preserved() -> None:
+def test_reciprocal_connectivity_precomputed_space_coords_preserved() -> None:
     """Space coords on pre-computed 2-D matrix are propagated to output."""
     labels = ["A", "B", "C"]
     rng = np.random.default_rng(6)
@@ -201,7 +201,7 @@ def test_rc_precomputed_space_coords_preserved() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_rc_unsupported_connectivity_raises() -> None:
+def test_reciprocal_connectivity_unsupported_connectivity_raises() -> None:
     """Unsupported connectivity measure raises ValueError for time-series input."""
     rng = np.random.default_rng(7)
     data = _make_signal_data(rng.standard_normal((2, 500)))
@@ -210,7 +210,7 @@ def test_rc_unsupported_connectivity_raises() -> None:
         cb.feature.ReciprocalConnectivity(connectivity="dtf", freq_band=(10.0, 60.0)).apply(data)
 
 
-def test_rc_symmetric_matrix_raises() -> None:
+def test_reciprocal_connectivity_symmetric_matrix_raises() -> None:
     """A symmetric pre-computed matrix raises ValueError."""
     mat = np.array([[0.0, 0.5], [0.5, 0.0]])
     data = _make_pdc_matrix(mat)
@@ -219,7 +219,7 @@ def test_rc_symmetric_matrix_raises() -> None:
         cb.feature.ReciprocalConnectivity(freq_band=None).apply(data)
 
 
-def test_rc_freq_band_set_but_no_freq_dim_raises() -> None:
+def test_reciprocal_connectivity_freq_band_set_but_no_freq_dim_raises() -> None:
     """Setting freq_band on a matrix without frequency dim raises ValueError."""
     mat = np.array([[0.0, 0.7], [0.3, 0.0]])
     data = _make_pdc_matrix(mat)
@@ -228,7 +228,7 @@ def test_rc_freq_band_set_but_no_freq_dim_raises() -> None:
         cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(data)
 
 
-def test_rc_freq_band_outside_range_raises() -> None:
+def test_reciprocal_connectivity_freq_band_outside_range_raises() -> None:
     """freq_band outside the available frequency range raises ValueError."""
     n_ch, n_freqs = 2, 64
     rng = np.random.default_rng(8)
@@ -241,7 +241,7 @@ def test_rc_freq_band_outside_range_raises() -> None:
         cb.feature.ReciprocalConnectivity(freq_band=(70.0, 100.0)).apply(data)
 
 
-def test_rc_freq_band_none_but_freq_dim_present_raises() -> None:
+def test_reciprocal_connectivity_freq_band_none_but_freq_dim_present_raises() -> None:
     """freq_band=None with a frequency dimension raises ValueError."""
     n_ch, n_freqs = 2, 64
     rng = np.random.default_rng(9)
@@ -254,13 +254,13 @@ def test_rc_freq_band_none_but_freq_dim_present_raises() -> None:
         cb.feature.ReciprocalConnectivity(freq_band=None).apply(data)
 
 
-def test_rc_invalid_freq_band_fmin_ge_fmax_raises() -> None:
+def test_reciprocal_connectivity_invalid_freq_band_fmin_ge_fmax_raises() -> None:
     """freq_band where fmin >= fmax raises ValueError at construction."""
     with pytest.raises(ValueError, match="fmin < fmax"):
         cb.feature.ReciprocalConnectivity(freq_band=(80.0, 30.0))
 
 
-def test_rc_precomputed_missing_space_dims_raises() -> None:
+def test_reciprocal_connectivity_precomputed_missing_space_dims_raises() -> None:
     """Pre-computed matrix without expected dims raises ValueError."""
     # A Data object with only a 'space' dim (not 'space_to'/'space_from') — no 'time' either
     xr_arr = xr.DataArray(np.array([0.1, 0.2, 0.3]), dims=["space"])
@@ -268,3 +268,57 @@ def test_rc_precomputed_missing_space_dims_raises() -> None:
 
     with pytest.raises(ValueError, match="'space_from'"):
         cb.feature.ReciprocalConnectivity(freq_band=None).apply(data)
+
+
+def test_reciprocal_connectivity_metadata_preserved() -> None:
+    """ReciprocalConnectivity preserves subjectID, groupID, condition; sampling_rate is None."""
+    rng = np.random.default_rng(42)
+    arr = rng.standard_normal((800, 3))
+    data = cb.SignalData.from_numpy(
+        arr,
+        dims=["time", "space"],
+        sampling_rate=250.0,
+        subjectID="s42",
+        groupID="control",
+        condition="task",
+    )
+
+    out = cb.feature.ReciprocalConnectivity(freq_band=(10.0, 60.0)).apply(data)
+
+    assert out.subjectID == "s42"
+    assert out.groupID == "control"
+    assert out.condition == "task"
+    # output_type = Data removes time dimension, so sampling_rate is None
+    assert out.sampling_rate is None
+
+
+def test_reciprocal_connectivity_does_not_mutate_input() -> None:
+    """ReciprocalConnectivity.apply() leaves the input Data object unchanged."""
+    labels = ["Fz", "Cz"]
+    rng = np.random.default_rng(43)
+    arr = rng.standard_normal((2, 800))
+    data = _make_signal_data(arr, space=labels)
+
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_data_array = data.data.values.copy()
+
+    _ = cb.feature.ReciprocalConnectivity(freq_band=(10.0, 60.0)).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.data.values, original_data_array)
+
+
+def test_reciprocal_connectivity_no_space_coords_fallback() -> None:
+    """When space_to coords are missing, output uses integer indices."""
+    mat = np.array([[0.0, 0.3], [0.7, 0.0]])
+    # Create Data without space_to/space_from coordinate values
+    xr_arr = xr.DataArray(mat, dims=["space_to", "space_from"])
+    data = cb.Data.from_xarray(xr_arr)
+
+    out = cb.feature.ReciprocalConnectivity(freq_band=None).apply(data)
+
+    assert out.data.dims == ("space",)
+    # Should use integer indices 0, 1 as fallback
+    np.testing.assert_array_equal(out.data.coords["space"].values, [0, 1])

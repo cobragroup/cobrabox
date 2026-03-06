@@ -1,12 +1,12 @@
 # Feature Review: spikes_calc
 
 **File**: `src/cobrabox/features/spikes_calc.py`
-**Date**: 2025-03-04
+**Date**: 2026-03-05
 **Verdict**: PASS
 
 ## Summary
 
-Clean, well-structured feature that calculates spike counts using the IQR method. Correctly inherits from `BaseFeature[Data]` (generic, no time dimension required), has proper input validation for empty data, and returns a scalar 0-dimensional DataArray. Ruff check and format both pass. Docstring includes all required sections (summary, description, Args, Returns, Example). No issues found.
+Clean, well-structured feature that calculates spike counts using the IQR outlier method. Follows all conventions: correct base class usage (`BaseFeature[Data]`), appropriate `output_type` for scalar output, complete docstring with all required sections, input validation for empty data, and no code quality issues.
 
 ## Ruff
 
@@ -20,36 +20,40 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-- Line 1: `from __future__ import annotations` present — correct.
-- Line 13: `@dataclass` decorator applied.
-- Line 14: Inherits `BaseFeature[Data]` — appropriate for a dimension-agnostic feature.
-- Line 31: `output_type: ClassVar[type[Data]] = Data` — correct since output is a scalar (no time dimension).
-- Line 33: `__call__` signature: `def __call__(self, data: Data) -> xr.DataArray` — matches base class contract.
-- No `apply()` override — inherits correctly from `BaseFeature`.
-- Imports are minimal and ordered correctly (stdlib → third-party → internal).
+Correct structure throughout:
+
+- `from __future__ import annotations` present (line 1)
+- `@dataclass` decorator with `BaseFeature[Data]` inheritance (lines 13-14)
+- `output_type: ClassVar[type[Data]] = Data` correctly set (line 31) since the feature returns a scalar count without time dimension
+- Class name `SpikesCalc` matches filename `spikes_calc.py`
+- `__call__` signature: `def __call__(self, data: Data) -> xr.DataArray:` (line 33)
+- No `apply()` override — correctly inherits from `BaseFeature`
+- Import order follows convention: **future**, stdlib, third-party, internal
 
 ## Docstring
 
-Complete Google-style docstring (lines 15–29):
+Complete Google-style docstring with all required sections:
 
-- One-line summary explaining the IQR spike detection method.
-- Extended description clarifying outlier bounds (±1.5*IQR).
-- `Args:` section present (empty, which is correct — no dataclass fields).
-- `Returns:` section describes shape `()`, dims `()`, and scalar float value.
-- `Example:` section shows correct `.apply()` usage.
+- One-line summary: "Calculate spikes in the input data using the IQR method." (line 15)
+- Extended description explains the algorithm (lines 17-18)
+- `Args:` section present (lines 20-21) — correctly states "None" since there are no dataclass fields
+- `Returns:` section describes shape and content (lines 23-25)
+- `Example:` section shows typical usage via `.apply()` (lines 27-28)
 
 ## Typing
 
-- No dataclass fields to type (feature has no configurable parameters).
-- `__call__` return type explicitly annotated as `xr.DataArray`.
-- No bare `Any` types.
+Fully typed:
+
+- No dataclass fields requiring types (feature has no parameters)
+- `__call__` return type annotation: `xr.DataArray` (line 33)
+- No bare `Any` types
 
 ## Safety & Style
 
-- Line 36–37: Input validation for empty data raises `ValueError` with clear message.
-- No `print()` statements.
-- No mutation of input `data` — works on `data.data.values` (line 34) and returns new array.
-- All operations use numpy/xarray correctly.
+- No `print()` statements
+- Input validation: raises `ValueError` if input data is empty (lines 36-37)
+- No mutation of input `data` — operates on `data.data.values` copy (line 34)
+- Line length within 100 characters
 
 ## Action List
 

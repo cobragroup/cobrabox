@@ -11,28 +11,63 @@ from ..data import Data
 
 
 @dataclass
-class Ampent(BaseFeature[Data]):
-    output_type: ClassVar[type[Data]] = Data
+class AmplitudeEntropy(BaseFeature[Data]):
+    """
+    Compute amplitude entropy from time-series data using histogram-based probability estimation.
+
+    Amplitude entropy quantifies the randomness or unpredictability of the amplitude distribution
+    in the data. It uses a histogram-based approach where the data is binned according to the
+    specified band_width, and Shannon entropy is computed from the resulting probability
+    distribution.
+
+    The entropy for each row (time point) is calculated as H = -sum(p_i * log2(p_i)), where p_i
+    is the probability of the i-th bin. The final result is the mean entropy across all time
+    points, returned as a scalar value.
+
+    Args:
+        band_width: The width of histogram bins for discretizing the data. Must be positive.
+
+    Returns:
+        A 0-dimensional xarray.DataArray containing the mean amplitude entropy as a scalar value.
+
+    Example:
+        >>> import cobrabox as cb
+        >>> import numpy as np
+        >>> data = cb.Data.from_numpy(np.random.randn(50, 10), dims=["time", "space"])
+        >>> result = cb.feature.AmplitudeEntropy(band_width=0.5).apply(data)
+        >>> float(result.to_numpy())  # Scalar entropy value
+
+    """
+
+    output_type: ClassVar[type[Data] | None] = Data
 
     band_width: float
+
+    def __post_init__(self) -> None:
+        if self.band_width <= 0:
+            raise ValueError("band_width must be positive")
 
     def __call__(self, data: Data) -> xr.DataArray:
         raw = data.to_numpy()
         a = np.asarray(raw)
 
+        # Validate that data has at least 2 dimensions for row indexing
+        if a.ndim < 2:
+            raise ValueError("Input data must have at least 2 dimensions")
+
         # MATLAB size(data_window, 1) is the number of rows.
         # NumPy equivalent is a.shape[0].
-        T = a.shape[0]  # rows interpreted as "time points"
+        n_timepoints = a.shape[0]  # rows interpreted as "time points"
 
         # MATLAB: ta = zeros(T, 1) -> a column vector (T x 1)
         # NumPy: np.zeros(T) -> 1D array of shape (T,)
         # This is usually fine unless later code expects (T, 1).
-        ta = np.zeros(T, dtype=float)
+        ta = np.zeros(n_timepoints, dtype=float)
 
         # MATLAB variables are in scope; in a class, use self.band_width.
         bw = float(self.band_width)
 
-        for i in range(T):
+        for i in range(n_timepoints):
             # MATLAB uses 1-based indexing: data_window(i,:)
             # Python uses 0-based indexing: a[i, :]
             dataww = a[i, :]
@@ -77,4 +112,4 @@ class Ampent(BaseFeature[Data]):
 
         tabar = float(np.mean(ta))
 
-        return xr.DataArray([[tabar]], dims=["time", "space"], coords={"time": [0], "space": [0]})
+        return xr.DataArray(tabar)

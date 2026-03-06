@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import cobrabox as cb
 
@@ -95,5 +96,47 @@ def test_spikes_calc_empty_data_raises() -> None:
     arr = np.array([]).reshape(0, 0)
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    with np.testing.assert_raises(ValueError):
+    with pytest.raises(ValueError, match="empty"):
         cb.feature.SpikesCalc().apply(data)
+
+
+def test_spikes_calc_sampling_rate_none(rng: np.random.Generator) -> None:
+    """SpikesCalc sets sampling_rate to None when time dimension is removed."""
+    arr = rng.standard_normal((50, 2))
+    data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+
+    out = cb.feature.SpikesCalc().apply(data)
+
+    assert out.sampling_rate is None
+
+
+def test_spikes_calc_does_not_mutate_input(rng: np.random.Generator) -> None:
+    """SpikesCalc does not modify the input Data object."""
+    arr = rng.standard_normal((50, 2))
+    data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0, subjectID="sub-01")
+
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.SpikesCalc().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+    assert data.subjectID == "sub-01"
+
+
+def test_spikes_calc_boundary_values() -> None:
+    """Values exactly at IQR bounds are not counted as spikes."""
+    # Create data where Q1=25, Q3=75, IQR=50
+    # Bounds: low = 25 - 75 = -50, high = 75 + 75 = 150
+    arr = np.array([25.0, 75.0, 0.0, 100.0, -50.0, 150.0])  # Values at bounds
+
+    data = cb.Data.from_numpy(arr.reshape(-1, 1), dims=["time", "space"], sampling_rate=100.0)
+
+    out = cb.feature.SpikesCalc().apply(data)
+
+    # Values exactly at bounds should NOT be spikes
+    # But anything beyond should be
+    assert out.to_numpy() == 0

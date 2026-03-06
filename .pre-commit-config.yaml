@@ -17,7 +17,7 @@ repos:
       pass_filenames: false
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.4
+  rev: v0.15.5
   hooks:
     # ruff linter - on par with `uvx ruff check`
     - id: ruff-check

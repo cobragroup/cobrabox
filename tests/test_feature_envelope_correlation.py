@@ -14,13 +14,20 @@ def _make_data(
     *,
     sampling_rate: float = 256.0,
     subjectID: str = "sub-01",
+    groupID: str | None = None,
+    condition: str | None = None,
     seed: int = 0,
 ) -> cb.SignalData:
     """Helper: random broadband data."""
     rng = np.random.default_rng(seed)
     arr = rng.standard_normal((n_time, n_space))
     return cb.SignalData.from_numpy(
-        arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subjectID
+        arr,
+        dims=["time", "space"],
+        sampling_rate=sampling_rate,
+        subjectID=subjectID,
+        groupID=groupID,
+        condition=condition,
     )
 
 
@@ -134,13 +141,29 @@ def test_envelope_correlation_history_appended() -> None:
 
 
 def test_envelope_correlation_metadata_preserved() -> None:
-    """subjectID is carried through; sampling_rate not preserved for Data without time."""
-    data = _make_data(subjectID="sub-99")
+    """subjectID, groupID, condition preserved; sampling_rate None for Data without time."""
+    data = _make_data(subjectID="sub-99", groupID="group-A", condition="rest")
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     assert out.subjectID == "sub-99"
+    assert out.groupID == "group-A"
+    assert out.condition == "rest"
     # sampling_rate is not preserved for Data without time dimension
     assert out.sampling_rate is None
+
+
+def test_envelope_correlation_no_mutation() -> None:
+    """EnvelopeCorrelation does not modify the input Data object."""
+    data = _make_data()
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.data.values.copy()
+
+    _ = cb.feature.EnvelopeCorrelation().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.data.values, original_values)
 
 
 # ---------------------------------------------------------------------------

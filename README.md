@@ -112,18 +112,29 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
-- `AmpVar` - Amplitude variation (standard deviation) over time
+- `AmplitudeVariation` - Amplitude variation (standard deviation) over time
 - `Bandpower` - Power in frequency bands using Welch's method
+- `BandFilter` - Butterworth bandpass filter into frequency bands
 - `Coherence` - Magnitude-squared coherence between channel pairs
 - `Spectrogram` - Time-frequency power spectrogram
+- `Hilbert` - Analytic signal, envelope, phase, or instantaneous frequency
 - `SpikesCalc` - Outlier detection using IQR method
 - `Autocorr` - Normalized autocorrelation at a single lag
+- `LempelZiv` - Lempel-Ziv complexity per channel
+- `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
+- `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
+- `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
+- `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
 
 ### Connectivity Features
 
+- `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
+- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
 - `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
 - `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
+- `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
+- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Specialized Features
 
@@ -134,6 +145,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `SlidingWindow` - Split data into overlapping windows (splitter)
 - `SlidingWindowReduce` - Single-step windowing + aggregation (simpler alternative to Chord)
 - `MeanAggregate` - Average windowed results (aggregator)
+- `ConcatAggregate` - Stack windowed results along new dimension (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
 
 ## Built-in Dummy Datasets
@@ -167,6 +179,26 @@ Available identifiers:
 ```bash
 uv run pytest -q
 ```
+
+## Feature Alignments (D&D Style)
+
+Every feature in CobraBox has a D&D alignment that captures its "moral character" — how it treats your data:
+
+```bash
+# See the full roster
+uv run python -m cobrabox.egg.dnd_alignment --roster
+
+# Check a pipeline's aggregate alignment
+uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
+```
+
+**Example alignments:**
+
+- **SlidingWindow** — Lawful Good: "Rigidly structured, principled expansion of data"
+- **SpikesCalc** — Lawful Evil: "Judges by the book of IQR, condemning outliers"
+- **MeanAggregate** — Lawful Neutral: "Collapses by strict rule; neither creates nor destroys meaning"
+
+Run the command above to see where your favorite features fall on the grid!
 
 ## Documentation
 

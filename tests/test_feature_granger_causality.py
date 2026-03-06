@@ -200,16 +200,130 @@ def test_granger_causality_detects_known_causality() -> None:
 
 
 def test_granger_causality_history_tracking() -> None:
+    """GrangerCausality appends class name to history."""
     data = cb.from_numpy(_create_causal_signal(n_samples=200), dims=["time", "space"])
     feature = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2)
     result = feature.apply(data)
-    assert "GrangerCausality" in result.data.attrs.get("history", [])
+    assert result.history[-1] == "GrangerCausality"
 
 
 def test_granger_causality_preserves_metadata() -> None:
-    data = cb.from_numpy(
-        _create_causal_signal(n_samples=200), dims=["time", "space"], subjectID="test_subject"
+    """GrangerCausality preserves subjectID, groupID, condition, sampling_rate."""
+    data = cb.SignalData.from_numpy(
+        _create_causal_signal(n_samples=200),
+        dims=["time", "space"],
+        subjectID="test_subject",
+        groupID="test_group",
+        condition="test_condition",
+        sampling_rate=100.0,
     )
     feature = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2)
     result = feature.apply(data)
-    assert result.data.attrs.get("subjectID") == "test_subject"
+    assert result.subjectID == "test_subject"
+    assert result.groupID == "test_group"
+    assert result.condition == "test_condition"
+    assert result.sampling_rate is None  # time dimension removed
+
+
+def test_granger_causality_no_mutation() -> None:
+    """GrangerCausality does not modify input Data."""
+    data = cb.SignalData.from_numpy(
+        _create_causal_signal(n_samples=200),
+        dims=["time", "space"],
+        subjectID="s1",
+        groupID="g1",
+        condition="rest",
+        sampling_rate=100.0,
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+    assert data.subjectID == "s1"
+    assert data.groupID == "g1"
+    assert data.condition == "rest"
+    assert data.sampling_rate == 100.0
+
+
+def test_granger_causality_returns_data_instance() -> None:
+    """GrangerCausality.apply() returns Data instance."""
+    data = cb.from_numpy(_create_causal_signal(n_samples=200), dims=["time", "space"])
+    result = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2).apply(data)
+    assert isinstance(result, cb.Data)
+
+
+def test_granger_causality_matrix_multiple_lags() -> None:
+    """GrangerCausalityMatrix supports maxlag for testing multiple lags."""
+    data = cb.from_numpy(_create_causal_signal(n_samples=200), dims=["time", "space"])
+    feature = cb.feature.GrangerCausalityMatrix(coords=[0, 1], maxlag=4)
+    result = feature.apply(data)
+    assert result.data.shape == (2, 2, 4)
+    assert "lag_index" in result.data.dims
+    assert list(result.data.coords["lag_index"].values) == [1, 2, 3, 4]
+
+
+def test_granger_causality_matrix_invalid_lag() -> None:
+    """GrangerCausalityMatrix raises ValueError for lag < 1."""
+    with pytest.raises(ValueError, match="lag must be >= 1"):
+        cb.feature.GrangerCausalityMatrix(coords=[0, 1], lag=0)
+
+
+def test_granger_causality_matrix_invalid_maxlag() -> None:
+    """GrangerCausalityMatrix raises ValueError for maxlag < 1."""
+    with pytest.raises(ValueError, match="maxlag must be >= 1"):
+        cb.feature.GrangerCausalityMatrix(coords=[0, 1], maxlag=0)
+
+
+def test_granger_causality_matrix_returns_data_instance() -> None:
+    """GrangerCausalityMatrix.apply() returns Data instance."""
+    data = cb.from_numpy(_create_causal_signal(n_samples=200), dims=["time", "space"])
+    result = cb.feature.GrangerCausalityMatrix(coords=[0, 1], lag=2).apply(data)
+    assert isinstance(result, cb.Data)
+
+
+def test_granger_causality_matrix_history_updated() -> None:
+    """GrangerCausalityMatrix appends class name to history."""
+    data = cb.from_numpy(_create_causal_signal(n_samples=200), dims=["time", "space"])
+    result = cb.feature.GrangerCausalityMatrix(coords=[0, 1], lag=2).apply(data)
+    assert result.history[-1] == "GrangerCausalityMatrix"
+
+
+def test_granger_causality_matrix_preserves_metadata() -> None:
+    """GrangerCausalityMatrix preserves subjectID, groupID, condition."""
+    data = cb.SignalData.from_numpy(
+        _create_causal_signal(n_samples=200),
+        dims=["time", "space"],
+        subjectID="s1",
+        groupID="g1",
+        condition="rest",
+        sampling_rate=100.0,
+    )
+    result = cb.feature.GrangerCausalityMatrix(coords=[0, 1], lag=2).apply(data)
+    assert result.subjectID == "s1"
+    assert result.groupID == "g1"
+    assert result.condition == "rest"
+    assert result.sampling_rate is None  # time dimension removed
+
+
+def test_granger_causality_matrix_no_mutation() -> None:
+    """GrangerCausalityMatrix does not modify input Data."""
+    data = cb.SignalData.from_numpy(
+        _create_causal_signal(n_samples=200),
+        dims=["time", "space"],
+        subjectID="s1",
+        groupID="g1",
+        condition="rest",
+        sampling_rate=100.0,
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+
+    _ = cb.feature.GrangerCausalityMatrix(coords=[0, 1], lag=2).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape

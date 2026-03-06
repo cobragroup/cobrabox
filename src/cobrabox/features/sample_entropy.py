@@ -11,8 +11,8 @@ from ..data import Data, SignalData
 
 
 @dataclass
-class SampEn(BaseFeature[SignalData]):
-    """Sample Entropy (SampEn) feature.
+class SampleEntropy(BaseFeature[SignalData]):
+    """Sample Entropy feature.
 
     Sample entropy quantifies the regularity of a time-series. It is the
     negative logarithm of the conditional probability that two sequences
@@ -41,8 +41,8 @@ class SampEn(BaseFeature[SignalData]):
         ``time`` dimension collapsed.
 
     Example:
-        >>> entropy = cb.feature.SampEn(m=2).apply(data)  # base-2 (default)
-        >>> entropy_nat = cb.feature.SampEn(m=2, log_base=np.e).apply(data)  # natural log
+        >>> entropy = cb.feature.SampleEntropy(m=2).apply(data)  # base-2 (default)
+        >>> entropy_nat = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)  # natural log
     """
 
     # Output is a DataArray without the time dim, i.e. a ``Data`` container.
@@ -61,8 +61,6 @@ class SampEn(BaseFeature[SignalData]):
     def __call__(self, data: SignalData) -> xr.DataArray:
         # Extract the raw time-series as an xarray DataArray.
         xr_data = data.data
-        if "time" not in xr_data.dims:
-            raise ValueError("Sample Entropy requires a 'time' dimension.")
 
         # Pre-compute the natural logarithm of the chosen base for the change-of-base formula.
         ln_base = np.log(self.log_base)
@@ -72,7 +70,8 @@ class SampEn(BaseFeature[SignalData]):
             n = len(ts)
             if n <= self.m:
                 raise ValueError(
-                    f"Time series length ({n}) must be greater than embedding dimension m ({self.m})."
+                    f"Time series length ({n}) must be greater than "
+                    f"embedding dimension m ({self.m})."
                 )
             # Tolerance: use provided r or default 0.2 * std of this slice.
             r_local = 0.2 * np.std(ts, ddof=0) if self.r is None else self.r

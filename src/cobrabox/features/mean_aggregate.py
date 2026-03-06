@@ -16,6 +16,9 @@ class MeanAggregate(AggregatorFeature):
     Collects all windows, stacks them along a temporary 'window' dimension,
     and reduces with mean. Per-window pipeline history is propagated to the result.
 
+    Args:
+        None. This aggregator takes no configuration parameters.
+
     Returns:
         A new ``Data`` object with the same shape as each individual window
         result (the ``window`` stacking dimension is reduced away). All

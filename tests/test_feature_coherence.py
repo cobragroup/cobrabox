@@ -239,3 +239,39 @@ def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
 def test_coherence_accessible_via_feature_module() -> None:
     """Coherence is accessible as cb.feature.Coherence."""
     assert callable(cb.feature.Coherence)
+
+
+def test_coherence_missing_space_dim_raises() -> None:
+    """Coherence raises ValueError when data lacks 'space' dimension."""
+    arr = np.random.default_rng(100).standard_normal((100, 5))
+    xr_data = xr.DataArray(arr, dims=["time", "channel"])
+    raw = cb.SignalData.__new__(cb.SignalData)
+    object.__setattr__(raw, "_data", xr_data)
+    object.__setattr__(raw, "_sampling_rate", 100.0)
+
+    with pytest.raises(ValueError, match="space"):
+        cb.feature.Coherence().apply(raw)
+
+
+def test_coherence_default_nperseg_too_small_raises() -> None:
+    """Coherence raises ValueError when n_time < 2 causes default nperseg < 2."""
+    rng = np.random.default_rng(101)
+    data = _make_data(rng.standard_normal((1, 3)))
+
+    with pytest.raises(ValueError, match="nperseg"):
+        cb.feature.Coherence().apply(data)
+
+
+def test_coherence_does_not_mutate_input() -> None:
+    """Coherence.apply() leaves the input Data object unchanged."""
+    rng = np.random.default_rng(102)
+    data = _make_data(rng.standard_normal((200, 3)))
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.Coherence().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
