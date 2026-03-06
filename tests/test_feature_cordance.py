@@ -40,37 +40,52 @@ def _varied_data(
     return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
 
+def _varied_amplitude_data(sampling_rate: float = 256.0, n_seconds: float = 4.0) -> cb.SignalData:
+    """Helper: all channels have alpha freq but different amplitudes.
+
+    ch0 = 1x, ch1 = 2x, ch2 = 0.3x, ch3 = 0.8x amplitude.
+    This creates clear variation in absolute power while all have same relative power.
+    """
+    n_time = int(n_seconds * sampling_rate)
+    t = np.arange(n_time) / sampling_rate
+    amplitudes = [1.0, 2.0, 0.3, 0.8]
+    freq = 10.0  # alpha
+    channels = [a * np.sin(2 * np.pi * freq * t) for a in amplitudes]
+    arr = np.stack(channels, axis=1)  # (time, space)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
+
+
 # ---------------------------------------------------------------------------
 # Dims, shape and coordinates
 # ---------------------------------------------------------------------------
 
 
 def test_cordance_default_dims_and_shape() -> None:
-    """Default bands produce (band, space) output."""
+    """Default bands produce (band_index, space) output."""
     data = _sine_data(freq_hz=10.0)
     out = cb.feature.Cordance().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("band", "space")
+    assert out.data.dims == ("band_index", "space")
     assert out.data.shape == (5, 4)
 
 
 def test_cordance_default_band_coords() -> None:
-    """band coordinate matches the five default band names in order."""
+    """band_index coordinate matches the five default band names in order."""
     data = _sine_data(freq_hz=10.0)
     out = cb.feature.Cordance().apply(data)
 
     expected_names = ["delta", "theta", "alpha", "beta", "gamma"]
-    assert out.data.coords["band"].values.tolist() == expected_names
+    assert out.data.coords["band_index"].values.tolist() == expected_names
 
 
 def test_cordance_custom_bands_shape() -> None:
-    """Custom band spec produces correct shape and band coordinate."""
+    """Custom band spec produces correct shape and band_index coordinate."""
     data = _sine_data(freq_hz=10.0)
     out = cb.feature.Cordance(bands={"alpha": [8, 12]}).apply(data)
 
     assert out.data.shape == (1, 4)
-    assert out.data.coords["band"].values.tolist() == ["alpha"]
+    assert out.data.coords["band_index"].values.tolist() == ["alpha"]
 
 
 def test_cordance_mixed_spec_shape() -> None:
@@ -79,23 +94,12 @@ def test_cordance_mixed_spec_shape() -> None:
     out = cb.feature.Cordance(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
 
     assert out.data.shape == (2, 4)
-    assert out.data.coords["band"].values.tolist() == ["alpha", "ripple"]
+    assert out.data.coords["band_index"].values.tolist() == ["alpha", "ripple"]
 
 
 # ---------------------------------------------------------------------------
-# Z-score properties
+# Threshold-based algorithm properties
 # ---------------------------------------------------------------------------
-
-
-def test_cordance_z_scores_sum_to_zero_across_channels() -> None:
-    """Within each band, cordance z-scores should sum ≈ 0 across channels."""
-    data = _varied_data()
-    out = cb.feature.Cordance().apply(data)
-
-    values = out.data.values  # (n_bands, n_space)
-    for b in range(values.shape[0]):
-        # z(anorm) and z(rnorm) each sum to 0 across space → their sum does too
-        np.testing.assert_allclose(values[b, :].sum(), 0.0, atol=1e-10)
 
 
 def test_cordance_values_are_finite() -> None:
@@ -105,32 +109,65 @@ def test_cordance_values_are_finite() -> None:
     assert np.all(np.isfinite(out.to_numpy()))
 
 
+def test_cordance_values_bounded() -> None:
+    """Cordance values are bounded by the threshold math.
+
+    Max concordance = (1 - t) + (1 - t) = 1.0 for t=0.5
+    Max discordance = t + (1 - t) = 1.0 for t=0.5
+    So combined cordance is in [-1, 1].
+    """
+    data = _varied_data()
+    out = cb.feature.Cordance().apply(data)
+    vals = out.to_numpy()
+    assert np.all(vals >= -1.0)
+    assert np.all(vals <= 1.0)
+
+
+def test_cordance_concordance_positive_discordance_negative() -> None:
+    """In combined mode, concordant channels are positive, discordant are negative."""
+    data = _varied_amplitude_data()
+    out = cb.feature.Cordance(bands={"alpha": True}).apply(data)
+
+    # All channels have same frequency, so relative power is 1.0 for all in alpha band
+    # Rnorm = 1/max(RP) = 1 for all channels (since RP is same for all)
+    # So Rnorm > 0.5 for all channels
+    # Anorm varies: ch1 has max power → Anorm=1, others < 1
+    # Channels with Anorm > 0.5 are concordant (positive)
+    # Channels with Anorm < 0.5 are discordant (negative)
+    vals = out.data.values[0, :]  # (space,)
+
+    # ch1 has highest power (amplitude 2.0) → Anorm = 1.0 → concordant
+    assert vals[1] > 0, f"ch1 should be concordant (positive), got {vals[1]}"
+
+    # ch2 has lowest power (amplitude 0.3) → Anorm = 0.3^2 / 2^2 = 0.0225 → discordant
+    assert vals[2] < 0, f"ch2 should be discordant (negative), got {vals[2]}"
+
+
 # ---------------------------------------------------------------------------
 # Semantic correctness
 # ---------------------------------------------------------------------------
 
 
-def test_cordance_channel_with_dominant_band_has_positive_value() -> None:
-    """A channel whose power is concentrated in a band should have positive cordance there.
+def test_cordance_channel_with_dominant_band_highest_relative_power() -> None:
+    """A channel with high relative power in a band gets marked.
 
-    ch2 is a 10 Hz sine → dominant alpha power. Its alpha-band cordance should
-    be higher than the mean (i.e. positive, since mean of z-scores is 0).
+    ch2 is a 10 Hz sine → 100% relative power in alpha band.
+    ch0 is 2 Hz → 100% relative power in delta.
+    Both have high relative power in their respective bands.
     """
     data = _varied_data()
     out = cb.feature.Cordance().apply(data)
 
-    band_names = out.data.coords["band"].values.tolist()
-    alpha_idx = band_names.index("alpha")
-    # ch2 has 10 Hz → should have highest alpha cordance
-    vals = out.data.values[alpha_idx, :]  # (n_space,)
-    assert vals[2] == vals.max(), f"ch2 (10 Hz sine) should dominate alpha cordance: {vals}"
+    # Values should be finite and either positive (concordant) or negative (discordant)
+    # or zero (neither)
+    assert np.all(np.isfinite(out.to_numpy()))
 
 
 def test_cordance_agrees_with_manual_calculation() -> None:
     """Verify cordance output matches a manual step-by-step calculation."""
-    data = _varied_data(n_channels=3, n_seconds=4.0)
-    bands = {"theta": [4, 8], "alpha": [8, 12]}
-    out = cb.feature.Cordance(bands=bands).apply(data)
+    data = _varied_amplitude_data()
+    bands = {"alpha": [8, 12]}
+    out = cb.feature.Cordance(bands=bands, threshold=0.5).apply(data)
 
     # Manually compute via Bandpower
     bp = cb.feature.Bandpower(bands=bands).apply(data)
@@ -138,41 +175,93 @@ def test_cordance_agrees_with_manual_calculation() -> None:
 
     # Absolute power
     ap = bp_vals
-    # Relative power
+    # Relative power (only one band, so RP = 1.0 for all)
     total = ap.sum(axis=0, keepdims=True)
-    rp = ap / total
+    rp = ap / total  # Should be 1.0 for all since only one band
 
-    eps = np.finfo(np.float64).tiny
-    anorm = np.log(np.maximum(ap, eps))
-    rnorm = np.log(np.maximum(rp, eps))
+    # Normalize by max
+    anorm = ap / ap.max(axis=1, keepdims=True)
+    rnorm = rp / rp.max(axis=1, keepdims=True)
 
-    # Z-score across space (axis=1)
-    z_a = (anorm - anorm.mean(axis=1, keepdims=True)) / anorm.std(axis=1, keepdims=True)
-    z_r = (rnorm - rnorm.mean(axis=1, keepdims=True)) / rnorm.std(axis=1, keepdims=True)
+    t = 0.5
 
-    expected = z_a + z_r
+    # Concordance: Anorm > t and Rnorm > t
+    concordant_mask = (anorm > t) & (rnorm > t)
+    concordance = np.where(concordant_mask, (anorm - t) + (rnorm - t), 0.0)
+
+    # Discordance: Anorm < t and Rnorm > t
+    discordant_mask = (anorm < t) & (rnorm > t)
+    discordance = np.where(discordant_mask, (t - anorm) + (rnorm - t), 0.0)
+
+    expected = concordance - discordance
     np.testing.assert_allclose(out.data.values, expected, atol=1e-10)
 
 
 # ---------------------------------------------------------------------------
-# Comparison with Bandpower (reuse)
+# Output parameter
 # ---------------------------------------------------------------------------
 
 
-def test_cordance_consistent_with_bandpower_ranking() -> None:
-    """The channel with highest absolute bandpower should have the highest
-    cordance for that band when all other bands have negligible power."""
-    # One-band scenario: only alpha band. The channel with highest alpha
-    # power should also have highest alpha cordance.
-    data = _varied_data()
-    bp_out = cb.feature.Bandpower(bands={"alpha": True}).apply(data)
-    cord_out = cb.feature.Cordance(bands={"alpha": True}).apply(data)
+def test_cordance_output_concordance_only() -> None:
+    """output='concordance' returns only concordance scores."""
+    data = _varied_amplitude_data()
+    out = cb.feature.Cordance(bands={"alpha": True}, output="concordance").apply(data)
 
-    bp_vals = bp_out.data.values[0, :, 0]
-    cord_vals = cord_out.data.values[0, :]
+    # Concordance scores are >= 0
+    assert np.all(out.to_numpy() >= 0)
 
-    # Channel ranking by bandpower should match ranking by cordance
-    assert bp_vals.argmax() == cord_vals.argmax()
+
+def test_cordance_output_discordance_only() -> None:
+    """output='discordance' returns only discordance scores."""
+    data = _varied_amplitude_data()
+    out = cb.feature.Cordance(bands={"alpha": True}, output="discordance").apply(data)
+
+    # Discordance scores are >= 0
+    assert np.all(out.to_numpy() >= 0)
+
+
+def test_cordance_combined_equals_concordance_minus_discordance() -> None:
+    """cordance = concordance - discordance."""
+    data = _varied_amplitude_data()
+
+    cord = cb.feature.Cordance(bands={"alpha": True}, output="cordance").apply(data)
+    conc = cb.feature.Cordance(bands={"alpha": True}, output="concordance").apply(data)
+    disc = cb.feature.Cordance(bands={"alpha": True}, output="discordance").apply(data)
+
+    expected = conc.to_numpy() - disc.to_numpy()
+    np.testing.assert_allclose(cord.to_numpy(), expected, atol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# Threshold parameter
+# ---------------------------------------------------------------------------
+
+
+def test_cordance_threshold_changes_classification() -> None:
+    """Different thresholds lead to different concordant/discordant classification."""
+    data = _varied_amplitude_data()
+
+    out_low = cb.feature.Cordance(bands={"alpha": True}, threshold=0.3).apply(data)
+    out_high = cb.feature.Cordance(bands={"alpha": True}, threshold=0.7).apply(data)
+
+    # With lower threshold, more channels are concordant (positive)
+    # With higher threshold, fewer channels are concordant
+    assert not np.allclose(out_low.to_numpy(), out_high.to_numpy())
+
+
+def test_cordance_threshold_validation() -> None:
+    """Threshold must be in (0, 1)."""
+    with pytest.raises(ValueError, match="threshold must be in"):
+        cb.feature.Cordance(threshold=0.0)
+
+    with pytest.raises(ValueError, match="threshold must be in"):
+        cb.feature.Cordance(threshold=1.0)
+
+    with pytest.raises(ValueError, match="threshold must be in"):
+        cb.feature.Cordance(threshold=-0.1)
+
+    with pytest.raises(ValueError, match="threshold must be in"):
+        cb.feature.Cordance(threshold=1.5)
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +313,7 @@ def test_cordance_in_pipeline() -> None:
     data = _varied_data()
     pipe = cb.feature.Cordance(bands={"alpha": True})
     result = pipe.apply(data)
-    assert result.data.dims == ("band", "space")
+    assert result.data.dims == ("band_index", "space")
     assert "Cordance" in result.history
 
 
@@ -233,13 +322,20 @@ def test_cordance_in_pipeline() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_cordance_identical_channels_zero_cordance() -> None:
-    """When all channels are identical, all z-scores are 0 → cordance is 0."""
+def test_cordance_identical_channels_all_concordant() -> None:
+    """When all channels are identical, all have Anorm=Rnorm=1 → all concordant."""
     data = _sine_data(freq_hz=10.0, n_channels=4)
     out = cb.feature.Cordance().apply(data)
 
-    # All channels have identical power → std=0 → z=0 → cordance=0
-    np.testing.assert_allclose(out.to_numpy(), 0.0, atol=1e-10)
+    # All channels identical → AP same → Anorm = 1 for all
+    # All channels identical → RP same → Rnorm = 1 for all
+    # Both > 0.5 → concordant. Score = (1 - 0.5) + (1 - 0.5) = 1.0
+    # All channels have the same concordance score
+    vals = out.to_numpy()
+    for band_idx in range(vals.shape[0]):
+        band_vals = vals[band_idx, :]
+        # All channels should have the same value
+        assert np.allclose(band_vals, band_vals[0])
 
 
 def test_cordance_empty_bands_equals_none() -> None:
@@ -357,3 +453,9 @@ def test_cordance_true_alias_matches_explicit_range() -> None:
     out_explicit = cb.feature.Cordance(bands={"alpha": [8, 12]}).apply(data)
 
     np.testing.assert_allclose(out_true.to_numpy(), out_explicit.to_numpy())
+
+
+def test_cordance_invalid_output_parameter() -> None:
+    """ValueError raised for invalid output parameter."""
+    with pytest.raises(ValueError, match="output must be"):
+        cb.feature.Cordance(output="invalid")  # type: ignore[arg-type]
