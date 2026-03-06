@@ -61,6 +61,7 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 - **Splitters** (`SplitterFeature`): yield a lazy stream of `Data` per window (e.g. `SlidingWindow`)
 - **Aggregators** (`AggregatorFeature`): fold a stream back into one `Data` (e.g. `MeanAggregate`)
 - **Chord**: combines a splitter + pipeline + aggregator into a single composable feature
+- **Serialization**: save/load any feature, pipeline, or chord to YAML or JSON
 - All features append to `history` automatically
 
 ## Working with Dimensions and Coordinates
@@ -147,6 +148,37 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `MeanAggregate` - Average windowed results (aggregator)
 - `ConcatAggregate` - Stack windowed results along new dimension (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
+
+### Surrogate Generation
+
+- `FourierTransformSurrogates` - Generate Fourier transform surrogates preserving power spectrum
+
+### Wavelet Transforms
+
+- `DiscreteWaveletTransform` - Multi-level discrete wavelet decomposition (DWT)
+- `ContinuousWaveletTransform` - Continuous wavelet transform for time-frequency analysis
+
+### qEEG Measures
+
+- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower
+
+## Serialization
+
+Save any feature, pipeline, or chord to YAML or JSON and reload it later — or share it with collaborators:
+
+```python
+# Save to file
+cb.save(pipeline, "my_pipeline.yaml")
+
+# Load from file
+pipeline = cb.load("my_pipeline.yaml")
+
+# Or work with strings directly
+yaml_str = cb.serialize(pipeline)
+pipeline  = cb.deserialize(yaml_str)
+```
+
+See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a full walkthrough.
 
 ## Built-in Dummy Datasets
 

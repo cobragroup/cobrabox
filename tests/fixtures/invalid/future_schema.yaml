@@ -1,0 +1,7 @@
+cobrabox_version: "0.3.1"
+schema_version: "99.0.0"
+
+pipeline:
+  - class: "LineLength"
+    module: "cobrabox.features.line_length"
+    params: {}

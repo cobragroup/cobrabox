@@ -3,6 +3,7 @@
 Usage
 -----
     uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
+    uv run python -m cobrabox.egg.dnd_alignment my_pipeline.yaml
     uv run python -m cobrabox.egg.dnd_alignment --roster
 
 Options
@@ -10,6 +11,16 @@ Options
 --roster        Print the full alignment table and ASCII grid, then exit.
 --chord         Treat the pipeline as a Chord (see Chord Modifier below).
 feature [...]   Feature class names to include in the pipeline.
+file [...]      One or more .yaml / .yml / .json pipeline files to load.
+                File paths and feature names may be mixed freely.
+
+File Loading
+------------
+Any argument ending in .yaml, .yml, or .json is treated as a pipeline file
+and loaded via cobrabox.serialization.load().  Feature names are extracted
+by walking the pipeline in order.  If the file contains a single top-level
+Chord, chord-weighting is applied automatically (overridden by --chord /
+--no-chord).
 
 Chord Modifier
 --------------
@@ -34,6 +45,52 @@ from __future__ import annotations
 import sys
 
 from cobrabox.egg.alignments import ALIGNMENTS, label_for, snap
+
+# ── file loading helpers ───────────────────────────────────────────────────────
+
+
+def _is_file_arg(arg: str) -> bool:
+    """Return True if the argument looks like a pipeline file path."""
+    return arg.lower().endswith((".yaml", ".yml", ".json"))
+
+
+def _names_from_step(step: object) -> list[str]:
+    """Recursively extract feature class names from a single pipeline step."""
+    from cobrabox.base_feature import Chord, Pipeline
+
+    if isinstance(step, Chord):
+        names = [type(step.split).__name__]
+        if isinstance(step.pipeline, Pipeline):
+            for f in step.pipeline.features:
+                names.extend(_names_from_step(f))
+        else:
+            names.extend(_names_from_step(step.pipeline))
+        names.append(type(step.aggregate).__name__)
+        return names
+    return [type(step).__name__]
+
+
+def _load_file(path: str) -> tuple[list[str], bool]:
+    """Load a pipeline file and return (feature_names, is_top_level_chord).
+
+    is_top_level_chord is True when the file contains a single Chord step,
+    which triggers automatic chord-weighting unless overridden by the caller.
+    """
+    from cobrabox.base_feature import Chord
+    from cobrabox.serialization import load
+
+    try:
+        pipeline = load(path)
+    except Exception as exc:
+        print(f"✖ Could not load {path!r}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    is_chord = len(pipeline.features) == 1 and isinstance(pipeline.features[0], Chord)
+    names: list[str] = []
+    for step in pipeline.features:
+        names.extend(_names_from_step(step))
+    return names, is_chord
+
 
 # ── grid rendering ────────────────────────────────────────────────────────────
 
@@ -147,8 +204,30 @@ def main(argv: list[str] | None = None) -> None:
         print_roster()
         return
 
-    chord = "--chord" in args
-    features = [a for a in args if not a.startswith("--")]
+    explicit_chord = "--chord" in args
+    explicit_no_chord = "--no-chord" in args
+    positional = [a for a in args if not a.startswith("--")]
+
+    features: list[str] = []
+    auto_chord = False  # set True if any loaded file is a top-level Chord
+
+    for arg in positional:
+        if _is_file_arg(arg):
+            file_names, file_is_chord = _load_file(arg)
+            features.extend(file_names)
+            if file_is_chord:
+                auto_chord = True
+        else:
+            features.append(arg)
+
+    # --chord / --no-chord override auto-detection from file content
+    if explicit_chord:
+        chord = True
+    elif explicit_no_chord:
+        chord = False
+    else:
+        chord = auto_chord
+
     print_pipeline(features, chord=chord)
 
 

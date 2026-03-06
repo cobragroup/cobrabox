@@ -6,7 +6,9 @@ from .features import Autocorr as Autocorr
 from .features import BandFilter as BandFilter
 from .features import Bandpower as Bandpower
 from .features import Coherence as Coherence
+from .features import ConcatAggregate as ConcatAggregate
 from .features import ContinuousWaveletTransform as ContinuousWaveletTransform
+from .features import Cordance as Cordance
 from .features import DiscreteWaveletTransform as DiscreteWaveletTransform
 from .features import Dummy as Dummy
 from .features import EnvelopeCorrelation as EnvelopeCorrelation
@@ -43,7 +45,9 @@ __all__ = [
     "BandFilter",
     "Bandpower",
     "Coherence",
+    "ConcatAggregate",
     "ContinuousWaveletTransform",
+    "Cordance",
     "DiscreteWaveletTransform",
     "Dummy",
     "EnvelopeCorrelation",
