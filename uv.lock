@@ -325,11 +325,11 @@ wheels = [
 
 [[package]]
 name = "cobrabox"
-version = "0.3.2"
+version = "0.3.3"
 source = { editable = "." }
 dependencies = [
-    { name = "emd" },
     { name = "dill" },
+    { name = "emd" },
     { name = "ipython", version = "9.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "ipython", version = "9.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "mne-connectivity" },
@@ -359,8 +359,8 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "emd", specifier = ">=0.7.0" },
     { name = "dill", specifier = ">=0.3.0" },
+    { name = "emd", specifier = ">=0.7.0" },
     { name = "ipython", specifier = ">=9.10.0" },
     { name = "mne-connectivity", specifier = ">=0.7.0" },
     { name = "numpy", specifier = ">=2.4.2" },

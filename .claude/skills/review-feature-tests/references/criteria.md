@@ -98,7 +98,7 @@ are finite/non-NaN.
 # ✅ checks output shape and dims
 assert result.data.sizes["space"] == 10
 assert "time" not in result.data.dims
-assert not np.any(np.isnan(result.asnumpy()))
+assert not np.any(np.isnan(result.to_numpy()))
 ```
 
 ### History updated
@@ -148,14 +148,24 @@ assert result.sampling_rate == pytest.approx(100.0)
 
 ### Invalid dims — missing `time`
 
-Must raise `ValueError` when input lacks the required dimension.
+**Only required for `BaseFeature[Data]` features** that explicitly check `"time" in data.data.dims`
+in their `__call__`. For `BaseFeature[SignalData]` features, `SignalData` enforces the time
+dimension at construction — you cannot construct a `SignalData` without `time`, so there is
+nothing to test here. Skip this scenario for `BaseFeature[SignalData]` features.
+
+For `BaseFeature[Data]` features with an explicit time-dim guard, use `cb.Data.from_numpy`
+directly — no internal bypasses needed:
 
 ```python
 # ✅
-with pytest.raises(ValueError, match="time"):
-    cb.feature.LineLength().apply(data_without_time)
+def test_myfeature_missing_time_raises() -> None:
+    """MyFeature raises ValueError when 'time' dimension is absent."""
+    arr = np.random.default_rng(42).standard_normal((10,))
+    data = cb.Data.from_numpy(arr, dims=["space"])
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.MyFeature().apply(data)
 
-# ❌ no error case tested
+# ❌ no error case tested (for BaseFeature[Data] features that validate time)
 ```
 
 ### Invalid params (skip if feature has no parameters)
@@ -246,7 +256,7 @@ module-level helper. Do not rely on test execution order.
 # ✅ each test builds its own data
 def test_line_length_basic() -> None:
     """..."""
-    arr = np.random.randn(100, 10)
+    arr = np.random.default_rng(42).standard_normal((100, 10))
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
     result = cb.feature.LineLength().apply(data)
     ...
