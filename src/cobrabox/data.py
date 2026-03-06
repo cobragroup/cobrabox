@@ -628,7 +628,7 @@ class SignalData(Data):
         new_data: xr.DataArray | Data,
         operation_name: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> Data:
+    ) -> SignalData:
         """Override to add singleton time dimension if result lacks it.
 
         SignalData requires a time dimension, so if the feature result doesn't

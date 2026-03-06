@@ -12,6 +12,11 @@ from .covariance import Covariance as Covariance
 from .dummy import Dummy as Dummy
 from .envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
 from .epileptogenicity_index import EpileptogenicityIndex as EpileptogenicityIndex
+from .cordance import Cordance as Cordance
+from .dummy import Dummy as Dummy
+from .envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
+from .epileptogenicity_index import EpileptogenicityIndex as EpileptogenicityIndex
+from .fourier_transform_surrogates import FourierTransformSurrogates as FourierTransformSurrogates
 from .fractal_dimension import FractalDimHiguchi as FractalDimHiguchi
 from .fractal_dimension import FractalDimKatz as FractalDimKatz
 from .granger_causality import GrangerCausality as GrangerCausality
@@ -35,6 +40,8 @@ from .sliding_window import SlidingWindow as SlidingWindow
 from .sliding_window_reduce import SlidingWindowReduce as SlidingWindowReduce
 from .spectrogram import Spectrogram as Spectrogram
 from .spikes_calc import SpikesCalc as SpikesCalc
+from .wavelet_transform import ContinuousWaveletTransform as ContinuousWaveletTransform
+from .wavelet_transform import DiscreteWaveletTransform as DiscreteWaveletTransform
 
 __all__ = [
     "AmplitudeEntropy",
@@ -49,6 +56,13 @@ __all__ = [
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
+    "ContinuousWaveletTransform",
+    "Cordance",
+    "DiscreteWaveletTransform",
+    "Dummy",
+    "EnvelopeCorrelation",
+    "EpileptogenicityIndex",
+    "FourierTransformSurrogates",
     "FractalDimHiguchi",
     "FractalDimKatz",
     "GrangerCausality",
