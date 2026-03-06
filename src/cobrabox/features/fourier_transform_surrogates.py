@@ -12,23 +12,37 @@ from ..data import SignalData
 
 @dataclass
 class FourierTransformSurrogates(SplitterFeature[SignalData]):
-    """Generate Fourier transform (i.e., preserving autocorrelation) of SignalData (surrogates
-    the time axis).
+    """Generate Fourier transform surrogates (preserving autocorrelation) of SignalData.
+
+    Creates surrogate time series by randomizing the phases of the Fourier transform
+    while preserving the power spectrum (and thus autocorrelation). This generates
+    null-hypothesis data for testing whether observed effects exceed what would be
+    expected from linear, stationary, Gaussian processes with the same correlation
+    structure.
 
     Args:
-        n_surrogates: int
-            Number of surrogate time series to generate.
-        multivariate: bool = True
-            If True (default) applies the same random phases to all the series. This ensures that
-            also correlation is (approximately) preserved. This applies across all dimensions.
-        return_data: bool = True
-            If True (default) the generator has length 1+n_surrogates where the first element is
-            the original data such that it can follow the same pipeline as the surrogates.
-        random_state: np.random.Generator | int | None = None
-            Initialiser for the pseudorandom number generator to ensure reproducibility.
+        n_surrogates: Number of surrogate time series to generate. Must be a
+            non-negative integer.
+        multivariate: If True (default), applies the same random phases to all
+            series. This ensures that cross-correlations are approximately preserved.
+        return_data: If True (default), the generator yields the original data
+            first, followed by the surrogates. This gives length 1 + n_surrogates.
+        random_state: Initialiser for the pseudorandom number generator to
+            ensure reproducibility. Can be a Generator, int seed, or None.
 
-    Yields:
-        SignalData iterator containing the surrogate time series.
+    Returns:
+        Iterator yielding SignalData objects containing the surrogate time series
+        (and optionally the original data first).
+
+    Raises:
+        ValueError: If n_surrogates is not an integer.
+        ValueError: If n_surrogates is negative.
+
+    References:
+        Theiler, J., Eubank, S., Longtin, A., Galdrikian, B., & Farmer, J. D.
+        (1992). Testing for nonlinearity in time series: the method of surrogate
+        data. Physica D: Nonlinear Phenomena, 58(1-4), 77-94.
+        https://doi.org/10.1016/0167-2789(92)90102-S
 
     Example:
         >>> import cobrabox as cb

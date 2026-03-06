@@ -2,7 +2,7 @@
 
 **Feature**: `src/cobrabox/features/mean.py`
 **Test file**: `tests/test_feature_mean.py`
-**Date**: 2025-03-05
+**Date**: 2026-03-06
 **Verdict**: PASS
 
 ## Coverage
@@ -11,17 +11,32 @@
 mean.py: 100% (12 statements, 0 missing)
 ```
 
+Full coverage achieved.
+
 ## Summary
 
-The test file for Mean is comprehensive and well-structured. All required test scenarios are covered with proper assertions verifying shape, dims, values, metadata preservation, and error handling.
+The test file provides comprehensive coverage of the `Mean` feature with 5 test
+functions covering all required scenarios. Tests correctly verify dimension
+reduction, error handling, metadata preservation, and input immutability.
 
 ## Keep
 
-- `test_mean_reduces_extra_dimension` — Tests dimension reduction with 3D data (run_index), verifies shape, dims, values, all metadata preserved
-- `test_mean_raises_for_unknown_dimension` — Tests ValueError for missing dimension
-- `test_mean_single_channel_timeseries_returns_single_value` — Tests single-channel reduction over time
-- `test_mean_metadata_preserved` — Tests all metadata fields preserved (subjectID, groupID, condition, sampling_rate)
-- `test_mean_does_not_mutate_input` — Verifies input Data is unchanged after apply
+All existing tests are correct and complete:
+
+- `test_mean_reduces_extra_dimension` — Verifies mean reduces "run_index"
+  dimension, correct output shape, history update, and metadata preservation.
+
+- `test_mean_raises_for_unknown_dimension` — Confirms clear ValueError when
+  specified dimension does not exist in data.
+
+- `test_mean_single_channel_timeseries_returns_single_value` — Tests mean over
+  "time" on single-channel signal returns scalar value.
+
+- `test_mean_metadata_preserved` — Dedicated test for metadata preservation
+  (subjectID, groupID, condition, sampling_rate).
+
+- `test_mean_does_not_mutate_input` — Verifies input Data object is unchanged
+  after `.apply()` call.
 
 ## Action List
 

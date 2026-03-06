@@ -196,3 +196,85 @@ def test_phase_locking_value_matrix_does_not_mutate_input() -> None:
     assert data.history == original_history
     assert data.data.shape == original_shape
     np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_phase_locking_value_matrix_symmetric() -> None:
+    """PLV matrix should be symmetric (PLV[i,j] == PLV[j,i])."""
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+    matrix = result.to_numpy()
+
+    np.testing.assert_allclose(matrix, matrix.T, rtol=1e-10)
+
+
+def test_phase_locking_value_in_range() -> None:
+    """PLV values should be in [0, 1]."""
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    result = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
+    value = float(result.data.values)
+
+    assert 0.0 <= value <= 1.0
+
+
+def test_phase_locking_value_matrix_in_range() -> None:
+    """All PLV matrix values should be in [0, 1]."""
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+    matrix = result.to_numpy()
+
+    assert np.all((matrix >= 0.0) & (matrix <= 1.0))
+
+
+def test_phase_locking_value_with_string_coords() -> None:
+    """PhaseLockingValue works with string coordinate labels."""
+    arr = rng.normal(size=(100, 3))
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    # Relabel space dimension with strings
+    data = cb.Data.from_xarray(
+        data.data.assign_coords(space=["ch0", "ch1", "ch2"]), sampling_rate=100.0
+    )
+
+    result = cb.feature.PhaseLockingValue(coord_x="ch0", coord_y="ch1").apply(data)
+
+    assert isinstance(result, cb.Data)
+    assert result.data.shape == ()
+
+
+def test_phase_locking_value_matrix_diagonal_all_ones() -> None:
+    """Diagonal of PLV matrix should be all 1.0 (self-correlation)."""
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+    matrix = result.to_numpy()
+
+    np.testing.assert_allclose(np.diag(matrix), 1.0)
+
+
+def test_phase_locking_value_via_chord() -> None:
+    """PhaseLockingValue works correctly within a Chord pipeline."""
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    chord = cb.Chord(
+        split=cb.feature.SlidingWindow(window_size=50, step_size=25),
+        pipeline=cb.feature.PhaseLockingValue(coord_x=0, coord_y=1),
+        aggregate=cb.feature.MeanAggregate(),
+    )
+    result = chord.apply(data)
+
+    assert isinstance(result, cb.Data)
+    assert "PhaseLockingValue" in result.history
+    assert "MeanAggregate" in result.history
+    assert "SlidingWindow" in result.history

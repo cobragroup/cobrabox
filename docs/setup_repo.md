@@ -58,4 +58,4 @@ uv run python examples/feature_pipeline_demo.py
 ## 6) Contribute a feature
 
 When you are ready to add a new feature, follow:
-[`docs/contributing_feature.md`](contributing_feature.md)
+[`docs/contributing/features.md`](contributing/features.md)

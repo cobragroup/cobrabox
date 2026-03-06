@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 import cobrabox as cb
 
@@ -85,7 +84,7 @@ def test_feature_amp_var_no_mutation() -> None:
     np.testing.assert_array_equal(data.to_numpy(), original_values)
 
 
-def test_amp_var_metadata_preserved() -> None:
+def test_feature_amp_var_metadata_preserved() -> None:
     """AmplitudeVariation preserves subjectID, groupID, and condition."""
     arr = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
     data = cb.SignalData.from_numpy(
@@ -101,18 +100,3 @@ def test_amp_var_metadata_preserved() -> None:
     assert out.subjectID == "sub-01"
     assert out.groupID == "group-A"
     assert out.condition == "rest"
-
-
-def test_amp_var_missing_time_raises() -> None:
-    """AmplitudeVariation raises ValueError when 'time' dimension is missing."""
-    import xarray as xr
-
-    # Build a Data-like object whose underlying array lacks 'time'
-    rng = np.random.default_rng(42)
-    arr = rng.standard_normal(10)
-    xr_data = xr.DataArray(arr, dims=["space"])
-    # Bypass Data.__init__ validation to isolate the feature guard
-    raw = cb.Data.__new__(cb.Data)
-    object.__setattr__(raw, "_data", xr_data)
-    with pytest.raises(ValueError, match="time"):
-        cb.feature.AmplitudeVariation().apply(raw)

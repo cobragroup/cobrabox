@@ -44,7 +44,7 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "sr",
         "lore":  "Methodically carves time into windows, then summarizes without prejudice",
     },
-    "SpikesCalc": {
+    "SpikeCount": {
         "law":   1,
         "good":  -1,
         "label": "Lawful Evil",

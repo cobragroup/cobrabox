@@ -1,12 +1,17 @@
 # Feature Review: spectrogram
 
 **File**: `src/cobrabox/features/spectrogram.py`
-**Date**: 2026-03-05
+**Date**: 2026-03-06
 **Verdict**: PASS
 
 ## Summary
 
-A well-implemented feature that computes power spectrograms using scipy. The code is clean, properly typed, and follows all project conventions. Comprehensive docstring with all required sections (Args, Returns, Raises, Example). Validation logic is thorough, checking all parameter constraints before computation.
+This is a high-quality feature implementation. The `Spectrogram` class properly
+inherits from `BaseFeature[SignalData]`, has comprehensive input validation,
+well-structured docstring with all required sections, and clean code organization.
+The implementation correctly handles multi-dimensional data by flattening extra
+dimensions, computing spectrograms per channel, and reshaping back. All ruff checks
+pass without issues.
 
 ## Ruff
 
@@ -20,54 +25,45 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 1: `from __future__ import annotations` present.
-
-Line 16-17: Correctly decorated with `@dataclass` and inherits `BaseFeature[SignalData]` (appropriate for time-series feature).
-
-Line 64: `__call__` signature is `def __call__(self, data: SignalData) -> xr.DataArray` — matches base class contract.
-
-Class name `Spectrogram` matches filename `spectrogram.py`.
-
-No `apply()` override (correctly inherits from `BaseFeature`).
-
-Imports are clean and in correct order (stdlib → third-party → internal).
+- ✅ `from __future__ import annotations` present at line 1
+- ✅ `@dataclass` decorator applied correctly at line 16
+- ✅ Inherits `BaseFeature[SignalData]` appropriately (time-series feature)
+- ✅ Class name `Spectrogram` matches filename
+- ✅ `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray` at line 64
+- ✅ No `output_type` classvar (correct — preserves input container type)
+- ✅ No `apply()` override (uses inherited implementation)
+- ✅ No redundant `_is_cobrabox_feature` marker (inherited from base)
+- ✅ Imports in standard order: `__future__`, dataclasses, third-party, internal
 
 ## Docstring
 
-Complete Google-style docstring with all required sections:
-
-- **One-line summary** (line 18): Clear and descriptive.
-- **Extended description** (lines 20-24): Explains algorithm and dimension handling.
-- **Args** (lines 26-41): Documents all 4 dataclass fields with types and constraints.
-- **Returns** (lines 43-46): Describes output dimensions and coordinate meanings.
-- **Raises** (lines 48-50): Lists ValueError conditions.
-- **Example** (lines 52-56): Working code snippet using `.apply()`.
+- ✅ One-line summary at line 18: "Compute the power spectrogram for each spatial channel."
+- ✅ Extended description explains algorithm (Welch-style STFT) and dimension handling
+- ✅ `Args:` section documents all four fields: `nperseg`, `noverlap`, `window`, `scaling`
+- ✅ `Returns:` section describes output dims `(*extra_dims, "space", "frequency", "time")`
+- ✅ `Raises:` section lists all three ValueError conditions
+- ✅ `Example:` section shows typical usage with `.apply()` at lines 52-56
 
 ## Typing
 
-All fields properly typed:
-
-- `nperseg: int | None = None`
-- `noverlap: int | None = None`
-- `window: str = "hann"`
-- `scaling: str = "log"`
-
-`__call__` return type is `xr.DataArray` — acceptable per criteria (can be `xr.DataArray | Data`).
-
-No bare `Any` types.
+- ✅ All dataclass fields typed:
+  - `nperseg: int | None = None`
+  - `noverlap: int | None = None`
+  - `window: str = "hann"`
+  - `scaling: str = "log"`
+- ✅ `__call__` return type: `xr.DataArray`
+- ✅ No bare `Any` types
 
 ## Safety & Style
 
-No `print()` statements.
-
-Input validation present (lines 67-80):
-
-- Validates `scaling` against `_VALID_SCALINGS`
-- Validates `nperseg >= 2`
-- Validates `nperseg <= n_time`
-- Validates `noverlap < nperseg`
-
-No mutation of input `data` — operates on `data.data` and returns new `xr.DataArray`.
+- ✅ No `print()` statements
+- ✅ Input validation in `__call__`:
+  - `scaling` validation against `_VALID_SCALINGS` at line 67-68
+  - `nperseg >= 2` check at line 73-74
+  - `nperseg <= n_time` check at line 75-78
+  - `noverlap < nperseg` check at line 79-80
+- ✅ No mutation of input `data` (works on copy via `data.data`)
+- ✅ Clean separation of concerns: validation, computation, result construction
 
 ## Action List
 

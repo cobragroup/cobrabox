@@ -2,7 +2,7 @@
 
 **Feature**: `src/cobrabox/features/max.py`
 **Test file**: `tests/test_feature_max.py`
-**Date**: 2025-03-05
+**Date**: 2026-03-06
 **Verdict**: PASS
 
 ## Coverage
@@ -13,16 +13,26 @@ max.py: 100% (14 statements, 0 missing)
 
 ## Summary
 
-The test file for Max is well-structured and comprehensive. All required test scenarios are covered with good assertions. The feature is a simple dimension-reduction operation and the tests verify correct behavior across various scenarios.
+The test suite for `Max` is comprehensive and well-structured. All 6 required scenarios are covered, with 100% line coverage. Tests use proper naming conventions, include docstrings, and verify both happy paths and edge cases. The feature is a simple `BaseFeature[Data]` that reduces over a dimension, and the tests appropriately verify dimension removal, error handling for missing dimensions, metadata preservation, sampling_rate behavior, and input immutability.
 
 ## Keep
 
-- `test_max_reduces_extra_dimension` — Tests dimension reduction with 3D data, verifies shape, dims, values, metadata preservation, and history
-- `test_max_raises_for_unknown_dimension` — Tests ValueError for missing dimension
-- `test_max_single_channel_timeseries_returns_single_value` — Tests single-channel reduction, correct shape, and history
-- `test_max_does_not_mutate_input` — Verifies input Data is unchanged after apply
-- `test_max_preserves_metadata` — Tests metadata preservation (subjectID, groupID, condition) and sampling_rate becomes None when time removed
-- `test_max_sampling_rate_preserved_when_time_kept` — Tests sampling_rate preservation when time dimension is not reduced
+Tests that are correct and complete — no changes needed:
+
+- `test_max_reduces_extra_dimension` — Correctly tests reducing a non-time dimension (run_index), verifies shape transformation, history update, and metadata preservation.
+- `test_max_raises_for_unknown_dimension` — Properly tests the ValueError when a dimension doesn't exist.
+- `test_max_single_channel_timeseries_returns_single_value` — Tests the common case of reducing time dimension on single-channel data.
+- `test_max_does_not_mutate_input` — Thoroughly verifies input immutability by checking history, shape, and values.
+- `test_max_preserves_metadata` — Tests that subjectID, groupID, condition are preserved and sampling_rate becomes None when time is removed.
+- `test_max_sampling_rate_preserved_when_time_kept` — Tests that sampling_rate is preserved when the reduced dimension is not time.
+
+## Fix
+
+None.
+
+## Add
+
+None — all required scenarios are covered.
 
 ## Action List
 

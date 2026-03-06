@@ -41,6 +41,11 @@ class PartialDirectedCoherence(BaseFeature[SignalData]):
         ValueError: If the input is not 2-D (space x time).
         ValueError: If ``var_order < 1`` or ``n_freqs < 1``.
 
+    References:
+        Baccalá, L. A., & Sameshima, K. (2001). Partial directed coherence:
+        a new concept in neural structure determination. Biological Cybernetics,
+        84(6), 463-474. https://doi.org/10.1007/PL00007990
+
     Example:
         >>> pdc = cb.feature.PartialDirectedCoherence().apply(signal_data)
         >>> pdc.data.dims  # ('space_to', 'space_from', 'frequency')

@@ -1,55 +1,63 @@
 # Feature Review: mean
 
 **File**: `src/cobrabox/features/mean.py`
-**Date**: 2026-03-05
-**Verdict**: PASS
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-Clean, well-structured feature that computes the arithmetic mean across a specified dimension. Uses `BaseFeature[Data]` appropriately since it works with any dimension (not time-specific). Includes proper input validation, complete Google-style docstring with all required sections, and correct typing throughout.
+Clean, minimal implementation of a generic mean-reduction feature. The code is well-structured, properly typed, and passes all ruff checks. Only issue is a missing `Raises:` section in the docstring for the `ValueError` raised at line 30.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-All checks passed!
+Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-1 file already formatted
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-- ✅ `from __future__ import annotations` at line 1
-- ✅ `@dataclass` decorator at line 11
-- ✅ Inherits `BaseFeature[Data]` (line 12) — correct for dimension-agnostic feature
-- ✅ Class name `Mean` matches filename `mean.py`
-- ✅ `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray:` (line 29)
-- ✅ No `apply()` override — uses inherited method
-- ✅ Clean imports: dataclass, xarray, internal modules only
+All structural requirements met:
+
+- Line 1: `from __future__ import annotations` present
+- Line 11: `@dataclass` decorator applied
+- Line 12: Correctly inherits `BaseFeature[Data]` (generic, works with any dimension)
+- Line 27: Single field `dim: str` properly typed
+- Line 29: `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray`
+- No custom `apply()` method (correctly uses inherited implementation)
+- Class name `Mean` matches filename `mean.py`
+- Import order follows convention
 
 ## Docstring
 
-Complete Google-style docstring with all required sections:
+Good Google-style docstring with most required sections:
 
-- ✅ One-line summary (line 13)
-- ✅ `Args:` section documenting `dim` field (lines 15-16)
-- ✅ `Returns:` section describing output shape and values (lines 18-21)
-- ✅ `Example:` section with `.apply()` usage (lines 23-24)
+- ✅ One-line summary at line 13
+- ✅ `Args:` section documents the `dim` field
+- ✅ `Returns:` section describes output shape and values
+- ✅ `Example:` section shows usage with `.apply()`
+- ❌ Missing `Raises:` section (feature raises `ValueError` at line 30-31)
+
+The `ValueError` raised when the specified dimension is not found should be documented.
 
 ## Typing
 
-- ✅ Field `dim: str` properly typed (line 27)
-- ✅ `__call__` return type `xr.DataArray` explicit (line 29)
-- ✅ No bare `Any` usage
+Fully typed:
+
+- Line 27: `dim: str` field annotation
+- Line 29: `data: Data` parameter and `-> xr.DataArray` return type
+- No bare `Any` types
 
 ## Safety & Style
 
 - ✅ No `print()` statements
-- ✅ Input validation at lines 30-31: raises `ValueError` with clear message if dimension not found
-- ✅ No mutation of input data — operates on `data.data` and returns new array
-- ✅ Line 31 at 98 characters, within 100 limit
+- ✅ Input validation at lines 30-31: checks if `dim` exists in data dimensions
+- ✅ No mutation of input data (operates on `data.data.mean()`)
+- ✅ Line length within 100 characters
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] Add `Raises:` section to docstring documenting `ValueError` when `dim` is not found in data dimensions (line 30).

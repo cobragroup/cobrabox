@@ -257,6 +257,32 @@ Provides better frequency resolution than DWT but is computationally more expens
 Returns a DataArray with dims `(space, frequency, time)`.
 Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
 
+### `EMD`
+
+```python
+# Standard EMD decomposition
+imfs = cb.feature.EMD().apply(data)
+
+# With maximum number of IMFs and mask sift method
+imfs = cb.feature.EMD(max_imfs=5, method="mask_sift").apply(data)
+
+# Keep original signal as an IMF
+imfs = cb.feature.EMD(keep_orig=True).apply(data)
+```
+
+Empirical Mode Decomposition (EMD) decomposes a signal into Intrinsic Mode
+Functions (IMFs). IMFs are oscillatory components that sum to the original
+signal, making EMD useful for separating different frequency bands without
+prior assumptions.
+
+Returns a DataArray with a new `imf` dimension containing `imf0`, `imf1`,
+etc. The last component is always the residual. Different channels may produce
+different numbers of IMFs; missing components are filled with `NaN` (not zero)
+to ensure correct statistical operations.
+
+Supports three sift methods: `sift` (standard EMD), `mask_sift` (improved mode
+separation), and `iterated_mask_sift`.
+
 ### `Cordance`
 
 ```python
@@ -408,10 +434,10 @@ Uses histogram-based entropy estimation with configurable binning strategy
 The number of bins can be specified manually or determined heuristically
 as n^(1/3) where n is the number of samples.
 
-### `SpikesCalc`
+### `SpikeCount`
 
 ```python
-spikes = cb.feature.SpikesCalc().apply(data)
+spikes = cb.feature.SpikeCount().apply(data)
 ```
 
 Detects spikes (outliers) using the IQR method. Values outside ±1.5×IQR from Q1/Q3

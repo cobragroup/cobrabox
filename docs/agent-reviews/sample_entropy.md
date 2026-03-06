@@ -1,12 +1,12 @@
 # Feature Review: sample_entropy
 
 **File**: `src/cobrabox/features/sample_entropy.py`
-**Date**: 2026-03-05
-**Verdict**: PASS (0 issues)
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-The `SampleEntropy` feature is now fully compliant with all criteria. It has excellent documentation, proper type annotations, comprehensive input validation, and clean code. The redundant time-dimension check has been removed, and the line-length violation has been fixed. The feature correctly implements sample entropy calculation with configurable embedding dimension, tolerance, and logarithm base.
+SampleEntropy is a well-implemented feature with excellent documentation and proper validation. The code follows all structural conventions and passes ruff checks. The only issue is a missing `Raises:` section in the docstring, which should document the `ValueError` exceptions raised in `__post_init__` and during computation.
 
 ## Ruff
 
@@ -33,13 +33,15 @@ Imports are correctly ordered and complete.
 
 ## Docstring
 
-✅ Excellent docstring with all required sections:
+Comprehensive Google-style docstring with most required sections:
 
-- One-line summary (line 15)
-- Extended description explaining the algorithm (lines 17-25)
-- Complete `Args:` section documenting all three fields (lines 30-37)
-- `Returns:` section describing the collapsed time dimension (lines 39-41)
-- `Example:` section showing both default and natural log usage (lines 43-45)
+- One-line summary present and descriptive
+- Extended explanation of the algorithm and its interpretation (lines 17-25)
+- `Args:` section documents all three fields (`m`, `r`, `log_base`) with types and constraints
+- `Returns:` section describes output shape correctly
+- `Example:` section includes two practical examples showing default and natural log usage
+
+**Missing**: `Raises:` section. The feature raises `ValueError` in `__post_init__` (lines 56-59) for invalid `m` and `log_base` values, and in `_sampen_one` (lines 72-75) when time series length is insufficient. These should be documented.
 
 ## Typing
 
@@ -71,4 +73,6 @@ No bare `Any` types found.
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] Add `Raises:` section to docstring documenting `ValueError` conditions:
+   - When `m < 1` or `log_base` is invalid (lines 56-59)
+   - When time series length is not greater than embedding dimension `m` (lines 72-75)

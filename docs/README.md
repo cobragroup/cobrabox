@@ -12,7 +12,7 @@ If you have any questions or problems with any of the guides. Please try to ask 
 
 ### If feature dev
 
-- Follow [`contributing_feature.md`](contributing_feature.md) for every feature
+- Follow [`contributing/features.md`](contributing/features.md) for every feature
 - For a quick reference on how to do a pr: [`how_to_make_a_pr.md`](how_to_make_a_pr.md)
 
 ## New Documentation Site

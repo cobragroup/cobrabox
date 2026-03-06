@@ -1,66 +1,78 @@
 # Feature Review: partial_correlation
 
 **File**: `src/cobrabox/features/partial_correlation.py`
-**Date**: 2026-03-05
-**Verdict**: PASS
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-This file contains two well-implemented feature classes (`PartialCorrelation` and `PartialCorrelationMatrix`) that compute partial correlation coefficients while controlling for confounding variables. The code is clean, properly typed, and follows all established conventions. Both features inherit from `BaseFeature[SignalData]`, correctly specify `output_type = Data` (since they remove the time dimension), and include comprehensive input validation. Ruff passes cleanly with no issues.
+Well-structured feature with two related classes for partial correlation computation. Clean implementation with good validation and clear docstrings. However, `PartialCorrelation` returns fake singleton dimensions instead of a proper 0-dimensional scalar, violating the no-fake-dimensions guideline. `PartialCorrelationMatrix` correctly returns a 2D matrix with appropriate dimensions.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-All checks passed!
+Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-1 file already formatted
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-Both classes correctly follow the pattern:
+Both classes properly inherit from `BaseFeature[SignalData]` and use `@dataclass`. They correctly set `output_type: ClassVar[type[Data]] = Data` since they remove the time dimension.
 
-- ✅ `@dataclass` decorator present
-- ✅ Inherit `BaseFeature[SignalData]` (line 54, 133)
-- ✅ `output_type: ClassVar[type[Data]] = Data` set correctly (line 78, 157)
-- ✅ Class names are PascalCase matching filename
-- ✅ `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray`
-- ✅ No `apply()` override (correctly inherited)
-- ✅ `from __future__ import annotations` is first import (line 1)
-- ✅ Clean import order: stdlib → third-party → internal
+- Line 54: `PartialCorrelation` — correct base class
+- Line 133: `PartialCorrelationMatrix` — correct base class
+- Line 78, 157: Correct `output_type` declarations
+
+Helper function `_compute_partial_correlation` is well-structured with proper docstring.
 
 ## Docstring
 
 Both classes have complete Google-style docstrings:
 
-- ✅ One-line summary present and descriptive
-- ✅ Extended description explains the algorithm
-- ✅ Args section documents all dataclass fields
-- ✅ Returns section describes output shape and dimensions
-- ✅ Raises section documents ValueError conditions
-- ✅ Example section shows `.apply()` usage
+- One-line summaries present (lines 55, 134)
+- Extended descriptions explain algorithm context
+- Args sections document all dataclass fields
+- Returns sections describe output shape
+- Raises sections list expected exceptions
+- Example sections show `.apply()` usage (lines 73-76, 152-155)
 
 ## Typing
 
-- ✅ All dataclass fields typed: `coord_x: str | int`, `coord_y: str | int`, `control_vars: list[str] | list[int]`
-- ✅ `__call__` return type: `xr.DataArray`
-- ✅ Helper function `_compute_partial_correlation` fully typed
-- ✅ No bare `Any` types
+All fields properly typed:
+
+- Line 80-82: `coord_x: str | int`, `coord_y: str | int`, `control_vars: list[str] | list[int]`
+- Line 159-160: `coords: list[str] | list[int]`, `control_vars: list[str] | list[int]`
+
+`__call__` return types correctly annotated as `xr.DataArray` (lines 84, 162).
 
 ## Safety & Style
 
-- ✅ No print statements
-- ✅ Input validation present and thorough:
-  - Space dimension existence check (lines 88-89, 166-167)
-  - Time dimension check (lines 92-93, 170-171)
-  - Coordinate existence in space dimension (lines 97-104, 181-189)
-  - Non-empty control_vars validation (lines 106-107, 176-177)
-- ✅ Input data is never mutated
-- ✅ Proper error handling with `np.linalg.LinAlgError` catch and re-raise as `ValueError` with helpful message (lines 38-46)
-- ✅ Handles edge case: returns 1.0 when x and y are allclose (line 31-32)
+No `print()` statements. Input validation is thorough:
+
+- Lines 88-93: Checks for required dimensions
+- Lines 97-113: Validates coordinates exist in space dimension
+- Lines 106-107, 173-177: Ensures non-empty coordinate lists
+- Lines 39-46: Handles singular matrix error with clear message
+
+No mutation of input data — works on `data.data` and returns new arrays.
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] `PartialCorrelation.__call__` creates fake singleton dimensions (lines 123-129). The result is expanded to have `time` and `space` dimensions with single values, which violates the guideline that scalar outputs should be 0-dimensional. Return a proper 0-d DataArray instead:
+
+```python
+# Current (incorrect)
+return (
+    xr.DataArray(result, dims=[])
+    .expand_dims(time_dim, axis=0)
+    .assign_coords({time_dim: [time_coord[0]]})
+    .expand_dims(space_dim, axis=0)
+    .assign_coords({space_dim: [self.coord_x]})
+)
+
+# Should be
+return xr.DataArray(result)
+```
