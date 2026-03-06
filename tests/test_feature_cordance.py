@@ -46,31 +46,31 @@ def _varied_data(
 
 
 def test_cordance_default_dims_and_shape() -> None:
-    """Default bands produce (band_index, space) output."""
+    """Default bands produce (band, space) output."""
     data = _sine_data(freq_hz=10.0)
     out = cb.feature.Cordance().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("band_index", "space")
+    assert out.data.dims == ("band", "space")
     assert out.data.shape == (5, 4)
 
 
-def test_cordance_default_band_index_coords() -> None:
-    """band_index coordinate matches the five default band names in order."""
+def test_cordance_default_band_coords() -> None:
+    """band coordinate matches the five default band names in order."""
     data = _sine_data(freq_hz=10.0)
     out = cb.feature.Cordance().apply(data)
 
     expected_names = ["delta", "theta", "alpha", "beta", "gamma"]
-    assert out.data.coords["band_index"].values.tolist() == expected_names
+    assert out.data.coords["band"].values.tolist() == expected_names
 
 
 def test_cordance_custom_bands_shape() -> None:
-    """Custom band spec produces correct shape and band_index coordinate."""
+    """Custom band spec produces correct shape and band coordinate."""
     data = _sine_data(freq_hz=10.0)
     out = cb.feature.Cordance(bands={"alpha": [8, 12]}).apply(data)
 
     assert out.data.shape == (1, 4)
-    assert out.data.coords["band_index"].values.tolist() == ["alpha"]
+    assert out.data.coords["band"].values.tolist() == ["alpha"]
 
 
 def test_cordance_mixed_spec_shape() -> None:
@@ -79,7 +79,7 @@ def test_cordance_mixed_spec_shape() -> None:
     out = cb.feature.Cordance(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
 
     assert out.data.shape == (2, 4)
-    assert out.data.coords["band_index"].values.tolist() == ["alpha", "ripple"]
+    assert out.data.coords["band"].values.tolist() == ["alpha", "ripple"]
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +119,7 @@ def test_cordance_channel_with_dominant_band_has_positive_value() -> None:
     data = _varied_data()
     out = cb.feature.Cordance().apply(data)
 
-    band_names = out.data.coords["band_index"].values.tolist()
+    band_names = out.data.coords["band"].values.tolist()
     alpha_idx = band_names.index("alpha")
     # ch2 has 10 Hz → should have highest alpha cordance
     vals = out.data.values[alpha_idx, :]  # (n_space,)
@@ -224,7 +224,7 @@ def test_cordance_in_pipeline() -> None:
     data = _varied_data()
     pipe = cb.feature.Cordance(bands={"alpha": True})
     result = pipe.apply(data)
-    assert result.data.dims == ("band_index", "space")
+    assert result.data.dims == ("band", "space")
     assert "Cordance" in result.history
 
 
