@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 max.py: 100% (14 statements, 0 missing)
 ```
 

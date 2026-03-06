@@ -11,9 +11,11 @@ This is a clean, well-structured feature implementing Lempel-Ziv Complexity (LZC
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -29,6 +31,7 @@ No `apply()` override — correctly relies on inherited behavior.
 Class name `LempelZiv` matches filename `lempel_ziv.py`.
 
 Imports are ordered correctly:
+
 1. `from __future__ import annotations`
 2. stdlib (`math`, `dataclasses`, `typing`)
 3. third-party (`numpy`, `xarray`)

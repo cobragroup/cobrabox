@@ -11,9 +11,11 @@ Excellent feature implementation. Hilbert is a clean, well-documented `BaseFeatu
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure

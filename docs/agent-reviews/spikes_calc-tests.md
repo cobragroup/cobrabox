@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 spikes_calc.py: 100% (21 statements, 0 missing)
 ```
 

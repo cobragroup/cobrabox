@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 hilbert.py: 100% (83 statements, 0 missing)
 ```
 

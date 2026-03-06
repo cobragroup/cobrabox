@@ -13,6 +13,7 @@ This file is intentionally a negative reference and should not be "fixed." The d
 Per the review criteria, `dummy.py` is excluded from quality audits as it serves as an intentional example of what NOT to do. The file contains known issues that are documented in its own docstring.
 
 Known intentional issues:
+
 - Missing type parameter on `BaseFeature` (should be `BaseFeature[SignalData]`)
 - Wrong `__call__` return type (`Data` instead of `xr.DataArray | Data`)
 - Missing `__post_init__` validation

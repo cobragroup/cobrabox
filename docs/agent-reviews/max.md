@@ -11,9 +11,11 @@ Clean, well-structured feature that computes the maximum value across a specifie
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -27,6 +29,7 @@ Clean — no formatting issues.
 ## Docstring
 
 Complete Google-style docstring with all required sections:
+
 - ✅ One-line summary (line 14)
 - ✅ `Args:` section documents the `dim` field (lines 16-17)
 - ✅ `Returns:` section describes output shape and values (lines 19-22)

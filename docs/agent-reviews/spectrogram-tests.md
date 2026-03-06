@@ -7,13 +7,14 @@
 
 ## Coverage
 
-```
+```text
 spectrogram.py: 100% (55 statements, 0 missing)
 ```
 
 ## Summary
 
 Comprehensive test suite with 22 tests covering all major functionality:
+
 - Output structure and dimension handling (5 tests)
 - Numerical correctness against scipy reference (6 tests)
 - All four scaling modes verified (log, density, spectrum, magnitude)

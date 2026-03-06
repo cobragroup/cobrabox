@@ -6,19 +6,22 @@
 
 ## Summary
 
-The `SampEn` feature is now fully compliant with all criteria. It has excellent documentation, proper type annotations, comprehensive input validation, and clean code. The redundant time-dimension check has been removed, and the line-length violation has been fixed. The feature correctly implements sample entropy calculation with configurable embedding dimension, tolerance, and logarithm base.
+The `SampleEntropy` feature is now fully compliant with all criteria. It has excellent documentation, proper type annotations, comprehensive input validation, and clean code. The redundant time-dimension check has been removed, and the line-length violation has been fixed. The feature correctly implements sample entropy calculation with configurable embedding dimension, tolerance, and logarithm base.
 
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
 
 ✅ Correct structure:
+
 - `@dataclass` decorator present
 - Inherits `BaseFeature[SignalData]` (appropriate since it operates on time series)
 - `output_type: ClassVar[type[Data] | None] = Data` correctly set (collapses time dimension)
@@ -31,6 +34,7 @@ Imports are correctly ordered and complete.
 ## Docstring
 
 ✅ Excellent docstring with all required sections:
+
 - One-line summary (line 15)
 - Extended description explaining the algorithm (lines 17-25)
 - Complete `Args:` section documenting all three fields (lines 30-37)
@@ -40,6 +44,7 @@ Imports are correctly ordered and complete.
 ## Typing
 
 ✅ All fields properly typed:
+
 - `m: int = 2`
 - `r: float | None = None`
 - `log_base: float = 2`
@@ -55,6 +60,7 @@ No bare `Any` types found.
 ✅ No `print()` statements — clean.
 
 ✅ Input validation:
+
 - `__post_init__` validates `m >= 1` (line 56-57)
 - `__post_init__` validates `log_base > 0 and != 1` (line 58-59)
 - Runtime validation in `__call__` for series length (line 71-75)

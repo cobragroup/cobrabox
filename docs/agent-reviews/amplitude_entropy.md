@@ -6,14 +6,16 @@
 
 ## Summary
 
-Ampent computes amplitude entropy using histogram-based probability estimation. Most issues from the previous review have been addressed: complete docstring added, `_is_cobrabox_feature` marker present, zero-probability filtering fixed, and proper validation added. However, two significant issues remain: (1) the return value creates fake singleton dimensions instead of a proper scalar, and (2) the `data_window` parameter is still unused and should be removed.
+AmplitudeEntropy computes amplitude entropy using histogram-based probability estimation. Most issues from the previous review have been addressed: complete docstring added, `_is_cobrabox_feature` marker present, zero-probability filtering fixed, and proper validation added. However, two significant issues remain: (1) the return value creates fake singleton dimensions instead of a proper scalar, and (2) the `data_window` parameter is still unused and should be removed.
 
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -53,13 +55,17 @@ Clean — no formatting issues.
 ## Action List
 
 1. **[Severity: HIGH]** Fix return value to avoid fake singleton dimensions (line 122). Change:
+
    ```python
    return xr.DataArray([[tabar]], dims=["time", "space"], coords={"time": [0], "space": [0]})
    ```
+
    to:
+
    ```python
    return xr.DataArray(tabar)
    ```
+
    Update the docstring `Returns:` section to describe the actual output (0-dimensional scalar).
 
 2. **[Severity: HIGH]** Remove the unused `data_window` parameter. It serves no purpose and the docstring admits it's "currently unused, reserved for future windowing functionality". Remove:

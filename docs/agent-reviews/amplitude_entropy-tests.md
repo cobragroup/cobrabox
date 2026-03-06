@@ -7,7 +7,7 @@
 
 ## Summary
 
-Ampent computes amplitude entropy from time-series data using histogram-based probability estimation. It takes a `Data` object (not SignalData - no time dimension requirement) and two parameters: `data_window` (a Data object) and `band_width` (float for histogram bin width). It returns a scalar value representing the mean entropy across all time points, wrapped in a Data container with `output_type = Data` (removing time dimension).
+AmplitudeEntropy computes amplitude entropy from time-series data using histogram-based probability estimation. It takes a `Data` object (not SignalData - no time dimension requirement) and two parameters: `data_window` (a Data object) and `band_width` (float for histogram bin width). It returns a scalar value representing the mean entropy across all time points, wrapped in a Data container with `output_type = Data` (removing time dimension).
 
 The algorithm:
 
@@ -20,7 +20,7 @@ The algorithm:
 ## Proposed test file
 
 ```python
-"""Tests for cb.feature.Ampent."""
+"""Tests for cb.feature.AmplitudeEntropy."""
 
 from __future__ import annotations
 
@@ -69,10 +69,10 @@ def _make_data_window(
 
 
 def test_ampent_basic() -> None:
-    """Ampent returns a Data object with scalar entropy value."""
+    """AmplitudeEntropy returns a Data object with scalar entropy value."""
     data = _make_data(n_time=50, n_space=10)
     data_window = _make_data_window(n_time=10, n_space=5)
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -85,12 +85,12 @@ def test_ampent_basic() -> None:
 
 
 def test_ampent_deterministic() -> None:
-    """Ampent returns same result for identical inputs."""
+    """AmplitudeEntropy returns same result for identical inputs."""
     np.random.seed(42)
     data = _make_data(n_time=30, n_space=8)
     data_window = _make_data_window(n_time=5, n_space=4)
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.3)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.3)
 
     result1 = feature.apply(data)
     result2 = feature.apply(data)
@@ -101,13 +101,13 @@ def test_ampent_deterministic() -> None:
 
 
 def test_ampent_constant_data() -> None:
-    """Ampent handles constant data (zero entropy case)."""
+    """AmplitudeEntropy handles constant data (zero entropy case)."""
     # Constant data has zero entropy (all values in one bin)
     arr = np.ones((20, 5))
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
     data_window = _make_data_window(n_time=5, n_space=3)
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -116,7 +116,7 @@ def test_ampent_constant_data() -> None:
 
 
 def test_ampent_uniform_data() -> None:
-    """Ampent returns expected entropy for uniform distribution."""
+    """AmplitudeEntropy returns expected entropy for uniform distribution."""
     # Uniform distribution across bins
     np.random.seed(42)
     n_bins = 8
@@ -134,7 +134,7 @@ def test_ampent_uniform_data() -> None:
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
     data_window = _make_data_window(n_time=5, n_space=4)
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=1.0)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=1.0)
     result = feature.apply(data)
 
     # Uniform distribution over n_bins has entropy = log2(n_bins)
@@ -145,13 +145,13 @@ def test_ampent_uniform_data() -> None:
 
 
 def test_ampent_different_band_widths() -> None:
-    """Ampent produces different results with different band_widths."""
+    """AmplitudeEntropy produces different results with different band_widths."""
     np.random.seed(42)
     data = _make_data(n_time=50, n_space=20)
     data_window = _make_data_window(n_time=10, n_space=5)
 
-    feature_narrow = cb.feature.Ampent(data_window=data_window, band_width=0.1)
-    feature_wide = cb.feature.Ampent(data_window=data_window, band_width=1.0)
+    feature_narrow = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.1)
+    feature_wide = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=1.0)
 
     result_narrow = feature_narrow.apply(data)
     result_wide = feature_wide.apply(data)
@@ -164,22 +164,22 @@ def test_ampent_different_band_widths() -> None:
 
 
 def test_ampent_history_updated() -> None:
-    """Ampent appends 'Ampent' to history."""
+    """AmplitudeEntropy appends 'AmplitudeEntropy' to history."""
     data = _make_data()
     data_window = _make_data_window()
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
-    assert result.history[-1] == "Ampent"
+    assert result.history[-1] == "AmplitudeEntropy"
 
 
 def test_ampent_metadata_preserved() -> None:
-    """Ampent preserves subjectID, groupID, condition; sampling_rate becomes None."""
+    """AmplitudeEntropy preserves subjectID, groupID, condition; sampling_rate becomes None."""
     data = _make_data(
         subjectID="s42", groupID="control", condition="task"
     )
     data_window = _make_data_window()
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
     assert result.subjectID == "s42"
@@ -190,24 +190,24 @@ def test_ampent_metadata_preserved() -> None:
 
 
 def test_ampent_returns_data_instance() -> None:
-    """Ampent.apply() always returns a Data instance."""
+    """AmplitudeEntropy.apply() always returns a Data instance."""
     data = _make_data()
     data_window = _make_data_window()
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
 
 
 def test_ampent_does_not_mutate_input() -> None:
-    """Ampent does not modify the input Data object."""
+    """AmplitudeEntropy does not modify the input Data object."""
     data = _make_data()
     data_window = _make_data_window()
     original_history = list(data.history)
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     _ = feature.apply(data)
 
     assert data.history == original_history
@@ -216,14 +216,14 @@ def test_ampent_does_not_mutate_input() -> None:
 
 
 def test_ampent_empty_row_handling() -> None:
-    """Ampent handles edge case where histogram has zero counts."""
+    """AmplitudeEntropy handles edge case where histogram has zero counts."""
     # This tests the defensive guard in the code
     # Create data that might trigger the total == 0 case
     arr = np.zeros((5, 1))  # Single value per row
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
     data_window = _make_data_window(n_time=3, n_space=2)
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=1.0)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=1.0)
     result = feature.apply(data)
 
     # Should not raise, should return finite value
@@ -231,26 +231,26 @@ def test_ampent_empty_row_handling() -> None:
 
 
 def test_ampent_negative_band_width() -> None:
-    """Ampent raises ValueError for negative band_width."""
+    """AmplitudeEntropy raises ValueError for negative band_width."""
     data_window = _make_data_window()
     with pytest.raises(ValueError):
-        cb.feature.Ampent(data_window=data_window, band_width=-0.5)
+        cb.feature.AmplitudeEntropy(data_window=data_window, band_width=-0.5)
 
 
 def test_ampent_zero_band_width() -> None:
-    """Ampent raises ValueError for zero band_width."""
+    """AmplitudeEntropy raises ValueError for zero band_width."""
     data_window = _make_data_window()
     with pytest.raises(ValueError):
-        cb.feature.Ampent(data_window=data_window, band_width=0.0)
+        cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.0)
 
 
 def test_ampent_single_row() -> None:
-    """Ampent works with single-row data."""
+    """AmplitudeEntropy works with single-row data."""
     arr = np.random.randn(1, 10)
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
     data_window = _make_data_window()
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -259,12 +259,12 @@ def test_ampent_single_row() -> None:
 
 
 def test_ampent_single_column() -> None:
-    """Ampent works with single-column data."""
+    """AmplitudeEntropy works with single-column data."""
     arr = np.random.randn(50, 1)
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
     data_window = _make_data_window()
 
-    feature = cb.feature.Ampent(data_window=data_window, band_width=0.5)
+    feature = cb.feature.AmplitudeEntropy(data_window=data_window, band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -286,7 +286,7 @@ def test_ampent_single_column() -> None:
 
 3. **[Severity: LOW]** The feature uses `data_window` parameter but doesn't actually use it in the computation - it only uses `self.band_width` and the input `data`. Consider removing this unused parameter or implementing the intended windowing behavior.
 
-4. **[Severity: LOW]** Add docstring to the `Ampent` class explaining what amplitude entropy is and how it's computed.
+4. **[Severity: LOW]** Add docstring to the `AmplitudeEntropy` class explaining what amplitude entropy is and how it's computed.
 
 ---
 

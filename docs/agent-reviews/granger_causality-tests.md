@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 granger_causality.py: 99% (90 statements, 1 missing)
 Missing line: 194 (GrangerCausalityMatrix.__post_init__ coords empty list check)
 ```

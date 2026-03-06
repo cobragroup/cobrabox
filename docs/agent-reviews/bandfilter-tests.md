@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 bandfilter.py: 100% (97 statements, 0 missing)
 ```
 

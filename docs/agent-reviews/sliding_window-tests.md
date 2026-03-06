@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 sliding_window.py: 100% (26 statements, 0 missing)
 ```
 
@@ -22,8 +22,8 @@ Excellent test coverage for the SlidingWindow SplitterFeature. The tests compreh
 - `test_sliding_window_each_window_is_data` — Tests each yielded item is Data instance
 - `test_sliding_window_preserves_metadata` — Tests metadata preservation in each window
 - `test_sliding_window_raises_when_window_too_large` — Tests window_size > signal length
-- `test_sliding_window_raises_when_window_size_less_than_one` — Tests __post_init__ validation for window_size
-- `test_sliding_window_raises_when_step_size_less_than_one` — Tests __post_init__ validation for step_size
+- `test_sliding_window_raises_when_window_size_less_than_one` — Tests **post_init** validation for window_size
+- `test_sliding_window_raises_when_step_size_less_than_one` — Tests **post_init** validation for step_size
 - `test_sliding_window_is_lazy` — Tests generator is lazy (doesn't materialize upfront)
 - `test_sliding_window_does_not_mutate_input` — Tests input Data is unchanged
 

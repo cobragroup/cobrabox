@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 phase_locking_value.py: 100% (55 statements, 0 missing)
 ```
 

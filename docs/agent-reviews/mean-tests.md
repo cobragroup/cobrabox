@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 mean.py: 100% (12 statements, 0 missing)
 ```
 

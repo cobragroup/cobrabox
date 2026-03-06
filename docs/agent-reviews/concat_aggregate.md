@@ -14,9 +14,11 @@ mirrors `MeanAggregate` — not a violation, but could be simplified.
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -26,20 +28,25 @@ Clean — no formatting issues.
 - Class name `ConcatAggregate` matches filename `concat_aggregate.py` (PascalCase) ✅
 - `__call__` signature `(self, data: Data, stream: Iterator[Data]) -> Data` matches the
   `AggregatorFeature` contract exactly ✅
+
 - No `apply()` implementation (correct — `AggregatorFeature` subclasses handle history
   themselves via `__call__`) ✅
+
 - Import order: stdlib → xarray → internal ✅; all imports used ✅
 
 ## Docstring
 
 All four sections present:
+
 - One-line summary is precise ✅
 - Extended description explains the stack-without-reduce semantic clearly ✅
 - `Args:` reads `"None. This aggregator takes no configuration parameters."` — this is
   lifted from `MeanAggregate`. Technically correct (no fields to document), but the
   `Args:` section could simply be omitted when there are no parameters. LOW.
+
 - `Returns:` section is complete: mentions `window` dimension, integer indexing, metadata
   preservation, and history ✅
+
 - `Example:` shows realistic Chord pipe usage ✅
 
 ## Typing
@@ -54,8 +61,10 @@ All four sections present:
 - Empty stream guard raises `ValueError` with descriptive message ✅
 - Input not mutated: works on `w.data` (underlying `xr.DataArray`) for each window,
   constructs a fresh `Data` object for the result ✅
+
 - History propagation mirrors `MeanAggregate` exactly: copies per-window ops not already
   in `data.history`, appends `"ConcatAggregate"` ✅
+
 - `assign_coords(window=list(range(len(items))))` correctly sets integer coordinates
   after `xr.concat` ✅
 

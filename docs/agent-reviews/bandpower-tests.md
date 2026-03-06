@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 bandpower.py: 100% (119 statements, 0 missing)
 ```
 

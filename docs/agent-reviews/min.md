@@ -11,9 +11,11 @@ A clean, well-structured generic feature that computes the minimum value across 
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure
@@ -28,6 +30,7 @@ No `apply()` override — correctly inherits from `BaseFeature`.
 ## Docstring
 
 Lines 13-25: Complete Google-style docstring with all required sections:
+
 - One-line summary (line 13) clearly states purpose
 - `Args:` section (lines 15-16) documents the `dim` field with type and description
 - `Returns:` section (lines 18-21) describes shape change and value semantics

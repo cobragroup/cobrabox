@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 lempel_ziv.py: 100% (47 statements, 0 missing)
 ```
 

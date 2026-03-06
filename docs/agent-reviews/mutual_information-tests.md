@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 mutual_information: 100% (72 statements, 0 missing)
 ```
 
@@ -30,7 +30,9 @@ Tests that are correct and complete:
 ## Fix
 
 ### File docstring (line 1)
+
 Issue: Docstring says "line_length" instead of "mutual_information"
+
 ```python
 # Corrected:
 """Tests for the mutual_information feature behavior."""

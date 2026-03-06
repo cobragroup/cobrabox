@@ -11,9 +11,11 @@ The `granger_causality.py` file contains two well-structured features (`GrangerC
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -25,6 +27,7 @@ Both classes properly use `@dataclass` decorator and inherit `BaseFeature[Signal
 ## Docstring
 
 Excellent documentation. Both classes have:
+
 - Clear one-line summaries
 - Extended descriptions explaining the algorithm and interpretation
 - Complete `Args:` sections documenting all dataclass fields
@@ -36,6 +39,7 @@ The helper function `_granger_log_ratio` also has comprehensive documentation wi
 ## Typing
 
 All dataclass fields are properly typed:
+
 - `coord_x: str | int | None`
 - `coord_y: str | int | None`
 - `lag: int | None`
@@ -52,6 +56,7 @@ All dataclass fields are properly typed:
 - Clean separation of concerns with helper function
 
 **Missing validation**: `GrangerCausalityMatrix.__post_init__` does not validate the `coords` parameter. An empty list `coords=[]` would produce a nonsensical result matrix with shape (0, 0). Consider adding:
+
 ```python
 if self.coords is not None and len(self.coords) == 0:
     raise ValueError("coords cannot be an empty list")

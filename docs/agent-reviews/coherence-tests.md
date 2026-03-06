@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 coherence.py: 100% (131 statements, 0 missing)
 ```
 

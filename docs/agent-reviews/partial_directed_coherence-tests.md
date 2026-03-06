@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 PartialDirectedCoherence: 98% (51 statements, 1 missing)
 ```
 

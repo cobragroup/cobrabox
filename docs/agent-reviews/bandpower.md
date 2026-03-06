@@ -11,9 +11,11 @@ Excellent, production-quality feature. Bandpower is a well-implemented spectral 
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure

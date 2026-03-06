@@ -11,9 +11,11 @@ Well-implemented `AggregatorFeature` that averages across windows in a stream. P
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -27,6 +29,7 @@ Clean — no formatting issues.
 ## Docstring
 
 Complete Google-style docstring with all required sections:
+
 - ✅ One-line summary (line 14)
 - ✅ Extended description explains window stacking behavior (lines 16-17)
 - ✅ `Args:` section correctly notes no configuration parameters (lines 19-20)

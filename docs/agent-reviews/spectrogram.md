@@ -11,9 +11,11 @@ A well-implemented feature that computes power spectrograms using scipy. The cod
 ## Ruff
 
 ### `uvx ruff check`
+
 Clean — no issues found.
 
 ### `uvx ruff format --check`
+
 Clean — no formatting issues.
 
 ## Signature & Structure
@@ -44,6 +46,7 @@ Complete Google-style docstring with all required sections:
 ## Typing
 
 All fields properly typed:
+
 - `nperseg: int | None = None`
 - `noverlap: int | None = None`
 - `window: str = "hann"`
@@ -58,6 +61,7 @@ No bare `Any` types.
 No `print()` statements.
 
 Input validation present (lines 67-80):
+
 - Validates `scaling` against `_VALID_SCALINGS`
 - Validates `nperseg >= 2`
 - Validates `nperseg <= n_time`

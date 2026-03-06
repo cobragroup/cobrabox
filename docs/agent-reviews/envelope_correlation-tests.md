@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 envelope_correlation.py: 100% (92 statements, 0 missing)
 ```
 

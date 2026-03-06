@@ -11,9 +11,11 @@ BandFilter is a well-implemented, production-quality feature. It correctly inher
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure

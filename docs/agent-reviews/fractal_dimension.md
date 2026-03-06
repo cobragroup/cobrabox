@@ -50,7 +50,7 @@ with `k_max` description and constraint ✅, `Returns:` with shape and value ran
 
 `FractalDimHiguchi.k_max: int` annotated (line 57). `_higuchi_1d(signal:
 np.ndarray, k_max: int) -> float` fully annotated (line 74). `_katz_1d(signal:
-np.ndarray) -> float` fully annotated (line 136). Both `__call__` methods return
+np.ndarray) -> float` fully annotated (line 136). Both `**call**` methods return
 `xr.DataArray`, which satisfies the `xr.DataArray | Data` contract. No bare `Any`.
 
 **LOW note**: `N` (line 76) is uppercase, deviating from PEP 8. This is an accepted

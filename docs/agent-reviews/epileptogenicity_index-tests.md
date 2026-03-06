@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 epileptogenicity_index.py: 100% (224 statements, 0 missing)
 ```
 

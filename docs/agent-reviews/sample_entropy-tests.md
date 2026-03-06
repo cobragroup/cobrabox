@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 sample_entropy.py: 100% (42 statements, 0 missing)
 ```
 
@@ -25,7 +25,7 @@ All tests are correct and complete:
 - `test_sampen_natural_log` — tests alternative log_base ✓
 - `test_sampen_base_10` — tests base-10 logarithm ✓
 - `test_sampen_raises_on_short_series` — tests runtime guard for short series ✓
-- `test_sampen_raises_on_invalid_log_base` — tests __post_init__ validation for log_base ✓
+- `test_sampen_raises_on_invalid_log_base` — tests **post_init** validation for log_base ✓
 - `test_sampen_multi_dim_preserves_other_dims` — tests multi-dimensional input handling ✓
 - `test_sampen_invalid_m` — tests `m < 1` validation ✓
 - `test_sampen_no_matches_returns_nan` — tests NaN return when no matches found ✓

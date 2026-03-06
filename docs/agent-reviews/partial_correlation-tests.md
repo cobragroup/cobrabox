@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 partial_correlation.py: 100% (84 statements, 0 missing)
 ```
 

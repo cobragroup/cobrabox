@@ -11,9 +11,11 @@ Excellent implementation of a `SplitterFeature`. The code is clean, well-documen
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure

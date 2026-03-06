@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 line_length.py: 100% (37 statements, 0 missing)
 ```
 

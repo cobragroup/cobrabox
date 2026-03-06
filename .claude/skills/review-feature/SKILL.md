@@ -25,6 +25,7 @@ Follow these steps in order:
 Read `$ARGUMENTS` in full.
 
 **Special case**: If the file is `src/cobrabox/features/dummy.py`, skip the review and report:
+
 ```text
 Review skipped — dummy.py is an intentional negative reference (not to be fixed)
 ```
@@ -49,7 +50,26 @@ Determine the feature name from the filename (e.g. `my_feature.py` → `my_featu
 Create `docs/agent-reviews/` if it does not exist. Write the review to
 `docs/agent-reviews/<feature-name>.md` using the output format below.
 
-### 5. Report to conversation
+### 5. Validate review file with markdownlint
+
+Run markdownlint on the generated review file to ensure it has no markdown formatting issues:
+
+```bash
+markdownlint docs/agent-reviews/<feature-name>.md
+```
+
+If markdownlint reports any errors, fix them in the review file before proceeding.
+
+Common issues to fix:
+
+- Missing blank lines around headings (MD022)
+- Missing blank lines around lists (MD032)
+- Missing blank lines around fenced code blocks (MD031)
+- Missing language specifier on code blocks (MD040)
+
+**Important exception for MD050 (strong-style)**: Do NOT convert `__` to `**` when it appears inside code blocks or inline code. Patterns like `__future__`, `__call__`, `__init__`, etc. are Python dunder names and must remain as `__name__`. Only fix bold text that uses `__text__` outside of code.
+
+### 6. Report to conversation
 
 After writing the file, print a single line to the conversation:
 

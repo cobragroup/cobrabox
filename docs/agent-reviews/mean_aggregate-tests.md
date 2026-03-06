@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 mean_aggregate.py: 100% (16 statements, 0 missing)
 ```
 

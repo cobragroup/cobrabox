@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 dummy.py: 100% (19 statements, 0 missing)
 ```
 

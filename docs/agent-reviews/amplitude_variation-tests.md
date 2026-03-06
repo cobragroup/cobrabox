@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 amplitude_variation.py: 100% (13 statements, 0 missing)
 ```
 

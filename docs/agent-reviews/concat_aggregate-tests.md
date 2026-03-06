@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 concat_aggregate.py: 100% (16 statements, 0 missing)
 ```
 
@@ -34,6 +34,7 @@ Helper function returns `cb.Data` instead of `cb.SignalData` — minor style poi
 - `test_concat_aggregate_propagates_window_history` — checks `history[-1]` ✅
 - `test_concat_aggregate_does_not_mutate_original` — checks history and shape for both
   original and each window ✅
+
 - `test_concat_aggregate_returns_data_instance` — `isinstance(result, cb.Data)` ✅
 - `test_concat_aggregate_via_chord` — full end-to-end with pipe syntax ✅
 - `test_concat_aggregate_accessible_via_cb_feature` — namespace identity check ✅

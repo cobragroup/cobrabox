@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 ReciprocalConnectivity: 98% (62 statements, 1 missing)
 Missing: line 175 (fallback when space_to not in mat.coords)
 ```

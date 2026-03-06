@@ -7,7 +7,7 @@
 
 ## Coverage
 
-```
+```text
 autocorr.py: 100% (95 statements, 0 missing)
 ```
 

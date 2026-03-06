@@ -11,9 +11,11 @@ The `SlidingWindowReduce` feature is well-written and compliant with all cobrabo
 ## Ruff
 
 ### `uvx ruff check`
+
 All checks passed!
 
 ### `uvx ruff format --check`
+
 1 file already formatted
 
 ## Signature & Structure
