@@ -99,6 +99,14 @@ feat = cb.feature.LineLength().apply(data)
 
 Sum of absolute differences between consecutive timepoints per channel.
 
+**Paper demonstrating usefulness of the `Line Length` feature for seizure onset detection in iEEG:**
+
+Esteller, R., J. Echauz, T. Tcheng, B. Litt, and B. Pless. 2001. “Line Length: An Efficient Feature for Seizure Onset Detection.” 2001 Conference Proceedings of the 23rd Annual International Conference of the IEEE Engineering in Medicine and Biology Society, 1707–10. [https://doi.org/10.1109/IEMBS.2001.1020545](https://doi.org/10.1109/IEMBS.2001.1020545).
+
+**Paper demonstrating usufulness of the `Line Length` feature for identification of high-frequency oscillations (HFOs):**
+
+Gardner, Andrew B., Greg A. Worrell, Eric Marsh, Dennis Dlugos, and Brian Litt. 2007. “Human and Automated Detection of High-Frequency Oscillations in Clinical Intracranial EEG Recordings.” Clinical Neurophysiology 118 (5): 1134–43. https://doi.org/10.1016/j.clinph.2006.12.019.
+
 ### `Min` / `Max` / `Mean`
 
 ```python
