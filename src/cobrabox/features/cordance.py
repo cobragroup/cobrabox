@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
@@ -82,8 +82,8 @@ class Cordance(BaseFeature[SignalData]):
 
     output_type: ClassVar[type[Data]] = Data
 
-    bands: dict[str, list[float] | bool] | None = field(default=None)
-    nperseg: int | None = field(default=None)
+    bands: dict[str, list[float] | bool] | None = None
+    nperseg: int | None = None
 
     def __post_init__(self) -> None:
         if self.nperseg is not None and self.nperseg < 2:
@@ -107,8 +107,11 @@ class Cordance(BaseFeature[SignalData]):
 
         # ── Relative power ───────────────────────────────────────────
         total = ap.sum(dim="band_index")
-        # Guard against division by zero
-        total = xr.where(total == 0, 1.0, total)
+        if (total == 0).any():
+            raise ValueError(
+                "Total bandpower is zero for one or more channels. "
+                "Cordance requires non-zero spectral power (check for zero signals)."
+            )
         rp = ap / total
 
         # ── Log-transform ────────────────────────────────────────────

@@ -313,6 +313,15 @@ def test_cordance_raises_when_nperseg_less_than_2() -> None:
         cb.feature.Cordance(nperseg=1)
 
 
+def test_cordance_raises_on_zero_signal() -> None:
+    """ValueError raised when input signal is all zeros (zero bandpower)."""
+    arr = np.zeros((4, 512))  # 4 channels, all zeros
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=256.0)
+
+    with pytest.raises(ValueError, match="Total bandpower is zero"):
+        cb.feature.Cordance().apply(data)
+
+
 def test_cordance_raises_for_false_band_spec() -> None:
     data = _varied_data()
     with pytest.raises(ValueError, match="must be True"):
