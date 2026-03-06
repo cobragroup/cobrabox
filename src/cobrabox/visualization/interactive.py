@@ -1,17 +1,21 @@
 """Interactive visualization module for cobrabox time-series data.
 
 This module provides interactive plotting capabilities for exploring EEG/fMRI
-time-series data with detailed time-window analysis.
+time-series data with detailed time-window analysis and interactive dimension
+selection for the Y-axis.
 
 Integration with cobrabox:
     The InteractiveExplorer class accepts a cobrabox Data object and enables
     interactive navigation through the signal with time-window magnification.
+    Time is always on the X-axis, while any non-time dimension can be selected
+    for the Y-axis.
 
     Typical workflow:
 
     1. Load or create Data object
     2. Create InteractiveExplorer with the Data object
     3. Call .vis() to display interactive plot
+    4. Use Prev/Next Dim buttons to switch between dimensions
 
 Example:
     >>> import cobrabox as cb
@@ -48,13 +52,15 @@ if TYPE_CHECKING:
 class InteractiveExplorer:
     """Interactive visualization and exploration of time-series data.
 
-    Creates an interactive figure for exploring time-series data with:
-    - Upper plot: full signal averaged over space dimension
-    - Lower plot: individual space-indexed traces (line plots or heatmap)
-    - Interactive controls: sliders and buttons for navigation
+    Creates an interactive figure for exploring time-series data with
+    interactive dimension selection on the Y-axis and time on X-axis:
+    - X-axis: always time dimension
+    - Y-axis: interactive selection of any non-time dimension
+    - Upper plot: full signal averaged over current Y-axis dimension
+    - Lower plot: individual dimension-indexed traces (line plots or heatmap)
+    - Interactive controls: sliders, buttons for time navigation, buttons for dimension selection
 
-    The data object must have 'time' and 'space' dimensions as required by
-    cobrabox Data containers.
+    The data object must have 'time' dimension and at least one other dimension.
 
     Attributes:
         data: cobrabox Data object to visualize
@@ -62,7 +68,10 @@ class InteractiveExplorer:
         spacing_scale: Scaling factor for automatic trace spacing (line plot mode)
         window_size: Window size for lower plot magnification
         pos: Current position in signal
-        space_indices: List of space indices to visualize
+        space_indices: List of indices in current dimension to visualize
+        non_time_dims: List of all non-time dimension names
+        current_dim_idx: Index of currently displayed dimension
+        current_dim: Name of currently displayed dimension
         y_limits: Y-axis limits tuple (auto-scaled if None, line plot mode)
         use_heatmap: Whether to use heatmap visualization (True) or line plots (False)
         spacing: Calculated vertical spacing between traces (computed in vis(), line plot mode)
@@ -83,9 +92,10 @@ class InteractiveExplorer:
         """Initialize InteractiveExplorer.
 
         Args:
-            data: cobrabox Data object with 'time' and 'space' dimensions.
-                Upper plot shows average over space.
-                Lower plot shows individual space-indexed traces or heatmap.
+            data: cobrabox Data object with 'time' dimension and at least one other dimension.
+                X-axis (time) is fixed. Y-axis dimension can be chosen interactively.
+                Upper plot shows average over current Y-axis dimension.
+                Lower plot shows individual dimension-indexed traces or heatmap.
             point_positions: Event positions array (1D) in time dimension for marking.
                 If None, no events are marked. Example: np.array([100, 500, 1000])
             fs: Sampling frequency in Hz.
@@ -95,15 +105,15 @@ class InteractiveExplorer:
                 Only used for line plot mode (use_heatmap=False).
             window_size: Window size for lower plot magnification.
             pos: Initial position to display.
-            space_indices: Optional list of space indices to visualize.
-                If None, plots all channels.
+            space_indices: Optional list of indices in current dimension to visualize.
+                If None, plots all indices in current dimension.
             y_limits: (min, max) for y-axis range of each trace. If None, auto-scales.
                 Only used for line plot mode (use_heatmap=False).
             use_heatmap: If True, display traces as heatmap. If False (default),
                 display as offset line plots.
 
         Raises:
-            ValueError: If data lacks required dimensions
+            ValueError: If data lacks 'time' dimension or has no non-time dimensions
         """
         # Validate main data
         if not hasattr(data, "data"):
@@ -118,13 +128,20 @@ class InteractiveExplorer:
         if "time" not in xr_data.dims:
             msg = "data must have 'time' dimension"
             raise ValueError(msg)
-        if "space" not in xr_data.dims:
-            msg = "data must have 'space' dimension"
+
+        # Get all non-time dimensions
+        self.non_time_dims = [dim for dim in xr_data.dims if dim != "time"]
+        if len(self.non_time_dims) == 0:
+            msg = "data must have at least one non-time dimension"
             raise ValueError(msg)
 
         # Store data (work with xarray directly)
         self.data = data
         self.xr_data = xr_data
+
+        # Initialize dimension tracking (similar to InteractiveConnectivityExplorer)
+        self.current_dim_idx = 0
+        self.current_dim: str = str(self.non_time_dims[0])
 
         # Validate and store point_positions
         if point_positions is not None:
@@ -135,15 +152,15 @@ class InteractiveExplorer:
         else:
             self.point_positions = np.array([], dtype=int)
 
-        # Determine space indices to plot
-        n_space = self.xr_data.sizes["space"]
+        # Determine dimension indices to plot (for current dimension)
+        n_dim = self.xr_data.sizes[self.current_dim]
         if space_indices is None:
-            self.space_indices = list(range(n_space))
+            self.space_indices = list(range(n_dim))
         else:
             self.space_indices = list(space_indices)
             # Validate indices are within bounds
-            if any(idx < 0 or idx >= n_space for idx in self.space_indices):
-                msg = f"space_indices must be in range [0, {n_space})"
+            if any(idx < 0 or idx >= n_dim for idx in self.space_indices):
+                msg = f"space_indices must be in range [0, {n_dim})"
                 raise ValueError(msg)
 
         # Store parameters
@@ -167,6 +184,9 @@ class InteractiveExplorer:
         self.upper_slider = None
         self.button_prev = None
         self.button_next = None
+        self.button_prev_dim = None
+        self.button_next_dim = None
+        self.dim_text = None
         self.line = None
         self.event_markers = None
         self.ax_lower = None
@@ -184,16 +204,16 @@ class InteractiveExplorer:
         """Prepare data structures from xarray Data object.
 
         Computes:
-        - data_glob: Average of data over 'space' dimension (xarray)
-        - space_coords: Space dimension coordinates for labels
+        - data_glob: Average of data over current dimension (xarray)
+        - dimension_coords: Dimension coordinates for labels
         """
-        # Compute data_glob: mean over space dimension, keep as xarray
-        self.data_glob_xr = self.xr_data.mean(dim="space")
+        # Compute data_glob: mean over current dimension, keep as xarray
+        self.data_glob_xr = self.xr_data.mean(dim=str(self.current_dim))
 
-        # Extract space coordinate for individual traces
+        # Extract dimension coordinate for individual traces
         # This will be used for trace labels and indexing
-        self.space_coords = self.xr_data.coords["space"]
-        self.n_space = len(self.space_coords)
+        self.dimension_coords = self.xr_data.coords[self.current_dim]
+        self.n_dim = len(self.dimension_coords)
 
     def vis(self) -> None:
         """Display interactive visualization window.
@@ -215,8 +235,8 @@ class InteractiveExplorer:
 
         # Calculate spacing and heatmap range from ENTIRE time series
         # This ensures consistent spacing and coloring even when time_range changes
-        # Use only selected space_indices for range calculation
-        all_values = self.xr_data.isel(space=self.space_indices).values
+        # Use only selected indices for range calculation (from current dimension)
+        all_values = self.xr_data.isel({self.current_dim: self.space_indices}).values
         data_min = np.nanmin(all_values)
         data_max = np.nanmax(all_values)
         data_range = data_max - data_min
@@ -275,9 +295,37 @@ class InteractiveExplorer:
         self._update_lower_plot(ax_lower)
 
         # =====================================================================
+        # BUTTONS: Dimension selection (if multiple non-time dimensions)
+        # =====================================================================
+        slider_left = 0.2
+        slider_width = 0.6
+        slider_height = 0.03
+        slider_bottom = 0.08 if len(self.non_time_dims) > 1 else 0.06
+
+        if len(self.non_time_dims) > 1:
+            # Prev dimension button
+            ax_button_prev_dim = self.fig.add_axes((0.05, slider_bottom, 0.12, 0.035))
+            self.button_prev_dim = Button(ax_button_prev_dim, "< Prev Dim")
+            self.button_prev_dim.on_clicked(self._on_prev_dim)
+
+            # Next dimension button
+            ax_button_next_dim = self.fig.add_axes((0.83, slider_bottom, 0.12, 0.035))
+            self.button_next_dim = Button(ax_button_next_dim, "Next Dim >")
+            self.button_next_dim.on_clicked(self._on_next_dim)
+
+            # Dimension text
+            self.dim_text = self.fig.text(
+                0.5, slider_bottom + 0.06, "", ha="center", fontsize=9, weight="bold"
+            )
+            self._update_dim_text()
+
+            slider_width = 0.4
+            slider_left = 0.35
+
+        # =====================================================================
         # SLIDER: Position navigation
         # =====================================================================
-        ax_slider_pos = self.fig.add_axes((0.2, 0.06, 0.6, 0.03))
+        ax_slider_pos = self.fig.add_axes((slider_left, 0.06, slider_width, slider_height))
         self.upper_slider = Slider(
             ax=ax_slider_pos,
             label="Position",
@@ -323,7 +371,12 @@ class InteractiveExplorer:
             cbar.set_label("Amplitude", fontsize=9)
 
         # Display
-        self.fig.tight_layout(rect=(0, 0.08 if len(self.point_positions) > 0 else 0.05, 1, 1))
+        extra_bottom = 0.0
+        if len(self.point_positions) > 0:
+            extra_bottom += 0.03
+        if len(self.non_time_dims) > 1:
+            extra_bottom += 0.05
+        self.fig.tight_layout(rect=(0, 0.05 + extra_bottom, 1, 1))
         plt.show()
 
     def _get_time_bounds(self, pos: int) -> tuple[int, int]:
@@ -367,7 +420,7 @@ class InteractiveExplorer:
             self._plot_linetraces_lower(ax_lower, time_window_coords)
 
     def _plot_linetraces_lower(self, ax_lower: Axes, time_window_coords: np.ndarray) -> None:
-        """Plot individual space traces as offset line plots.
+        """Plot individual dimension traces as offset line plots.
 
         Args:
             ax_lower: Matplotlib axes for lower plot
@@ -376,25 +429,25 @@ class InteractiveExplorer:
         # Ensure spacing is initialized (set in vis())
         assert self.spacing is not None, "spacing must be set by vis() before plotting"
 
-        # Plot each selected space trace
-        for plot_idx, space_idx in enumerate(self.space_indices):
-            # Extract space trace
-            trace = self.xr_data.isel(space=space_idx).values
+        # Plot each selected index from current dimension
+        for plot_idx, dim_idx in enumerate(self.space_indices):
+            # Extract dimension trace
+            trace = self.xr_data.isel({self.current_dim: dim_idx}).values
             trace_window = trace[self.vis_down : self.vis_up]
 
             # Apply vertical offset based on calculated spacing
             offset_y = plot_idx * self.spacing
             trace_vis = trace_window + offset_y
 
-            # Get space coordinate for label
-            space_label = self.space_coords.values[space_idx]
+            # Get dimension coordinate for label
+            dim_label = self.dimension_coords.values[dim_idx]
 
             # Plot
             ax_lower.plot(
                 time_window_coords,
                 trace_vis,
                 color="0.3",
-                label=f"space[{space_label}]",
+                label=f"{self.current_dim}[{dim_label}]",
                 linewidth=1.0,
             )
 
@@ -406,7 +459,7 @@ class InteractiveExplorer:
         # ax_lower.legend(loc="upper right", fontsize="small")
 
     def _plot_heatmap_lower(self, ax_lower: Axes, time_window_coords: np.ndarray) -> None:
-        """Plot space traces as heatmap visualization.
+        """Plot dimension traces as heatmap visualization.
 
         Uses global data range (vmin/vmax) for consistent coloring across all windows.
 
@@ -414,18 +467,18 @@ class InteractiveExplorer:
             ax_lower: Matplotlib axes for lower plot
             time_window_coords: Time coordinates for the window
         """
-        # Extract data for selected space indices in time window
+        # Extract data for selected indices from current dimension in time window
         heatmap_data = []
-        space_labels = []
+        dim_labels = []
 
-        for space_idx in self.space_indices:
-            trace = self.xr_data.isel(space=space_idx).values
+        for dim_idx in self.space_indices:
+            trace = self.xr_data.isel({self.current_dim: dim_idx}).values
             trace_window = trace[self.vis_down : self.vis_up]
             heatmap_data.append(trace_window)
-            space_label = self.space_coords.values[space_idx]
-            space_labels.append(f"space[{space_label}]")
+            dim_label = self.dimension_coords.values[dim_idx]
+            dim_labels.append(f"{self.current_dim}[{dim_label}]")
 
-        # Convert to 2D array: (space, time)
+        # Convert to 2D array: (dimension, time)
         heatmap_array = np.array(heatmap_data)
 
         # Create heatmap with global range for consistent coloring
@@ -447,10 +500,10 @@ class InteractiveExplorer:
 
         # Set labels and formatting
         ax_lower.set_xlabel("Time")
-        ax_lower.set_ylabel("Space")
+        ax_lower.set_ylabel(str(self.current_dim))
         ax_lower.set_title(f"Heatmap view (window: {self.window_size} samples)")
         ax_lower.set_yticks(range(len(self.space_indices)))
-        ax_lower.set_yticklabels(space_labels, fontsize=8)
+        ax_lower.set_yticklabels(dim_labels, fontsize=8)
 
     def _on_slider_change(self, val: float) -> None:
         """Handle slider position change.
@@ -477,6 +530,104 @@ class InteractiveExplorer:
         self._update_lower_plot(self.ax_lower)
 
         # Redraw
+        self.fig.canvas.draw_idle()
+
+    # =========================================================================
+    # DIMENSION SELECTION METHODS
+    # =========================================================================
+
+    def _update_dimension(self) -> None:
+        """Update current dimension and related attributes.
+
+        Called when current_dim_idx changes. Recalculates data structures
+        for the new dimension and refreshes visualization.
+        """
+        self.current_dim = str(self.non_time_dims[self.current_dim_idx])
+
+        # Update dimension indices to plot
+        n_dim = self.xr_data.sizes[self.current_dim]
+        self.space_indices = list(range(n_dim))
+
+        # Re-prepare data for new dimension
+        self._prepare_data()
+
+    def _update_dim_text(self) -> None:
+        """Update dimension selection display text.
+
+        Shows current dimension and progress (e.g., "Dimension: space (1/3)").
+        """
+        if self.dim_text is None:
+            return
+        current_num = self.current_dim_idx + 1
+        dim_str = f"Dimension: {self.current_dim}  ({current_num}/{len(self.non_time_dims)})"
+        self.dim_text.set_text(dim_str)
+
+    def _on_prev_dim(self, event: Event | None = None) -> None:
+        """Button callback: move to previous dimension.
+
+        Wraps around from first to last dimension.
+
+        Args:
+            event: Matplotlib button event (unused)
+        """
+        if len(self.non_time_dims) <= 1:
+            return
+
+        self.current_dim_idx = (self.current_dim_idx - 1) % len(self.non_time_dims)
+        self._update_dimension()
+        self._update_dim_text()
+
+        # Recalculate spacing and heatmap range for new dimension
+        all_values = self.xr_data.isel({self.current_dim: self.space_indices}).values
+        data_min = np.nanmin(all_values)
+        data_max = np.nanmax(all_values)
+        data_range = data_max - data_min
+        if data_range == 0:
+            data_range = 1.0
+        self.spacing = self.spacing_scale * data_range
+        self.heatmap_vmin = data_min
+        self.heatmap_vmax = data_max
+
+        # Update lower plot
+        assert self.ax_lower is not None, "ax_lower must be initialized by vis()"
+        self._update_lower_plot(self.ax_lower)
+
+        # Redraw
+        assert self.fig is not None, "fig must be initialized by vis()"
+        self.fig.canvas.draw_idle()
+
+    def _on_next_dim(self, event: Event | None = None) -> None:
+        """Button callback: move to next dimension.
+
+        Wraps around from last to first dimension.
+
+        Args:
+            event: Matplotlib button event (unused)
+        """
+        if len(self.non_time_dims) <= 1:
+            return
+
+        self.current_dim_idx = (self.current_dim_idx + 1) % len(self.non_time_dims)
+        self._update_dimension()
+        self._update_dim_text()
+
+        # Recalculate spacing and heatmap range for new dimension
+        all_values = self.xr_data.isel({self.current_dim: self.space_indices}).values
+        data_min = np.nanmin(all_values)
+        data_max = np.nanmax(all_values)
+        data_range = data_max - data_min
+        if data_range == 0:
+            data_range = 1.0
+        self.spacing = self.spacing_scale * data_range
+        self.heatmap_vmin = data_min
+        self.heatmap_vmax = data_max
+
+        # Update lower plot
+        assert self.ax_lower is not None, "ax_lower must be initialized by vis()"
+        self._update_lower_plot(self.ax_lower)
+
+        # Redraw
+        assert self.fig is not None, "fig must be initialized by vis()"
         self.fig.canvas.draw_idle()
 
     # =========================================================================

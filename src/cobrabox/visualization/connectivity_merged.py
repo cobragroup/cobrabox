@@ -40,9 +40,8 @@ class ConnectivityPlotter:
       - Slice navigation for remaining dimensions
       - Global colorbar for consistent coloring across all views
 
-    The data should have at least 2 non-time dimensions representing connectivity
-    relationships. If a time dimension is present, it must have exactly 1 coordinate
-    (which will be automatically dropped). Time-series data is not supported.
+    The data should have 'time' dimension plus at least 2 other dimensions
+    representing connectivity relationships.
 
     Examples:
         >>> import cobrabox as cb
@@ -65,12 +64,6 @@ class ConnectivityPlotter:
         >>> data_4d = cb.Data(xr.DataArray(
         ...     conn_4d,
         ...     dims=['source', 'target', 'band', 'region'],
-        ...     coords={
-        ...         'source': range(6),
-        ...         'target': range(6),
-        ...         'band': ['alpha', 'beta', 'gamma'],
-        ...         'region': ['left', 'right']
-        ...     }
         ... ))
         >>> plotter = ConnectivityPlotter()
         >>> plotter.vis(data_4d)  # Interactive mode
