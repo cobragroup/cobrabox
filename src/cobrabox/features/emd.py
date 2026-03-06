@@ -51,6 +51,12 @@ class EMD(BaseFeature[SignalData]):
             (and ``original`` if ``keep_orig=True``).
             Shape is the same as input with an additional ``imf`` dimension.
 
+            An ``n_imfs`` dict in ``attrs`` tracks the number of actual IMFs
+            extracted per channel (excluding residual and original). Keys are
+            channel names (e.g. ``"Fp1"`` or ``"Fp1/A"`` for multi-dimensional),
+            or ``"signal"`` for 1D data. This is useful when channels produce
+            different numbers of IMFs and missing IMFs are filled with NaN.
+
     Example:
         >>> result = cb.feature.EMD().apply(data)
         >>> result = cb.feature.EMD(max_imfs=5, method="mask_sift").apply(data)
@@ -77,14 +83,21 @@ class EMD(BaseFeature[SignalData]):
         if self.max_imfs is not None:
             sift_kwargs["max_imfs"] = self.max_imfs
 
-        def _apply_emd(x: xr.DataArray) -> xr.DataArray:
-            """Apply EMD to a 1D time-series and return DataArray with imf dimension."""
+        def _apply_emd(x: xr.DataArray) -> tuple[xr.DataArray, int]:
+            """Apply EMD to a 1D time-series and return DataArray with imf dimension.
+
+            Returns:
+                Tuple of (DataArray with IMFs, number of actual IMFs extracted).
+            """
             imfs = sift_func(x.values, **sift_kwargs)
             # Check if IMFs sum to original — if not, compute residual explicitly
             imf_sum = imfs.sum(axis=1)
             if not np.allclose(imf_sum, x.values):
                 residual = x.values - imf_sum
                 imfs = np.column_stack([imfs, residual])
+
+            # Count actual IMFs (excluding residual, excluding original)
+            n_actual_imfs = imfs.shape[1] - 1  # -1 for residual
 
             # Build labels: optionally include original, then imf0..imfN, then residual
             n_imfs = imfs.shape[1]
@@ -95,9 +108,10 @@ class EMD(BaseFeature[SignalData]):
                 imfs = np.column_stack([x.values, imfs])
                 imf_labels = ["original", *imf_labels]
 
-            return xr.DataArray(
+            da = xr.DataArray(
                 imfs, dims=["time", "imf"], coords={"time": x.coords["time"], "imf": imf_labels}
             )
+            return da, n_actual_imfs
 
         # Apply EMD along time axis, vectorizing over all other dimensions
         xr_data = data.data
@@ -105,17 +119,30 @@ class EMD(BaseFeature[SignalData]):
 
         if not non_time_dims:
             # Single 1D time-series
-            return _apply_emd(xr_data)
+            result, n_imfs_count = _apply_emd(xr_data)
+            result.attrs["n_imfs"] = {"signal": n_imfs_count}
+            return result
 
         # Stack all non-time dimensions into a single 'stacked' dimension
         stacked = xr_data.stack(stacked=non_time_dims)
 
         # Apply EMD to each 1D slice
         imf_arrays = []
+        n_imfs_dict: dict[str, int] = {}
         for i in range(stacked.sizes["stacked"]):
             slice_1d = stacked.isel(stacked=i)
-            imf_result = _apply_emd(slice_1d)
+            imf_result, n_imfs_count = _apply_emd(slice_1d)
             imf_arrays.append(imf_result)
+
+            # Build key from stacked coordinate values (always a tuple, even for single dim)
+            coord_val = stacked.coords["stacked"].values[i]
+            if len(non_time_dims) == 1:
+                # Single non-time dim: use the value directly (not as tuple string)
+                key = str(coord_val[0])
+            else:
+                # Multiple non-time dims: join with "/"
+                key = "/".join(str(v) for v in coord_val)
+            n_imfs_dict[key] = n_imfs_count
 
         # Combine results: each has dims (time, imf), we need to concat along a new dim
         # then unstack to recover original non-time dims
@@ -124,4 +151,7 @@ class EMD(BaseFeature[SignalData]):
         # operations like mean() will give correct results (not diluted by fake zeros)
         combined = xr.concat(imf_arrays, dim="stacked", join="outer", fill_value=np.nan)
         combined = combined.assign_coords(stacked=stacked.coords["stacked"])
-        return combined.unstack("stacked")
+
+        result = combined.unstack("stacked")
+        result.attrs["n_imfs"] = n_imfs_dict
+        return result

@@ -242,6 +242,97 @@ def test_emd_1d_data() -> None:
 
 
 # ---------------------------------------------------------------------------
+# n_imfs coordinate tracking
+# ---------------------------------------------------------------------------
+
+
+def test_emd_1d_data_n_imfs_in_attrs() -> None:
+    """For 1D data, n_imfs is stored in attrs as a dict with 'signal' key."""
+    rng = np.random.default_rng(42)
+    arr = rng.standard_normal(200)
+    data = cb.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
+    result = cb.feature.EMD(max_imfs=3).apply(data)
+
+    # n_imfs should be in attrs as a dict
+    assert "n_imfs" in result.data.attrs
+    n_imfs = result.data.attrs["n_imfs"]
+    assert isinstance(n_imfs, dict)
+    assert "signal" in n_imfs
+    assert n_imfs["signal"] > 0
+
+    # n_imfs should equal number of imf coords minus residual (and minus original if present)
+    imf_coords = list(result.data.coords["imf"].values)
+    expected_n_imfs = len([c for c in imf_coords if c.startswith("imf")])
+    assert n_imfs["signal"] == expected_n_imfs
+
+
+def test_emd_1d_data_n_imfs_correct_with_keep_orig() -> None:
+    """n_imfs count is correct even when keep_orig=True."""
+    rng = np.random.default_rng(42)
+    arr = rng.standard_normal(200)
+    data = cb.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
+    result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
+
+    n_imfs = result.data.attrs["n_imfs"]["signal"]
+    imf_coords = list(result.data.coords["imf"].values)
+    # Should not count 'original' or 'residual'
+    expected_n_imfs = len([c for c in imf_coords if c.startswith("imf")])
+    assert n_imfs == expected_n_imfs
+
+
+def test_emd_multidim_n_imfs_in_attrs() -> None:
+    """For multi-dimensional data, n_imfs is stored in attrs as a dict."""
+    data = _make_data(n_time=200, n_space=3)
+    result = cb.feature.EMD(max_imfs=3).apply(data)
+
+    # n_imfs should be in attrs as a dict
+    assert "n_imfs" in result.data.attrs
+    n_imfs = result.data.attrs["n_imfs"]
+    assert isinstance(n_imfs, dict)
+
+    # Should have 3 entries (one per space coordinate)
+    assert len(n_imfs) == 3
+    # All values should be positive integers
+    assert all(v > 0 for v in n_imfs.values())
+
+
+def test_emd_multidim_n_imfs_keys_match_coords() -> None:
+    """n_imfs dict keys match the coordinate values."""
+    arr = np.random.default_rng(0).standard_normal((200, 4))
+    xr_da = xr.DataArray(
+        arr,
+        dims=["time", "space"],
+        coords={"time": np.arange(200) / 100.0, "space": ["Fp1", "Fp2", "C3", "C4"]},
+    )
+    data = cb.from_xarray(xr_da, subjectID="s1")
+    result = cb.feature.EMD(max_imfs=3).apply(data)
+
+    n_imfs = result.data.attrs["n_imfs"]
+    # Keys should be the space coordinate values
+    assert set(n_imfs.keys()) == {"Fp1", "Fp2", "C3", "C4"}
+
+
+def test_emd_3d_data_n_imfs_dict() -> None:
+    """n_imfs dict works with 3D data (time, space, channel)."""
+    rng = np.random.default_rng(42)
+    arr = rng.standard_normal((100, 2, 2))
+    xr_da = xr.DataArray(
+        arr, dims=["time", "space", "channel"], coords={"space": ["A", "B"], "channel": ["X", "Y"]}
+    )
+    data = cb.from_xarray(xr_da, subjectID="s1")
+    result = cb.feature.EMD(max_imfs=3).apply(data)
+
+    # n_imfs should be in attrs as a dict
+    assert "n_imfs" in result.data.attrs
+    n_imfs = result.data.attrs["n_imfs"]
+    assert isinstance(n_imfs, dict)
+
+    # Should have 4 entries (2 space x 2 channel), with "/" separator
+    assert len(n_imfs) == 4
+    assert set(n_imfs.keys()) == {"A/X", "A/Y", "B/X", "B/Y"}
+
+
+# ---------------------------------------------------------------------------
 # Chaining
 # ---------------------------------------------------------------------------
 
