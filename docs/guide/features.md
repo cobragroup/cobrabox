@@ -155,6 +155,10 @@ to be set on the `Data` object.
 Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
 
+**Paper introducing the Welch's method:**
+
+Welch, P. 1967. “The Use of Fast Fourier Transform for the Estimation of Power Spectra: A Method Based on Time Averaging over Short, Modified Periodograms.” IEEE Transactions on Audio and Electroacoustics 15 (2): 70–73. [https://doi.org/10.1109/TAU.1967.1161901](https://doi.org/10.1109/TAU.1967.1161901).
+
 ### `BandFilter`
 
 ```python
