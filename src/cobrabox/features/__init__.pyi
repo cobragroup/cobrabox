@@ -6,6 +6,7 @@ from .autocorr import Autocorr as Autocorr
 from .bandfilter import BandFilter as BandFilter
 from .bandpower import Bandpower as Bandpower
 from .coherence import Coherence as Coherence
+from .concat_aggregate import ConcatAggregate as ConcatAggregate
 from .dummy import Dummy as Dummy
 from .envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
 from .epileptogenicity_index import EpileptogenicityIndex as EpileptogenicityIndex
@@ -45,6 +46,7 @@ __all__ = [
     "Coherence",
     "ContinuousWaveletTransform",
     "DiscreteWaveletTransform",
+    "ConcatAggregate",
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",

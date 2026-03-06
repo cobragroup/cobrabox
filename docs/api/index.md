@@ -7,6 +7,7 @@ Auto-generated API documentation for all CobraBox modules.
 - [Data](data.md) - Data containers (`Data`, `EEG`, `FMRI`)
 - [Features](features.md) - Feature functions
 - [Datasets](datasets.md) - Dataset collection (`Dataset[T]`) and loading
+- Serialization - `cb.save`, `cb.load`, `cb.serialize`, `cb.deserialize` (see [Pipelines guide](../guide/pipelines.md#serialization))
 
 ## Quick Links
 
@@ -18,3 +19,5 @@ Auto-generated API documentation for all CobraBox modules.
 - [`feature.*`](features.md) - All feature functions
 - [`Dataset`](datasets.md#cobraboxdatasetDataset) - Typed collection of Data objects
 - [`dataset()`](datasets.md#cobrabox.datasets.dataset) - Load built-in datasets
+- `cb.save(obj, path)` / `cb.load(path)` - Pipeline file I/O
+- `cb.serialize(obj)` / `cb.deserialize(content)` - Pipeline string I/O

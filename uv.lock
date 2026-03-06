@@ -316,15 +316,23 @@ wheels = [
 
 [[package]]
 name = "cobrabox"
-version = "0.2.10"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
+<<<<<<< HEAD
     { name = "ipython", version = "9.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "ipython", version = "9.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+=======
+    { name = "dill" },
+>>>>>>> 204f041 (serialization)
     { name = "mne-connectivity" },
     { name = "numpy" },
     { name = "pandas" },
+<<<<<<< HEAD
     { name = "pywavelets" },
+=======
+    { name = "pyyaml" },
+>>>>>>> b2f797c (serialization)
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "statsmodels" },
@@ -347,11 +355,19 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+<<<<<<< HEAD
     { name = "ipython", specifier = ">=9.10.0" },
+=======
+    { name = "dill", specifier = ">=0.3.0" },
+>>>>>>> 204f041 (serialization)
     { name = "mne-connectivity", specifier = ">=0.7.0" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.1" },
+<<<<<<< HEAD
     { name = "pywavelets", specifier = ">=1.9.0" },
+=======
+    { name = "pyyaml", specifier = ">=6.0" },
+>>>>>>> b2f797c (serialization)
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "statsmodels", specifier = ">=0.14" },
@@ -626,6 +642,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69", size = 75520, upload-time = "2021-03-08T10:59:26.269Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61", size = 25604, upload-time = "2021-03-08T10:59:24.45Z" },
+]
+
+[[package]]
+name = "dill"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc53c7d65b01e68edf64dea2932122fe7746a516f75d5/dill-0.4.1.tar.gz", hash = "sha256:423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa", size = 187315, upload-time = "2026-01-19T02:36:56.85Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d", size = 120019, upload-time = "2026-01-19T02:36:55.663Z" },
 ]
 
 [[package]]
