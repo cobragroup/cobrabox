@@ -322,6 +322,27 @@ def test_cordance_raises_on_zero_signal() -> None:
         cb.feature.Cordance().apply(data)
 
 
+def test_cordance_nan_on_zero_outputs_nan_for_silent_channels() -> None:
+    """With nan_on_zero=True, silent channels get NaN instead of error."""
+    n_time = 512
+    t = np.arange(n_time) / 256.0
+    # Channel 0 is silent (zeros), channels 1-3 have signal
+    arr = np.zeros((4, n_time))
+    arr[1] = np.sin(2 * np.pi * 10 * t)
+    arr[2] = np.sin(2 * np.pi * 20 * t)
+    arr[3] = np.sin(2 * np.pi * 5 * t)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=256.0)
+
+    out = cb.feature.Cordance(nan_on_zero=True).apply(data)
+
+    # Channel 0 should be NaN for all bands
+    assert np.all(np.isnan(out.data.sel(space=0).values))
+    # Other channels should have finite values
+    assert np.all(np.isfinite(out.data.sel(space=1).values))
+    assert np.all(np.isfinite(out.data.sel(space=2).values))
+    assert np.all(np.isfinite(out.data.sel(space=3).values))
+
+
 def test_cordance_raises_for_false_band_spec() -> None:
     data = _varied_data()
     with pytest.raises(ValueError, match="must be True"):

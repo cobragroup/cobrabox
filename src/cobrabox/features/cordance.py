@@ -59,6 +59,10 @@ class Cordance(BaseFeature[SignalData]):
             between frequency resolution and variance reduction. Defaults to
             ``min(n_time, 256)`` as chosen by :func:`scipy.signal.welch`.
 
+        nan_on_zero: If ``True``, channels with zero total bandpower output
+            ``NaN`` instead of raising an error. Useful for batch processing
+            where some channels may be silent. Defaults to ``False``.
+
     Example:
         >>> cord = cb.feature.Cordance().apply(data)
         >>> cord_theta = cb.feature.Cordance(bands={"theta": True}).apply(data)
@@ -84,6 +88,7 @@ class Cordance(BaseFeature[SignalData]):
 
     bands: dict[str, list[float] | bool] | None = None
     nperseg: int | None = None
+    nan_on_zero: bool = False
 
     def __post_init__(self) -> None:
         if self.nperseg is not None and self.nperseg < 2:
@@ -107,11 +112,16 @@ class Cordance(BaseFeature[SignalData]):
 
         # ── Relative power ───────────────────────────────────────────
         total = ap.sum(dim="band_index")
-        if (total == 0).any():
-            raise ValueError(
-                "Total bandpower is zero for one or more channels. "
-                "Cordance requires non-zero spectral power (check for zero signals)."
-            )
+        zero_mask = total == 0
+        if zero_mask.any():
+            if not self.nan_on_zero:
+                raise ValueError(
+                    "Total bandpower is zero for one or more channels. "
+                    "Cordance requires non-zero spectral power (check for zero signals). "
+                    "Set nan_on_zero=True to output NaN for these channels instead."
+                )
+            # Replace zeros with 1 to avoid division error; we'll mask with NaN later
+            total = xr.where(zero_mask, 1.0, total)
         rp = ap / total
 
         # ── Log-transform ────────────────────────────────────────────
@@ -125,6 +135,10 @@ class Cordance(BaseFeature[SignalData]):
 
         # ── Cordance ─────────────────────────────────────────────────
         cordance = z_anorm + z_rnorm
+
+        # Mask zero-power channels with NaN if requested
+        if self.nan_on_zero and zero_mask.any():
+            cordance = xr.where(zero_mask, np.nan, cordance)
 
         # Rename band_index → band
         return cordance.rename({"band_index": "band"})
