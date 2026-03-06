@@ -1,102 +1,61 @@
-# -------------------------------------------------
-#  tests/test_ampent_real.py
-# -------------------------------------------------
-"""pytest suite for the Ampent feature using the real cobrabox package.
+"""pytest suite for the Ampent feature.
 
-The tests cover:
-  * a uniform distribution case (entropy = log2(k))
-  * a constant value case (entropy = 0)
-  * a multi channel average entropy case
-  * a non integer band width sanity check
+Covers:
+  * uniform distribution (entropy = log2(k))
+  * constant signal (entropy = 0)
+  * multi-channel average entropy
+  * non-integer band width sanity check
 """
 
-from __future__ import annotations  # Fixed asterisks to underscores
+from __future__ import annotations
 
 import numpy as np
 import xarray as xr
 
-# -------------------------------------------------
-#  Imports from the _actual_ cobrabox distribution
-# -------------------------------------------------
-import cobrabox as cb  # the real cobrabox package
-from cobrabox.function_wrapper import feature  # the real decorator
+import cobrabox as cb
 
 
-# ----------------------------------------------------------------------
-# Helper: convert a plain NumPy array → cobrabox.Data (expects dims time, space)
-# ----------------------------------------------------------------------
-def make_cobrabox_data(arr: np.ndarray) -> cb.Data:  # Fixed syntax and NameError
-    """Wrap a (time, space) NumPy array in the cobrabox.Data class."""
-    xr_arr = xr.DataArray(arr, dims=("time", "space"))
-    return cb.Data(xr_arr)  # Added cb. prefix
+def make_data(arr: np.ndarray) -> cb.Data:
+    """Wrap a (rows, samples) NumPy array in cb.Data."""
+    return cb.Data(xr.DataArray(arr, dims=("time", "space")))
 
 
-# ... (The rest of your test functions can remain exactly as they are) ...
-
-
-# ----------------------------------------------------------------------
-#  Test 1 Uniform distribution → known entropy = log2(k)
-# ----------------------------------------------------------------------
 def test_uniform_distribution() -> None:
-    # 4 distinct integer values, each occurring twice → k = 4
-    data = np.array([[0, 0, 1, 1, 2, 2, 3, 3]], dtype=float)
-    band_width = 1
-
-    result = cb.feature.Ampent(make_cobrabox_data(data), band_width)
+    # 4 distinct integer values, each occurring twice → entropy = log2(4)
+    arr = np.array([[0, 0, 1, 1, 2, 2, 3, 3]], dtype=float)
+    result = cb.feature.Ampent(band_width=1)(make_data(arr))
 
     assert isinstance(result, xr.DataArray)
-    assert result.shape == (1, 1)  # (time, space) = (1,1)
-
-    expected = np.log2(4)  # entropy of a uniform 4‑bin histogram
-    np.testing.assert_allclose(result.item(), expected, rtol=1e-12)
+    assert result.shape == (1, 1)
+    np.testing.assert_allclose(result.item(), np.log2(4), rtol=1e-12)
 
 
-# ----------------------------------------------------------------------
-#  Test 2 Constant signal → entropy = 0
-# ----------------------------------------------------------------------
 def test_constant_signal() -> None:
-    data = np.full((1, 10), fill_value=7.0)  # ten identical samples
-    band_width = 0.5
-
-    result = cb.feature.Ampent(make_cobrabox_data(data), band_width)
+    arr = np.full((1, 10), fill_value=7.0)
+    result = cb.feature.Ampent(band_width=0.5)(make_data(arr))
 
     assert isinstance(result, xr.DataArray)
     assert result.shape == (1, 1)
     np.testing.assert_allclose(result.item(), 0.0, atol=1e-14)
 
 
-# ----------------------------------------------------------------------
-#  Test 3 Two channels, average entropy = (2 + 0) / 2 = 1
-# ----------------------------------------------------------------------
 def test_two_channels_average() -> None:
+    # chan0: uniform 4-bin → entropy 2.0; chan1: constant → entropy 0.0; mean = 1.0
     chan0 = np.array([0, 0, 1, 1, 2, 2, 3, 3], dtype=float)
-    chan1 = np.full(8, 5.0)  # constant channel
-    data = np.stack([chan0, chan1], axis=0)  # shape (2, 8)
-
-    band_width = 1
-
-    result = cb.feature.Ampent(make_cobrabox_data(data), band_width)
+    chan1 = np.full(8, 5.0)
+    arr = np.stack([chan0, chan1], axis=0)  # shape (2, 8)
+    result = cb.feature.Ampent(band_width=1)(make_data(arr))
 
     assert isinstance(result, xr.DataArray)
     assert result.shape == (1, 1)
-
-    expected = 1.0  # (2.0 + 0.0) / 2
-    np.testing.assert_allclose(result.item(), expected, rtol=1e-12)
+    np.testing.assert_allclose(result.item(), 1.0, rtol=1e-12)
 
 
-# ----------------------------------------------------------------------
-#  Test 4 Noninteger band width (the function must not crash)
-# ----------------------------------------------------------------------
 def test_float_bandwidth() -> None:
     rng = np.random.default_rng(123)
-    data = rng.normal(loc=0.0, scale=1.0, size=(3, 1000))
-
-    band_width = 0.25  # float value
-
-    result = cb.feature.Ampent(make_cobrabox_data(data), band_width)
+    arr = rng.normal(loc=0.0, scale=1.0, size=(3, 1000))
+    result = cb.feature.Ampent(band_width=0.25)(make_data(arr))
 
     assert isinstance(result, xr.DataArray)
     assert result.shape == (1, 1)
-
-    # Entropy of a realvalued Gaussian is finite and > 0.
     assert result.item() > 0.0

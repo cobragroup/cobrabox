@@ -14,7 +14,6 @@ from ..data import Data
 class Ampent(BaseFeature[Data]):
     output_type: ClassVar[type[Data]] = Data
 
-    data_window: Data
     band_width: float
 
     def __call__(self, data: Data) -> xr.DataArray:
@@ -70,7 +69,7 @@ class Ampent(BaseFeature[Data]):
             # In Python, doing probs * (probs > 0) would keep zeros in-place.
             # That can cause issues if log2 is ever applied before masking.
             # Best match is to FILTER:
-            e2 = probs[probs >= 0]
+            e2 = probs[probs > 0]
 
             # MATLAB: -sum(e2 .* log2(e2))
             # NumPy equivalent uses elementwise multiply and np.log2
