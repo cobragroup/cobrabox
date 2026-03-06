@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import xarray as xr
 
@@ -18,11 +19,13 @@ class Max(BaseFeature[Data]):
     Returns:
         xarray DataArray with ``dim`` removed. Shape is the input shape
         minus the reduced dimension. Values are the per-position maximum
-        in the same units as the input signal.
+        in the same units as the input data.
 
     Example:
         >>> result = cb.feature.Max(dim="time").apply(data)
     """
+
+    output_type: ClassVar[type[Data]] = Data
 
     dim: str
 

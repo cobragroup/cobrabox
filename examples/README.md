@@ -11,3 +11,4 @@ Minimal runnable scripts. Run from the project root with `uv run python examples
 | `feature_pipeline_demo.py` | Building and running feature pipelines |
 | `feature_phase_locking_value_demo.py` | Phase locking value connectivity feature |
 | `partial_correlation_demo.py` | Partial correlation connectivity feature |
+| `sliding_window_aggregators_demo.py` | SlidingWindow with MeanAggregate (reduces windows) vs ConcatAggregate (preserves windows) |

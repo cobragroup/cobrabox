@@ -100,3 +100,38 @@ Features are discovered automatically from the `cobrabox/features/` directory.
     options:
         show_root_heading: true
         show_source: true
+
+::: cobrabox.features.granger_causality
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.lempel_ziv
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.concat_aggregate
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.partial_directed_coherence
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.reciprocal_connectivity
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.fractal_dimension
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.sample_entropy
+    options:
+        show_root_heading: true
+        show_source: true

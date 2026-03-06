@@ -100,7 +100,7 @@ def test_partial_correlation_preserves_history() -> None:
 
     result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
 
-    assert "PartialCorrelation" in result.history
+    assert result.history[-1] == "PartialCorrelation"
 
 
 def test_partial_correlation_matrix_preserves_history() -> None:
@@ -111,7 +111,7 @@ def test_partial_correlation_matrix_preserves_history() -> None:
 
     result = cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(data)
 
-    assert "PartialCorrelationMatrix" in result.history
+    assert result.history[-1] == "PartialCorrelationMatrix"
 
 
 def test_partial_correlation_raises_when_no_space_dim() -> None:
@@ -166,3 +166,143 @@ def test_partial_correlation_with_multiple_controls() -> None:
 
     assert isinstance(result, cb.Data)
     assert result.data.values.shape == (1, 1)
+
+
+def test_partial_correlation_raises_singular_matrix() -> None:
+    """PartialCorrelation raises ValueError when correlation matrix is singular."""
+    # Create perfectly correlated data (linearly dependent columns)
+    # When variables are perfectly correlated, correlation matrix becomes singular
+    base = np.arange(10, dtype=float)
+    data = cb.SignalData.from_numpy(
+        np.column_stack([base, base * 2, base * 3, base * 4]),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+    )
+    with pytest.raises(ValueError, match="singular"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+
+
+def test_partial_correlation_raises_missing_time_dim() -> None:
+    """PartialCorrelation raises ValueError when time dimension is missing."""
+    import xarray as xr
+
+    # Create DataArray without time dimension
+    xr_data = xr.DataArray(np.ones((5, 3)), dims=["space", "channels"])
+    # Bypass Data validation to test feature guard
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", xr_data)
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(raw)
+
+
+def test_partial_correlation_matrix_raises_missing_time_dim() -> None:
+    """PartialCorrelationMatrix raises ValueError when time dimension is missing."""
+    import xarray as xr
+
+    xr_data = xr.DataArray(np.ones((5, 3)), dims=["space", "channels"])
+    raw = cb.Data.__new__(cb.Data)
+    object.__setattr__(raw, "_data", xr_data)
+    with pytest.raises(ValueError, match="time"):
+        cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(raw)
+
+
+def test_partial_correlation_metadata_preserved() -> None:
+    """PartialCorrelation preserves subjectID, groupID, condition."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        subjectID="s1",
+        groupID="g1",
+        condition="rest",
+    )
+    result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+    assert result.subjectID == "s1"
+    assert result.groupID == "g1"
+    assert result.condition == "rest"
+
+
+def test_partial_correlation_sampling_rate_none() -> None:
+    """PartialCorrelation sets sampling_rate to None (output_type = Data)."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+    assert result.sampling_rate is None
+
+
+def test_partial_correlation_does_not_mutate_input() -> None:
+    """PartialCorrelation does not modify input Data object."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_partial_correlation_matrix_metadata_preserved() -> None:
+    """PartialCorrelationMatrix preserves subjectID, groupID, condition."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        subjectID="s1",
+        groupID="g1",
+        condition="rest",
+    )
+    result = cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(data)
+    assert result.subjectID == "s1"
+    assert result.groupID == "g1"
+    assert result.condition == "rest"
+
+
+def test_partial_correlation_matrix_sampling_rate_none() -> None:
+    """PartialCorrelationMatrix sets sampling_rate to None (output_type = Data)."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    result = cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(data)
+    assert result.sampling_rate is None
+
+
+def test_partial_correlation_matrix_does_not_mutate_input() -> None:
+    """PartialCorrelationMatrix does not modify input Data object."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.PartialCorrelationMatrix(coords=[0, 1], control_vars=[2]).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_partial_correlation_matrix_diagonal_is_one() -> None:
+    """PartialCorrelationMatrix diagonal equals 1.0 (self-correlation)."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    result = cb.feature.PartialCorrelationMatrix(coords=[0, 1, 2], control_vars=[3]).apply(data)
+    matrix = result.data.values
+    np.testing.assert_allclose(np.diag(matrix), 1.0)
+
+
+def test_partial_correlation_matrix_is_symmetric() -> None:
+    """PartialCorrelationMatrix output is symmetric."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    result = cb.feature.PartialCorrelationMatrix(coords=[0, 1, 2], control_vars=[3]).apply(data)
+    matrix = result.data.values
+    np.testing.assert_allclose(matrix, matrix.T)

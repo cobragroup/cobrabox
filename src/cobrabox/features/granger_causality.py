@@ -187,6 +187,8 @@ class GrangerCausalityMatrix(BaseFeature[SignalData]):
             raise ValueError(f"maxlag must be >= 1, got {self.maxlag}")
         if self.lag is not None and self.lag < 1:
             raise ValueError(f"lag must be >= 1, got {self.lag}")
+        if self.coords is not None and len(self.coords) == 0:
+            raise ValueError("coords cannot be an empty list")
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         """Apply Granger causality test to all coordinate pairs using log-ratio method."""

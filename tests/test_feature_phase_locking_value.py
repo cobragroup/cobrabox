@@ -130,3 +130,69 @@ def test_phase_locking_value_matrix_preserves_history() -> None:
     result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1]).apply(data)
 
     assert result.history == ["PhaseLockingValueMatrix"]
+
+
+def test_phase_locking_value_metadata_preserved() -> None:
+    """PhaseLockingValue preserves subjectID, groupID, condition; sampling_rate is None."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        subjectID="s42",
+        groupID="control",
+        condition="task",
+    )
+    result = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
+    assert result.subjectID == "s42"
+    assert result.groupID == "control"
+    assert result.condition == "task"
+    assert result.sampling_rate is None  # time dimension removed
+
+
+def test_phase_locking_value_matrix_metadata_preserved() -> None:
+    """PhaseLockingValueMatrix preserves subjectID, groupID, condition; sampling_rate is None."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)),
+        dims=["time", "space"],
+        sampling_rate=250.0,
+        subjectID="s1",
+        groupID="patient",
+        condition="rest",
+    )
+    result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1]).apply(data)
+    assert result.subjectID == "s1"
+    assert result.groupID == "patient"
+    assert result.condition == "rest"
+    assert result.sampling_rate is None  # time dimension removed
+
+
+def test_phase_locking_value_does_not_mutate_input() -> None:
+    """PhaseLockingValue does not modify the input Data object."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_phase_locking_value_matrix_does_not_mutate_input() -> None:
+    """PhaseLockingValueMatrix does not modify the input Data object."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.PhaseLockingValueMatrix(coords=[0, 1]).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)

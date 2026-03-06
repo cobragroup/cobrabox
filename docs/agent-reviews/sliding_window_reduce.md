@@ -6,60 +6,74 @@
 
 ## Summary
 
-SlidingWindowReduce is a well-implemented feature that combines sliding window operations with aggregation into a single step. The implementation is clean, follows all cobrabox conventions, and uses xarray's `rolling()` API efficiently. The feature correctly outputs `Data` (not `SignalData`) since the time dimension is reduced, and includes proper input validation for all parameters.
+The `SlidingWindowReduce` feature is well-written and compliant with all cobrabox standards. It correctly implements a `BaseFeature[SignalData]` that combines sliding window creation with aggregation into a single feature. The implementation uses xarray's rolling window for efficient computation, includes comprehensive input validation, and follows all documentation and typing requirements.
 
 ## Ruff
 
 ### `uvx ruff check`
-Clean — no issues found.
+
+All checks passed!
 
 ### `uvx ruff format --check`
-Clean — no formatting issues.
+
+1 file already formatted
 
 ## Signature & Structure
 
-**Line 1**: ✅ Has `from __future__ import annotations` as first import.
+The feature follows all structural requirements:
 
-**Lines 13-14**: ✅ Correctly decorated with `@dataclass` and inherits `BaseFeature[SignalData]` (time-series feature that operates on the time dimension).
-
-**Line 49**: ✅ Properly sets `output_type: ClassVar[type[Data]] = Data` since the feature removes the time dimension.
-
-**Line 44-47**: ✅ All fields properly typed with `field()` defaults.
-
-**Line 60**: ✅ Correct `__call__` signature: `def __call__(self, data: SignalData) -> xr.DataArray:`
-
-**Lines 51-58**: ✅ Has `__post_init__` validation for all numeric constraints.
-
-**Imports (lines 1-10)**: ✅ Clean import structure following convention:
-1. `from __future__ import annotations`
-2. stdlib (`dataclasses`, `typing`)
-3. third-party (`numpy`, `xarray`)
-4. internal (`..base_feature`, `..data`)
+- ✅ `from __future__ import annotations` on line 1
+- ✅ `@dataclass` decorator applied correctly (line 12)
+- ✅ Inherits from `BaseFeature[SignalData]` (line 13) - appropriate since it requires the time dimension
+- ✅ Class name `SlidingWindowReduce` matches filename (PascalCase conversion)
+- ✅ `output_type: ClassVar[type[Data]] = Data` correctly set (line 48) since the feature removes the time dimension
+- ✅ `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray:` (line 59)
+- ✅ `apply()` is inherited from base class, not reimplemented
+- ✅ Imports are in correct order (stdlib, third-party, internal) and only import what's used
 
 ## Docstring
 
-**Lines 14-42**: ✅ Complete Google-style docstring with all required sections:
-- One-line summary (line 15)
-- Extended description (lines 17-21)
-- `Args:` section documenting all four fields (lines 23-28)
-- `Returns:` section describing output shape and dimensions (lines 30-33)
-- `Example:` section with working code snippet (lines 35-41)
+Excellent Google-style docstring with all required sections:
+
+- ✅ One-line summary: "Sliding window with automatic per-window reduction."
+- ✅ Extended description explaining the purpose and benefit (combines windowing + aggregation without needing a Chord)
+- ✅ Args section documents all four dataclass fields with types and constraints:
+  - `window_size`: Number of samples per window. Must be >= 1.
+  - `step_size`: Step between window starts in samples. Must be >= 1.
+  - `dim`: Name of the dimension to window over and reduce (default: "time").
+  - `agg`: Aggregation function to apply to each window (mean, std, sum, min, max).
+- ✅ Returns section describes the output shape and dimension changes
+- ✅ Example section shows practical usage with `.apply()` and explains the resulting dimensions
 
 ## Typing
 
-- ✅ All fields have explicit type annotations
+All typing requirements are met:
+
+- ✅ All dataclass fields have explicit type annotations:
+  - `window_size: int`
+  - `step_size: int`
+  - `dim: str`
+  - `agg: Literal["mean", "std", "sum", "min", "max"]`
 - ✅ `__call__` return type is `xr.DataArray` (correct for `BaseFeature`)
-- ✅ Uses `Literal` type for `agg` parameter to restrict valid values
+- ✅ `output_type` is properly typed as `ClassVar[type[Data]]`
 - ✅ No bare `Any` types
 
 ## Safety & Style
 
+Strong safety practices throughout:
+
 - ✅ No `print()` statements
-- ✅ Input validation in `__post_init__` for `window_size`, `step_size`, and `agg`
-- ✅ Input validation in `__call__` for dimension existence and window size bounds
-- ✅ No mutation of input `data` — works on `data.data` and returns new arrays
-- ✅ Uses xarray's built-in `rolling()` and aggregation methods (no manual loops)
-- ✅ Line length within 100 characters
+- ✅ Validation in `__post_init__` (lines 50-57):
+  - `window_size >= 1`
+  - `step_size >= 1`
+  - `agg` is one of valid options
+- ✅ Validation in `__call__` (lines 62-69):
+  - Checks that `dim` exists in data dimensions
+  - Checks that `window_size <= n_dim` (prevents windows larger than data)
+- ✅ No mutation of input `data` - works on `data.data` and returns new array
+- ✅ Clean use of xarray's rolling window API for efficient computation
+
+The implementation efficiently uses xarray's rolling construct (line 72) with the aggregation function accessed via `getattr` (line 73), then selects valid window positions (line 78) and renames the dimension (line 81).
 
 ## Action List
 

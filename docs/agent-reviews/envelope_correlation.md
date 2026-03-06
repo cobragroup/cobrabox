@@ -1,7 +1,7 @@
 # Feature Review: envelope_correlation
 
 **File**: `src/cobrabox/features/envelope_correlation.py`
-**Date**: 2026-03-04
+**Date**: 2026-03-05
 **Verdict**: PASS
 
 ## Summary

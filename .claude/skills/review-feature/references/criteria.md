@@ -36,26 +36,28 @@ operates on the time axis; use `Data` for dimension-agnostic features.
 
 ### `output_type` classvar (optional)
 
-Features can set `output_type` to control the output container type:
+Features **only need to set `output_type` when changing from the default behavior**. The base class provides sensible defaults:
 
-| `output_type` value | Result container | Use when |
-| ------------------- | ---------------- | -------- |
-| `None` (default)    | Same as input    | Feature preserves input container type |
-| `Data`              | Plain `Data`     | Feature removes time dimension (e.g., correlation matrices) |
+| `output_type` value | Result container | When to set it |
+| ------------------- | ---------------- | -------------- |
+| `None` (default)    | Same as input    | **Omit this** - preserves input container type automatically |
+| `Data`              | Plain `Data`     | **Only set when** removing time dimension (e.g., correlation matrices) |
 
 ```python
-# ✅ Feature that preserves container type (default)
+# ✅ Feature that preserves container type - OMIT output_type entirely
 @dataclass
 class Spectrogram(BaseFeature[SignalData]):
-    # output_type defaults to None - returns SignalData
+    # No output_type needed - defaults to preserving SignalData
     ...
 
-# ✅ Feature that returns plain Data (no time dimension)
+# ✅ Feature that returns plain Data - ONLY set when changing type
 @dataclass
 class Coherence(BaseFeature[SignalData]):
-    output_type: ClassVar[type[Data]] = Data
+    output_type: ClassVar[type[Data] | None] = Data  # Removes time dimension
     ...
 ```
+
+**Rule of thumb**: If your feature preserves the time dimension, don't declare `output_type`. Only declare it when you need to return a different container type than what was passed in.
 
 ```python
 # ✅ time-series feature
@@ -88,6 +90,51 @@ def line_length(data: Data, ...) -> xr.DataArray:
 ### Class name
 
 Must be PascalCase matching the filename (`line_length.py` → `LineLength`).
+
+**Descriptive naming required**
+
+Class names must be descriptive and clearly indicate what the feature computes. Avoid abbreviations, acronyms, or shortened forms that are not immediately obvious.
+
+```python
+# ✅ Descriptive, clear names
+class LineLength(BaseFeature[SignalData]):
+class AmplitudeEntropy(BaseFeature[Data]):
+class MutualInformation(BaseFeature[SignalData]):
+class PhaseLockingValue(BaseFeature[SignalData]):
+
+# ❌ Abbreviated, unclear names
+class Ampent(BaseFeature[Data]):  # What is "Ampent"?
+class Mi(BaseFeature[SignalData]):  # Abbreviation
+class Pldv(BaseFeature[SignalData]):  # Acronym
+class Fd(BaseFeature[Data]):  # Too short, unclear
+```
+
+**Guidelines:**
+- Use full words: `AmplitudeEntropy` not `Ampent`
+- Use widely recognized acronyms only if they are domain-standard: `PCA`, `FFT` are acceptable
+- When in doubt, prefer the longer, clearer name
+- The class name should describe *what* is being computed, not *how* it's implemented
+
+### `_is_cobrabox_feature` marker (NOT NEEDED for class-based features)
+
+**Class-based features automatically inherit `_is_cobrabox_feature = True` from `BaseFeature`.**
+
+```python
+# ✅ Class-based features - NO marker needed, inherited from BaseFeature
+@dataclass
+class LineLength(BaseFeature[SignalData]):
+    # _is_cobrabox_feature is inherited as True
+    ...
+
+# ❌ Unnecessary - already inherited
+_is_cobrabox_feature = True  # Don't add this for class-based features!
+
+@dataclass
+class LineLength(BaseFeature[SignalData]):
+    ...
+```
+
+The marker is only needed at the **module level** for legacy function-based features (not using the dataclass pattern). Since all modern features use the class-based pattern, **never add `_is_cobrabox_feature = True` to new feature files**.
 
 ### `__call__` signature
 
@@ -190,6 +237,26 @@ Returns:
 Returns:
     DataArray.
 ```
+
+**No fake singleton dimensions**
+
+Features that return scalar values (0-dimensional output) should return a proper 0-d xarray DataArray, NOT an array with fake singleton dimensions like `(1, 1)` with made-up dim names.
+
+```python
+# ✅ Return a proper 0-dimensional scalar
+return xr.DataArray(scalar_value)
+
+# ✅ Return reduced dimensions naturally
+return data.sum(dim="time")  # Shape: (space,) not (1, space)
+
+# ❌ Creating fake singleton dimensions
+return xr.DataArray([[scalar]], dims=["time", "space"], coords={"time": [0], "space": [0]})
+
+# ❌ Made-up dimension names that don't exist in input
+return xr.DataArray(result, dims=["dim1", "dim2"])  # Where dim1/dim2 are not from input
+```
+
+Use `xr.apply_ufunc(..., output_core_dims=[[]])` for dimensionality reduction to scalars, or simply return the reduced array which naturally drops the reduced dimension.
 
 ### `Example:` section
 
