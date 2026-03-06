@@ -3,7 +3,7 @@ from . import feature  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
-from .datasets import dataset
+from .datasets import dataset, dataset_info
 from .egg.gorkastyle import gorkastyle
 from .features.line_length import LineLength
 from .features.mean_aggregate import MeanAggregate
@@ -27,6 +27,7 @@ __all__ = [
     "SlidingWindow",
     "SplitterFeature",
     "dataset",
+    "dataset_info",
     "from_numpy",
     "from_xarray",
     "gorkastyle",

@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from cobrabox import datasets
+from cobrabox.dataset import Dataset
 from cobrabox.dataset_loader import (
     _sampling_rate_from_info,
     _sidecar_json_for_csv,
@@ -424,11 +425,16 @@ def test_dataset_uses_remote_spec_for_known_identifier(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """dataset() consults the remote dataset registry for known remote identifiers."""
-    called: list[str] = []
+    import xarray as xr
 
-    def _fake_loader(path: Path) -> list[object]:
-        called.append(str(path))
-        return [object()]
+    from cobrabox.data import SignalData
+
+    called: list[tuple[str, object]] = []
+
+    def _fake_loader(path: Path, subset: object = None) -> Dataset:
+        called.append((str(path), subset))
+        da = xr.DataArray([[1.0, 2.0]], dims=["time", "space"])
+        return Dataset([SignalData.from_xarray(da)])
 
     fake_spec = RemoteDatasetSpec(
         identifier="swiss_eeg_short",
@@ -441,7 +447,7 @@ def test_dataset_uses_remote_spec_for_known_identifier(
         return fake_spec if identifier == "swiss_eeg_short" else None
 
     def _fake_ensure_remote_files(
-        spec: RemoteDatasetSpec, *, repo_root: Path | None = None
+        spec: RemoteDatasetSpec, *, subset: object = None, repo_root: Path | None = None
     ) -> Path:
         assert spec is fake_spec
         base = tmp_path if repo_root is None else repo_root
@@ -521,7 +527,7 @@ def test_swiss_eeg_short_loader_reads_csv_from_zip(tmp_path: Path) -> None:
     spec = get_remote_dataset_spec("swiss_eeg_short")
     assert spec is not None
 
-    out = spec.loader(dataset_dir)
+    out = spec.loader(dataset_dir, None)
 
     assert len(out) == 1
     assert isinstance(out[0], SignalData)
@@ -538,4 +544,171 @@ def test_swiss_eeg_short_loader_raises_when_no_zip_files(tmp_path: Path) -> None
     assert spec is not None
 
     with pytest.raises(FileNotFoundError, match=r"No \.zip files found"):
-        spec.loader(dataset_dir)
+        spec.loader(dataset_dir, None)
+
+
+def test_swiss_eeg_short_loader_subset_filters_by_stem(tmp_path: Path) -> None:
+    """Passing subset to the loader only loads matching zip archives."""
+
+    dataset_dir = tmp_path / "data" / "remote" / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+
+    for subject in ("ID1", "ID2", "ID5"):
+        zip_path = dataset_dir / f"{subject}.zip"
+        with zipfile.ZipFile(zip_path, mode="w") as zf:
+            zf.writestr(f"{subject}_signal.csv", "ch0\n1.0\n2.0\n")
+
+    spec = get_remote_dataset_spec("swiss_eeg_short")
+    assert spec is not None
+
+    out = spec.loader(dataset_dir, ["ID1", "ID5"])
+
+    assert len(out) == 2
+    subject_ids = {item.subjectID for item in out}
+    assert subject_ids == {"ID1", "ID5"}
+
+
+def test_ensure_remote_files_subset_filters_downloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ensure_remote_files only downloads files matching the requested subset."""
+    files = [
+        RemoteFile(url="http://example.com/ID1.zip", filename="ID1.zip", subset_key="ID1"),
+        RemoteFile(url="http://example.com/ID2.zip", filename="ID2.zip", subset_key="ID2"),
+        RemoteFile(url="http://example.com/ID5.zip", filename="ID5.zip", subset_key="ID5"),
+    ]
+    spec = RemoteDatasetSpec(
+        identifier="test_subset",
+        local_rel_dir=Path("data") / "remote" / "test_subset",
+        files=files,
+        loader=lambda _p, _s: Dataset([]),
+    )
+
+    downloaded: list[str] = []
+    payloads = {"http://example.com/ID1.zip": b"ZIP1", "http://example.com/ID5.zip": b"ZIP5"}
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return default
+
+    class _FakeResponse(io.BytesIO):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
+            self.close()
+
+    def _fake_urlopen(url: str, *args: object, **kwargs: object) -> _FakeResponse:
+        downloaded.append(url)
+        try:
+            return _FakeResponse(payloads[url])
+        except KeyError as exc:
+            raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
+
+    import cobrabox.downloader as downloader
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+
+    dataset_dir = ensure_remote_files(spec, subset=["ID1", "ID5"], repo_root=tmp_path)
+
+    assert (dataset_dir / "ID1.zip").exists()
+    assert (dataset_dir / "ID5.zip").exists()
+    assert not (dataset_dir / "ID2.zip").exists()
+    assert set(downloaded) == {"http://example.com/ID1.zip", "http://example.com/ID5.zip"}
+
+
+def test_dataset_info_returns_local_dataset_info() -> None:
+    """dataset_info returns description for local datasets."""
+    from cobrabox.datasets import dataset_info
+
+    info = dataset_info("dummy_chain")
+    assert info.identifier == "dummy_chain"
+    assert info.description
+    assert info.subset_key_name is None
+    assert info.subsets is None
+
+
+def test_dataset_info_returns_remote_dataset_info() -> None:
+    """dataset_info returns subsets and subset_key_name for remote datasets."""
+    from cobrabox.datasets import dataset_info
+
+    info = dataset_info("swiss_eeg_short")
+    assert info.identifier == "swiss_eeg_short"
+    assert info.description
+    assert info.subset_key_name == "subjects"
+    assert info.subsets is not None
+    assert "ID1" in info.subsets
+    assert "ID16" in info.subsets
+    assert len(info.subsets) == 18
+
+
+def test_dataset_info_str_contains_usage_hint() -> None:
+    """DatasetInfo.__str__ includes a usage hint showing how to pass subset."""
+    from cobrabox.datasets import dataset_info
+
+    text = str(dataset_info("swiss_eeg_short"))
+    assert "cb.dataset" in text
+    assert "subset=" in text
+    assert "ID1" in text
+
+
+def test_dataset_info_raises_for_unknown_identifier() -> None:
+    """dataset_info raises ValueError for unknown identifiers."""
+    from cobrabox.datasets import dataset_info
+
+    with pytest.raises(ValueError, match="Unknown dataset identifier"):
+        dataset_info("nonexistent_dataset_xyz")
+
+
+def test_dataset_subset_raises_for_invalid_keys() -> None:
+    """dataset() raises ValueError when unknown subset keys are passed."""
+    with pytest.raises(ValueError, match="Unknown subset keys"):
+        datasets.dataset("swiss_eeg_short", subset=["INVALID_ID"])
+
+
+def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """dataset() forwards the subset to both ensure_remote_files and the loader."""
+    import xarray as xr
+
+    from cobrabox.data import SignalData
+
+    captured: dict[str, object] = {}
+
+    def _fake_loader(path: Path, subset: object = None) -> Dataset:
+        captured["loader_subset"] = subset
+        da = xr.DataArray([[1.0]], dims=["time", "space"])
+        return Dataset([SignalData.from_xarray(da)])
+
+    spec = get_remote_dataset_spec("swiss_eeg_short")
+    assert spec is not None
+
+    patched_spec = RemoteDatasetSpec(
+        identifier=spec.identifier,
+        local_rel_dir=spec.local_rel_dir,
+        files=spec.files,
+        loader=_fake_loader,
+        description=spec.description,
+        subset_key_name=spec.subset_key_name,
+    )
+
+    def _fake_get_spec(identifier: str) -> RemoteDatasetSpec | None:
+        return patched_spec if identifier == "swiss_eeg_short" else None
+
+    def _fake_ensure(
+        s: RemoteDatasetSpec, *, subset: object = None, repo_root: Path | None = None
+    ) -> Path:
+        captured["ensure_subset"] = subset
+        p = tmp_path / s.local_rel_dir
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", _fake_get_spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure)
+
+    datasets.dataset("swiss_eeg_short", subset=["ID1", "ID2"])
+
+    assert captured["loader_subset"] == ["ID1", "ID2"]
+    assert captured["ensure_subset"] == ["ID1", "ID2"]

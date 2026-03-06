@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -266,13 +267,24 @@ def _extract_numeric_from_mat_bytes(raw: bytes) -> tuple[np.ndarray, list[str], 
     return candidate, channels, sampling_rate
 
 
-def _load_swiss_eeg_short(dataset_dir: Path) -> Dataset[SignalData]:
+def _load_swiss_eeg_short(
+    dataset_dir: Path, subset: Sequence[str] | None = None
+) -> Dataset[SignalData]:
     """Load Swiss short EEG zip archives into SignalData objects.
 
     One SignalData object is produced per archive by reading the first supported
     numeric member found inside each zip file.
+
+    Args:
+        dataset_dir: Directory containing the ``.zip`` archives.
+        subset: If given, only load archives whose stem (e.g. ``"ID1"``) is
+            in this list. Useful when only a subset was downloaded or when all
+            files are cached but only a subset is needed.
     """
     zip_paths = sorted(dataset_dir.glob("*.zip"))
+    if subset is not None:
+        subset_set = set(subset)
+        zip_paths = [p for p in zip_paths if p.stem in subset_set]
     if not zip_paths:
         raise FileNotFoundError(f"No .zip files found for 'swiss_eeg_short' in {dataset_dir}.")
 

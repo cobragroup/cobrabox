@@ -9,7 +9,12 @@ from __future__ import annotations
 
 import cobrabox as cb
 
-datasets = cb.dataset("swiss_eeg_short")
+ds_info = cb.dataset_info("swiss_eeg_short")
+print(ds_info)
+subsets = ds_info.subsets
+print(subsets)
+
+datasets = cb.dataset("swiss_eeg_short", subset=["ID1"])
 print(f"Loaded parts: {len(datasets)}")
 if datasets:
     first = datasets[0]

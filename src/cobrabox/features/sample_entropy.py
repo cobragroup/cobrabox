@@ -72,7 +72,8 @@ class SampEn(BaseFeature[SignalData]):
             n = len(ts)
             if n <= self.m:
                 raise ValueError(
-                    f"Time series length ({n}) must be greater than embedding dimension m ({self.m})."
+                    f"Time series length ({n}) must be greater than "
+                    f"embedding dimension m ({self.m})."
                 )
             # Tolerance: use provided r or default 0.2 * std of this slice.
             r_local = 0.2 * np.std(ts, ddof=0) if self.r is None else self.r

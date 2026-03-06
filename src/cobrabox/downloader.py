@@ -20,9 +20,10 @@ class RemoteFile:
 
     url: str
     filename: str  # Relative to the dataset's local directory
+    subset_key: str | None = None  # Subset identifier this file belongs to (e.g. "ID1")
 
 
-RemoteLoader = Callable[[Path], Dataset[SignalData]]
+RemoteLoader = Callable[[Path, "Sequence[str] | None"], Dataset[SignalData]]
 
 
 @dataclass(slots=True)
@@ -35,6 +36,9 @@ class RemoteDatasetSpec:
     ``auth_hint`` is an optional message shown to users when the server
     responds with a 401 or 403 status, e.g. to explain how to obtain
     credentials.
+    ``subset_key_name`` names what the subset dimension represents (e.g.
+    ``"subjects"``). ``None`` means the dataset has no subset concept.
+    ``description`` is a short human-readable description of the dataset.
     """
 
     identifier: str
@@ -43,6 +47,8 @@ class RemoteDatasetSpec:
     loader: RemoteLoader
     file_index_url: str | None = None
     auth_hint: str | None = None
+    description: str = ""
+    subset_key_name: str | None = None  # e.g. "subjects"
 
     def __post_init__(self) -> None:
         if self.files is None and self.file_index_url is None:
@@ -50,6 +56,13 @@ class RemoteDatasetSpec:
                 f"RemoteDatasetSpec '{self.identifier}' must define either "
                 "'files' or 'file_index_url'."
             )
+
+    def subset_keys(self) -> list[str] | None:
+        """Return the list of available subset keys, or None if unknown/not applicable."""
+        if self.files is None or self.subset_key_name is None:
+            return None
+        keys = [f.subset_key for f in self.files if f.subset_key is not None]
+        return keys if keys else None
 
 
 def _default_repo_root() -> Path:
@@ -86,12 +99,20 @@ def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
     return files
 
 
-def ensure_remote_files(spec: RemoteDatasetSpec, *, repo_root: Path | None = None) -> Path:
+def ensure_remote_files(
+    spec: RemoteDatasetSpec, *, subset: Sequence[str] | None = None, repo_root: Path | None = None
+) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
     Files are stored under ``repo_root / spec.local_rel_dir``. Existing files
     are left untouched; missing files are streamed down in parallel and written
     atomically via a ``.part`` temp file.
+
+    Args:
+        spec: The remote dataset specification.
+        subset: If given, only download files whose ``subset_key`` is in this
+            list. Files without a ``subset_key`` are always included.
+        repo_root: Override the inferred repository root.
 
     Returns the resolved local dataset directory.
     """
@@ -101,7 +122,13 @@ def ensure_remote_files(spec: RemoteDatasetSpec, *, repo_root: Path | None = Non
     dataset_dir = repo_root / spec.local_rel_dir
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    files = spec.files if spec.files is not None else _resolve_files_from_index(spec)
+    all_files = spec.files if spec.files is not None else _resolve_files_from_index(spec)
+
+    if subset is not None:
+        subset_set = set(subset)
+        files = [f for f in all_files if f.subset_key is None or f.subset_key in subset_set]
+    else:
+        files = list(all_files)
 
     def _download_one(remote_file: RemoteFile, position: int) -> None:
         dest_path = dataset_dir / remote_file.filename
@@ -186,7 +213,7 @@ def ensure_remote_files(spec: RemoteDatasetSpec, *, repo_root: Path | None = Non
 def _placeholder_loader(identifier: str) -> RemoteLoader:
     """Create a loader that raises a clear message until implemented."""
 
-    def _loader(_dataset_dir: Path) -> Dataset[SignalData]:
+    def _loader(_dataset_dir: Path, _subset: Sequence[str] | None = None) -> Dataset[SignalData]:
         raise NotImplementedError(
             f"Loader for remote dataset '{identifier}' is not implemented yet. "
             f"Files should now be available under the configured 'data/remote' "
@@ -197,35 +224,45 @@ def _placeholder_loader(identifier: str) -> RemoteLoader:
     return _loader
 
 
+_SWISS_EEG_SHORT_IDS = [
+    "ID1",
+    "ID2",
+    "ID4a",
+    "ID4b",
+    "ID5",
+    "ID6",
+    "ID7",
+    "ID8",
+    "ID9",
+    "ID10",
+    "ID11",
+    "ID12",
+    "ID13a",
+    "ID13b",
+    "ID14a",
+    "ID14b",
+    "ID15",
+    "ID16",
+]
+
+
 def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
     from .dataset_loader import _load_swiss_eeg_short  # avoid circular import at module level
 
     base_url = "https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/dataset"
-    ids = [
-        "ID1",
-        "ID2",
-        "ID4a",
-        "ID4b",
-        "ID5",
-        "ID6",
-        "ID7",
-        "ID8",
-        "ID9",
-        "ID10",
-        "ID11",
-        "ID12",
-        "ID13a",
-        "ID13b",
-        "ID14a",
-        "ID14b",
-        "ID15",
-        "ID16",
-    ]
     return RemoteDatasetSpec(
         identifier="swiss_eeg_short",
         local_rel_dir=Path("data") / "remote" / "swiss_eeg_short",
-        files=[RemoteFile(url=f"{base_url}/{id_}.zip", filename=f"{id_}.zip") for id_ in ids],
+        files=[
+            RemoteFile(url=f"{base_url}/{id_}.zip", filename=f"{id_}.zip", subset_key=id_)
+            for id_ in _SWISS_EEG_SHORT_IDS
+        ],
         loader=_load_swiss_eeg_short,
+        description=(
+            "Short-term scalp EEG recordings from the BioCAS 2018 challenge "
+            f"({len(_SWISS_EEG_SHORT_IDS)} subjects, ictal/interictal)."
+        ),
+        subset_key_name="subjects",
     )
 
 
@@ -236,6 +273,7 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         files=None,
         loader=_placeholder_loader("swiss_eeg_long"),
         file_index_url="http://ieeg-swez.ethz.ch/longterm-files.txt",
+        description="Long-term scalp EEG recordings from SWEZ (ETH Zurich).",
     )
 
 
@@ -256,6 +294,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
             "and place the zip file at the path shown below, or configure Kaggle API "
             "credentials so the URL can be accessed directly."
         ),
+        description="Bonn EEG dataset (normal/interictal/ictal) from Kaggle.",
     )
 
 
