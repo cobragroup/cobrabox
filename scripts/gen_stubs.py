@@ -83,12 +83,12 @@ def generate_features_stub(classes_by_module: dict[str, list[str]]) -> str:
 
 def generate_feature_stub(classes_by_module: dict[str, list[str]]) -> str:
     """Stub for cobrabox/feature.pyi (the cb.feature namespace)."""
+    all_names = sorted(
+        (cls for classes in classes_by_module.values() for cls in classes), key=str.casefold
+    )
     lines: list[str] = [HEADER]
-    all_names: list[str] = []
-    for classes in classes_by_module.values():
-        for cls in classes:
-            lines.append(f"from .features import {cls} as {cls}\n")
-            all_names.append(cls)
+    for cls in all_names:
+        lines.append(f"from .features import {cls} as {cls}\n")
     lines.append(_all_block(all_names))
     return "".join(lines)
 
