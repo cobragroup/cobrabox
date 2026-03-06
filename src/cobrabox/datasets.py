@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from .data import Data, SignalData
+from .data import SignalData
+from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
 from .remote_datasets import ensure_remote_files, get_remote_dataset_spec
 
 
-def dataset(identifier: str) -> list[Data] | list[SignalData]:
-    """Load one logical dataset identifier as a list of Data parts.
+def dataset(identifier: str) -> Dataset[SignalData]:
+    """Load one logical dataset identifier as a Dataset of Data parts.
 
     Supports both built-in synthetic datasets and registered remote datasets.
     """

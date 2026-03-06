@@ -16,12 +16,26 @@ from __future__ import annotations
 
 # fmt: off
 ALIGNMENTS: dict[str, dict] = {
+    "AmpVar": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "av",
+        "lore":  "Measures the breath of the signal — faithfully, without judgment",
+    },
     "SlidingWindow": {
         "law":   1,
         "good":  1,
         "label": "Lawful Good",
         "abbrev": "sw",
         "lore":  "Rigidly structured, principled expansion of data — serves understanding",
+    },
+    "SlidingWindowReduce": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "sr",
+        "lore":  "Methodically carves time into windows, then summarizes without prejudice",
     },
     "SpikesCalc": {
         "law":   1,
@@ -72,12 +86,26 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "mn",
         "lore":  "Averages faithfully and without prejudice — the purest bureaucrat",
     },
+    "BandFilter": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "bf",
+        "lore":  "Imposes the classical order of brain rhythms upon chaotic oscillations",
+    },
     "Bandpower": {
         "law":   1,
         "good":  1,
         "label": "Lawful Good",
         "abbrev": "bp",
         "lore":  "Integrates the spectrum with precision and purpose — a scholar of oscillations",
+    },
+    "Hilbert": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "hi",
+        "lore":  "Reveals the hidden complex soul of oscillations without imposing form",
     },
     "Coherence": {
         "law":   0,

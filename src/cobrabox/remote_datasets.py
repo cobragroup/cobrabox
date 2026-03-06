@@ -15,7 +15,8 @@ import scipy.io
 import xarray as xr
 from tqdm import tqdm
 
-from .data import Data, SignalData
+from .data import SignalData
+from .dataset import Dataset
 
 
 @dataclass(slots=True)
@@ -26,7 +27,7 @@ class RemoteFile:
     filename: str  # Relative to the dataset's local directory
 
 
-RemoteLoader = Callable[[Path], list[Data] | list[SignalData]]
+RemoteLoader = Callable[[Path], Dataset[SignalData]]
 
 
 @dataclass(slots=True)
@@ -190,7 +191,7 @@ def ensure_remote_files(spec: RemoteDatasetSpec, *, repo_root: Path | None = Non
 def _placeholder_loader(identifier: str) -> RemoteLoader:
     """Create a loader that raises a clear message until implemented."""
 
-    def _loader(_dataset_dir: Path) -> list[Data] | list[SignalData]:
+    def _loader(_dataset_dir: Path) -> Dataset[SignalData]:
         raise NotImplementedError(
             f"Loader for remote dataset '{identifier}' is not implemented yet. "
             f"Files should now be available under the configured 'data/remote' "
@@ -265,7 +266,7 @@ def _extract_numeric_from_mat_bytes(raw: bytes) -> tuple[np.ndarray, list[str], 
     return candidate, channels, sampling_rate
 
 
-def _load_swiss_eeg_short(dataset_dir: Path) -> list[SignalData]:
+def _load_swiss_eeg_short(dataset_dir: Path) -> Dataset[SignalData]:
     """Load Swiss short EEG zip archives into SignalData objects.
 
     One SignalData object is produced per archive by reading the first supported
@@ -326,7 +327,7 @@ def _load_swiss_eeg_short(dataset_dir: Path) -> list[SignalData]:
 
     if not datasets:
         raise ValueError("All swiss_eeg_short archives were empty or unparsable.")
-    return datasets
+    return Dataset(datasets)
 
 
 def _swiss_eeg_short_spec() -> RemoteDatasetSpec:

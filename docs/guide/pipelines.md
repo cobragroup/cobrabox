@@ -38,14 +38,28 @@ result = chord.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
+## Simple Windowed Aggregation
+
+For basic windowed statistics without per-window features, use `SlidingWindowReduce` — it's simpler than a full Chord:
+
+```python
+# Single-step: window + aggregate
+result = cb.feature.SlidingWindowReduce(
+    window_size=100, step_size=50, dim="time", agg="mean"
+).apply(data)
+print(result.history)  # ['SlidingWindowReduce']
+```
+
+This computes the mean of each 100-sample window (stepping by 50) and returns a `Data` with a `window` dimension. Supports `mean`, `std`, `sum`, `min`, `max`.
+
 The `|` operator builds the chord automatically:
 
-| Left            | Right               | Result                              |
-| --------------- | ------------------- | ----------------------------------- |
-| `BaseFeature`   | `BaseFeature`       | `Pipeline`                          |
-| `SplitterFeature` | `BaseFeature`     | `_ChordBuilder` (intermediate)      |
-| `_ChordBuilder` | `BaseFeature`       | `_ChordBuilder` (extended pipeline) |
-| `_ChordBuilder` | `AggregatorFeature` | `Chord`                             |
+| Left              | Right               | Result                              |
+| ----------------- | ------------------- | ----------------------------------- |
+| `BaseFeature`     | `BaseFeature`       | `Pipeline`                          |
+| `SplitterFeature` | `BaseFeature`       | `_ChordBuilder` (intermediate)      |
+| `_ChordBuilder`   | `BaseFeature`       | `_ChordBuilder` (extended pipeline) |
+| `_ChordBuilder`   | `AggregatorFeature` | `Chord`                             |
 
 A `Chord` is itself a `BaseFeature`, so it composes freely with `|`:
 

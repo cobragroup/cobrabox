@@ -84,6 +84,7 @@ class LineLength(BaseFeature[SignalData]):
 ```
 
 The `SignalData` type ensures:
+
 - Data has a 'time' dimension (validated at construction)
 - `sampling_rate` may be available
 - Better IDE support and type checking
@@ -108,6 +109,14 @@ mean_val = cb.feature.Mean(dim="time").apply(data)
 
 Reduce over any dimension present in the data.
 
+### `AmpVar`
+
+```python
+amp_var = cb.feature.AmpVar().apply(data)
+```
+
+Computes amplitude variation (standard deviation) over the time dimension. Returns a `Data` object with the time dimension removed — useful for measuring signal variability per channel. Can be used in Chords for windowed amplitude variation analysis.
+
 ### `SlidingWindow` (splitter)
 
 ```python
@@ -118,6 +127,18 @@ for window in windows:
 ```
 
 Used inside a `Chord` — not called directly in typical pipelines.
+
+### `SlidingWindowReduce`
+
+```python
+# Single-step sliding window with aggregation
+result = cb.feature.SlidingWindowReduce(
+    window_size=100, step_size=50, dim="time", agg="mean"
+).apply(data)
+# Returns Data with 'window' dimension, 'time' is reduced
+```
+
+Combines windowing and aggregation in one step — simpler than a Chord for basic windowed statistics. Supports aggregations: `mean`, `std`, `sum`, `min`, `max`.
 
 ### `Bandpower`
 
@@ -133,6 +154,45 @@ to be set on the `Data` object.
 
 Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
+
+### `BandFilter`
+
+```python
+# Filter into all five default EEG bands
+filtered = cb.feature.BandFilter().apply(data)
+
+# Filter into specific bands only
+filtered = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
+
+# Custom filter order and keep original signal
+filtered = cb.feature.BandFilter(ord=4, keep_orig=True).apply(data)
+```
+
+Applies Butterworth bandpass filters to separate the signal into frequency bands.
+Returns a DataArray with a new `band` dimension containing the filtered signals.
+By default includes the five standard EEG bands (delta, theta, alpha, beta, gamma).
+Requires `sampling_rate` to be set on the data.
+
+### `Hilbert`
+
+```python
+# Extract analytic signal (complex)
+analytic = cb.feature.Hilbert().apply(data)
+
+# Extract amplitude envelope
+envelope = cb.feature.Hilbert(feature="envelope").apply(data)
+
+# Extract instantaneous phase
+phase = cb.feature.Hilbert(feature="phase").apply(data)
+
+# Extract instantaneous frequency (requires sampling_rate)
+freq = cb.feature.Hilbert(feature="frequency").apply(data)
+```
+
+Computes the analytic signal via Hilbert transform along the time axis.
+Returns the same shape as input; the time dimension is preserved.
+Supports four representations: `analytic` (complex signal, default), `envelope`
+(amplitude), `phase` (radians), and `frequency` (Hz, requires `sampling_rate`).
 
 ### `Coherence`
 
