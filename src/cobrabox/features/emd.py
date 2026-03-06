@@ -21,7 +21,12 @@ class EMD(BaseFeature[SignalData]):
     a new ``imf`` dimension with coordinates ``imf0``, ``imf1``, etc.
     The last component is always the residual (labelled ``residual``).
 
-    The IMFs sum to the original signal: ``data.data == result.sum(dim='imf')``.
+    The IMFs sum to the original signal: ``result.sum(dim='imf') == original``.
+
+    When processing multi-channel data, different channels may produce different
+    numbers of IMFs. Missing IMFs are filled with ``NaN`` (not zero) so that
+    operations like ``mean(dim='imf')`` give correct results without being
+    diluted by fake zeros.
 
     Args:
         max_imfs: Maximum number of IMFs to compute (not including residual).
@@ -114,7 +119,9 @@ class EMD(BaseFeature[SignalData]):
 
         # Combine results: each has dims (time, imf), we need to concat along a new dim
         # then unstack to recover original non-time dims
-        # Use join='outer' to handle varying IMF counts, filling with NaN
-        combined = xr.concat(imf_arrays, dim="stacked", join="outer", fill_value=0.0)
+        # Use join='outer' to handle varying IMF counts, filling missing IMFs with NaN
+        # NaN is preferred over 0.0 because it correctly indicates "no IMF here" and
+        # operations like mean() will give correct results (not diluted by fake zeros)
+        combined = xr.concat(imf_arrays, dim="stacked", join="outer", fill_value=np.nan)
         combined = combined.assign_coords(stacked=stacked.coords["stacked"])
         return combined.unstack("stacked")
