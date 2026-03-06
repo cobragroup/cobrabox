@@ -110,6 +110,36 @@ def test_emd_residual_always_included() -> None:
     assert all(c.startswith("imf") for c in imf_coords[:-1])
 
 
+def test_emd_keep_orig_includes_original() -> None:
+    """When keep_orig=True, original signal is included as first IMF."""
+    data = _make_data()
+    result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
+    imf_coords = list(result.data.coords["imf"].values)
+
+    # Original should be first, residual should be last
+    assert imf_coords[0] == "original"
+    assert imf_coords[-1] == "residual"
+    assert all(c.startswith("imf") for c in imf_coords[1:-1])
+
+
+def test_emd_keep_orig_false_excludes_original() -> None:
+    """When keep_orig=False (default), original signal is not included."""
+    data = _make_data()
+    result = cb.feature.EMD(max_imfs=3, keep_orig=False).apply(data)
+    imf_coords = list(result.data.coords["imf"].values)
+    assert "original" not in imf_coords
+
+
+def test_emd_keep_orig_original_matches_input() -> None:
+    """The 'original' IMF matches the input signal."""
+    data = _make_data(n_space=1)
+    result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
+
+    original_from_result = result.data.sel(imf="original").values
+    original_from_input = data.data.values.squeeze()
+    np.testing.assert_allclose(original_from_result.squeeze(), original_from_input)
+
+
 def test_emd_preserves_time_coords() -> None:
     """Time coordinates survive the decomposition."""
     data = _make_data(sampling_rate=100.0)

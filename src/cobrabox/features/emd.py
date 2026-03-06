@@ -33,22 +33,28 @@ class EMD(BaseFeature[SignalData]):
             * ``'mask_sift'`` — mask sift for improved mode separation
             * ``'iterated_mask_sift'`` — iterated mask sift
 
+        keep_orig: Whether to keep the original signal as an IMF named ``original``.
+            Defaults to ``False``.
+
     Raises:
         ValueError: If ``method`` is not a valid sift method.
         ValueError: If ``max_imfs`` is not positive.
 
     Returns:
         xarray.DataArray: The IMFs stacked along a new ``imf`` dimension.
-            The ``imf`` coordinate contains labels ``imf0``, ``imf1``, ..., ``residual``.
+            The ``imf`` coordinate contains labels ``imf0``, ``imf1``, ..., ``residual``
+            (and ``original`` if ``keep_orig=True``).
             Shape is the same as input with an additional ``imf`` dimension.
 
     Example:
         >>> result = cb.feature.EMD().apply(data)
         >>> result = cb.feature.EMD(max_imfs=5, method="mask_sift").apply(data)
+        >>> result = cb.feature.EMD(keep_orig=True).apply(data)
     """
 
     max_imfs: int | None = None
     method: Literal["sift", "mask_sift", "iterated_mask_sift"] = "sift"
+    keep_orig: bool = False
 
     def __post_init__(self) -> None:
         """Validate parameters after initialization."""
@@ -74,8 +80,16 @@ class EMD(BaseFeature[SignalData]):
             if not np.allclose(imf_sum, x.values):
                 residual = x.values - imf_sum
                 imfs = np.column_stack([imfs, residual])
+
+            # Build labels: optionally include original, then imf0..imfN, then residual
             n_imfs = imfs.shape[1]
             imf_labels = [f"imf{i}" for i in range(n_imfs - 1)] + ["residual"]
+
+            if self.keep_orig:
+                # Prepend original signal
+                imfs = np.column_stack([x.values, imfs])
+                imf_labels = ["original", *imf_labels]
+
             return xr.DataArray(
                 imfs, dims=["time", "imf"], coords={"time": x.coords["time"], "imf": imf_labels}
             )
