@@ -11,8 +11,8 @@ from ..data import Data, SignalData
 
 
 @dataclass
-class SampEn(BaseFeature[SignalData]):
-    """Sample Entropy (SampEn) feature.
+class SampleEntropy(BaseFeature[SignalData]):
+    """Sample Entropy feature.
 
     Sample entropy quantifies the regularity of a time-series. It is the
     negative logarithm of the conditional probability that two sequences
@@ -41,8 +41,8 @@ class SampEn(BaseFeature[SignalData]):
         ``time`` dimension collapsed.
 
     Example:
-        >>> entropy = cb.feature.SampEn(m=2).apply(data)  # base-2 (default)
-        >>> entropy_nat = cb.feature.SampEn(m=2, log_base=np.e).apply(data)  # natural log
+        >>> entropy = cb.feature.SampleEntropy(m=2).apply(data)  # base-2 (default)
+        >>> entropy_nat = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)  # natural log
     """
 
     # Output is a DataArray without the time dim, i.e. a ``Data`` container.

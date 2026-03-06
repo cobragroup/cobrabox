@@ -1,4 +1,4 @@
-"""Tests for cb.feature.SampEn."""
+"""Tests for cb.feature.SampleEntropy."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ import pytest
 
 import cobrabox as cb
 from cobrabox import SignalData
-from cobrabox.features.sample_entropy import SampEn
+from cobrabox.features.sample_entropy import SampleEntropy
 
 
 def _naive_sampen(ts: np.ndarray, m: int, r: float, log_base: float = 2) -> float:
-    """Reference implementation matching the algorithm in ``SampEn``."""
+    """Reference implementation matching the algorithm in ``SampleEntropy``."""
     n = len(ts)
 
     def _count(seq_len: int) -> int:
@@ -33,14 +33,14 @@ def _naive_sampen(ts: np.ndarray, m: int, r: float, log_base: float = 2) -> floa
 
 
 def test_sampen_known_value() -> None:
-    """Validate SampEn against a manually computed reference (log_base 2 default)."""
+    """Validate SampleEntropy against a manually computed reference (log_base 2 default)."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     m = 2
     r = 0.5  # tolerance smaller than distance between distinct values
     expected = _naive_sampen(ts, m, r, log_base=2)
 
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
-    result = SampEn(m=m, r=r).apply(data)
+    result = SampleEntropy(m=m, r=r).apply(data)
 
     val = result.data.values.item()
     assert np.isfinite(val)
@@ -48,14 +48,14 @@ def test_sampen_known_value() -> None:
 
 
 def test_sampen_natural_log() -> None:
-    """Validate SampEn with natural logarithm (log_base=e)."""
+    """Validate SampleEntropy with natural logarithm (log_base=e)."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     m = 2
     r = 0.5
     expected = _naive_sampen(ts, m, r, log_base=np.e)
 
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
-    result = SampEn(m=m, r=r, log_base=np.e).apply(data)
+    result = SampleEntropy(m=m, r=r, log_base=np.e).apply(data)
 
     val = result.data.values.item()
     assert np.isfinite(val)
@@ -63,14 +63,14 @@ def test_sampen_natural_log() -> None:
 
 
 def test_sampen_base_10() -> None:
-    """Validate SampEn with base-10 logarithm."""
+    """Validate SampleEntropy with base-10 logarithm."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     m = 2
     r = 0.5
     expected = _naive_sampen(ts, m, r, log_base=10)
 
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
-    result = SampEn(m=m, r=r, log_base=10).apply(data)
+    result = SampleEntropy(m=m, r=r, log_base=10).apply(data)
 
     val = result.data.values.item()
     assert np.isfinite(val)
@@ -78,24 +78,24 @@ def test_sampen_base_10() -> None:
 
 
 def test_sampen_raises_on_short_series() -> None:
-    """SampEn requires a series longer than the embedding dimension."""
+    """SampleEntropy requires a series longer than the embedding dimension."""
     ts = np.arange(2, dtype=float)  # length == 2
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
 
     with pytest.raises(ValueError, match="must be greater than embedding dimension"):
-        SampEn(m=2).apply(data)
+        SampleEntropy(m=2).apply(data)
 
 
 def test_sampen_raises_on_invalid_log_base() -> None:
-    """SampEn should reject invalid logarithm bases."""
+    """SampleEntropy should reject invalid logarithm bases."""
     with pytest.raises(ValueError, match="Logarithm base"):
-        SampEn(m=2, log_base=0)
+        SampleEntropy(m=2, log_base=0)
 
     with pytest.raises(ValueError, match="Logarithm base"):
-        SampEn(m=2, log_base=1)
+        SampleEntropy(m=2, log_base=1)
 
     with pytest.raises(ValueError, match="Logarithm base"):
-        SampEn(m=2, log_base=-2)
+        SampleEntropy(m=2, log_base=-2)
 
 
 def test_sampen_multi_dim_preserves_other_dims() -> None:
@@ -106,7 +106,7 @@ def test_sampen_multi_dim_preserves_other_dims() -> None:
     arr = np.stack([const, alt])  # shape (2, 12)
     data = SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=1.0)
 
-    feat = SampEn(m=2, r=0.5)
+    feat = SampleEntropy(m=2, r=0.5)
     result = feat.apply(data)
 
     # Result should have only the 'space' dimension.
@@ -123,15 +123,15 @@ def test_sampen_multi_dim_preserves_other_dims() -> None:
 
 
 def test_sampen_invalid_m() -> None:
-    """SampEn raises ValueError for m < 1."""
+    """SampleEntropy raises ValueError for m < 1."""
     with pytest.raises(ValueError, match="Embedding dimension m must be >= 1"):
-        SampEn(m=0)
+        SampleEntropy(m=0)
     with pytest.raises(ValueError, match="Embedding dimension m must be >= 1"):
-        SampEn(m=-1)
+        SampleEntropy(m=-1)
 
 
 def test_sampen_no_matches_returns_nan() -> None:
-    """SampEn returns NaN when no template matches are found."""
+    """SampleEntropy returns NaN when no template matches are found."""
     # Create data with unique values where no templates will match
     # Each template will be distinct enough that with a small tolerance,
     # no two templates will be considered similar
@@ -141,29 +141,29 @@ def test_sampen_no_matches_returns_nan() -> None:
     # Use a tolerance so small that no matches will be found
     # Templates are [0, 0.5], [0.5, 1.0], [1.0, 1.5], [1.5, 2.0] for m=2
     # Max distance between any two is at least 0.5, so r=0.001 should result in no matches
-    result = SampEn(m=2, r=0.001).apply(data)
+    result = SampleEntropy(m=2, r=0.001).apply(data)
 
     assert np.isnan(result.data.values.item())
 
 
 def test_sampen_history_updated() -> None:
-    """SampEn appends 'SampEn' to history."""
+    """SampleEntropy appends 'SampleEntropy' to history."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
 
-    result = SampEn(m=2, r=0.5).apply(data)
+    result = SampleEntropy(m=2, r=0.5).apply(data)
 
-    assert result.history[-1] == "SampEn"
+    assert result.history[-1] == "SampleEntropy"
 
 
 def test_sampen_metadata_preserved() -> None:
-    """SampEn preserves subjectID, groupID, condition."""
+    """SampleEntropy preserves subjectID, groupID, condition."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     data = SignalData.from_numpy(
         ts, dims=["time"], sampling_rate=1.0, subjectID="s42", groupID="control", condition="task"
     )
 
-    result = SampEn(m=2, r=0.5).apply(data)
+    result = SampleEntropy(m=2, r=0.5).apply(data)
 
     assert result.subjectID == "s42"
     assert result.groupID == "control"
@@ -173,7 +173,7 @@ def test_sampen_metadata_preserved() -> None:
 
 
 def test_sampen_does_not_mutate_input() -> None:
-    """SampEn.apply() leaves the input Data object unchanged."""
+    """SampleEntropy.apply() leaves the input Data object unchanged."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
 
@@ -181,7 +181,7 @@ def test_sampen_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.data.values.copy()
 
-    _ = SampEn(m=2, r=0.5).apply(data)
+    _ = SampleEntropy(m=2, r=0.5).apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -189,26 +189,26 @@ def test_sampen_does_not_mutate_input() -> None:
 
 
 def test_sampen_returns_data_instance() -> None:
-    """SampEn.apply() always returns a Data instance."""
+    """SampleEntropy.apply() always returns a Data instance."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
 
-    result = SampEn(m=2, r=0.5).apply(data)
+    result = SampleEntropy(m=2, r=0.5).apply(data)
 
     assert isinstance(result, cb.Data)
 
 
 def test_sampen_default_r_uses_std() -> None:
-    """SampEn uses 0.2 * std as default tolerance when r=None."""
+    """SampleEntropy uses 0.2 * std as default tolerance when r=None."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
 
     # Default r (None) should compute 0.2 * std
-    result_default = SampEn(m=2).apply(data)
+    result_default = SampleEntropy(m=2).apply(data)
 
     # Explicit r = 0.2 * std should match
     explicit_r = float(0.2 * np.std(ts, ddof=0))
-    result_explicit = SampEn(m=2, r=explicit_r).apply(data)
+    result_explicit = SampleEntropy(m=2, r=explicit_r).apply(data)
 
     val_default = result_default.data.values.item()
     val_explicit = result_explicit.data.values.item()

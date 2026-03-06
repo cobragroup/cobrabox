@@ -1,4 +1,4 @@
-"""Tests for the line_length feature behavior."""
+"""Tests for the mutual_information feature behavior."""
 
 from __future__ import annotations
 
@@ -117,3 +117,51 @@ def test_high_dim_equidistant_bins(high_dim_data: cb.Data) -> None:
     assert np.max(result.data.data[1, 1, :3, :3]) > 4
     assert np.max(result.data.data[1, 1, 3:, :3]) < 0.05
     assert result.data.dims == ("something", "sample", "space_from", "space_to")
+
+
+def test_mutual_information_history_updated() -> None:
+    """MutualInformation appends 'MutualInformation' to history."""
+    arr = np.zeros([6, 100])
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+    result = MutualInformation().apply(data)
+    assert result.history[-1] == "MutualInformation"
+
+
+def test_mutual_information_metadata_preserved() -> None:
+    """MutualInformation preserves subjectID, groupID, condition."""
+    arr = np.zeros([6, 100])
+    data = cb.SignalData.from_numpy(
+        arr,
+        dims=["space", "time"],
+        sampling_rate=100.0,
+        subjectID="s42",
+        groupID="control",
+        condition="rest",
+    )
+    result = MutualInformation().apply(data)
+    assert result.subjectID == "s42"
+    assert result.groupID == "control"
+    assert result.condition == "rest"
+
+
+def test_mutual_information_sampling_rate_none() -> None:
+    """MutualInformation sets sampling_rate to None since time dimension is removed."""
+    arr = np.zeros([6, 100])
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+    result = MutualInformation().apply(data)
+    assert result.sampling_rate is None
+
+
+def test_mutual_information_does_not_mutate_input() -> None:
+    """MutualInformation does not modify the input Data object."""
+    arr = np.zeros([6, 100])
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = MutualInformation().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)

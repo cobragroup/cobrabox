@@ -226,7 +226,7 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "rc",
         "lore":  "Summarizes net flow to name sources and sinks",
     },
-    "SampEn": {
+    "SampleEntropy": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",

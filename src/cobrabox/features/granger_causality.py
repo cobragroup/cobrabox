@@ -107,7 +107,6 @@ class GrangerCausality(BaseFeature[SignalData]):
     """
 
     output_type: ClassVar[type[Data]] = Data
-    _is_cobrabox_feature = True
 
     coord_x: str | int | None = None
     coord_y: str | int | None = None
@@ -181,8 +180,6 @@ class GrangerCausalityMatrix(BaseFeature[SignalData]):
     coords: list[str] | list[int] | None = None
     lag: int | None = None
     maxlag: int = 1
-
-    _is_cobrabox_feature = True
 
     def __post_init__(self) -> None:
         """Validate parameters."""

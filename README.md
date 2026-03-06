@@ -123,7 +123,8 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `LempelZiv` - Lempel-Ziv complexity per channel
 - `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
 - `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
-- `SampEn` - Sample Entropy (signal regularity/complexity measure)
+- `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
+- `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
 
 ### Connectivity Features
 
@@ -133,6 +134,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
 - `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
+- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Specialized Features
 

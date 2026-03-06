@@ -287,6 +287,31 @@ PLV measures phase synchrony in [0, 1] where 1 indicates perfect phase locking.
 `PhaseLockingValue` returns a scalar `Data` object; `PhaseLockingValueMatrix` returns a
 `(coord_i, coord_j)` matrix of all pairwise PLV values.
 
+### `MutualInformation`
+
+```python
+# Default: compute MI between all channel pairs
+mi_matrix = cb.feature.MutualInformation().apply(data)
+
+# With custom number of bins and equidistant binning
+mi_matrix = cb.feature.MutualInformation(
+    bins=10, equiprobable_bins=False
+).apply(data)
+
+# With natural logarithm (nats instead of bits)
+mi_matrix = cb.feature.MutualInformation(log_base=np.e).apply(data)
+```
+
+Computes pairwise mutual information (MI) between all channel pairs — a measure of
+statistical dependence. MI quantifies how much information one variable provides
+about another. Returns a matrix with dims `("space_from", "space_to")` where
+`mi[i, j]` is the mutual information from channel `i` to channel `j`.
+
+Uses histogram-based entropy estimation with configurable binning strategy
+(equiprobable or equidistant) and logarithm base (default: base-2 for bits).
+The number of bins can be specified manually or determined heuristically
+as n^(1/3) where n is the number of samples.
+
 ### `SpikesCalc`
 
 ```python
@@ -333,24 +358,40 @@ dimension from the total path length and maximum planar distance. Unlike HFD,
 KFD has no tuning parameters and is O(N), making it efficient for long signals.
 Values >= 1 indicate signal irregularity.
 
-### `SampEn`
+### `SampleEntropy`
 
 ```python
 # Default: binary logarithm (base 2)
-entropy = cb.feature.SampEn(m=2).apply(data)
+entropy = cb.feature.SampleEntropy(m=2).apply(data)
 
 # Natural logarithm (original definition)
-entropy = cb.feature.SampEn(m=2, log_base=np.e).apply(data)
+entropy = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)
 
 # Custom tolerance
-entropy = cb.feature.SampEn(m=2, r=0.3).apply(data)
+entropy = cb.feature.SampleEntropy(m=2, r=0.3).apply(data)
 ```
 
-Computes Sample Entropy (SampEn) per channel — a measure of time-series regularity
+Computes Sample Entropy per channel — a measure of time-series regularity
 and complexity. Lower values indicate more regular (predictable) signals; higher
 values indicate greater complexity. Uses embedding dimension `m` and tolerance `r`
 to count matching template sequences. By default uses binary logarithm (base 2);
 set `log_base=np.e` for the natural log (original definition).
+
+### `AmplitudeEntropy`
+
+```python
+# Compute amplitude entropy with default bin width
+entropy = cb.feature.AmplitudeEntropy(band_width=0.5).apply(data)
+
+# With custom bin width for histogram discretization
+entropy = cb.feature.AmplitudeEntropy(band_width=0.1).apply(data)
+```
+
+Computes amplitude entropy — a measure of signal amplitude distribution complexity.
+Uses histogram-based probability estimation with configurable bin width to compute
+Shannon entropy. Returns a scalar value representing the mean entropy across all
+time points. Useful for quantifying the unpredictability or randomness of signal
+amplitudes.
 
 ### `GrangerCausality` / `GrangerCausalityMatrix`
 
@@ -404,6 +445,7 @@ role. Positive values indicate a net *sink* (receives more than it sends);
 negative values indicate a net *source* (sends more than it receives).
 
 Works in two modes:
+
 1. **Time-series mode**: Fits a VAR model and computes PDC internally
 2. **Matrix mode**: Uses a pre-computed PDC matrix with `("space_to", "space_from")` dims
 
