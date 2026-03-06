@@ -7,6 +7,11 @@ from .features import BandFilter as BandFilter
 from .features import Bandpower as Bandpower
 from .features import Coherence as Coherence
 from .features import ConcatAggregate as ConcatAggregate
+from .features import Correlation as Correlation
+from .features import Covariance as Covariance
+from .features import Dummy as Dummy
+from .features import EnvelopeCorrelation as EnvelopeCorrelation
+from .features import EpileptogenicityIndex as EpileptogenicityIndex
 from .features import ContinuousWaveletTransform as ContinuousWaveletTransform
 from .features import Cordance as Cordance
 from .features import DiscreteWaveletTransform as DiscreteWaveletTransform
@@ -46,6 +51,11 @@ __all__ = [
     "Bandpower",
     "Coherence",
     "ConcatAggregate",
+    "Correlation",
+    "Covariance",
+    "Dummy",
+    "EnvelopeCorrelation",
+    "EpileptogenicityIndex",
     "ContinuousWaveletTransform",
     "Cordance",
     "DiscreteWaveletTransform",
