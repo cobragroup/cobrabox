@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal, TypeAlias
 
 import numpy as np
 import pywt
@@ -11,6 +11,55 @@ from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
 _VALID_CWT_SCALINGS = ("magnitude", "power", "complex")
+
+_DwtWavelet: TypeAlias = Literal[
+    "haar",
+    "db1",
+    "db2",
+    "db3",
+    "db4",
+    "db5",
+    "db6",
+    "db7",
+    "db8",
+    "sym2",
+    "sym3",
+    "sym4",
+    "sym5",
+    "sym6",
+    "sym7",
+    "sym8",
+    "coif1",
+    "coif2",
+    "coif3",
+    "coif4",
+    "coif5",
+    "dmey",
+]
+
+_CwtWavelet: TypeAlias = Literal[
+    "morl",
+    "mexh",
+    "gaus1",
+    "gaus2",
+    "gaus3",
+    "gaus4",
+    "gaus5",
+    "gaus6",
+    "gaus7",
+    "gaus8",
+    "cgau1",
+    "cgau2",
+    "cgau3",
+    "cgau4",
+    "cgau5",
+    "cgau6",
+    "cgau7",
+    "cgau8",
+    "cmor",
+    "fbsp",
+    "shan",
+]
 
 
 @dataclass
@@ -57,9 +106,19 @@ class DiscreteWaveletTransform(BaseFeature[SignalData]):
         ['approx', 'detail_4', 'detail_3', 'detail_2', 'detail_1']
     """
 
-    wavelet: str = "db4"
+    wavelet: _DwtWavelet = "db4"
     level: int | None = None
-    mode: str = "symmetric"
+    mode: Literal[
+        "zero",
+        "constant",
+        "symmetric",
+        "periodic",
+        "smooth",
+        "periodization",
+        "reflect",
+        "antisymmetric",
+        "antireflect",
+    ] = "symmetric"
 
     output_type: ClassVar[type[Data] | None] = Data
 
@@ -176,10 +235,10 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
         True
     """
 
-    wavelet: str = "morl"
+    wavelet: _CwtWavelet = "morl"
     scales: list[float] | None = None
     n_scales: int = 64
-    scaling: str = "magnitude"
+    scaling: Literal["magnitude", "power", "complex"] = "magnitude"
 
     output_type: ClassVar[type[Data] | None] = None  # preserves SignalData (time kept)
 
