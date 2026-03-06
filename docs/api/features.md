@@ -36,6 +36,11 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.envelope_correlation
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.sliding_window
     options:
         show_root_heading: true
@@ -51,17 +56,7 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
-::: cobrabox.features.spectrogram
-    options:
-        show_root_heading: true
-        show_source: true
-
-::: cobrabox.features.epileptogenicity_index
-    options:
-        show_root_heading: true
-        show_source: true
-
-::: cobrabox.features.envelope_correlation
+::: cobrabox.features.mutual_information
     options:
         show_root_heading: true
         show_source: true
@@ -81,6 +76,16 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.spectrogram
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.epileptogenicity_index
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.autocorr
     options:
         show_root_heading: true
@@ -92,6 +97,11 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_source: true
 
 ::: cobrabox.features.hilbert
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.amplitude_entropy
     options:
         show_root_heading: true
         show_source: true
