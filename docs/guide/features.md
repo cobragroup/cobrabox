@@ -105,7 +105,7 @@ Esteller, R., J. Echauz, T. Tcheng, B. Litt, and B. Pless. 2001. “Line Length:
 
 **Paper demonstrating usufulness of the `Line Length` feature for identification of high-frequency oscillations (HFOs):**
 
-Gardner, Andrew B., Greg A. Worrell, Eric Marsh, Dennis Dlugos, and Brian Litt. 2007. “Human and Automated Detection of High-Frequency Oscillations in Clinical Intracranial EEG Recordings.” Clinical Neurophysiology 118 (5): 1134–43. https://doi.org/10.1016/j.clinph.2006.12.019.
+Gardner, Andrew B., Greg A. Worrell, Eric Marsh, Dennis Dlugos, and Brian Litt. 2007. “Human and Automated Detection of High-Frequency Oscillations in Clinical Intracranial EEG Recordings.” Clinical Neurophysiology 118 (5): 1134–43. <https://doi.org/10.1016/j.clinph.2006.12.019>.
 
 ### `Min` / `Max` / `Mean`
 
@@ -225,6 +225,57 @@ Returns a DataArray with dims `(space, frequency, time)`. Supports multiple
 scaling modes: `"log"` (default, in dB), `"density"` (PSD), `"spectrum"` (power),
 or `"magnitude"` (STFT magnitude). Extra dimensions are preserved.
 
+### `DiscreteWaveletTransform`
+
+```python
+# Multi-level discrete wavelet decomposition
+dwt = cb.feature.DiscreteWaveletTransform(wavelet="db4").apply(data)
+
+# With specific decomposition level
+dwt = cb.feature.DiscreteWaveletTransform(wavelet="sym5", level=3).apply(data)
+```
+
+Multi-level discrete wavelet decomposition (DWT) using PyWavelets.
+Decomposes the time axis into approximation and detail coefficients.
+Returns a DataArray with dims `(*extra_dims, "space", "wavelet_level", "coef_index")`.
+Useful for multi-resolution analysis of EEG signals.
+
+### `ContinuousWaveletTransform`
+
+```python
+# Continuous wavelet transform with Morlet wavelet
+cwt = cb.feature.ContinuousWaveletTransform(wavelet="morl").apply(data)
+
+# With custom scales and power scaling
+cwt = cb.feature.ContinuousWaveletTransform(
+    wavelet="cmor1.5-1.0", scales=np.arange(1, 128), scaling="power"
+).apply(data)
+```
+
+Continuous wavelet transform for time-frequency analysis.
+Provides better frequency resolution than DWT but is computationally more expensive.
+Returns a DataArray with dims `(space, frequency, time)`.
+Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
+
+### `Cordance`
+
+```python
+# Compute cordance using default EEG bands
+cord = cb.feature.Cordance().apply(data)
+
+# Custom bands and output type
+cord = cb.feature.Cordance(
+    bands={"alpha": [8, 12], "beta": [12, 30]},
+    output="concordance"
+).apply(data)
+```
+
+Computes cordance (Leuchter et al., 1994), a quantitative EEG measure that combines
+absolute and relative spectral power into a single index per channel per band.
+Classifies channels as concordant (high absolute and relative power) or discordant
+(low absolute, high relative power) using a threshold-based approach.
+Useful for localizing brain dysfunction in clinical EEG.
+
 ### `EpileptogenicityIndex`
 
 ```python
@@ -248,6 +299,43 @@ Computes amplitude envelope correlation (AEC) between all channel pairs using
 Hilbert transform. When `orthogonalize="pairwise"` (default), zero-lag contributions
 are removed to reduce volume conduction effects. Returns a symmetric `(space, space_to)`
 matrix of Pearson correlations.
+
+### `Correlation`
+
+```python
+# Pearson correlation (default)
+corr = cb.feature.Correlation().apply(data)
+
+# Spearman rank correlation
+corr = cb.feature.Correlation(method="spearman").apply(data)
+
+# Correlation along a custom dimension
+corr = cb.feature.Correlation(dim="samples").apply(data)
+```
+
+Computes pairwise correlation between all channel pairs along a specified dimension
+(default: `"time"`). Returns a symmetric matrix with values in `[-1, 1]` and diagonal
+set to `1.0`. Supports both Pearson (linear) and Spearman (rank-based) correlation.
+
+Input data must be exactly 2-dimensional. The correlation dimension is consumed,
+producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
+
+### `Covariance`
+
+```python
+# Sample covariance matrix
+cov = cb.feature.Covariance().apply(data)
+
+# Covariance along custom dimension
+cov = cb.feature.Covariance(dim="samples").apply(data)
+```
+
+Computes pairwise sample covariance between all channel pairs along a specified
+dimension (default: `"time"`). Returns a symmetric covariance matrix where the
+diagonal contains per-channel sample variance (ddof=1).
+
+Input data must be exactly 2-dimensional. The covariance dimension is consumed,
+producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
 
 ### `PartialCorrelation`
 
@@ -400,6 +488,39 @@ Uses histogram-based probability estimation with configurable bin width to compu
 Shannon entropy. Returns a scalar value representing the mean entropy across all
 time points. Useful for quantifying the unpredictability or randomness of signal
 amplitudes.
+
+### `FourierTransformSurrogates` (splitter)
+
+```python
+# Generate 100 surrogates preserving power spectrum
+feat = cb.feature.FourierTransformSurrogates(n_surrogates=100, random_state=42)
+surrogates = list(feat(data))  # original + 100 surrogates
+
+# Generate surrogates without original data
+feat = cb.feature.FourierTransformSurrogates(
+    n_surrogates=50, return_data=False, random_state=42
+)
+surrogates = list(feat(data))  # 50 surrogates only
+
+# Multivariate mode preserves cross-channel correlations
+feat = cb.feature.FourierTransformSurrogates(
+    n_surrogates=100, multivariate=True, random_state=42
+)
+```
+
+Generates surrogate time series by randomizing Fourier phases while preserving
+the power spectrum (autocorrelation). Useful for statistical testing and null
+hypothesis generation.
+
+**Parameters:**
+
+- `n_surrogates` (int): Number of surrogates to generate
+- `multivariate` (bool, default True): Apply same random phases to all channels
+  (preserves cross-channel correlations when True)
+- `return_data` (bool, default True): Include original data as first element
+- `random_state` (int or Generator, optional): For reproducibility
+
+**Yields:** SignalData objects (original + n_surrogates if return_data=True)
 
 ### `GrangerCausality` / `GrangerCausalityMatrix`
 

@@ -65,6 +65,8 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 
 **Public API** (`src/cobrabox/__init__.py`): Top-level imports expose `Data`, `SignalData`, `EEG`, `FMRI`, `dataset`, `from_numpy`, `from_xarray`, the base classes `BaseFeature`, `SplitterFeature`, `AggregatorFeature`, `Pipeline`, and `Chord`, plus hardcoded imports of key feature classes (`LineLength`, `SlidingWindow`, `MeanAggregate`). The `feature` submodule is also accessible as `cb.feature.*` (auto-discovered). **Note:** `globals().update()` in `features/__init__.py` is opaque to IDEs/type-checkers; the `# noqa: PLE0604` there is intentional. See `docs/plans/2026-02-27-feature-autodiscovery-static-analysis.md` for the open decision on a permanent fix.
 
+**Serialization** (`src/cobrabox/serialization.py`): `cb.save(obj, path)` / `cb.load(path)` for file I/O; `cb.serialize(obj)` / `cb.deserialize(content)` for string I/O. Also accessible as `cb.serialization.*`. All objects serialize as a `pipeline:` YAML/JSON list — single features and chords are wrapped as one-element lists. `BaseFeature` and `Pipeline` expose `.to_yaml()` / `.from_yaml()` / `.to_dict()` / `.from_dict()` convenience methods. Callable parameters use `dill` (mandatory dependency). Schema version is tracked in every file; major version bump raises `SchemaVersionError`.
+
 ## Key conventions
 
 - Feature classes live in `src/cobrabox/features/` as individual files, one class per file.

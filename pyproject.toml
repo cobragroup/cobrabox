@@ -1,14 +1,18 @@
 [project]
 name = "cobrabox"
-version = "0.2.10"
+version = "0.3.2"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "emd>=0.7.0",
+    "dill>=0.3.0",
+    "ipython>=9.10.0",
     "mne-connectivity>=0.7.0",
     "numpy>=2.4.2",
     "pandas>=3.0.1",
+    "pywavelets>=1.9.0",
+    "pyyaml>=6.0",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.1",
     "statsmodels>=0.14",
@@ -65,6 +69,9 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
 ]
+
+[tool.ty.environment]
+python-version = "3.14"
 
 [tool.ty.src]
 exclude = ["src/cobrabox/features/dummy.py"]
