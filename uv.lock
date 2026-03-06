@@ -328,11 +328,8 @@ dependencies = [
     { name = "mne-connectivity" },
     { name = "numpy" },
     { name = "pandas" },
-<<<<<<< HEAD
     { name = "pywavelets" },
-=======
     { name = "pyyaml" },
->>>>>>> b2f797c (serialization)
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "statsmodels" },
@@ -363,11 +360,8 @@ requires-dist = [
     { name = "mne-connectivity", specifier = ">=0.7.0" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.1" },
-<<<<<<< HEAD
     { name = "pywavelets", specifier = ">=1.9.0" },
-=======
     { name = "pyyaml", specifier = ">=6.0" },
->>>>>>> b2f797c (serialization)
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "statsmodels", specifier = ">=0.14" },
