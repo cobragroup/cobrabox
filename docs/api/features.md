@@ -126,6 +126,16 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.correlation
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.covariance
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.partial_directed_coherence
     options:
         show_root_heading: true

@@ -300,6 +300,43 @@ Hilbert transform. When `orthogonalize="pairwise"` (default), zero-lag contribut
 are removed to reduce volume conduction effects. Returns a symmetric `(space, space_to)`
 matrix of Pearson correlations.
 
+### `Correlation`
+
+```python
+# Pearson correlation (default)
+corr = cb.feature.Correlation().apply(data)
+
+# Spearman rank correlation
+corr = cb.feature.Correlation(method="spearman").apply(data)
+
+# Correlation along a custom dimension
+corr = cb.feature.Correlation(dim="samples").apply(data)
+```
+
+Computes pairwise correlation between all channel pairs along a specified dimension
+(default: `"time"`). Returns a symmetric matrix with values in `[-1, 1]` and diagonal
+set to `1.0`. Supports both Pearson (linear) and Spearman (rank-based) correlation.
+
+Input data must be exactly 2-dimensional. The correlation dimension is consumed,
+producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
+
+### `Covariance`
+
+```python
+# Sample covariance matrix
+cov = cb.feature.Covariance().apply(data)
+
+# Covariance along custom dimension
+cov = cb.feature.Covariance(dim="samples").apply(data)
+```
+
+Computes pairwise sample covariance between all channel pairs along a specified
+dimension (default: `"time"`). Returns a symmetric covariance matrix where the
+diagonal contains per-channel sample variance (ddof=1).
+
+Input data must be exactly 2-dimensional. The covariance dimension is consumed,
+producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
+
 ### `PartialCorrelation`
 
 ```python
