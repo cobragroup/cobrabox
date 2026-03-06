@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import textwrap
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -631,3 +633,117 @@ def test_params_passed_to_post_init() -> None:
     # SlidingWindow.__post_init__ raises ValueError when window_size < 1
     with pytest.raises(ValueError, match="window_size"):
         deserialize(yaml_str)
+
+
+# ─── Missing Coverage Tests ───────────────────────────────────────────────────
+
+
+def test_serialize_callable_with_dill() -> None:
+    """Callable params are serialized with dill and round-trip correctly."""
+    from cobrabox.serialization import _deserialize_value, _serialize_value
+
+    def my_func(x: float) -> float:
+        return x * 2
+
+    serialized = _serialize_value(my_func)
+    assert serialized["_type"] == "callable"
+    assert serialized["format"] == "dill_hex"
+
+    restored = _deserialize_value(serialized, typing.Callable)
+    assert restored(5.0) == 10.0
+
+
+def test_annotation_is_tuple_direct() -> None:
+    """_annotation_is_tuple handles bare tuple annotation."""
+    from cobrabox.serialization import _annotation_is_tuple
+
+    assert _annotation_is_tuple(tuple) is True
+    assert _annotation_is_tuple(tuple[int, str]) is True
+    assert _annotation_is_tuple(list) is False
+
+
+def test_inner_annotation_no_args() -> None:
+    """_inner_annotation returns Any when tuple has no type args."""
+    from cobrabox.serialization import _inner_annotation
+
+    # Bare tuple has no args
+    assert _inner_annotation(tuple, 0) is typing.Any
+
+
+def test_inner_annotation_index_out_of_range() -> None:
+    """_inner_annotation returns Any when index exceeds tuple length."""
+    from cobrabox.serialization import _inner_annotation
+
+    # Fixed-length tuple with 2 elements, asking for index 5
+    result = _inner_annotation(tuple[int, str], 5)
+    assert result is typing.Any
+
+
+def test_instantiate_non_dataclass_raises() -> None:
+    """_instantiate raises ValidationError for non-dataclass."""
+    from cobrabox.serialization import ValidationError, _instantiate
+
+    class NotADataclass:
+        pass
+
+    with pytest.raises(ValidationError, match="not a dataclass"):
+        _instantiate(NotADataclass, {})
+
+
+def test_instantiate_missing_required_param() -> None:
+    """_instantiate raises ValidationError when required param is missing."""
+    from cobrabox.serialization import ValidationError, _instantiate
+
+    @dataclasses.dataclass
+    class TestFeature:
+        required_param: float
+
+    # Manually mark as feature
+    TestFeature._is_cobrabox_feature = True  # type: ignore[attr-defined]
+
+    with pytest.raises(ValidationError, match="missing required parameter"):
+        _instantiate(TestFeature, {})
+
+
+def test_instantiate_get_type_hints_fails_gracefully() -> None:
+    """_instantiate handles get_type_hints failure gracefully."""
+    from cobrabox.serialization import _instantiate
+
+    @dataclasses.dataclass
+    class TestFeature:
+        value: float = 1.0
+
+    TestFeature._is_cobrabox_feature = True  # type: ignore[attr-defined]
+
+    # Should work even if get_type_hints fails (uses empty hints)
+    result = _instantiate(TestFeature, {"value": 42.0})
+    assert result.value == 42.0
+
+
+def test_schema_version_unreadable() -> None:
+    """Unreadable schema_version raises SchemaVersionError."""
+    yaml_str = textwrap.dedent("""\
+        cobrabox_version: "0.3.1"
+        schema_version: "not-a-version"
+        pipeline:
+          - class: LineLength
+            module: cobrabox.features.line_length
+            params: {}
+    """)
+    with pytest.raises(SchemaVersionError, match="Unreadable"):
+        deserialize(yaml_str)
+
+
+def test_cobrabox_version_unreadable() -> None:
+    """Unreadable cobrabox_version is handled gracefully (no crash)."""
+    yaml_str = textwrap.dedent("""\
+        cobrabox_version: "not-a-version"
+        schema_version: "1.0.0"
+        pipeline:
+          - class: LineLength
+            module: cobrabox.features.line_length
+            params: {}
+    """)
+    # Should not raise, just not warn
+    result = deserialize(yaml_str)
+    assert isinstance(result, cb.Pipeline)
