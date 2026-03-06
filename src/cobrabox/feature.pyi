@@ -11,6 +11,7 @@ from .features import DiscreteWaveletTransform as DiscreteWaveletTransform
 from .features import Dummy as Dummy
 from .features import EnvelopeCorrelation as EnvelopeCorrelation
 from .features import EpileptogenicityIndex as EpileptogenicityIndex
+from .features import FourierTransformSurrogates as FourierTransformSurrogates
 from .features import FractalDimHiguchi as FractalDimHiguchi
 from .features import FractalDimKatz as FractalDimKatz
 from .features import GrangerCausality as GrangerCausality
@@ -47,6 +48,7 @@ __all__ = [
     "Dummy",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",
+    "FourierTransformSurrogates",
     "FractalDimHiguchi",
     "FractalDimKatz",
     "GrangerCausality",
