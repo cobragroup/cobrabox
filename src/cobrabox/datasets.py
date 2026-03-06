@@ -3,7 +3,7 @@ from __future__ import annotations
 from .data import SignalData
 from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
-from .remote_datasets import ensure_remote_files, get_remote_dataset_spec
+from .downloader import ensure_remote_files, get_remote_dataset_spec
 
 
 def dataset(identifier: str) -> Dataset[SignalData]:

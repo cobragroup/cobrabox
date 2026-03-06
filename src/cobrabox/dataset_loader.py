@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import scipy.io
 import xarray as xr
 
 from .data import SignalData
@@ -190,4 +194,137 @@ def load_realistic_swiss(
 
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
+    return Dataset(items)
+
+
+# ---------------------------------------------------------------------------
+# Remote dataset loaders
+# ---------------------------------------------------------------------------
+
+
+def _extract_numeric_from_csv_bytes(raw: bytes) -> tuple[np.ndarray, list[str]]:
+    """Parse a CSV-like payload and return numeric values plus channel names."""
+    df = pd.read_csv(io.BytesIO(raw), sep=None, engine="python")
+    numeric_df = df.select_dtypes(include=["number"])
+    if numeric_df.empty:
+        raise ValueError("CSV member has no numeric columns")
+    values = numeric_df.to_numpy(dtype=float, copy=False)
+    channels = [str(c) for c in numeric_df.columns]
+    return values, channels
+
+
+def _extract_numeric_from_npy_bytes(raw: bytes) -> tuple[np.ndarray, list[str]]:
+    """Parse .npy/.npz payload and return a 2D array plus generated channel names."""
+    obj = np.load(io.BytesIO(raw), allow_pickle=False)
+    if isinstance(obj, np.lib.npyio.NpzFile):
+        if not obj.files:
+            raise ValueError("NPZ archive contains no arrays")
+        arr = np.asarray(obj[obj.files[0]], dtype=float)
+    else:
+        arr = np.asarray(obj, dtype=float)
+
+    if arr.ndim == 1:
+        arr = arr[:, np.newaxis]
+    if arr.ndim != 2:
+        raise ValueError(f"Expected a 2D array, got shape {arr.shape}")
+
+    channels = [f"ch{i}" for i in range(arr.shape[1])]
+    return arr, channels
+
+
+def _extract_numeric_from_mat_bytes(raw: bytes) -> tuple[np.ndarray, list[str], float | None]:
+    """Parse .mat payload and return signal data, channel names, and optional sampling rate."""
+    data = scipy.io.loadmat(io.BytesIO(raw))
+    sampling_rate: float | None = None
+    for key in ("fs", "sampling_rate", "Fs", "srate"):
+        if key in data:
+            try:
+                sampling_rate = float(np.asarray(data[key]).squeeze())
+                break
+            except TypeError:
+                pass
+            except ValueError:
+                pass
+
+    candidate: np.ndarray | None = None
+    for key, value in data.items():
+        if key.startswith("__"):
+            continue
+        arr = np.asarray(value)
+        if not np.issubdtype(arr.dtype, np.number):
+            continue
+        if arr.ndim == 1:
+            arr = arr[:, np.newaxis]
+        if arr.ndim == 2:
+            candidate = np.asarray(arr, dtype=float)
+            break
+
+    if candidate is None:
+        raise ValueError("MAT member does not contain a numeric 2D array")
+
+    channels = [f"ch{i}" for i in range(candidate.shape[1])]
+    return candidate, channels, sampling_rate
+
+
+def _load_swiss_eeg_short(dataset_dir: Path) -> Dataset[SignalData]:
+    """Load Swiss short EEG zip archives into SignalData objects.
+
+    One SignalData object is produced per archive by reading the first supported
+    numeric member found inside each zip file.
+    """
+    zip_paths = sorted(dataset_dir.glob("*.zip"))
+    if not zip_paths:
+        raise FileNotFoundError(f"No .zip files found for 'swiss_eeg_short' in {dataset_dir}.")
+
+    items: list[SignalData] = []
+    for zip_path in zip_paths:
+        with zipfile.ZipFile(zip_path) as zf:
+            members = [name for name in zf.namelist() if not name.endswith("/")]
+            if not members:
+                continue
+
+            parsed = False
+            for member in members:
+                suffix = Path(member).suffix.lower()
+                if suffix not in {".csv", ".txt", ".tsv", ".npy", ".npz", ".mat"}:
+                    continue
+
+                raw = zf.read(member)
+                sampling_rate: float | None = None
+                if suffix in {".csv", ".txt", ".tsv"}:
+                    values, channels = _extract_numeric_from_csv_bytes(raw)
+                elif suffix in {".npy", ".npz"}:
+                    values, channels = _extract_numeric_from_npy_bytes(raw)
+                else:
+                    values, channels, sampling_rate = _extract_numeric_from_mat_bytes(raw)
+
+                if values.shape[0] == 0:
+                    continue
+
+                time = (
+                    np.arange(values.shape[0], dtype=float) / sampling_rate
+                    if sampling_rate
+                    else np.arange(values.shape[0], dtype=float)
+                )
+                da = xr.DataArray(
+                    values,
+                    dims=["time", "space"],
+                    coords={"time": time, "space": channels},
+                    attrs={
+                        "identifier": "swiss_eeg_short",
+                        "source_archive": zip_path.name,
+                        "source_member": member,
+                    },
+                )
+                items.append(
+                    SignalData.from_xarray(da, sampling_rate=sampling_rate, subjectID=zip_path.stem)
+                )
+                parsed = True
+                break
+
+            if not parsed:
+                raise ValueError(f"{zip_path.name}: no supported numeric member found in archive.")
+
+    if not items:
+        raise ValueError("All swiss_eeg_short archives were empty or unparsable.")
     return Dataset(items)
