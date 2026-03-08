@@ -6,7 +6,8 @@
       "Skill(commit-commands:commit)",
       "Bash(git push:*)",
       "Bash(cat:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(uvx pre-commit:*)"
     ]
   }
 }

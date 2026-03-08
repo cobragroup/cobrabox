@@ -84,6 +84,7 @@ class LineLength(BaseFeature[SignalData]):
 ```
 
 The `SignalData` type ensures:
+
 - Data has a 'time' dimension (validated at construction)
 - `sampling_rate` may be available
 - Better IDE support and type checking
@@ -98,6 +99,14 @@ feat = cb.feature.LineLength().apply(data)
 
 Sum of absolute differences between consecutive timepoints per channel.
 
+**Paper demonstrating usefulness of the `Line Length` feature for seizure onset detection in iEEG:**
+
+Esteller, R., J. Echauz, T. Tcheng, B. Litt, and B. Pless. 2001. “Line Length: An Efficient Feature for Seizure Onset Detection.” 2001 Conference Proceedings of the 23rd Annual International Conference of the IEEE Engineering in Medicine and Biology Society, 1707–10. [https://doi.org/10.1109/IEMBS.2001.1020545](https://doi.org/10.1109/IEMBS.2001.1020545).
+
+**Paper demonstrating usufulness of the `Line Length` feature for identification of high-frequency oscillations (HFOs):**
+
+Gardner, Andrew B., Greg A. Worrell, Eric Marsh, Dennis Dlugos, and Brian Litt. 2007. “Human and Automated Detection of High-Frequency Oscillations in Clinical Intracranial EEG Recordings.” Clinical Neurophysiology 118 (5): 1134–43. <https://doi.org/10.1016/j.clinph.2006.12.019>.
+
 ### `Min` / `Max` / `Mean`
 
 ```python
@@ -107,6 +116,14 @@ mean_val = cb.feature.Mean(dim="time").apply(data)
 ```
 
 Reduce over any dimension present in the data.
+
+### `AmplitudeVariation`
+
+```python
+amp_var = cb.feature.AmplitudeVariation().apply(data)
+```
+
+Computes amplitude variation (standard deviation) over the time dimension. Returns a `Data` object with the time dimension removed — useful for measuring signal variability per channel. Can be used in Chords for windowed amplitude variation analysis.
 
 ### `SlidingWindow` (splitter)
 
@@ -118,6 +135,18 @@ for window in windows:
 ```
 
 Used inside a `Chord` — not called directly in typical pipelines.
+
+### `SlidingWindowReduce`
+
+```python
+# Single-step sliding window with aggregation
+result = cb.feature.SlidingWindowReduce(
+    window_size=100, step_size=50, dim="time", agg="mean"
+).apply(data)
+# Returns Data with 'window' dimension, 'time' is reduced
+```
+
+Combines windowing and aggregation in one step — simpler than a Chord for basic windowed statistics. Supports aggregations: `mean`, `std`, `sum`, `min`, `max`.
 
 ### `Bandpower`
 
@@ -133,6 +162,45 @@ to be set on the `Data` object.
 
 Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
+
+### `BandFilter`
+
+```python
+# Filter into all five default EEG bands
+filtered = cb.feature.BandFilter().apply(data)
+
+# Filter into specific bands only
+filtered = cb.feature.BandFilter(bands={"alpha": [8, 12]}).apply(data)
+
+# Custom filter order and keep original signal
+filtered = cb.feature.BandFilter(ord=4, keep_orig=True).apply(data)
+```
+
+Applies Butterworth bandpass filters to separate the signal into frequency bands.
+Returns a DataArray with a new `band` dimension containing the filtered signals.
+By default includes the five standard EEG bands (delta, theta, alpha, beta, gamma).
+Requires `sampling_rate` to be set on the data.
+
+### `Hilbert`
+
+```python
+# Extract analytic signal (complex)
+analytic = cb.feature.Hilbert().apply(data)
+
+# Extract amplitude envelope
+envelope = cb.feature.Hilbert(feature="envelope").apply(data)
+
+# Extract instantaneous phase
+phase = cb.feature.Hilbert(feature="phase").apply(data)
+
+# Extract instantaneous frequency (requires sampling_rate)
+freq = cb.feature.Hilbert(feature="frequency").apply(data)
+```
+
+Computes the analytic signal via Hilbert transform along the time axis.
+Returns the same shape as input; the time dimension is preserved.
+Supports four representations: `analytic` (complex signal, default), `envelope`
+(amplitude), `phase` (radians), and `frequency` (Hz, requires `sampling_rate`).
 
 ### `Coherence`
 
@@ -157,6 +225,57 @@ Returns a DataArray with dims `(space, frequency, time)`. Supports multiple
 scaling modes: `"log"` (default, in dB), `"density"` (PSD), `"spectrum"` (power),
 or `"magnitude"` (STFT magnitude). Extra dimensions are preserved.
 
+### `DiscreteWaveletTransform`
+
+```python
+# Multi-level discrete wavelet decomposition
+dwt = cb.feature.DiscreteWaveletTransform(wavelet="db4").apply(data)
+
+# With specific decomposition level
+dwt = cb.feature.DiscreteWaveletTransform(wavelet="sym5", level=3).apply(data)
+```
+
+Multi-level discrete wavelet decomposition (DWT) using PyWavelets.
+Decomposes the time axis into approximation and detail coefficients.
+Returns a DataArray with dims `(*extra_dims, "space", "wavelet_level", "coef_index")`.
+Useful for multi-resolution analysis of EEG signals.
+
+### `ContinuousWaveletTransform`
+
+```python
+# Continuous wavelet transform with Morlet wavelet
+cwt = cb.feature.ContinuousWaveletTransform(wavelet="morl").apply(data)
+
+# With custom scales and power scaling
+cwt = cb.feature.ContinuousWaveletTransform(
+    wavelet="cmor1.5-1.0", scales=np.arange(1, 128), scaling="power"
+).apply(data)
+```
+
+Continuous wavelet transform for time-frequency analysis.
+Provides better frequency resolution than DWT but is computationally more expensive.
+Returns a DataArray with dims `(space, frequency, time)`.
+Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
+
+### `Cordance`
+
+```python
+# Compute cordance using default EEG bands
+cord = cb.feature.Cordance().apply(data)
+
+# Custom bands and output type
+cord = cb.feature.Cordance(
+    bands={"alpha": [8, 12], "beta": [12, 30]},
+    output="concordance"
+).apply(data)
+```
+
+Computes cordance (Leuchter et al., 1994), a quantitative EEG measure that combines
+absolute and relative spectral power into a single index per channel per band.
+Classifies channels as concordant (high absolute and relative power) or discordant
+(low absolute, high relative power) using a threshold-based approach.
+Useful for localizing brain dysfunction in clinical EEG.
+
 ### `EpileptogenicityIndex`
 
 ```python
@@ -180,6 +299,43 @@ Computes amplitude envelope correlation (AEC) between all channel pairs using
 Hilbert transform. When `orthogonalize="pairwise"` (default), zero-lag contributions
 are removed to reduce volume conduction effects. Returns a symmetric `(space, space_to)`
 matrix of Pearson correlations.
+
+### `Correlation`
+
+```python
+# Pearson correlation (default)
+corr = cb.feature.Correlation().apply(data)
+
+# Spearman rank correlation
+corr = cb.feature.Correlation(method="spearman").apply(data)
+
+# Correlation along a custom dimension
+corr = cb.feature.Correlation(dim="samples").apply(data)
+```
+
+Computes pairwise correlation between all channel pairs along a specified dimension
+(default: `"time"`). Returns a symmetric matrix with values in `[-1, 1]` and diagonal
+set to `1.0`. Supports both Pearson (linear) and Spearman (rank-based) correlation.
+
+Input data must be exactly 2-dimensional. The correlation dimension is consumed,
+producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
+
+### `Covariance`
+
+```python
+# Sample covariance matrix
+cov = cb.feature.Covariance().apply(data)
+
+# Covariance along custom dimension
+cov = cb.feature.Covariance(dim="samples").apply(data)
+```
+
+Computes pairwise sample covariance between all channel pairs along a specified
+dimension (default: `"time"`). Returns a symmetric covariance matrix where the
+diagonal contains per-channel sample variance (ddof=1).
+
+Input data must be exactly 2-dimensional. The covariance dimension is consumed,
+producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
 
 ### `PartialCorrelation`
 
@@ -227,6 +383,31 @@ PLV measures phase synchrony in [0, 1] where 1 indicates perfect phase locking.
 `PhaseLockingValue` returns a scalar `Data` object; `PhaseLockingValueMatrix` returns a
 `(coord_i, coord_j)` matrix of all pairwise PLV values.
 
+### `MutualInformation`
+
+```python
+# Default: compute MI between all channel pairs
+mi_matrix = cb.feature.MutualInformation().apply(data)
+
+# With custom number of bins and equidistant binning
+mi_matrix = cb.feature.MutualInformation(
+    bins=10, equiprobable_bins=False
+).apply(data)
+
+# With natural logarithm (nats instead of bits)
+mi_matrix = cb.feature.MutualInformation(log_base=np.e).apply(data)
+```
+
+Computes pairwise mutual information (MI) between all channel pairs — a measure of
+statistical dependence. MI quantifies how much information one variable provides
+about another. Returns a matrix with dims `("space_from", "space_to")` where
+`mi[i, j]` is the mutual information from channel `i` to channel `j`.
+
+Uses histogram-based entropy estimation with configurable binning strategy
+(equiprobable or equidistant) and logarithm base (default: base-2 for bits).
+The number of bins can be specified manually or determined heuristically
+as n^(1/3) where n is the number of samples.
+
 ### `SpikesCalc`
 
 ```python
@@ -235,6 +416,185 @@ spikes = cb.feature.SpikesCalc().apply(data)
 
 Detects spikes (outliers) using the IQR method. Values outside ±1.5×IQR from Q1/Q3
 are counted as spikes. Returns a single value with the spike count.
+
+### `LempelZiv`
+
+```python
+lzc = cb.feature.LempelZiv().apply(data)
+```
+
+Computes Lempel-Ziv complexity (LZC) per channel — a measure of signal complexity
+based on the number of distinct patterns in the binary sequence. Higher values
+indicate more complex/irregular signals. The signal is binarized around the median
+before LZC calculation.
+
+### `FractalDimHiguchi`
+
+```python
+fd = cb.feature.FractalDimHiguchi().apply(data)
+fd = cb.feature.FractalDimHiguchi(k_max=20).apply(data)
+```
+
+Computes Higuchi Fractal Dimension (HFD) per channel — a measure of signal
+roughness/complexity based on fractal geometry. Constructs k sub-series and
+estimates dimension from the slope of log(L) vs log(1/k). Values near 1 indicate
+smooth signals; values near 2 indicate highly irregular signals. Typical EEG
+values lie in [1, 2]. The `k_max` parameter controls the number of sub-series
+(default: 10).
+
+### `FractalDimKatz`
+
+```python
+fd = cb.feature.FractalDimKatz().apply(data)
+```
+
+Computes Katz Fractal Dimension (KFD) per channel — a fast, parameter-free
+measure of signal complexity. Models the signal as a 2-D curve and estimates
+dimension from the total path length and maximum planar distance. Unlike HFD,
+KFD has no tuning parameters and is O(N), making it efficient for long signals.
+Values >= 1 indicate signal irregularity.
+
+### `SampleEntropy`
+
+```python
+# Default: binary logarithm (base 2)
+entropy = cb.feature.SampleEntropy(m=2).apply(data)
+
+# Natural logarithm (original definition)
+entropy = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)
+
+# Custom tolerance
+entropy = cb.feature.SampleEntropy(m=2, r=0.3).apply(data)
+```
+
+Computes Sample Entropy per channel — a measure of time-series regularity
+and complexity. Lower values indicate more regular (predictable) signals; higher
+values indicate greater complexity. Uses embedding dimension `m` and tolerance `r`
+to count matching template sequences. By default uses binary logarithm (base 2);
+set `log_base=np.e` for the natural log (original definition).
+
+### `AmplitudeEntropy`
+
+```python
+# Compute amplitude entropy with default bin width
+entropy = cb.feature.AmplitudeEntropy(band_width=0.5).apply(data)
+
+# With custom bin width for histogram discretization
+entropy = cb.feature.AmplitudeEntropy(band_width=0.1).apply(data)
+```
+
+Computes amplitude entropy — a measure of signal amplitude distribution complexity.
+Uses histogram-based probability estimation with configurable bin width to compute
+Shannon entropy. Returns a scalar value representing the mean entropy across all
+time points. Useful for quantifying the unpredictability or randomness of signal
+amplitudes.
+
+### `FourierTransformSurrogates` (splitter)
+
+```python
+# Generate 100 surrogates preserving power spectrum
+feat = cb.feature.FourierTransformSurrogates(n_surrogates=100, random_state=42)
+surrogates = list(feat(data))  # original + 100 surrogates
+
+# Generate surrogates without original data
+feat = cb.feature.FourierTransformSurrogates(
+    n_surrogates=50, return_data=False, random_state=42
+)
+surrogates = list(feat(data))  # 50 surrogates only
+
+# Multivariate mode preserves cross-channel correlations
+feat = cb.feature.FourierTransformSurrogates(
+    n_surrogates=100, multivariate=True, random_state=42
+)
+```
+
+Generates surrogate time series by randomizing Fourier phases while preserving
+the power spectrum (autocorrelation). Useful for statistical testing and null
+hypothesis generation.
+
+**Parameters:**
+
+- `n_surrogates` (int): Number of surrogates to generate
+- `multivariate` (bool, default True): Apply same random phases to all channels
+  (preserves cross-channel correlations when True)
+- `return_data` (bool, default True): Include original data as first element
+- `random_state` (int or Generator, optional): For reproducibility
+
+**Yields:** SignalData objects (original + n_surrogates if return_data=True)
+
+### `GrangerCausality` / `GrangerCausalityMatrix`
+
+```python
+# Single pair causality test
+p_val = cb.feature.GrangerCausality(coord_x=0, coord_y=1, lag=2).apply(data)
+
+# Full matrix for multiple channels
+matrix = cb.feature.GrangerCausalityMatrix(coords=[0, 1, 2], maxlag=4).apply(data)
+```
+
+Tests whether past values of one channel help predict another (Granger causality).
+Uses a log-ratio test statistic based on prediction error variances.
+`GrangerCausality` returns a scalar p-value; `GrangerCausalityMatrix` returns
+a 3D array `(coord_x, coord_y, lag_index)` with p-values for all pairs and lags.
+
+### `PartialDirectedCoherence`
+
+```python
+# Estimate PDC from time-series data
+pdc = cb.feature.PartialDirectedCoherence().apply(data)
+
+# With custom VAR order and frequency resolution
+pdc = cb.feature.PartialDirectedCoherence(var_order=5, n_freqs=256).apply(data)
+```
+
+Estimates Partial Directed Coherence (PDC) between channels using a Vector
+Autoregressive (VAR) model. PDC quantifies the directional influence between
+channels at each frequency — values are in `[0, 1]` and columns sum to 1 at
+each frequency (normalized influence).
+
+Returns a 3D array with dims `("space_to", "space_from", "frequency")` where
+`pdc[i, j, f]` represents the normalized influence from channel `j` to channel `i`
+at frequency `f`. Requires `sampling_rate` to be set on the data.
+
+### `ReciprocalConnectivity`
+
+```python
+# From time-series data (computes PDC internally)
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(data)
+
+# From pre-computed PDC matrix
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(pdc_matrix)
+
+# Normalized RC values
+rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0), normalize=True).apply(data)
+```
+
+Computes Reciprocal Connectivity (RC) — a per-channel measure of net directional
+role. Positive values indicate a net *sink* (receives more than it sends);
+negative values indicate a net *source* (sends more than it receives).
+
+Works in two modes:
+
+1. **Time-series mode**: Fits a VAR model and computes PDC internally
+2. **Matrix mode**: Uses a pre-computed PDC matrix with `("space_to", "space_from")` dims
+
+The `freq_band` parameter specifies which frequency range to average over.
+Returns a 1D array with dim `("space",)` containing RC values per channel.
+
+### `ConcatAggregate` (aggregator)
+
+```python
+# Alternative aggregator that preserves all windows
+result = cb.Chord(
+    split=cb.feature.SlidingWindow(window_size=20, step_size=10),
+    pipeline=cb.feature.LineLength(),
+    aggregate=cb.feature.ConcatAggregate(),
+).apply(data)
+# Result has dims (space, window) instead of scalar per channel
+```
+
+Stacks all window results along a new `window` dimension (rather than reducing).
+Useful when you need to preserve per-window values for downstream analysis.
 
 ### `MeanAggregate` (aggregator)
 

@@ -1,55 +1,56 @@
 # Feature Review: mean_aggregate
 
 **File**: `src/cobrabox/features/mean_aggregate.py`
-**Date**: 2026-03-04
+**Date**: 2025-03-05
 **Verdict**: PASS
 
 ## Summary
 
-A well-structured `AggregatorFeature` that folds a stream of windowed Data objects back into a single Data by averaging. The implementation correctly propagates history from the pipeline, validates the input stream is non-empty, and preserves all metadata including sampling_rate. Ruff is clean and all criteria are satisfied.
+Well-implemented `AggregatorFeature` that averages across windows in a stream. Properly handles the responsibility of building history manually (required for `AggregatorFeature` subclasses). Clean implementation with good documentation and validation.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-All checks passed!
+Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-1 file already formatted
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-Clean and compliant. Uses `@dataclass` decorator (line 12) and inherits `AggregatorFeature` (line 13). The `__call__` signature matches the base class contract: `def __call__(self, data: Data, stream: Iterator[Data]) -> Data` (line 35). Class name `MeanAggregate` matches the filename `mean_aggregate.py`. Imports are in correct order with `from __future__ import annotations` first.
+- ✅ `from __future__ import annotations` present (line 1)
+- ✅ `@dataclass` decorator with `AggregatorFeature` inheritance (lines 12-13)
+- ✅ No `output_type` needed (AggregatorFeature returns Data by contract)
+- ✅ `__call__` signature correct for AggregatorFeature: `def __call__(self, data: Data, stream: Iterator[Data]) -> Data` (line 38)
+- ✅ Class name `MeanAggregate` matches filename `mean_aggregate.py`
 
 ## Docstring
 
 Complete Google-style docstring with all required sections:
 
-- One-line summary: "Aggregate a stream of per-window Data by averaging across windows." (line 14)
-- Extended description explaining the stacking and reduction approach (lines 16-17)
-- Returns section describing shape, metadata preservation, and history propagation (lines 19-24)
-- Example section showing Chord pipeline usage (lines 26-32)
-
-No Args section is needed since there are no dataclass fields.
+- ✅ One-line summary (line 14)
+- ✅ Extended description explains window stacking behavior (lines 16-17)
+- ✅ `Args:` section correctly notes no configuration parameters (lines 19-20)
+- ✅ `Returns:` section describes output shape and metadata preservation (lines 22-27)
+- ✅ `Example:` section shows Chord pipeline usage (lines 29-35)
 
 ## Typing
 
-All type annotations are correct:
-
-- `data: Data` parameter typed (line 35)
-- `stream: Iterator[Data]` parameter typed (line 35)
-- Return type `-> Data` explicit (line 35)
-- No bare `Any` types
+- ✅ `Iterator` imported from `collections.abc` (line 3)
+- ✅ `__call__` return type `Data` correctly annotated (line 38)
+- ✅ No bare `Any` types
+- ✅ Parameter types for `data` and `stream` correctly specified
 
 ## Safety & Style
 
-- No `print()` statements
-- Input validation: raises `ValueError` with clear message if stream is empty (lines 37-38)
-- No mutation of input `data`: creates new `Data` object with merged history (lines 43-51)
-- History propagation correctly combines original data history, per-window pipeline history, and the aggregator itself (lines 42, 49)
-- `sampling_rate` is correctly preserved in the Data constructor (line 48)
-- Uses `xr.concat` with `join="override"` to handle potential coordinate conflicts during stacking (line 39)
+- ✅ No `print()` statements
+- ✅ Input validation for empty stream (lines 40-41)
+- ✅ Manually builds history (lines 45, 52) — correct for AggregatorFeature
+- ✅ No mutation of input `data` — creates new `Data` object (lines 46-54)
+- ✅ Preserves all metadata from original data (subjectID, groupID, condition, sampling_rate, extra)
+- ✅ Line length within 100 characters
 
 ## Action List
 

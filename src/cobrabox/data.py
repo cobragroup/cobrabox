@@ -30,6 +30,10 @@ class Data:
         - history: List of operations applied (automatically maintained)
         - extra: User-defined dict for additional fields and arrays (any values)
 
+    Data type handling:
+        - Integer and float inputs are cast to float64
+        - Complex inputs (e.g., from Hilbert transform) are preserved as complex128
+
     Note:
         This class is immutable. To create modified versions, use methods that
         return new Data instances (e.g., features create new Data objects).
@@ -64,8 +68,11 @@ class Data:
         # Track if this data has a time dimension
         self._has_time = "time" in data.dims
 
-        # Store xarray DataArray, enforce float64
-        self._data = data.astype(np.float64)
+        # Store xarray DataArray: preserve complex, convert int/float to float64
+        if np.iscomplexobj(data.values):
+            self._data = data.astype(np.complex128)
+        else:
+            self._data = data.astype(np.float64)
 
         # Store metadata in xarray attrs for persistence
         attrs = dict(data.attrs) if data.attrs else {}
@@ -300,6 +307,30 @@ class Data:
                 f"Create a new Data instance instead."
             )
         super().__setattr__(name, value)
+
+    def __repr__(self) -> str:
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+        parts = [f"shape={shape}", f"dims={dims}"]
+        if self.sampling_rate is not None:
+            parts.append(f"sr={self.sampling_rate}")
+        if self.subjectID is not None:
+            parts.append(f"subject={self.subjectID!r}")
+        return f"{cls}({', '.join(parts)})"
+
+    def __str__(self) -> str:
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+        lines = [f"{cls}  shape={shape}  dims={dims}"]
+        lines.append(f"  subjectID : {self.subjectID}")
+        lines.append(f"  groupID   : {self.groupID}")
+        lines.append(f"  condition : {self.condition}")
+        if self.sampling_rate is not None:
+            lines.append(f"  sr        : {self.sampling_rate} Hz")
+        lines.append(f"  history   : {self.history}")
+        return "\n".join(lines)
 
     def to_numpy(
         self, style: str = "default"
@@ -597,7 +628,7 @@ class SignalData(Data):
         new_data: xr.DataArray | Data,
         operation_name: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> Data:
+    ) -> SignalData:
         """Override to add singleton time dimension if result lacks it.
 
         SignalData requires a time dimension, so if the feature result doesn't
@@ -653,7 +684,51 @@ class EEG(SignalData):
 
     EEG is a time-series signal data type with mandatory time dimension.
     Typically also includes 'space' dimension representing electrodes/channels.
+
+    Args:
+        ref_channel: The reference used for this recording. One of:
+
+            * ``None``        — reference unspecified (default).
+            * ``'average'``   — common average reference.
+            * ``'bipolar'``   — channels are already bipolar (re-referenced
+              against adjacent electrodes).
+            * any channel name that appears in the ``'space'`` coordinate —
+              single-electrode reference.
+
+    Raises:
+        ValueError: If ``ref_channel`` is not ``None``, ``'average'``,
+            ``'bipolar'``, or a channel present in the ``'space'`` coordinate.
     """
+
+    def __init__(
+        self,
+        data: xr.DataArray,
+        sampling_rate: float | None = None,
+        subjectID: str | None = None,
+        groupID: str | None = None,
+        condition: str | None = None,
+        history: list[str] | None = None,
+        extra: dict[str, Any] | None = None,
+        ref_channel: str | None = None,
+    ) -> None:
+        super().__init__(
+            data=data,
+            sampling_rate=sampling_rate,
+            subjectID=subjectID,
+            groupID=groupID,
+            condition=condition,
+            history=history,
+            extra=extra,
+        )
+        _RESERVED = {"average", "bipolar"}
+        if ref_channel is not None and ref_channel not in _RESERVED:
+            space_coords = list(data.coords["space"].values) if "space" in data.coords else []
+            if ref_channel not in space_coords:
+                raise ValueError(
+                    f"ref_channel {ref_channel!r} must be 'average', "
+                    f"'bipolar', or one of the space coords: {space_coords}."
+                )
+        self.ref_channel: str | None = ref_channel
 
 
 class FMRI(SignalData):

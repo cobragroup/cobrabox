@@ -14,13 +14,20 @@ def _make_data(
     *,
     sampling_rate: float = 256.0,
     subjectID: str = "sub-01",
+    groupID: str | None = None,
+    condition: str | None = None,
     seed: int = 0,
 ) -> cb.SignalData:
     """Helper: random broadband data."""
     rng = np.random.default_rng(seed)
     arr = rng.standard_normal((n_time, n_space))
     return cb.SignalData.from_numpy(
-        arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subjectID
+        arr,
+        dims=["time", "space"],
+        sampling_rate=sampling_rate,
+        subjectID=subjectID,
+        groupID=groupID,
+        condition=condition,
     )
 
 
@@ -30,17 +37,17 @@ def _make_data(
 
 
 def test_envelope_correlation_output_dims_and_shape() -> None:
-    """EnvelopeCorrelation returns (space, space_to, time) Data."""
+    """EnvelopeCorrelation returns (space, space_from) Data."""
     data = _make_data()
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "space_to")
+    assert out.data.dims == ("space_to", "space_from")
     assert out.data.shape == (4, 4)
 
 
 def test_envelope_correlation_space_coords_preserved() -> None:
-    """space and space_to carry the original channel coordinates."""
+    """space and space_from carry the original channel coordinates."""
     import xarray as xr
 
     arr_xr = xr.DataArray(
@@ -51,8 +58,8 @@ def test_envelope_correlation_space_coords_preserved() -> None:
     data = cb.data.SignalData.from_xarray(arr_xr)
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
-    np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
+    np.testing.assert_array_equal(out.data.coords["space_from"].values, ["Fz", "Cz", "Pz"])
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +115,7 @@ def test_envelope_correlation_orthogonalize_false_same_shape() -> None:
     out = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
 
     assert out.data.shape == (4, 4)
-    assert out.data.dims == ("space", "space_to")
+    assert out.data.dims == ("space_to", "space_from")
 
 
 def test_envelope_correlation_orthogonalize_changes_values() -> None:
@@ -134,13 +141,29 @@ def test_envelope_correlation_history_appended() -> None:
 
 
 def test_envelope_correlation_metadata_preserved() -> None:
-    """subjectID is carried through; sampling_rate not preserved for Data without time."""
-    data = _make_data(subjectID="sub-99")
+    """subjectID, groupID, condition preserved; sampling_rate None for Data without time."""
+    data = _make_data(subjectID="sub-99", groupID="group-A", condition="rest")
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     assert out.subjectID == "sub-99"
+    assert out.groupID == "group-A"
+    assert out.condition == "rest"
     # sampling_rate is not preserved for Data without time dimension
     assert out.sampling_rate is None
+
+
+def test_envelope_correlation_no_mutation() -> None:
+    """EnvelopeCorrelation does not modify the input Data object."""
+    data = _make_data()
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.data.values.copy()
+
+    _ = cb.feature.EnvelopeCorrelation().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.data.values, original_values)
 
 
 # ---------------------------------------------------------------------------

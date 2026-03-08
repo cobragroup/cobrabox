@@ -61,7 +61,51 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 - **Splitters** (`SplitterFeature`): yield a lazy stream of `Data` per window (e.g. `SlidingWindow`)
 - **Aggregators** (`AggregatorFeature`): fold a stream back into one `Data` (e.g. `MeanAggregate`)
 - **Chord**: combines a splitter + pipeline + aggregator into a single composable feature
+- **Serialization**: save/load any feature, pipeline, or chord to YAML or JSON
 - All features append to `history` automatically
+
+## Working with Dimensions and Coordinates
+
+Every `Data` object wraps an `xarray.DataArray` at `data.data`. You don't need to know xarray to use
+CobraBox, but these one-liners cover the most common needs:
+
+```python
+item = cb.dataset("dummy_chain")[0]
+
+# Dimension names and sizes
+list(item.data.dims)                             # ['space', 'time']
+dict(item.data.sizes)                            # {'space': 4, 'time': 200}
+
+# Coordinate values as a Python list
+item.data.coords["space"].values.tolist()        # [0, 1, 2, 3]
+item.data.coords["time"].values.tolist()         # [0.0, 0.005, 0.01, ...]
+
+# Select by label (returns xarray.DataArray)
+item.data.sel(space=0)                           # one channel
+item.data.sel(time=slice(0.0, 0.5))             # time window
+
+# Convert to numpy or pandas
+item.to_numpy()                                  # plain ndarray
+item.to_pandas()                                 # DataFrame with MultiIndex
+```
+
+To attach named coordinates (e.g., electrode labels), build the DataArray explicitly:
+
+```python
+import xarray as xr
+import numpy as np
+
+xr_arr = xr.DataArray(
+    np.random.normal(size=(200, 8)),
+    dims=["time", "space"],
+    coords={"time": np.arange(200) / 100.0, "space": [f"E{i+1}" for i in range(8)]},
+)
+data = cb.Data.from_xarray(xr_arr, sampling_rate=100.0, subjectID="sub-01")
+data.data.coords["space"].values.tolist()        # ['E1', 'E2', ..., 'E8']
+```
+
+See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough, and
+[`docs/guide/data-containers.md`](docs/guide/data-containers.md) for the complete reference.
 
 ## Built-in Features
 
@@ -69,17 +113,31 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
+- `AmplitudeVariation` - Amplitude variation (standard deviation) over time
 - `Bandpower` - Power in frequency bands using Welch's method
+- `BandFilter` - Butterworth bandpass filter into frequency bands
 - `Coherence` - Magnitude-squared coherence between channel pairs
 - `Spectrogram` - Time-frequency power spectrogram
+- `Hilbert` - Analytic signal, envelope, phase, or instantaneous frequency
 - `SpikesCalc` - Outlier detection using IQR method
 - `Autocorr` - Normalized autocorrelation at a single lag
+- `LempelZiv` - Lempel-Ziv complexity per channel
+- `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
+- `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
+- `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
+- `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
 
 ### Connectivity Features
 
+- `Correlation` - Pairwise Pearson or Spearman correlation matrix between channels
+- `Covariance` - Pairwise sample covariance matrix between channels
+- `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
+- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
 - `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
 - `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
+- `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
+- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Specialized Features
 
@@ -88,12 +146,58 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 ### Windowing & Aggregation
 
 - `SlidingWindow` - Split data into overlapping windows (splitter)
+- `SlidingWindowReduce` - Single-step windowing + aggregation (simpler alternative to Chord)
 - `MeanAggregate` - Average windowed results (aggregator)
+- `ConcatAggregate` - Stack windowed results along new dimension (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
+
+### Surrogate Generation
+
+- `FourierTransformSurrogates` - Generate Fourier transform surrogates preserving power spectrum
+
+### Wavelet Transforms
+
+- `DiscreteWaveletTransform` - Multi-level discrete wavelet decomposition (DWT)
+- `ContinuousWaveletTransform` - Continuous wavelet transform for time-frequency analysis
+
+### qEEG Measures
+
+- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower
+
+## Serialization
+
+Save any feature, pipeline, or chord to YAML or JSON and reload it later — or share it with collaborators:
+
+```python
+# Save to file
+cb.save(pipeline, "my_pipeline.yaml")
+
+# Load from file
+pipeline = cb.load("my_pipeline.yaml")
+
+# Or work with strings directly
+yaml_str = cb.serialize(pipeline)
+pipeline  = cb.deserialize(yaml_str)
+```
+
+See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a full walkthrough.
 
 ## Built-in Dummy Datasets
 
-Use `cb.dataset(name)` with:
+`cb.dataset(name)` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
+
+```python
+ds = cb.dataset("dummy_chain")
+
+ds.describe()                        # print summary: shapes, metadata
+ds.filter(groupID="control")         # Dataset[SignalData] with matching items
+ds.groupby("condition")              # dict[str, Dataset[SignalData]]
+ds[0]                                # first item
+ds[1:3]                              # slice → Dataset[SignalData]
+ds1 + ds2                            # concatenate two Datasets
+```
+
+Available identifiers:
 
 - `dummy_chain`
 - `dummy_random`
@@ -109,6 +213,26 @@ Use `cb.dataset(name)` with:
 ```bash
 uv run pytest -q
 ```
+
+## Feature Alignments (D&D Style)
+
+Every feature in CobraBox has a D&D alignment that captures its "moral character" — how it treats your data:
+
+```bash
+# See the full roster
+uv run python -m cobrabox.egg.dnd_alignment --roster
+
+# Check a pipeline's aggregate alignment
+uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
+```
+
+**Example alignments:**
+
+- **SlidingWindow** — Lawful Good: "Rigidly structured, principled expansion of data"
+- **SpikesCalc** — Lawful Evil: "Judges by the book of IQR, condemning outliers"
+- **MeanAggregate** — Lawful Neutral: "Collapses by strict rule; neither creates nor destroys meaning"
+
+Run the command above to see where your favorite features fall on the grid!
 
 ## Documentation
 

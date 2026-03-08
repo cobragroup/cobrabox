@@ -20,12 +20,12 @@ git checkout -b feature/add-variance
 
 ## 2. Choose the Right Base Class and Type
 
-| You want to…                              | Inherit from              | Type Parameter |
-| ----------------------------------------- | ------------------------- | -------------- |
-| Transform any `Data` → `Data`             | `BaseFeature[Data]`       | Generic        |
-| Transform time-series `SignalData` → `Data` | `BaseFeature[SignalData]` | Time-series    |
-| Split time-series into windows            | `SplitterFeature[SignalData]` | Time-series    |
-| Fold a stream back into one `Data`        | `AggregatorFeature`       | (not generic)  |
+| You want to…                                | Inherit from                  | Type Parameter |
+| ------------------------------------------- | ----------------------------- | -------------- |
+| Transform any `Data` → `Data`               | `BaseFeature[Data]`           | Generic        |
+| Transform time-series `SignalData` → `Data` | `BaseFeature[SignalData]`     | Time-series    |
+| Split time-series into windows              | `SplitterFeature[SignalData]` | Time-series    |
+| Fold a stream back into one `Data`          | `AggregatorFeature`           | (not generic)  |
 
 ## 3. Implement the Feature
 

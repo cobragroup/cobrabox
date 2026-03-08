@@ -1,7 +1,7 @@
 # Feature Review: epileptogenicity_index
 
 **File**: `src/cobrabox/features/epileptogenicity_index.py`
-**Date**: 2025-03-04
+**Date**: 2026-03-05
 **Verdict**: PASS
 
 ## Summary

@@ -24,20 +24,20 @@ def _make_data(arr: np.ndarray, *, sampling_rate: float = 100.0) -> cb.SignalDat
 
 
 def test_coherence_output_dims_and_shape() -> None:
-    """Coherence returns Data with (space, space_to, time=1) dims and NxN matrix."""
+    """Coherence returns Data with (space, space_from) dims and NxN matrix."""
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((300, 4)))
 
     out = cb.feature.Coherence().apply(data)
 
     assert isinstance(out, cb.Data)
-    assert out.data.dims == ("space", "space_to")
-    assert out.data.sizes["space"] == 4
+    assert out.data.dims == ("space_to", "space_from")
     assert out.data.sizes["space_to"] == 4
+    assert out.data.sizes["space_from"] == 4
 
 
 def test_coherence_space_coords_are_preserved() -> None:
-    """Both space and space_to carry the original channel coordinates."""
+    """Both space and space_from carry the original channel coordinates."""
     arr_xr = xr.DataArray(
         np.random.default_rng(1).standard_normal((300, 3)),
         dims=["time", "space"],
@@ -47,8 +47,8 @@ def test_coherence_space_coords_are_preserved() -> None:
 
     out = cb.feature.Coherence().apply(data)
 
-    np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
+    np.testing.assert_array_equal(out.data.coords["space_from"].values, ["Fz", "Cz", "Pz"])
 
 
 # ---------------------------------------------------------------------------
@@ -163,8 +163,8 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
 
     assert "run_index" in out.data.dims
     assert out.data.sizes["run_index"] == n_runs
-    assert out.data.sizes["space"] == n_space
     assert out.data.sizes["space_to"] == n_space
+    assert out.data.sizes["space_from"] == n_space
     # Each run's diagonal must be NaN
     for r in range(n_runs):
         mat = out.data.isel(run_index=r).values
@@ -239,3 +239,39 @@ def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
 def test_coherence_accessible_via_feature_module() -> None:
     """Coherence is accessible as cb.feature.Coherence."""
     assert callable(cb.feature.Coherence)
+
+
+def test_coherence_missing_space_dim_raises() -> None:
+    """Coherence raises ValueError when data lacks 'space' dimension."""
+    arr = np.random.default_rng(100).standard_normal((100, 5))
+    xr_data = xr.DataArray(arr, dims=["time", "channel"])
+    raw = cb.SignalData.__new__(cb.SignalData)
+    object.__setattr__(raw, "_data", xr_data)
+    object.__setattr__(raw, "_sampling_rate", 100.0)
+
+    with pytest.raises(ValueError, match="space"):
+        cb.feature.Coherence().apply(raw)
+
+
+def test_coherence_default_nperseg_too_small_raises() -> None:
+    """Coherence raises ValueError when n_time < 2 causes default nperseg < 2."""
+    rng = np.random.default_rng(101)
+    data = _make_data(rng.standard_normal((1, 3)))
+
+    with pytest.raises(ValueError, match="nperseg"):
+        cb.feature.Coherence().apply(data)
+
+
+def test_coherence_does_not_mutate_input() -> None:
+    """Coherence.apply() leaves the input Data object unchanged."""
+    rng = np.random.default_rng(102)
+    data = _make_data(rng.standard_normal((200, 3)))
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.Coherence().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)

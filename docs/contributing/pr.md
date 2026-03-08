@@ -27,6 +27,7 @@ git push -u origin feature/add-line-length
 3. Click **"Compare & pull request"**
 
 Alternatively:
+
 1. Go to the **Pull requests** tab
 2. Click **"New pull request"**
 3. Select:
@@ -39,7 +40,7 @@ Alternatively:
 
 Use a clear, descriptive title:
 
-```
+```text
 feat: add line_length feature for time-series complexity
 ```
 

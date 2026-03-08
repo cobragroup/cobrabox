@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, Self, TypeVar, overload
 
 import xarray as xr
 
@@ -30,13 +30,54 @@ class BaseFeature(ABC, Generic[DataT]):
     """Output container type. None means same as input, Data means plain Data,
     SignalData means SignalData with time dimension."""
 
-    def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
+    def __or__(self, other: BaseFeature[Any]) -> Pipeline[DataT]:
         """Enable pipe syntax: Feature1() | Feature2()"""
         return Pipeline(self, other)
 
     @abstractmethod
     def __call__(self, data: DataT) -> xr.DataArray | Data:
         """Apply the feature transformation. Subclasses implement this."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a document dict (full cobrabox document with version metadata).
+
+        The feature is wrapped as a one-element ``pipeline:``.
+        Use :func:`cobrabox.serialization.serialize` for string output.
+        """
+        from cobrabox.serialization import _build_document
+
+        return _build_document(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Reconstruct a feature from a document dict (as produced by :meth:`to_dict`).
+
+        Expects a one-element pipeline document and returns the single feature.
+        """
+        from cobrabox.serialization import _parse_document
+
+        pipeline = _parse_document(data)
+        return pipeline.features[0]
+
+    def to_yaml(self) -> str:
+        """Serialize to a YAML string (full cobrabox document).
+
+        The feature is wrapped as a one-element ``pipeline:``.
+        """
+        from cobrabox.serialization import serialize
+
+        return serialize(self)
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Self:
+        """Reconstruct a feature from a YAML string (as produced by :meth:`to_yaml`).
+
+        Expects a one-element pipeline document and returns the single feature.
+        """
+        from cobrabox.serialization import deserialize
+
+        pipeline = deserialize(yaml_str)
+        return pipeline.features[0]
 
     def apply(self, data: DataT) -> Data:
         """Apply feature and wrap result in Data with history tracking.
@@ -123,6 +164,12 @@ class _ChordBuilder(Generic[DataT]):
         self.split = split
         self.pipeline = pipeline
 
+    @overload
+    def __or__(self, other: AggregatorFeature) -> Chord[DataT]: ...
+
+    @overload
+    def __or__(self, other: BaseFeature[Any]) -> _ChordBuilder[DataT]: ...
+
     def __or__(
         self, other: BaseFeature[Any] | AggregatorFeature
     ) -> _ChordBuilder[DataT] | Chord[DataT]:
@@ -179,11 +226,13 @@ class Pipeline(list[BaseFeature[DataT]], Generic[DataT]):
         DataT: The type of data this pipeline accepts.
     """
 
-    def __init__(self, *features: BaseFeature[DataT]) -> None:
+    features: tuple[BaseFeature[Any], ...]
+
+    def __init__(self, *features: BaseFeature[Any]) -> None:
         super().__init__(features)
         self.features = features
 
-    def __or__(self, other: BaseFeature[DataT]) -> Pipeline[DataT]:
+    def __or__(self, other: BaseFeature[Any]) -> Pipeline[DataT]:
         """Enable chaining: pipeline | AnotherFeature()"""
         return Pipeline(*self.features, other)
 
@@ -191,9 +240,35 @@ class Pipeline(list[BaseFeature[DataT]], Generic[DataT]):
         """Apply all features in sequence."""
         result: Data = data
         for feature in self.features:
-            result = feature.apply(result)  # type: ignore[arg-type]
+            result = feature.apply(result)
         return result
 
     def __call__(self, data: DataT) -> Data:
         """Allow pipeline(data) syntax."""
         return self.apply(data)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a document dict (full cobrabox document with version metadata)."""
+        from cobrabox.serialization import _build_document
+
+        return _build_document(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Pipeline[Any]:
+        """Reconstruct a Pipeline from a document dict (as produced by :meth:`to_dict`)."""
+        from cobrabox.serialization import _parse_document
+
+        return _parse_document(data)
+
+    def to_yaml(self) -> str:
+        """Serialize to a YAML string (full cobrabox document)."""
+        from cobrabox.serialization import serialize
+
+        return serialize(self)
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str) -> Pipeline[Any]:
+        """Reconstruct a Pipeline from a YAML string (as produced by :meth:`to_yaml`)."""
+        from cobrabox.serialization import deserialize
+
+        return deserialize(yaml_str)

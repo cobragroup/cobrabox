@@ -110,3 +110,59 @@ def test_feature_autocorr_all_nan_returns_nan() -> None:
     assert np.all(np.isnan(out.to_numpy()))
 
     assert out.history == ["Autocorr"]
+
+
+def test_feature_autocorr_fs_non_positive_raises() -> None:
+    """Autocorr raises ValueError when fs is zero or negative."""
+    with pytest.raises(ValueError, match="fs must be positive"):
+        cb.feature.Autocorr(dim="time", fs=0.0)
+    with pytest.raises(ValueError, match="fs must be positive"):
+        cb.feature.Autocorr(dim="time", fs=-100.0)
+
+
+def test_feature_autocorr_metadata_preserved() -> None:
+    """Autocorr preserves subjectID, groupID, condition; sampling_rate becomes None."""
+    arr = np.random.default_rng(42).normal(size=(20, 2)).astype(float)
+    data = cb.from_numpy(
+        arr,
+        dims=["time", "space"],
+        sampling_rate=1000.0,
+        subjectID="sub-01",
+        groupID="group-A",
+        condition="task",
+    )
+
+    out = cb.feature.Autocorr(dim="time", fs=1000.0, lag_steps=1).apply(data)
+
+    assert out.subjectID == "sub-01"
+    assert out.groupID == "group-A"
+    assert out.condition == "task"
+    assert out.sampling_rate is None
+
+
+def test_feature_autocorr_does_not_mutate_input() -> None:
+    """Autocorr.apply() does not modify the input Data object."""
+    arr = np.arange(20, dtype=float).reshape(10, 2)
+    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0, subjectID="s1")
+
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.Autocorr(dim="time", fs=1000.0, lag_steps=1).apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+    assert data.subjectID == "s1"
+
+
+def test_feature_autocorr_lag_ms_parameter() -> None:
+    """Autocorr correctly computes lag from lag_ms parameter."""
+    arr = np.random.default_rng(0).normal(size=(50, 2)).astype(float)
+    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
+
+    out_ms = cb.feature.Autocorr(dim="time", fs=1000.0, lag_ms=5.0).apply(data)
+    out_steps = cb.feature.Autocorr(dim="time", fs=1000.0, lag_steps=5).apply(data)
+
+    np.testing.assert_allclose(out_ms.to_numpy(), out_steps.to_numpy(), equal_nan=True)

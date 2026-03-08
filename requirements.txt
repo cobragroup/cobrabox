@@ -1,6 +1,11 @@
+dill>=0.3.0
+ipython>=9.10.0
 mne-connectivity>=0.7.0
 numpy>=2.4.2
 pandas>=3.0.1
+pywavelets>=1.9.0
+pyyaml>=6.0
 scikit-learn>=1.8.0
 scipy>=1.17.1
+statsmodels>=0.14
 xarray>=2026.2.0
