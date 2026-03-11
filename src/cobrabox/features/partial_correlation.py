@@ -119,14 +119,7 @@ class PartialCorrelation(BaseFeature[SignalData]):
 
         result = _compute_partial_correlation(x_series, y_series, control_series)
 
-        time_coord = xr_data.coords[time_dim].values
-        return (
-            xr.DataArray(result, dims=[])
-            .expand_dims(time_dim, axis=0)
-            .assign_coords({time_dim: [time_coord[0]]})
-            .expand_dims(space_dim, axis=0)
-            .assign_coords({space_dim: [self.coord_x]})
-        )
+        return xr.DataArray(result)
 
 
 @dataclass

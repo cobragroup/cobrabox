@@ -296,7 +296,7 @@ def _check_versions(doc: dict[str, Any]) -> None:
     try:
         schema_major = int(str(schema_ver).split(".")[0])
         current_major = int(SCHEMA_VERSION.split(".")[0])
-    except ValueError, IndexError:
+    except (ValueError, IndexError):  # fmt: skip
         raise SchemaVersionError(f"Unreadable schema_version: {schema_ver!r}") from None
 
     if schema_major > current_major:
@@ -310,7 +310,7 @@ def _check_versions(doc: dict[str, Any]) -> None:
     try:
         file_major = int(str(cb_ver).split(".")[0])
         installed_major = int(_cb_version().split(".")[0])
-    except ValueError, IndexError:
+    except (ValueError, IndexError):  # fmt: skip
         return
 
     if file_major != installed_major:

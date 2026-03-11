@@ -21,6 +21,9 @@ class Max(BaseFeature[Data]):
         minus the reduced dimension. Values are the per-position maximum
         in the same units as the input data.
 
+    Raises:
+        ValueError: If the specified dimension is not found in the data.
+
     Example:
         >>> result = cb.feature.Max(dim="time").apply(data)
     """

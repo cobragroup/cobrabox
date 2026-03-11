@@ -327,3 +327,9 @@ def test_granger_causality_matrix_no_mutation() -> None:
 
     assert data.history == original_history
     assert data.data.shape == original_shape
+
+
+def test_granger_causality_matrix_empty_coords() -> None:
+    """GrangerCausalityMatrix raises ValueError for empty coords list."""
+    with pytest.raises(ValueError, match="coords cannot be an empty list"):
+        cb.feature.GrangerCausalityMatrix(coords=[], lag=2)

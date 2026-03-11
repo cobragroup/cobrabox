@@ -40,35 +40,66 @@ def low_dim_data() -> cb.Data:
     return cb.from_xarray(arr)
 
 
-def test_entropy() -> None:
+def test_mutual_information_vector_entropy() -> None:
+    """_vector_entropy computes correct entropy for a binned distribution."""
     v = np.zeros(10)
     v[:5] = 1
     assert np.isclose(MutualInformation()._vector_entropy(v), np.log(5))
 
 
-def test_binning() -> None:
+def test_mutual_information_get_binned() -> None:
+    """_get_binned correctly discretizes data into specified number of bins."""
     v = np.arange(10)
-    binned = MutualInformation(_n_bins=2)._get_binned(v)
+    binned = MutualInformation()._get_binned(v, n_bins=2)
     v2 = np.zeros_like(v)
     v2[5:] = 1
     assert (binned == v2).all()
 
 
-def test_bad_inits(high_dim_data: cb.Data) -> None:
+def test_mutual_information_negative_bins_raises() -> None:
+    """MutualInformation raises ValueError for negative bins."""
     with pytest.raises(ValueError, match="bins must be positive"):
         MutualInformation(bins=-1)
+
+
+def test_mutual_information_non_integer_bins_raises() -> None:
+    """MutualInformation raises ValueError for non-integer bins."""
     with pytest.raises(ValueError, match="bins must be an integer"):
         MutualInformation(bins=2.5)
+
+
+def test_mutual_information_zero_bins_raises() -> None:
+    """MutualInformation raises ValueError for zero bins."""
     with pytest.raises(ValueError, match="bins must be positive"):
         MutualInformation(bins=0)
+
+
+def test_mutual_information_invalid_dim_type_raises() -> None:
+    """MutualInformation raises ValueError when dim is not a string."""
     with pytest.raises(ValueError, match="dim must be a string"):
-        MutualInformation(dim=123)
+        MutualInformation(dim=123)  # type: ignore[arg-type]
+
+
+def test_mutual_information_invalid_other_dim_type_raises() -> None:
+    """MutualInformation raises ValueError when other_dim is not a string or None."""
     with pytest.raises(ValueError, match="other_dim must be a string or None"):
-        MutualInformation(other_dim=123)
+        MutualInformation(other_dim=123)  # type: ignore[arg-type]
+
+
+def test_mutual_information_invalid_dim_raises(high_dim_data: cb.Data) -> None:
+    """MutualInformation raises ValueError for invalid dimension."""
     with pytest.raises(ValueError, match=r"Dimension.*not found in data"):
         MutualInformation(dim="not_a_dim").apply(high_dim_data)
+
+
+def test_mutual_information_invalid_other_dim_raises(high_dim_data: cb.Data) -> None:
+    """MutualInformation raises ValueError for invalid other_dim."""
     with pytest.raises(ValueError, match=r"Dimension.*not found in data"):
         MutualInformation(other_dim="not_a_dim").apply(high_dim_data)
+
+
+def test_mutual_information_high_dim_without_other_dim_raises(high_dim_data: cb.Data) -> None:
+    """MutualInformation raises ValueError for high-dim data without other_dim."""
     with pytest.raises(
         ValueError, match=r"self\.other_dim must be specified for data with more than 2 dimensions"
     ):
@@ -76,6 +107,7 @@ def test_bad_inits(high_dim_data: cb.Data) -> None:
 
 
 def test_low_dim_equidistant_bins(low_dim_data: cb.Data) -> None:
+    """MutualInformation computes correct MI for 2D data with equidistant bins."""
     mi = MutualInformation(bins=5, equiprobable_bins=False)
     result = mi.apply(low_dim_data)
     assert isinstance(result, cb.Data)
@@ -85,6 +117,7 @@ def test_low_dim_equidistant_bins(low_dim_data: cb.Data) -> None:
 
 
 def test_low_dim_equiprobable_bins(low_dim_data: cb.Data) -> None:
+    """MutualInformation computes correct MI for 2D data with equiprobable bins."""
     mi = MutualInformation(bins=5, equiprobable_bins=True)
     result = mi.apply(low_dim_data)
     assert isinstance(result, cb.Data)
@@ -94,6 +127,7 @@ def test_low_dim_equiprobable_bins(low_dim_data: cb.Data) -> None:
 
 
 def test_high_dim_equiprobable_bins(high_dim_data: cb.Data) -> None:
+    """MutualInformation handles 4D data correctly with equiprobable bins."""
     mi = MutualInformation(equiprobable_bins=True, dim="time", other_dim="space")
     result = mi.apply(high_dim_data)
     assert isinstance(result, cb.Data)
@@ -107,6 +141,7 @@ def test_high_dim_equiprobable_bins(high_dim_data: cb.Data) -> None:
 
 
 def test_high_dim_equidistant_bins(high_dim_data: cb.Data) -> None:
+    """MutualInformation handles 4D data correctly with equidistant bins."""
     mi = MutualInformation(equiprobable_bins=False, dim="time", other_dim="space")
     result = mi.apply(high_dim_data)
     assert isinstance(result, cb.Data)

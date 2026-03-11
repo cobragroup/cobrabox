@@ -11,7 +11,7 @@ from ..data import Data
 
 
 @dataclass
-class SpikesCalc(BaseFeature[Data]):
+class SpikeCount(BaseFeature[Data]):
     """Calculate spikes in the input data using the IQR method.
 
     Detects outliers as values falling outside ±1.5*IQR from Q1/Q3.
@@ -24,8 +24,11 @@ class SpikesCalc(BaseFeature[Data]):
         xr.DataArray with shape (), dims (),
         containing the spike count as a scalar float value.
 
+    Raises:
+        ValueError: If input data is empty.
+
     Example:
-        >>> result = SpikesCalc().apply(data)
+        >>> result = SpikeCount().apply(data)
     """
 
     output_type: ClassVar[type[Data]] = Data

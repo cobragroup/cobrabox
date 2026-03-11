@@ -42,7 +42,7 @@ Read that file before ranking a new feature — the feature may already be prese
 
 ### Label grid
 
-```
+```text
              LAW (+1)          NEUTRAL (0)        CHAOS (-1)
 GOOD  (+1)   Lawful Good       Neutral Good       Chaotic Good
 NEUT  ( 0)   Lawful Neutral    True Neutral       Chaotic Neutral
@@ -135,7 +135,7 @@ Confirm the new feature appears correctly in the output.
 
 Print:
 
-```
+```text
 <FeatureName>  —  <Alignment Label>
   Law:  <score>  (<reasoning>)
   Good: <score>  (<reasoning>)

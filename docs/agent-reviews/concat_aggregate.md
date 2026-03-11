@@ -1,15 +1,15 @@
 # Feature Review: concat_aggregate
 
 **File**: `src/cobrabox/features/concat_aggregate.py`
-**Date**: 2026-03-05
+**Date**: 2026-03-06
 **Verdict**: PASS
 
 ## Summary
 
-Clean, minimal implementation following the `MeanAggregate` pattern exactly. Ruff is fully
-clean. All docstring sections present and accurate. `__call__` signature, return type, and
-import order are correct. The only note is a stylistic quirk in the `Args:` section that
-mirrors `MeanAggregate` — not a violation, but could be simplified.
+Clean, well-structured `AggregatorFeature` that concatenates per-window data along a new
+"window" dimension. The implementation correctly handles the stream-to-single-Data conversion,
+preserves metadata, and properly propagates history. Only minor docstring completeness issue
+found.
 
 ## Ruff
 
@@ -23,52 +23,40 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-- `from __future__ import annotations` present on line 1 ✅
-- `@dataclass` + `AggregatorFeature` inheritance correct ✅
-- Class name `ConcatAggregate` matches filename `concat_aggregate.py` (PascalCase) ✅
-- `__call__` signature `(self, data: Data, stream: Iterator[Data]) -> Data` matches the
-  `AggregatorFeature` contract exactly ✅
-
-- No `apply()` implementation (correct — `AggregatorFeature` subclasses handle history
-  themselves via `__call__`) ✅
-
-- Import order: stdlib → xarray → internal ✅; all imports used ✅
+- `from __future__ import annotations` present at line 1.
+- `@dataclass` decorator applied, inherits `AggregatorFeature` correctly.
+- Class name `ConcatAggregate` matches filename.
+- `__call__` signature correct for `AggregatorFeature` (line 36): takes `(data, stream)` and
+  returns `Data`.
+- No `apply()` override — correctly inherited.
+- Imports well-organized: stdlib, third-party, internal.
 
 ## Docstring
 
-All four sections present:
+Google-style docstring present with all major sections:
 
-- One-line summary is precise ✅
-- Extended description explains the stack-without-reduce semantic clearly ✅
-- `Args:` reads `"None. This aggregator takes no configuration parameters."` — this is
-  lifted from `MeanAggregate`. Technically correct (no fields to document), but the
-  `Args:` section could simply be omitted when there are no parameters. LOW.
+- One-line summary clear and descriptive (line 14).
+- Extended description explains behavior (lines 16-18).
+- Returns section documents output structure (lines 20-24).
+- Example section shows Chord pipeline usage (lines 26-34).
 
-- `Returns:` section is complete: mentions `window` dimension, integer indexing, metadata
-  preservation, and history ✅
-
-- `Example:` shows realistic Chord pipe usage ✅
+**Issue**: No `Raises:` section despite raising `ValueError` on line 39 for empty streams.
 
 ## Typing
 
-- No dataclass fields → no field typing required ✅
-- `__call__` return type `-> Data` is explicit and matches contract ✅
-- No bare `Any` ✅
+- `__call__` has complete type annotations: `(self, data: Data, stream: Iterator[Data]) -> Data`.
+- No dataclass fields requiring types (the feature has no parameters).
+- No bare `Any` types.
 
 ## Safety & Style
 
-- No `print()` statements ✅
-- Empty stream guard raises `ValueError` with descriptive message ✅
-- Input not mutated: works on `w.data` (underlying `xr.DataArray`) for each window,
-  constructs a fresh `Data` object for the result ✅
-
-- History propagation mirrors `MeanAggregate` exactly: copies per-window ops not already
-  in `data.history`, appends `"ConcatAggregate"` ✅
-
-- `assign_coords(window=list(range(len(items))))` correctly sets integer coordinates
-  after `xr.concat` ✅
+- No `print()` statements.
+- Input validation present: raises `ValueError` if stream is empty (lines 38-39).
+- No mutation of input `data` — creates and returns new `Data` instance (lines 43-51).
+- History correctly propagated: combines original history, per-window operations, and
+  `"ConcatAggregate"` marker.
 
 ## Action List
 
-1. [Severity: LOW] `Args:` section says "None." — consider omitting the section entirely
-   when a feature has no parameters, for cleaner docstring style (line 22–23).
+1. [Severity: LOW] Add `Raises:` section to docstring documenting the `ValueError` condition
+   when the stream is empty (line 39).

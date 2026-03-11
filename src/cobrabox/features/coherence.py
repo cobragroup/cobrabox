@@ -41,6 +41,12 @@ class Coherence(BaseFeature[SignalData]):
         ``space_to`` and ``space_from`` carry the original channel coordinates.
         Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix
         is symmetric: ``result[i, j] == result[j, i]``.
+
+    Raises:
+        ValueError: If nperseg is provided and less than 2.
+        ValueError: If input data lacks a 'space' dimension.
+        ValueError: If fewer than 2 spatial channels are present.
+        ValueError: If computed nperseg is less than 2 or exceeds time samples.
     """
 
     output_type: ClassVar[type[Data]] = Data

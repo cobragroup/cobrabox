@@ -119,9 +119,11 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `Coherence` - Magnitude-squared coherence between channel pairs
 - `Spectrogram` - Time-frequency power spectrogram
 - `Hilbert` - Analytic signal, envelope, phase, or instantaneous frequency
-- `SpikesCalc` - Outlier detection using IQR method
+- `SpikeCount` - Outlier detection using IQR method
 - `Autocorr` - Normalized autocorrelation at a single lag
+- `Min` / `Max` / `Mean` - Reduce over any dimension
 - `LempelZiv` - Lempel-Ziv complexity per channel
+- `Autocorr` - Normalized autocorrelation at a single lag
 - `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
 - `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
 - `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
@@ -138,6 +140,8 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
 - `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
 - `MutualInformation` - Pairwise mutual information matrix between channels
+- `PartialDirectedCoherence` - Directional frequency-domain connectivity via VAR model
+- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection)
 
 ### Specialized Features
 
@@ -159,6 +163,10 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 - `DiscreteWaveletTransform` - Multi-level discrete wavelet decomposition (DWT)
 - `ContinuousWaveletTransform` - Continuous wavelet transform for time-frequency analysis
+
+### Signal Decomposition
+
+- `EMD` - Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs)
 
 ### qEEG Measures
 
@@ -220,10 +228,10 @@ Every feature in CobraBox has a D&D alignment that captures its "moral character
 
 ```bash
 # See the full roster
-uv run python -m cobrabox.egg.dnd_alignment --roster
+uv run python -m cobrabox.dnd_alignment --roster
 
 # Check a pipeline's aggregate alignment
-uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
+uv run python -m cobrabox.dnd_alignment SlidingWindow LineLength MeanAggregate
 ```
 
 **Example alignments:**
@@ -237,7 +245,7 @@ Run the command above to see where your favorite features fall on the grid!
 ## Documentation
 
 - Setup repo: [`docs/setup_repo.md`](docs/setup_repo.md)
-- Contribute a feature: [`docs/contributing_feature.md`](docs/contributing_feature.md)
+- Contribute a feature: [`docs/contributing/features.md`](docs/contributing/features.md)
 - Make a pull request: [`docs/how_to_make_a_pr.md`](docs/how_to_make_a_pr.md)
 - Set up GitHub SSH key: [`docs/setup_github_ssh_key.md`](docs/setup_github_ssh_key.md)
 - Docs index: [`docs/README.md`](docs/README.md)

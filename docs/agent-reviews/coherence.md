@@ -1,72 +1,67 @@
 # Feature Review: coherence
 
 **File**: `src/cobrabox/features/coherence.py`
-**Date**: 2026-03-05
-**Verdict**: PASS
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-Clean, well-structured feature implementing Welch's method for magnitude-squared coherence computation. Follows all project conventions with excellent docstring coverage, proper typing, and comprehensive input validation. The feature correctly uses `BaseFeature[SignalData]` since it operates on the time axis, and sets `output_type = Data` appropriately since the output is a correlation matrix (no time dimension).
+The Coherence feature is well-structured and implements magnitude-squared coherence computation correctly. It follows the dataclass pattern, uses appropriate base class typing (`BaseFeature[SignalData]`), and sets `output_type` correctly since it removes the time dimension. Code is clean, typed, and follows conventions. The only significant gap is the missing `Raises:` section in the class docstring.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-All checks passed!
+Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-1 file already formatted
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 1: `from __future__ import annotations` present.
+Line 14: Correct use of `@dataclass` decorator.
+Line 15: Properly inherits `BaseFeature[SignalData]` since this feature operates on time-series data.
+Line 46: Correctly sets `output_type: ClassVar[type[Data]] = Data` because the output removes the time dimension (returns a coherence matrix instead of time-series).
+Line 90: `__call__` signature correctly typed as `(self, data: SignalData) -> xr.DataArray`.
 
-Line 14-15: Correctly decorated with `@dataclass` and inherits `BaseFeature[SignalData]` — appropriate for a time-series feature.
+The class correctly does NOT implement `apply()` — this is inherited from `BaseFeature`.
 
-Line 46: `output_type: ClassVar[type[Data]] = Data` correctly set since coherence produces a spatial correlation matrix without time dimension.
-
-Line 90: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray:`.
-
-No `apply()` override — correctly inherits from `BaseFeature`.
-
-Imports are in correct order: stdlib → third-party → internal.
+Imports are clean and ordered correctly (stdlib → third-party → internal).
 
 ## Docstring
 
-Comprehensive Google-style docstring with all required sections:
+Comprehensive Google-style docstring with most required sections present:
 
-- One-line summary (line 16)
-- Extended description explaining the algorithm and symmetry (lines 17-26)
-- Args section documenting `nperseg` field (lines 28-30)
-- Example section showing typical usage (lines 32-36)
-- Returns section describing output dimensions and properties (lines 38-43)
-
-Note: The Returns section correctly documents the extra singleton `time` dimension added by `BaseFeature.apply`.
+- ✅ One-line summary (line 16)
+- ✅ Extended description explaining algorithm (lines 17-26)
+- ✅ Args section documenting `nperseg` field (lines 28-30)
+- ✅ Returns section describing output shape and dimensions (lines 38-43)
+- ✅ Example section showing typical usage (lines 32-36)
+- ❌ **Missing Raises section** — the feature raises `ValueError` in both `__post_init__` (line 52) and `__call__` (lines 94, 101, 105, 108) but these are not documented
 
 ## Typing
 
-All fields are typed:
+All fields are properly typed:
 
-- Line 48: `nperseg: int | None = field(default=None)`
+- Line 48: `nperseg: int | None = field(default=None)` — correct union type with default
 
-Line 90: `__call__` has proper return type annotation `-> xr.DataArray`.
+`__call__` return type is explicit: `-> xr.DataArray` (line 90).
 
 No bare `Any` types present.
 
 ## Safety & Style
 
-No `print()` statements — clean.
-
-Input validation is thorough:
-
-- `__post_init__` (lines 50-52): Validates `nperseg >= 2` at construction time
-- `__call__` (lines 91-109): Validates presence of 'space' dimension, minimum 2 channels, and `nperseg` constraints against actual data length
-
-No mutation of input `data` — operates on `data.data` and returns new `xr.DataArray`.
-
-Line length within 100 character limit.
+- ✅ No `print()` statements
+- ✅ Input validation present: checks for 'space' dimension (line 93-94), minimum 2 spatial channels (lines 100-101), and validates `nperseg` constraints (lines 104-109)
+- ✅ `__post_init__` validates `nperseg` parameter (lines 50-52)
+- ✅ No mutation of input `data` — works on copy and returns new DataArray
+- ✅ Line length within 100 characters
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] Add `Raises:` section to class docstring documenting the ValueError conditions:
+   - `ValueError`: If `nperseg` is provided and less than 2.
+   - `ValueError`: If input data lacks a 'space' dimension.
+   - `ValueError`: If fewer than 2 spatial channels are present.
+   - `ValueError`: If computed `nperseg` is less than 2 or exceeds time samples.

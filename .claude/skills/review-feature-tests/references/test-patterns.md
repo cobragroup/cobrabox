@@ -9,8 +9,13 @@ Examples use `LineLength` (no params) and `SlidingWindow` + `MeanAggregate` (hav
 
 ## Helper
 
-A small helper keeps tests concise. Returns a fresh `SignalData` object each call.
-Use `cb.SignalData.from_numpy` (not `cb.from_numpy`, which returns plain `Data`).
+A small helper keeps tests concise. Returns a fresh object each call.
+
+**Important: `cb.from_numpy` is `Data.from_numpy` and returns plain `Data`.
+Use `cb.SignalData.from_numpy` when testing `BaseFeature[SignalData]` features.**
+Use `cb.Data.from_numpy` (or `cb.from_numpy`) only when testing `BaseFeature[Data]` features.
+
+Use a seeded RNG for deterministic, non-flaky tests:
 
 ```python
 def _make_data(
@@ -21,7 +26,7 @@ def _make_data(
     groupID: str = "g1",
     condition: str = "rest",
 ) -> cb.SignalData:
-    arr = np.random.randn(n_time, n_space)
+    arr = np.random.default_rng(42).standard_normal((n_time, n_space))
     return cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],
@@ -120,47 +125,19 @@ def test_line_length_metadata_preserved() -> None:
 
 ## Invalid dims — missing `time`
 
-Test the feature's own `__call__` guard clause (the `ValueError` it raises before xarray does).
+**Only applies to `BaseFeature[Data]` features** that explicitly validate `"time" in data.data.dims`.
+For `BaseFeature[SignalData]` features, `SignalData` enforces the time dimension at construction
+time — skip this scenario entirely for those features.
+
+For `BaseFeature[Data]` features, use `cb.Data.from_numpy` directly — no `__new__` bypass needed:
 
 ```python
-def test_line_length_missing_time_raises() -> None:
-    """LineLength raises ValueError when 'time' dimension is missing."""
-    import xarray as xr
-    arr = np.random.randn(10)
-    # Build a Data-like object whose underlying array lacks 'time'
-    xr_data = xr.DataArray(arr, dims=["space"])
-    # Bypass Data.__init__ validation to isolate the feature guard
-    raw = cb.Data.__new__(cb.Data)
-    object.__setattr__(raw, "_data", xr_data)
+def test_myfeature_missing_time_raises() -> None:
+    """MyFeature raises ValueError when 'time' dimension is absent."""
+    arr = np.random.default_rng(42).standard_normal((10,))
+    data = cb.Data.from_numpy(arr, dims=["space"])
     with pytest.raises(ValueError, match="time"):
-        cb.feature.LineLength().apply(raw)
-```
-
-Simpler alternative — rename dims on a valid Data object and call directly:
-
-```python
-def test_line_length_missing_time_raises() -> None:
-    """LineLength raises ValueError when 'time' dimension is absent."""
-    data = _make_data()
-    # Construct feature and call __call__ directly with a bad xr.DataArray
-    import xarray as xr
-    bad = xr.DataArray(np.ones((10,)), dims=["space"])
-    with pytest.raises((ValueError, KeyError)):
-        cb.feature.LineLength()(data)  # still valid; test guard via monkeypatch if needed
-```
-
-Recommended: test via the actual public guard in `__call__`:
-
-```python
-def test_line_length_validates_time_dim() -> None:
-    """LineLength raises ValueError when 'time' is not in data.data.dims."""
-    import xarray as xr
-    # Build a fresh Data with time renamed to 't' via __new__ bypass
-    bad_xr = xr.DataArray(np.random.randn(100, 10), dims=["t", "space"])
-    raw = cb.Data.__new__(cb.Data)
-    object.__setattr__(raw, "_data", bad_xr)
-    with pytest.raises(ValueError, match="time"):
-        cb.feature.LineLength()(raw)
+        cb.feature.MyFeature().apply(data)
 ```
 
 ---
@@ -305,7 +282,7 @@ def _make_data(
     groupID: str = "g1",
     condition: str = "rest",
 ) -> cb.SignalData:
-    arr = np.random.randn(n_time, n_space)
+    arr = np.random.default_rng(42).standard_normal((n_time, n_space))
     return cb.SignalData.from_numpy(
         arr,
         dims=["time", "space"],

@@ -53,7 +53,7 @@ class Spectrogram(BaseFeature[SignalData]):
 # ✅ Feature that returns plain Data - ONLY set when changing type
 @dataclass
 class Coherence(BaseFeature[SignalData]):
-    output_type: ClassVar[type[Data] | None] = Data  # Removes time dimension
+    output_type: ClassVar[type[Data]] = Data  # Removes time dimension
     ...
 ```
 
@@ -91,7 +91,7 @@ def line_length(data: Data, ...) -> xr.DataArray:
 
 Must be PascalCase matching the filename (`line_length.py` → `LineLength`).
 
-**Descriptive naming required**
+#### Descriptive naming required
 
 Class names must be descriptive and clearly indicate what the feature computes. Avoid abbreviations, acronyms, or shortened forms that are not immediately obvious.
 
@@ -110,6 +110,7 @@ class Fd(BaseFeature[Data]):  # Too short, unclear
 ```
 
 **Guidelines:**
+
 - Use full words: `AmplitudeEntropy` not `Ampent`
 - Use widely recognized acronyms only if they are domain-standard: `PCA`, `FFT` are acceptable
 - When in doubt, prefer the longer, clearer name
@@ -238,7 +239,7 @@ Returns:
     DataArray.
 ```
 
-**No fake singleton dimensions**
+#### No fake singleton dimensions
 
 Features that return scalar values (0-dimensional output) should return a proper 0-d xarray DataArray, NOT an array with fake singleton dimensions like `(1, 1)` with made-up dim names.
 
@@ -257,6 +258,35 @@ return xr.DataArray(result, dims=["dim1", "dim2"])  # Where dim1/dim2 are not fr
 ```
 
 Use `xr.apply_ufunc(..., output_core_dims=[[]])` for dimensionality reduction to scalars, or simply return the reduced array which naturally drops the reduced dimension.
+
+### `Raises:` section
+
+Recommended when the feature raises `ValueError` in `__call__` or `__post_init__`.
+List each raised exception type and the condition that triggers it.
+
+```python
+# ✅
+Raises:
+    ValueError: If ``method`` is not a valid sift method.
+    ValueError: If ``max_imfs`` is not positive.
+
+# acceptable — omit if the feature raises nothing
+```
+
+### `References:` section
+
+Required for features implementing a published algorithm. Include full citation(s)
+so reviewers can verify correctness against the source. Omit for self-evident operations
+(mean, max, etc.) with no specific algorithm reference.
+
+```python
+# ✅
+References:
+    Leuchter, A. F., et al. (1994). Cordance: a new method...
+    *NeuroImage*, 1(3), 208-219.
+
+# acceptable — omit for features with no literature basis
+```
 
 ### `Example:` section
 
