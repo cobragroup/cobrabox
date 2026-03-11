@@ -41,6 +41,12 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
             ``space``.
         ValueError: If ``data`` has fewer than 2 spatial channels.
 
+    References:
+        Hipp, J. F., Hawellek, D. J., Corbetta, M., Siegel, M., & Engel, A. K.
+        (2012). Large-scale cortical correlation structure of spontaneous
+        oscillatory activity. Nature Neuroscience, 15(6), 884-890.
+        https://doi.org/10.1038/nn.3101
+
     Example:
         >>> aec = cb.feature.EnvelopeCorrelation().apply(data)
         >>> aec_signed = cb.feature.EnvelopeCorrelation(absolute=False).apply(data)

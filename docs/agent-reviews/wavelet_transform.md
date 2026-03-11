@@ -2,75 +2,79 @@
 
 **File**: `src/cobrabox/features/wavelet_transform.py`
 **Date**: 2026-03-06
-**Verdict**: NEEDS WORK
+**Verdict**: PASS
 
 ## Summary
 
-The file contains two well-structured feature classes (`DiscreteWaveletTransform` and `ContinuousWaveletTransform`) that correctly follow the cobrabox dataclass pattern, use appropriate base classes with type parameters, validate parameters in `__post_init__`, handle extra dimensions, and preserve metadata. The implementation logic is correct and 100% branch-covered by tests. The only issues are two ruff `RUF002` linting errors — EN DASH characters (`–`) in docstrings that ruff flags as ambiguous Unicode. No structural, docstring, typing, or safety issues were found.
+Both `DiscreteWaveletTransform` and `ContinuousWaveletTransform` are well-implemented features with excellent documentation, comprehensive validation, and proper typing. The implementation follows all cobrabox conventions including correct use of `output_type` (DWT removes time dimension, CWT preserves it), thorough input validation in `__post_init__`, and clear docstrings with Args/Returns/Raises/Example sections.
 
 ## Ruff
 
 ### `uvx ruff check`
-```
-RUF002 Docstring contains ambiguous `–` (EN DASH). Did you mean `-` (HYPHEN-MINUS)?
-   --> src/cobrabox/features/wavelet_transform.py:133:25
-    |
-133 |     producing a 2-D time–scale representation. The output preserves the
-    |                         ^
 
-RUF002 Docstring contains ambiguous `–` (EN DASH). Did you mean `-` (HYPHEN-MINUS)?
-   --> src/cobrabox/features/wavelet_transform.py:141:42
-    |
-141 |               components with strong time–frequency localisation.
-    |                                          ^
-
-Found 2 errors.
-```
+Clean — no issues found.
 
 ### `uvx ruff format --check`
-```
-RUF002 Docstring contains ambiguous `–` (EN DASH). Did you mean `-` (HYPHEN-MINUS)?
-(same 2 errors as above — no formatting issues beyond the RUF002 violations)
-```
+
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-Both classes are correctly structured:
+Line 1: `from __future__ import annotations` present.
 
-- `from __future__ import annotations` is present at line 1. ✅
-- Both classes use `@dataclass` and inherit `BaseFeature[SignalData]`. ✅
-- `output_type: ClassVar[type[Data] | None]` is correctly set: `Data` for DWT (time consumed), `None` for CWT (time preserved). ✅
-- Class names are PascalCase and match the filename. ✅
-- `__call__` takes `data: SignalData` and returns `xr.DataArray` on both classes. ✅
-- `apply()` is not re-implemented. ✅
-- Imports are ordered correctly and all used. ✅
+Line 65-181: `DiscreteWaveletTransform` is a `@dataclass` inheriting `BaseFeature[SignalData]` — correct for a time-series feature.
+
+Line 183-324: `ContinuousWaveletTransform` is a `@dataclass` inheriting `BaseFeature[SignalData]` — correct for a time-series feature.
+
+Line 123: `output_type: ClassVar[type[Data] | None] = Data` — correctly set to `Data` since DWT removes the time dimension.
+
+Line 243: `output_type: ClassVar[type[Data] | None] = None` — correctly set to `None` since CWT preserves the time dimension.
+
+Both classes use descriptive PascalCase names that clearly indicate functionality. No `apply()` method — correctly inherited from `BaseFeature`.
+
+Imports are well-organized: stdlib, third-party (pywt, numpy, xarray), then internal modules.
 
 ## Docstring
 
-Both docstrings are complete and well-written:
+Both features have comprehensive Google-style docstrings:
 
-- One-line summary is present and concise. ✅
-- Extended description explains the algorithm, output layout, and NaN-padding rationale for DWT. ✅
-- `Args:` section covers every dataclass field with type and description. ✅
-- `Returns:` section describes dims, coords, and value semantics. ✅
-- `Example:` section provides working `.apply()` snippets. ✅
+- **One-line summary**: Present and descriptive (lines 67, 185)
+- **Extended description**: Detailed algorithm explanations with behavior notes
+- **Args**: All dataclass fields documented with types and constraints
+- **Returns**: Shape, dimensions, and coordinate details clearly specified
+- **Raises**: Lists all ValueError conditions (lines 95-98, 223-227)
+- **Example**: Working code snippets using `.apply()` syntax (lines 100-106, 229-235)
+
+Excellent use of reStructuredText-style inline code markers (`` `code` ``) for parameter names and code references.
 
 ## Typing
 
-- All dataclass fields are typed: `wavelet: str`, `level: int | None`, `mode: str`, `scales: list[float] | None`, `n_scales: int`, `scaling: str`. ✅
-- `__call__` return type is `xr.DataArray` on both classes. ✅
-- `frequencies: np.ndarray | None` local annotation in CWT `__call__` at line 242. ✅
-- No bare `Any`. ✅
+All fields have explicit type annotations:
+
+- `_DwtWavelet` and `_CwtWavelet` type aliases for wavelet names (lines 15-62)
+- Literal types for constrained string parameters (`mode`, `scaling`)
+- `ClassVar` properly used for `output_type`
+
+`__call__` signatures are correctly typed:
+
+- `def __call__(self, data: SignalData) -> xr.DataArray:` (lines 136, 265)
+
+Return types match the base class contract. No bare `Any` usage.
 
 ## Safety & Style
 
-- No `print()` statements. ✅
-- Input is never mutated; all work is done on `data.data.values` and new arrays. ✅
-- `__post_init__` validates `level < 1`, wavelet name (via `pywt.Wavelet`/`pywt.ContinuousWavelet`), `scales` emptiness and positivity, `n_scales < 1`, and `scaling` against the valid set. ✅
-- `__call__` validates `level > max_level` at runtime against the actual signal length. ✅
-- Line length is within the 100-character limit throughout. ✅
-- The CWT loop initialises `frequencies` from the first iteration and reuses it, avoiding a redundant extra `pywt.cwt` call. ✅
+No `print()` statements found.
+
+Input validation is comprehensive:
+
+- `DiscreteWaveletTransform.__post_init__` (lines 125-134): Validates level >= 1, checks wavelet exists
+- `ContinuousWaveletTransform.__post_init__` (lines 245-263): Validates scales not empty/positive, n_scales >= 1, scaling valid, wavelet exists
+- Runtime validation in `DiscreteWaveletTransform.__call__` (lines 147-151): Checks level doesn't exceed max possible
+
+No mutation of input `data` — both features work on `data.data` and return new DataArrays.
+
+Code style is clean with appropriate line lengths.
 
 ## Action List
 
-1. [Severity: HIGH] Replace EN DASH (`–`) with hyphen-minus (`-`) at line 133 (`time–scale` → `time-scale`) and line 141 (`time–frequency` → `time-frequency`) in `ContinuousWaveletTransform` docstring to fix the two `RUF002` ruff errors.
+None.

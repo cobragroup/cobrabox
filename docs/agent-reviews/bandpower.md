@@ -1,74 +1,74 @@
-# Feature Review: Bandpower
+# Feature Review: bandpower
 
 **File**: `src/cobrabox/features/bandpower.py`
-**Date**: 2025-03-05
-**Verdict**: PASS
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-Excellent, production-quality feature. Bandpower is a well-implemented spectral analysis feature using Welch's method. The code is clean, properly typed, thoroughly documented, and follows all cobrabox conventions. It includes thoughtful features like default frequency bands, flexible band specification syntax, and robust input validation.
+A well-structured feature implementing Welch's method for band power computation. Clean code with proper validation, good docstring coverage, and correct typing. The main gap is a missing `Raises:` section that documents the three `ValueError` conditions in the implementation.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-All checks passed!
+Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-1 file already formatted
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-- **Line 1**: `from __future__ import annotations` present ✓
-- **Line 21**: `@dataclass` decorator applied ✓
-- **Line 22**: Correctly inherits `BaseFeature[SignalData]` (time-series operation) ✓
-- Class name `Bandpower` matches filename `bandpower.py` ✓
-- **Line 65**: `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray` ✓
-- No `apply()` override — correctly inherits from `BaseFeature` ✓
-- Imports are minimal and properly ordered (stdlib → third-party → internal) ✓
+Excellent. The feature correctly:
+
+- Uses `from __future__ import annotations` (line 1)
+- Decorated with `@dataclass` and inherits `BaseFeature[SignalData]` (lines 21-22)
+- Correctly omits `output_type` (preserves container type)
+- Class name `Bandpower` matches filename `bandpower.py`
+- `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray` (line 65)
+- Does not implement `apply()` — uses inherited method
+- Imports are clean and properly ordered (stdlib, third-party, internal)
 
 ## Docstring
 
-Comprehensive Google-style docstring with all required sections:
+Comprehensive Google-style docstring with all required sections except one:
 
-- **One-line summary**: Line 23 — clear verb phrase describing the operation
-- **Extended description**: Lines 25-28 — explains Welch's method and the integration approach
-- **Args section**: Lines 30-44 — both `bands` and `nperseg` documented with types and behavior
-  - Excellent documentation of the flexible `bands` parameter (default bands, custom ranges, True for defaults)
-  - Lists all five default bands with frequency ranges
-- **Returns section**: Lines 51-55 — describes output shape, dimensions, units, and coordinates
-- **Example section**: Lines 46-49 — three examples covering default usage, custom bands, and parameter tuning
+- ✅ One-line summary (line 23)
+- ✅ Extended description explaining algorithm (lines 25-28)
+- ✅ `Args:` section documenting both fields (`bands`, `nperseg`)
+- ✅ `Returns:` section with shape, dimensions, and units
+- ✅ `Example:` section with three usage examples
+- ❌ Missing `Raises:` section
+
+The implementation raises `ValueError` in three places that should be documented:
+
+1. `__post_init__` (lines 62-63): when `nperseg < 2`
+2. `__call__` (lines 68-72): when `sampling_rate` is `None`
+3. Band resolution logic (lines 82-92): unknown band names or `False` values
 
 ## Typing
 
-- **Line 58**: `bands: dict[str, list[float] | bool] | None` — precise type for flexible band specification
-- **Line 59**: `nperseg: int | None` — optional integer parameter
-- **Line 65**: Return type `xr.DataArray` explicitly annotated ✓
-- No bare `Any` types ✓
-- `__post_init__` return type annotated ✓
+All type annotations are correct:
+
+- Fields properly typed: `bands: dict[str, list[float] | bool] | None` and `nperseg: int | None` (lines 58-59)
+- `__call__` return type: `xr.DataArray` (line 65)
+- `__post_init__` return type: `None` (line 61)
+- No bare `Any` types
 
 ## Safety & Style
 
-- **No print statements** ✓
-- **Input validation**:
-  - **Lines 62-63**: `__post_init__` validates `nperseg >= 2` with clear error message ✓
-  - **Lines 68-72**: Validates `sampling_rate` is present (required for frequency calculations) ✓
-  - **Lines 79-94**: Comprehensive band specification validation:
-    - Handles `True` for default bands with helpful error for unknown band names
-    - Rejects `False` with clear message
-    - Converts list specs to tuples properly
-- **No mutation**: Works on `data.data` (line 66), creates new `xr.DataArray` (line 115), never modifies input ✓
-- **Line length**: All lines under 100 characters ✓
+Excellent:
 
-## Notable Implementation Details
-
-1. **Default bands dictionary** (lines 12-18): Cleanly defined as module constant `_DEFAULTS`
-2. **Flexible band API**: Supports `{"alpha": True}` for defaults and `{"custom": [10, 20]}` for ranges
-3. **Welch optimization**: Transposes time to last axis (lines 97-98) for efficient scipy operation
-4. **Edge case handling**: Gracefully handles frequency bands with no matching bins (lines 107-108)
-5. **Coordinate preservation**: Preserves non-time coordinates from input (lines 116-118)
+- No `print()` statements
+- Proper input validation in `__post_init__` for `nperseg`
+- Proper validation in `__call__` for missing `sampling_rate`
+- No mutation of input `data` — works on copy and returns new DataArray
+- Clean use of numpy and xarray operations
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] Add `Raises:` section to docstring documenting the three `ValueError` conditions:
+   - When `sampling_rate` is `None` (lines 68-72)
+   - When `nperseg < 2` (lines 62-63)
+   - When band name is unknown or band spec is `False` (lines 82-92)

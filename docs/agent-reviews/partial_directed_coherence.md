@@ -1,12 +1,12 @@
-# Feature Review: PartialDirectedCoherence
+# Feature Review: partial_directed_coherence
 
 **File**: `src/cobrabox/features/partial_directed_coherence.py`
-**Date**: 2025-03-05
-**Verdict**: PASS
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-Excellent, production-ready feature implementing Partial Directed Coherence (PDC) analysis via VAR modeling. The implementation is mathematically sound, well-documented, and follows all cobrabox conventions. The feature correctly handles the transformation from time-series `SignalData` to a frequency-domain connectivity matrix returned as plain `Data` (no time dimension). The code includes robust input validation, clear docstrings with proper Raises sections, and uses statsmodels appropriately for VAR fitting.
+A well-structured feature implementing Partial Directed Coherence analysis. The code is clean, properly typed, and follows most conventions. However, it's missing a `References:` section for a published algorithm, which is required per the review criteria.
 
 ## Ruff
 
@@ -20,60 +20,23 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-All structural requirements met:
-
-- Line 1: `from __future__ import annotations` present
-- Line 14: `@dataclass` decorator applied
-- Line 15: Inherits `BaseFeature[SignalData]` (correct for time-series analysis)
-- Line 53: `output_type: ClassVar[type[Data]] = Data` set (returns plain Data, no time dim)
-- Line 61: `__call__` signature is `def __call__(self, data: SignalData) -> xr.DataArray`
-- No custom `apply()` — correctly inherited from base
-- Class name `PartialDirectedCoherence` matches filename `partial_directed_coherence.py`
-- Imports follow standard order (stdlib → third-party → internal)
+All structural requirements are met. The class correctly inherits from `BaseFeature[SignalData]` (line 15), sets `output_type: ClassVar[type[Data]] = Data` (line 53) since the time dimension is removed, and uses `@dataclass` decorator (line 14). The `__call__` signature is properly typed as `def __call__(self, data: SignalData) -> xr.DataArray:` (line 61). No `apply()` override — correctly uses inherited method. Imports follow standard order and only import what is used.
 
 ## Docstring
 
-Comprehensive Google-style docstring with all required sections:
+Comprehensive Google-style docstring with most required sections. One-line summary is present and clear. Extended description explains the algorithm well, including the mathematical normalization property. `Args:` section documents both dataclass fields (`var_order`, `n_freqs`) with types and descriptions. `Returns:` section specifies output dimensions `("space_to", "space_from", "frequency")` and shape. `Raises:` section lists all four validation conditions. `Example:` section shows correct `.apply()` usage.
 
-- Line 16: Concise one-line summary
-- Lines 18-27: Extended description explaining PDC mathematics and normalization
-- Lines 28-31: `Args:` section covering both dataclass fields
-- Lines 33-36: `Returns:` section with dimension and shape details
-- Lines 38-42: `Raises:` section listing all four validation conditions
-- Lines 44-47: `Example:` section showing `.apply()` usage
-
-The docstring clearly explains the directional interpretation (`PDC[i, j, f]` = influence from j to i) and the normalization constraint (sum of squares = 1).
+**Issue**: Missing `References:` section. PDC is a published algorithm (Baccalá & Sameshima, 2001) and requires citation per criteria.
 
 ## Typing
 
-All typing requirements satisfied:
-
-- Line 50: `var_order: int | None = None` — typed with union
-- Line 51: `n_freqs: int = 128` — typed with default
-- Line 53: `output_type: ClassVar[type[Data]] = Data` — proper classvar
-- Line 61: Return type `xr.DataArray` declared
-- Line 55: `__post_init__` has `-> None` return type
-- `# type: ignore[override]` on line 61 is acceptable — narrows return type from base class union
-
-No bare `Any` types present.
+Excellent typing throughout. Both dataclass fields are annotated: `var_order: int | None = None` and `n_freqs: int = 128`. The `output_type` class variable is correctly typed as `ClassVar[type[Data]]`. Return type annotation on `__call__` is `xr.DataArray`. No bare `Any` types found. All local variables are properly inferred.
 
 ## Safety & Style
 
-Excellent safety practices:
-
-- **No print statements** — clean mathematical code
-- **Input validation in `__post_init__`** (lines 55-59):
-  - Validates `var_order >= 1` if not None
-  - Validates `n_freqs >= 1`
-- **Input validation in `__call__`** (lines 62-78):
-  - Checks `data.sampling_rate is not None` (line 62-63)
-  - Validates 2-D input shape (lines 68-72)
-  - Validates at least 2 channels (lines 77-78)
-- **No mutation of input** — works on `xr_data.values` copy and returns new DataArray
-- **Numerical safety** — handles division by zero on line 111 with `np.where`
-
-The VAR model fitting (lines 85-89) correctly handles automatic order selection via AIC when `var_order` is None. The PDC computation (lines 94-115) properly implements the frequency-domain transfer matrix and column-wise normalization.
+No `print()` statements. Comprehensive input validation: `__post_init__` validates `var_order` and `n_freqs` are positive (lines 56-59), and `__call__` validates `sampling_rate` is not None (line 62), input is 2-D (lines 68-72), and at least 2 channels exist (lines 77-78). No mutation of input `data` — works on `data.data` and returns new `xr.DataArray`. Line length is within 100 characters.
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] Add a `References:` section to the docstring citing the original PDC paper:
+   - Baccalá, L. A., & Sameshima, K. (2001). Partial directed coherence: a new concept in neural structure determination. *Biological Cybernetics*, 84(6), 463-474.

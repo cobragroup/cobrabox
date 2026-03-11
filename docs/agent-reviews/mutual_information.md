@@ -6,7 +6,7 @@
 
 ## Summary
 
-The `MutualInformation` feature implements a solid algorithm for computing pairwise mutual information between series. However, it has several documentation issues that need to be fixed: missing required docstring sections (Args, Returns, Example), typos in the existing docstring, and the required `from __future__ import annotations` import is absent. The implementation itself is clean and well-structured, but the documentation does not meet the project standards.
+The `MutualInformation` feature is generally well-structured with good docstring coverage and proper type annotations. However, it has a critical mutability issue where `_n_bins` is stored as a dataclass field but modified during `__call__`, making the feature non-thread-safe and stateful. The docstring is also missing `Raises:` and `References:` sections.
 
 ## Ruff
 
@@ -20,47 +20,81 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-**Line 1**: Missing `from __future__ import annotations` — this is a required import that must be the first line.
+The class structure is correct:
 
-**Line 12**: The class correctly inherits from `BaseFeature[SignalData]` and is decorated with `@dataclass`.
+- Uses `@dataclass` decorator with `BaseFeature[SignalData]` inheritance (line 13-14)
+- `output_type: ClassVar[type[Data] | None] = Data` is correctly set (line 65) since the output removes the time dimension
+- Class name `MutualInformation` is descriptive and matches filename
+- `__call__` signature correctly takes `data: SignalData` and returns `xr.DataArray` (line 78)
+- No redundant `apply()` method (correctly inherited)
 
-**Line 53**: The `output_type: ClassVar[type[Data] | None] = Data` is correctly set since MI removes the time dimension.
-
-**Line 66**: The `__call__` signature has `data: Data` but should be `data: SignalData` to match the type parameter of the base class.
+**Issue on line 122**: The `transpose()` call has no effect. `xarray.DataArray.transpose()` returns a new array, so this line should be `x = x.transpose(..., self.other_dim, self.dim)` or removed if not needed.
 
 ## Docstring
 
-**Line 17**: Typo — "Mututal" should be "Mutual".
+Good coverage with one-line summary, extended description, Args, Returns, and Example sections. However, missing required sections:
 
-**Line 26**: Typo — "parmeters" should be "Parameters", and the section should be named "Args:" not "Optional parmeters".
-
-**Line 29-42**: The Args section is present but uses the wrong header format. It should be:
-
-```python
-Args:
-    dim: ...
-    other_dim: ...
-```
-
-instead of the current indented "Optional parmeters" section.
-
-**Missing Returns section**: The docstring lacks a `Returns:` section describing the output DataArray shape, dimensions (space_from, space_to), and what the values represent.
-
-**Missing Example section**: There is no `Example:` section showing typical usage via `.apply()`.
+- **Missing `Raises:` section**: The feature raises `ValueError` in `__post_init__` (lines 69-76) and `__call__` (lines 80, 88-90, 92). Each should be documented.
+- **Missing `References:` section**: Mutual information is a well-established metric. A citation (e.g., Shannon 1948 or Cover & Thomas) should be included.
 
 ## Typing
 
-All dataclass fields are properly typed (lines 46-51). The `__call__` return type is `xr.DataArray` (line 66), which is acceptable though the base class contract allows `xr.DataArray | Data`. No bare `Any` types are present.
+All fields have type annotations:
+
+- `dim: str` (line 58)
+- `other_dim: str | None` (line 59)
+- `bins: int | None` (line 60)
+- `equiprobable_bins: bool` (line 61)
+- `log_base: float` (line 62)
+
+**Issue on line 63**: `_n_bins: int = 0` should not be a dataclass field at all (see Safety section).
+
+Return type of `__call__` is correctly `xr.DataArray` (line 78).
 
 ## Safety & Style
 
-No `print()` statements found. Input validation is present in `__post_init__` (lines 55-64) and `__call__` (lines 67-80). No mutation of input `data` — the feature works on `data.data` and returns new arrays. Line length is within the 100 character limit.
+### Critical: Mutable state in dataclass
+
+**Line 63**: `_n_bins: int = 0` is defined as a dataclass field, but it is modified in `__call__` (lines 95, 97). This makes the feature:
+
+1. Non-thread-safe (concurrent calls will corrupt state)
+2. Stateful (subsequent calls with different data sizes will have wrong bin count)
+
+**Fix**: Remove `_n_bins` from dataclass fields and make it a local variable in `__call__`:
+
+```python
+# Remove this line entirely:
+# _n_bins: int = 0
+
+# In __call__, use a local variable:
+n_bins = int(data.data[self.dim].size ** (1 / 3)) if self.bins is None else self.bins
+```
+
+Update all references from `self._n_bins` to the local `n_bins` variable.
+
+### Input validation
+
+Validation is thorough:
+
+- `__post_init__` validates `bins`, `dim`, and `other_dim` (lines 67-76)
+- `__call__` validates dimension existence (lines 79-92)
+
+No issues here.
+
+### Line 122: Unused transpose
+
+```python
+x.transpose(..., self.other_dim, self.dim)  # Has no effect
+```
+
+Should be assigned: `x = x.transpose(..., self.other_dim, self.dim)`
 
 ## Action List
 
-1. [Severity: HIGH] Add `from __future__ import annotations` as the first import line.
-2. [Severity: HIGH] Fix docstring section header from "Optional parmeters" to "Args:" and fix the typo "parmeters" → "parameters".
-3. [Severity: HIGH] Fix typo "Mututal" → "Mutual" in the docstring (line 17).
-4. [Severity: MEDIUM] Add missing `Returns:` section describing the output DataArray with dimensions "space_from" and "space_to".
-5. [Severity: MEDIUM] Add missing `Example:` section showing usage: `>>> result = cb.feature.MutualInformation().apply(data)`.
-6. [Severity: LOW] Change `__call__` parameter type from `data: Data` to `data: SignalData` to match the base class type parameter.
+1. **[Severity: HIGH]** Remove `_n_bins` from dataclass fields (line 63). Make it a local variable in `__call__` to ensure thread-safety and immutability.
+
+2. **[Severity: MEDIUM]** Fix line 122: Assign the result of `transpose()` to a variable, or remove if the operation is unnecessary.
+
+3. **[Severity: MEDIUM]** Add `Raises:` section to docstring documenting all `ValueError` exceptions raised in `__post_init__` and `__call__`.
+
+4. **[Severity: LOW]** Add `References:` section with citation for mutual information (e.g., Shannon 1948 or Cover & Thomas, Elements of Information Theory).

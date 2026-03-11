@@ -228,3 +228,20 @@ def test_amplitude_entropy_1d_input_raises() -> None:
     feature = cb.feature.AmplitudeEntropy(band_width=0.5)
     with pytest.raises(ValueError, match="Input data must have at least 2 dimensions"):
         feature.apply(data)
+
+
+def test_amplitude_entropy_zero_total_counts() -> None:
+    """AmplitudeEntropy handles edge case where histogram has zero total counts."""
+    # This tests the defensive guard at lines 101-102 using mocking
+    from unittest.mock import patch
+
+    arr = np.random.default_rng(42).standard_normal((5, 5))
+    data = cb.Data.from_numpy(arr, dims=["time", "space"])
+    feature = cb.feature.AmplitudeEntropy(band_width=1.0)
+
+    # Mock np.histogram to return zero counts, triggering the guard
+    with patch("numpy.histogram", return_value=(np.array([0, 0]), np.array([0, 1, 2]))):
+        result = feature.apply(data)
+
+    # Should return 0.0 from the guard
+    assert float(result.to_numpy()) == 0.0

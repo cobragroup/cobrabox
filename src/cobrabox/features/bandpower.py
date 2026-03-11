@@ -53,6 +53,11 @@ class Bandpower(BaseFeature[SignalData]):
         ``time`` dimension added by ``BaseFeature.apply``). The ``band_index``
         coordinate holds the band names. Values are absolute power in units of
         the input signal squared per Hz (signal² / Hz).
+
+    Raises:
+        ValueError: If sampling_rate is not set on the input data.
+        ValueError: If nperseg is less than 2.
+        ValueError: If an unknown band name is provided or band spec is False.
     """
 
     bands: dict[str, list[float] | bool] | None = field(default=None)

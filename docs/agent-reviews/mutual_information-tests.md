@@ -8,104 +8,133 @@
 ## Coverage
 
 ```text
-mutual_information: 100% (72 statements, 0 missing)
+MutualInformation: 100% (70 statements, 0 missing)
 ```
+
+Excellent per-file coverage at 100%.
 
 ## Summary
 
-The test file has excellent coverage (100%) and thoroughly tests the algorithmic correctness of mutual information computation with both equiprobable and equidistant binning strategies. Tests include validation of the mathematical implementation against known ground truth values.
+The test file covers the MutualInformation feature comprehensively including:
 
-However, several standard feature test scenarios are missing: history tracking, metadata preservation, and input immutability. The file docstring also incorrectly references "line_length" instead of "mutual_information".
+- Internal method testing (_vector_entropy, _get_binned)
+- Parameter validation (negative bins, non-integer bins, missing dimensions)
+- Low-dimensional data (2D: space x time) with both binning strategies
+- High-dimensional data (4D: something x sample x space x time) with both binning strategies
+- History, metadata preservation, sampling_rate handling, and immutability
+
+However, 7 test functions lack docstrings, and some test naming doesn't follow the required convention.
 
 ## Keep
 
-Tests that are correct and complete:
-
-- `test_entropy` — Correctly validates internal `_vector_entropy` helper against expected value
-- `test_binning` — Validates `_get_binned` binning logic produces correct indices
-- `test_bad_inits` — Comprehensive parameter validation tests (negative bins, non-integer bins, wrong dim types, missing dims, missing other_dim for high-D data)
-- `test_low_dim_equidistant_bins` / `test_low_dim_equiprobable_bins` — Happy path tests with ground truth validation
-- `test_high_dim_equiprobable_bins` / `test_high_dim_equidistant_bins` — Multi-dimensional data tests with correctness checks
+- `test_mutual_information_history_updated` — proper docstring, tests history correctly
+- `test_mutual_information_metadata_preserved` — proper docstring, tests metadata correctly
+- `test_mutual_information_sampling_rate_none` — proper docstring, tests output_type correctly
+- `test_mutual_information_does_not_mutate_input` — proper docstring, tests immutability correctly
+- `test_low_dim_equidistant_bins` — tests low-dim data with equidistant bins
+- `test_low_dim_equiprobable_bins` — tests low-dim data with equiprobable bins
+- `test_high_dim_equiprobable_bins` — tests high-dim data with equiprobable bins
+- `test_high_dim_equidistant_bins` — tests high-dim data with equidistant bins
 
 ## Fix
 
-### File docstring (line 1)
+### `test_entropy` → `test_mutual_information_vector_entropy`
 
-Issue: Docstring says "line_length" instead of "mutual_information"
+Issue: Missing docstring, name lacks feature prefix.
 
 ```python
-# Corrected:
-"""Tests for the mutual_information feature behavior."""
+def test_mutual_information_vector_entropy() -> None:
+    """_vector_entropy computes correct entropy for a binned distribution."""
+```
+
+### `test_binning` → `test_mutual_information_get_binned`
+
+Issue: Missing docstring, name lacks feature prefix.
+
+```python
+def test_mutual_information_get_binned() -> None:
+    """_get_binned correctly discretizes data into specified number of bins."""
+```
+
+### `test_bad_inits`
+
+Issue: Missing docstring, should be split into multiple tests for clarity.
+
+Replace with:
+
+```python
+def test_mutual_information_negative_bins_raises() -> None:
+    """MutualInformation raises ValueError for negative bins."""
+    with pytest.raises(ValueError, match="bins must be positive"):
+        MutualInformation(bins=-1)
+
+
+def test_mutual_information_non_integer_bins_raises() -> None:
+    """MutualInformation raises ValueError for non-integer bins."""
+    with pytest.raises(ValueError, match="bins must be an integer"):
+        MutualInformation(bins=2.5)
+
+
+def test_mutual_information_zero_bins_raises() -> None:
+    """MutualInformation raises ValueError for zero bins."""
+    with pytest.raises(ValueError, match="bins must be positive"):
+        MutualInformation(bins=0)
+
+
+def test_mutual_information_invalid_dim_type_raises() -> None:
+    """MutualInformation raises ValueError when dim is not a string."""
+    with pytest.raises(ValueError, match="dim must be a string"):
+        MutualInformation(dim=123)
+
+
+def test_mutual_information_invalid_other_dim_type_raises() -> None:
+    """MutualInformation raises ValueError when other_dim is not a string or None."""
+    with pytest.raises(ValueError, match="other_dim must be a string or None"):
+        MutualInformation(other_dim=123)
+```
+
+### `test_low_dim_equidistant_bins`
+
+Issue: Missing docstring.
+
+```python
+def test_low_dim_equidistant_bins(low_dim_data: cb.Data) -> None:
+    """MutualInformation computes correct MI for 2D data with equidistant bins."""
+```
+
+### `test_low_dim_equiprobable_bins`
+
+Issue: Missing docstring.
+
+```python
+def test_low_dim_equiprobable_bins(low_dim_data: cb.Data) -> None:
+    """MutualInformation computes correct MI for 2D data with equiprobable bins."""
+```
+
+### `test_high_dim_equiprobable_bins`
+
+Issue: Missing docstring.
+
+```python
+def test_high_dim_equiprobable_bins(high_dim_data: cb.Data) -> None:
+    """MutualInformation handles 4D data correctly with equiprobable bins."""
+```
+
+### `test_high_dim_equidistant_bins`
+
+Issue: Missing docstring.
+
+```python
+def test_high_dim_equidistant_bins(high_dim_data: cb.Data) -> None:
+    """MutualInformation handles 4D data correctly with equidistant bins."""
 ```
 
 ## Add
 
-Missing standard feature test scenarios:
-
-### `test_mutual_information_history_updated`
-
-```python
-def test_mutual_information_history_updated() -> None:
-    """MutualInformation appends 'MutualInformation' to history."""
-    arr = np.zeros([6, 100])
-    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
-    result = MutualInformation().apply(data)
-    assert result.history[-1] == "MutualInformation"
-```
-
-### `test_mutual_information_metadata_preserved`
-
-```python
-def test_mutual_information_metadata_preserved() -> None:
-    """MutualInformation preserves subjectID, groupID, condition."""
-    arr = np.zeros([6, 100])
-    data = cb.SignalData.from_numpy(
-        arr,
-        dims=["space", "time"],
-        sampling_rate=100.0,
-        subjectID="s42",
-        groupID="control",
-        condition="rest",
-    )
-    result = MutualInformation().apply(data)
-    assert result.subjectID == "s42"
-    assert result.groupID == "control"
-    assert result.condition == "rest"
-```
-
-### `test_mutual_information_sampling_rate_none`
-
-```python
-def test_mutual_information_sampling_rate_none() -> None:
-    """MutualInformation sets sampling_rate to None since time dimension is removed."""
-    arr = np.zeros([6, 100])
-    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
-    result = MutualInformation().apply(data)
-    assert result.sampling_rate is None
-```
-
-### `test_mutual_information_does_not_mutate_input`
-
-```python
-def test_mutual_information_does_not_mutate_input() -> None:
-    """MutualInformation does not modify the input Data object."""
-    arr = np.zeros([6, 100])
-    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
-    original_history = list(data.history)
-    original_shape = data.data.shape
-    original_values = data.to_numpy().copy()
-
-    _ = MutualInformation().apply(data)
-
-    assert data.history == original_history
-    assert data.data.shape == original_shape
-    np.testing.assert_array_equal(data.to_numpy(), original_values)
-```
+None. All required scenarios are covered.
 
 ## Action List
 
-1. [Severity: MEDIUM] Fix test file docstring: change "line_length" to "mutual_information" (`tests/test_feature_mutual_information.py`, line 1)
-2. [Severity: MEDIUM] Add `test_mutual_information_history_updated` to verify history tracking
-3. [Severity: MEDIUM] Add `test_mutual_information_metadata_preserved` to verify metadata preservation
-4. [Severity: MEDIUM] Add `test_mutual_information_sampling_rate_none` to verify output_type = Data behavior
-5. [Severity: MEDIUM] Add `test_mutual_information_does_not_mutate_input` to verify input immutability
+1. [Severity: MEDIUM] Add docstrings to `test_entropy`, `test_binning`, `test_bad_inits`, `test_low_dim_equidistant_bins`, `test_low_dim_equiprobable_bins`, `test_high_dim_equiprobable_bins`, `test_high_dim_equidistant_bins`
+2. [Severity: MEDIUM] Rename `test_entropy` to `test_mutual_information_vector_entropy` and `test_binning` to `test_mutual_information_get_binned`
+3. [Severity: LOW] Split `test_bad_inits` into separate test functions for each validation case

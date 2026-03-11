@@ -2,7 +2,7 @@
 
 **Feature**: `src/cobrabox/features/hilbert.py`
 **Test file**: `tests/test_feature_hilbert.py`
-**Date**: 2025-03-05
+**Date**: 2026-03-06
 **Verdict**: PASS
 
 ## Coverage

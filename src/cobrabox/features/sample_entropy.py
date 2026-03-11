@@ -40,6 +40,11 @@ class SampleEntropy(BaseFeature[SignalData]):
         An ``xarray.DataArray`` containing the sample entropy with the
         ``time`` dimension collapsed.
 
+    Raises:
+        ValueError: If embedding dimension m is less than 1.
+        ValueError: If logarithm base is invalid (<= 0 or == 1).
+        ValueError: If time series length is not greater than embedding dimension m.
+
     Example:
         >>> entropy = cb.feature.SampleEntropy(m=2).apply(data)  # base-2 (default)
         >>> entropy_nat = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)  # natural log

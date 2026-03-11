@@ -41,6 +41,18 @@ class MutualInformation(BaseFeature[SignalData]):
         mutual information matrix. The shape is (..., n_space, n_space) where n_space is the size
         of the dimension specified by `other_dim`.
 
+    Raises:
+        ValueError: If bins is not a positive integer.
+        ValueError: If dim is not a string.
+        ValueError: If other_dim is not a string or None.
+        ValueError: If dim is not found in the data.
+        ValueError: If other_dim is not found in the data.
+        ValueError: If other_dim must be specified for data with more than 2 dimensions.
+
+    References:
+        Shannon, C. E. (1948). A mathematical theory of communication.
+        Bell System Technical Journal, 27(3), 379-423.
+
     Example:
         >>> import cobrabox as cb
         >>> import numpy as np
@@ -60,7 +72,6 @@ class MutualInformation(BaseFeature[SignalData]):
     bins: int | None = None
     equiprobable_bins: bool = True
     log_base: float = 2.0
-    _n_bins: int = 0
 
     output_type: ClassVar[type[Data] | None] = Data
 
@@ -91,26 +102,21 @@ class MutualInformation(BaseFeature[SignalData]):
         if self.other_dim not in data.data.dims:
             raise ValueError(f"Dimension '{self.other_dim}' not found in data")
 
-        if self.bins is None:
-            self._n_bins = int(data.data[self.dim].size ** (1 / 3))  # heuristic
-        else:
-            self._n_bins = self.bins
+        n_bins = int(data.data[self.dim].size ** (1 / 3)) if self.bins is None else self.bins
 
-        return self._get_MI(data.data) / np.log(self.log_base)
+        return self._get_MI(data.data, n_bins) / np.log(self.log_base)
 
-    def _get_binned(self, x: np.ndarray) -> np.ndarray:
+    def _get_binned(self, x: np.ndarray, n_bins: int) -> np.ndarray:
         first_edge = x.min() - 1e-5
         last_edge = x.max() + 1e-5
-        bin_edges = np.linspace(
-            first_edge, last_edge, self._n_bins + 1, endpoint=True, dtype=np.float64
-        )
+        bin_edges = np.linspace(first_edge, last_edge, n_bins + 1, endpoint=True, dtype=np.float64)
         norm_denom = last_edge - first_edge
-        indices = np.floor((x - first_edge) / norm_denom * self._n_bins).astype(int)
-        indices[indices == self._n_bins] -= 1
+        indices = np.floor((x - first_edge) / norm_denom * n_bins).astype(int)
+        indices[indices == n_bins] -= 1
         decrement = x < bin_edges[indices]
         indices[decrement] -= 1
         # The last bin includes the right edge. The other bins do not.
-        increment = (x >= bin_edges[indices + 1]) & (indices != self._n_bins - 1)
+        increment = (x >= bin_edges[indices + 1]) & (indices != n_bins - 1)
         indices[increment] += 1
         return indices
 
@@ -118,15 +124,15 @@ class MutualInformation(BaseFeature[SignalData]):
         probs = counts[counts > 0] / np.sum(counts)
         return -np.sum(probs * np.log(probs))
 
-    def _get_MI(self, x: xr.DataArray) -> xr.DataArray:
-        x.transpose(..., self.other_dim, self.dim)
+    def _get_MI(self, x: xr.DataArray, n_bins: int) -> xr.DataArray:
+        x = x.transpose(..., self.other_dim, self.dim)
         data = np.reshape(x.data, [-1, x.shape[-1]])
         if self.equiprobable_bins:
             data = np.argsort(np.argsort(data, axis=-1), axis=-1)
         tmp = np.zeros_like(data, dtype=np.int64)
         ent = np.zeros([data.shape[0]], dtype=np.float64)
         for i in range(data.shape[0]):
-            tmp[i] = self._get_binned(data[i])
+            tmp[i] = self._get_binned(data[i], n_bins)
             ent[i] = self._vector_entropy(np.bincount(tmp[i]).astype(np.int64))
 
         tmp = np.reshape(tmp, [-1, x.shape[-2], x.shape[-1]])
@@ -138,7 +144,7 @@ class MutualInformation(BaseFeature[SignalData]):
                     MI[i, j, k] = (
                         ent[i, j]
                         + ent[i, k]
-                        - self._vector_entropy(np.bincount(tmp[i, j] * self._n_bins + tmp[i, k]))
+                        - self._vector_entropy(np.bincount(tmp[i, j] * n_bins + tmp[i, k]))
                     )
             MI[i] += MI[i].T
 

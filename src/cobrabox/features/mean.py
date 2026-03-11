@@ -20,6 +20,9 @@ class Mean(BaseFeature[Data]):
         minus the reduced dimension. Values are the per-position arithmetic
         mean in the same units as the input signal.
 
+    Raises:
+        ValueError: If the specified dimension is not found in the data.
+
     Example:
         >>> result = cb.feature.Mean(dim="time").apply(data)
     """

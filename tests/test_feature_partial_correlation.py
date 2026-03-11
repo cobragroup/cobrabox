@@ -27,8 +27,8 @@ def test_partial_correlation_returns_float() -> None:
     result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
 
     assert isinstance(result, cb.Data)
-    assert result.data.dims == ("space", "time")
-    assert result.data.shape == (1, 1)
+    assert result.data.dims == ()
+    assert result.data.shape == ()
 
     expected = _manual_partial_correlation(
         data.data.sel(space=0).values, data.data.sel(space=1).values, data.data.sel(space=2).values
@@ -165,7 +165,7 @@ def test_partial_correlation_with_multiple_controls() -> None:
     result = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2, 3]).apply(data)
 
     assert isinstance(result, cb.Data)
-    assert result.data.values.shape == (1, 1)
+    assert result.data.values.shape == ()
 
 
 def test_partial_correlation_raises_singular_matrix() -> None:

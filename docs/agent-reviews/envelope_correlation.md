@@ -1,60 +1,78 @@
 # Feature Review: envelope_correlation
 
 **File**: `src/cobrabox/features/envelope_correlation.py`
-**Date**: 2026-03-05
-**Verdict**: PASS
+**Date**: 2026-03-06
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-Clean, well-structured feature implementing amplitude envelope correlation (AEC). Uses `BaseFeature[SignalData]` correctly with `output_type = Data` since it produces a correlation matrix without a time dimension. Excellent docstring with all required sections (Args, Returns, Raises, Example). Good input validation for required dimensions and minimum channel count. Proper use of mne_connectivity backend. No issues found.
+A well-structured feature that correctly implements amplitude envelope correlation using `mne_connectivity`. The code is clean, properly typed, and follows the BaseFeature pattern. The only significant gap is the missing References section — since AEC is a published neuroimaging method with specific literature citations, this should be documented for scientific reproducibility.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-All checks passed!
+Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-1 file already formatted
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-- ✅ `from __future__ import annotations` present (line 1)
-- ✅ `@dataclass` decorator on class (line 14)
-- ✅ Inherits `BaseFeature[SignalData]` (line 15) — correct since it requires time dimension
-- ✅ `output_type: ClassVar[type[Data]] = Data` set (line 50) — correct since output has no time dimension
-- ✅ Class name `EnvelopeCorrelation` matches filename
-- ✅ `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray:` (line 55)
-- ✅ No `apply()` override — correctly inherits from base
-- ✅ Imports ordered correctly: **future**, stdlib, third-party, internal
+Line 1: `from __future__ import annotations` present.
+
+Line 14: `@dataclass` decorator correctly applied.
+
+Line 15: Inherits `BaseFeature[SignalData]` — appropriate since the feature operates on time-series data and uses `sampling_rate` implicitly via the Hilbert transform in the underlying library.
+
+Line 50: `output_type: ClassVar[type[Data]] = Data` — correctly declared since the time dimension is removed and the result is a correlation matrix with dims `(space_to, space_from)`.
+
+Line 55: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray`. Takes `SignalData` as argument (not a field), returns `xr.DataArray`.
+
+Line 92: No `apply()` method — correctly inherited from `BaseFeature`.
+
+Imports (lines 1-12): Standard order maintained. No unused imports.
 
 ## Docstring
 
-Excellent docstring with all required sections:
+The docstring includes all required sections except References.
 
-- ✅ One-line summary: "Compute amplitude envelope correlation (AEC) between all channel pairs." (line 16)
-- ✅ Extended description explaining AEC, Hilbert transform, orthogonalization (lines 18-25)
-- ✅ Args section documenting both dataclass fields (lines 27-33)
-- ✅ Returns section describing output shape and dims (lines 35-37)
-- ✅ Raises section documenting validation errors (lines 39-42)
-- ✅ Example section with 3 usage examples via `.apply()` (lines 44-47)
+Lines 16-25: One-line summary and extended description are present and clear. Explains what AEC computes and mentions the orthogonalization option for reducing volume conduction effects.
+
+Lines 27-33: Args section documents both fields (`orthogonalize`, `absolute`) with types and behavior descriptions.
+
+Lines 35-37: Returns section describes the output dims `(space_to, space_from)` and that values are Pearson correlations.
+
+Lines 39-42: Raises section documents both ValueError conditions (extra dimensions, insufficient spatial channels).
+
+**Missing**: References section. Since this implements a specific published algorithm (amplitude envelope correlation), the primary literature citation should be included. This is important for scientific reproducibility and for users to understand the methodological basis.
+
+Lines 44-47: Example section present with three usage patterns.
 
 ## Typing
 
-- ✅ All fields typed: `orthogonalize: str | bool = "pairwise"` (line 52), `absolute: bool = False` (line 53)
-- ✅ `__call__` return type: `xr.DataArray` (line 55)
-- ✅ No bare `Any` types
+Line 52: `orthogonalize: str | bool` — correctly typed union.
+
+Line 53: `absolute: bool` — correctly typed.
+
+Line 55: Return type `-> xr.DataArray` is explicit.
+
+No bare `Any` types found.
 
 ## Safety & Style
 
-- ✅ No `print()` statements
-- ✅ Input validation present (lines 58-71):
-  - Checks for extra dimensions beyond `space` and `time` (lines 58-63)
-  - Validates at least 2 spatial channels (lines 65-71)
-- ✅ No mutation of input `data` — works on `data.data` and returns new `DataArray`
-- ✅ Uses `verbose=False` when calling mne_connectivity to suppress output
+No print statements found.
+
+Lines 58-71: Input validation is present and appropriate:
+
+- Checks for extra dimensions beyond `space` and `time` (line 58-63)
+- Validates at least 2 spatial channels exist (lines 68-71)
+
+Line 74: `values = xr_data.transpose("space", "time").values` — creates a copy, does not mutate input.
+
+Line 87-92: Returns a new `xr.DataArray`, does not modify the input `data` object.
 
 ## Action List
 
-None.
+1. [Severity: MEDIUM] Add a `References:` section to the docstring citing the primary literature for amplitude envelope correlation. The mne-connectivity documentation or the original AEC papers should be cited.

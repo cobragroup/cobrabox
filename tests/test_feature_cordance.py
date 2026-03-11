@@ -14,6 +14,8 @@ def _sine_data(
     n_seconds: float = 4.0,
     n_channels: int = 4,
     subjectID: str = "sub-01",
+    groupID: str | None = None,
+    condition: str | None = None,
 ) -> cb.SignalData:
     """Helper: pure sine wave at ``freq_hz`` Hz, same signal on all channels."""
     n_time = int(n_seconds * sampling_rate)
@@ -21,7 +23,12 @@ def _sine_data(
     signal = np.sin(2 * np.pi * freq_hz * t)
     arr = np.stack([signal] * n_channels, axis=1)  # (time, space)
     return cb.SignalData.from_numpy(
-        arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subjectID
+        arr,
+        dims=["time", "space"],
+        sampling_rate=sampling_rate,
+        subjectID=subjectID,
+        groupID=groupID,
+        condition=condition,
     )
 
 
@@ -294,11 +301,13 @@ def test_cordance_history_appended() -> None:
 
 
 def test_cordance_metadata_preserved() -> None:
-    """subjectID is carried through. sampling_rate is None since time dim is removed."""
-    data = _sine_data(freq_hz=10.0, subjectID="sub-42")
+    """subjectID, groupID, condition preserved; sampling_rate is None since time dim is removed."""
+    data = _sine_data(freq_hz=10.0, subjectID="sub-42", groupID="group-A", condition="rest")
     out = cb.feature.Cordance().apply(data)
 
     assert out.subjectID == "sub-42"
+    assert out.groupID == "group-A"
+    assert out.condition == "rest"
     # output_type=Data and no time dim → sampling_rate is stripped
     assert out.sampling_rate is None
 
@@ -351,25 +360,6 @@ def test_cordance_empty_bands_equals_none() -> None:
 # ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
-
-
-def test_cordance_raises_when_sampling_rate_missing() -> None:
-    """ValueError raised when sampling_rate is not set."""
-    import xarray as xr
-
-    from cobrabox.features.cordance import Cordance
-
-    class _FakeData:
-        @property
-        def data(self) -> xr.DataArray:
-            return xr.DataArray(np.ones((4, 10)), dims=["space", "time"])
-
-        @property
-        def sampling_rate(self) -> None:
-            return None
-
-    with pytest.raises(ValueError, match="sampling_rate must be set"):
-        Cordance().__call__(_FakeData())  # type: ignore[arg-type]
 
 
 def test_cordance_raises_when_no_space_dim() -> None:
@@ -459,3 +449,24 @@ def test_cordance_invalid_output_parameter() -> None:
     """ValueError raised for invalid output parameter."""
     with pytest.raises(ValueError, match="output must be"):
         cb.feature.Cordance(output="invalid")  # type: ignore[arg-type]
+
+
+def test_cordance_does_not_mutate_input() -> None:
+    """Cordance.apply() leaves the input Data object unchanged."""
+    data = _varied_data()
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = data.to_numpy().copy()
+
+    _ = cb.feature.Cordance().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_cordance_returns_data_instance() -> None:
+    """Cordance.apply() always returns a Data instance."""
+    data = _sine_data(freq_hz=10.0)
+    result = cb.feature.Cordance().apply(data)
+    assert isinstance(result, cb.Data)

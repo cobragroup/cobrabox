@@ -30,6 +30,10 @@ class AmplitudeEntropy(BaseFeature[Data]):
     Returns:
         A 0-dimensional xarray.DataArray containing the mean amplitude entropy as a scalar value.
 
+    Raises:
+        ValueError: If band_width is not positive.
+        ValueError: If input data has fewer than 2 dimensions.
+
     Example:
         >>> import cobrabox as cb
         >>> import numpy as np

@@ -2,7 +2,7 @@
 
 **Feature**: `src/cobrabox/features/sliding_window_reduce.py`
 **Test file**: `tests/test_feature_sliding_window_reduce.py`
-**Date**: 2026-03-05
+**Date**: 2026-03-06
 **Verdict**: PASS
 
 ## Coverage
