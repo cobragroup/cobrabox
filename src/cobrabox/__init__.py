@@ -11,6 +11,8 @@ from .egg.gorkastyle import gorkastyle
 from .features.concat_aggregate import ConcatAggregate
 from .features.line_length import LineLength
 from .features.mean_aggregate import MeanAggregate
+from .features.nonreversibility import Nonreversibility
+from .features.recurrence_matrix import RecurrenceMatrix
 from .features.sliding_window import SlidingWindow
 from .serialization import deserialize, load, save, serialize
 
@@ -37,6 +39,8 @@ __all__ = [
     "from_numpy",
     "from_xarray",
     "gorkastyle",
+    "Nonreversibility",
+    "RecurrenceMatrix",
     "load",
     "save",
     "serialization",
