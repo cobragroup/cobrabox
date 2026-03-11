@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Any
+from typing import Any, Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -332,6 +332,14 @@ class Data:
         lines.append(f"  history   : {self.history}")
         return "\n".join(lines)
 
+    @overload
+    def to_numpy(self) -> np.ndarray: ...
+    @overload
+    def to_numpy(self, style: Literal["default"]) -> np.ndarray: ...
+    @overload
+    def to_numpy(
+        self, style: Literal["gorkastyle"]
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]: ...
     def to_numpy(
         self, style: str = "default"
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:

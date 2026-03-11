@@ -4,15 +4,15 @@ schema_version: "1.0.0"
 pipeline:
   - split:
       class: "SlidingWindow"
-      module: "cobrabox.features.sliding_window"
+      module: "cobrabox.features.windowing.sliding_window"
       params:
         window_size: 5
         step_size: 2
     pipeline:
       - class: "LineLength"
-        module: "cobrabox.features.line_length"
+        module: "cobrabox.features.time_domain.line_length"
         params: {}
     aggregate:
       class: "MeanAggregate"
-      module: "cobrabox.features.mean_aggregate"
+      module: "cobrabox.features.windowing.mean_aggregate"
       params: {}

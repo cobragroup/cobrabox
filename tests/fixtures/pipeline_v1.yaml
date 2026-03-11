@@ -3,5 +3,5 @@ schema_version: "1.0.0"
 
 pipeline:
   - class: "LineLength"
-    module: "cobrabox.features.line_length"
+    module: "cobrabox.features.time_domain.line_length"
     params: {}

@@ -5,10 +5,22 @@ This guide shows the recommended workflow for adding a new feature to CobraBox.
 ## Quick Checklist
 
 1. Make a new branch
-2. Create `src/cobrabox/features/my_feature.py`
+2. Create `src/cobrabox/features/<domain>/my_feature.py`
 3. Create `tests/test_feature_my_feature.py`
 4. Implement, test, lint
 5. Open a pull request
+
+### Choose the Right Domain
+
+| Domain | Features |
+| ------ | -------- |
+| `time_domain/` | Morphological & temporal statistics (LineLength, AmplitudeVariation, SampleEntropy, LempelZiv, FractalDimHiguchi, FractalDimKatz, SpikeCount, Autocorr, EnvelopeCorrelation, RecurrenceMatrix, Nonreversibility) |
+| `frequency_domain/` | Spectral analysis (Bandpower, BandFilter, Cordance, Spectrogram, EpileptogenicityIndex) |
+| `time_frequency/` | Joint time-frequency methods (Hilbert, ContinuousWaveletTransform, DiscreteWaveletTransform, EMD, AmplitudeEntropy) |
+| `connectivity/` | Inter-channel relationships (Correlation, PartialCorrelation, PartialCorrelationMatrix, Covariance, Coherence, GrangerCausality, GrangerCausalityMatrix, PartialDirectedCoherence, PhaseLockingValue, PhaseLockingValueMatrix, MutualInformation, ReciprocalConnectivity) |
+| `decomposition/` | Signal decomposition methods (FourierTransformSurrogates) |
+| `windowing/` | Windowing & aggregation (SlidingWindow, SlidingWindowReduce, MeanAggregate, ConcatAggregate) |
+| `reductions/` | Basic statistical reductions (Mean, Max, Min) |
 
 ## 1. Create a Branch
 
@@ -34,12 +46,12 @@ git checkout -b feature/add-variance
 Use for features that work with any data container:
 
 ```python
-# src/cobrabox/features/variance.py
+# src/cobrabox/features/reductions/variance.py
 from __future__ import annotations
 from dataclasses import dataclass
 import xarray as xr
-from cobrabox.base_feature import BaseFeature
-from cobrabox.data import Data
+from ..base_feature import BaseFeature
+from ..data import Data
 
 @dataclass
 class Variance(BaseFeature[Data]):
@@ -75,12 +87,12 @@ class Variance(BaseFeature[Data]):
 Use for features that require time-series data:
 
 ```python
-# src/cobrabox/features/spectral_power.py
+# src/cobrabox/features/frequency_domain/spectral_power.py
 from __future__ import annotations
 from dataclasses import dataclass
 import xarray as xr
-from cobrabox.base_feature import BaseFeature
-from cobrabox.data import SignalData
+from ..base_feature import BaseFeature
+from ..data import SignalData
 
 @dataclass
 class SpectralPower(BaseFeature[SignalData]):
@@ -116,12 +128,12 @@ class SpectralPower(BaseFeature[SignalData]):
 ### Splitter feature (`SplitterFeature[SignalData]`)
 
 ```python
-# src/cobrabox/features/trial_split.py
+# src/cobrabox/features/windowing/trial_split.py
 from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
-from cobrabox.base_feature import SplitterFeature
-from cobrabox.data import Data, SignalData
+from ..base_feature import SplitterFeature
+from ..data import Data, SignalData
 
 @dataclass
 class TrialSplit(SplitterFeature[SignalData]):
@@ -139,13 +151,13 @@ class TrialSplit(SplitterFeature[SignalData]):
 ### Aggregator feature (`AggregatorFeature`)
 
 ```python
-# src/cobrabox/features/max_aggregate.py
+# src/cobrabox/features/windowing/max_aggregate.py
 from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 import xarray as xr
-from cobrabox.base_feature import AggregatorFeature
-from cobrabox.data import Data
+from ..base_feature import AggregatorFeature
+from ..data import Data
 
 @dataclass
 class MaxAggregate(AggregatorFeature):
@@ -178,6 +190,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import cobrabox as cb
+from cobrabox.features.reductions.mean import Mean
 
 
 def test_variance_reduces_time_dimension() -> None:
@@ -238,17 +251,17 @@ Pre-commit hooks run ruff automatically on commit.
 
 ### Time-series Features (use `SignalData`)
 
-- `src/cobrabox/features/line_length.py` — simple `BaseFeature[SignalData]`
-- `src/cobrabox/features/bandpower.py` — `BaseFeature[SignalData]` with parameters
-- `src/cobrabox/features/coherence.py` — `BaseFeature[SignalData]` with internal helpers
-- `src/cobrabox/features/sliding_window.py` — `SplitterFeature[SignalData]`
+- `src/cobrabox/features/time_domain/line_length.py` — simple `BaseFeature[SignalData]`
+- `src/cobrabox/features/frequency_domain/bandpower.py` — `BaseFeature[SignalData]` with parameters
+- `src/cobrabox/features/connectivity/coherence.py` — `BaseFeature[SignalData]` with internal helpers
+- `src/cobrabox/features/windowing/sliding_window.py` — `SplitterFeature[SignalData]`
 
 ### Generic Features (use `Data`)
 
-- `src/cobrabox/features/mean.py` — `BaseFeature[Data]` with parameter
-- `src/cobrabox/features/max.py` — `BaseFeature[Data]` with parameter
-- `src/cobrabox/features/min.py` — `BaseFeature[Data]` with parameter
+- `src/cobrabox/features/reductions/mean.py` — `BaseFeature[Data]` with parameter
+- `src/cobrabox/features/reductions/max.py` — `BaseFeature[Data]` with parameter
+- `src/cobrabox/features/reductions/min.py` — `BaseFeature[Data]` with parameter
 
 ### Aggregators
 
-- `src/cobrabox/features/mean_aggregate.py` — `AggregatorFeature`
+- `src/cobrabox/features/windowing/mean_aggregate.py` — `AggregatorFeature`

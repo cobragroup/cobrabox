@@ -72,6 +72,14 @@ nav:
       - Data API: api/data.md
       - Features API: api/features.md
       - Datasets API: api/datasets.md
+  - Features by Domain:
+      - Time Domain: domain/time_domain.md
+      - Frequency Domain: domain/frequency_domain.md
+      - Time-Frequency: domain/time_frequency.md
+      - Connectivity: domain/connectivity.md
+      - Decomposition: domain/decomposition.md
+      - Windowing & Aggregation: domain/windowing.md
+      - Reductions: domain/reductions.md
   - Contributing:
       - Setup Guide: contributing/setup.md
       - Feature Guide: contributing/features.md

@@ -359,7 +359,7 @@ def test_missing_version_fields_raises() -> None:
     yaml_str = textwrap.dedent("""\
         pipeline:
           - class: LineLength
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     with pytest.raises(DeserializationError, match="Missing version fields"):
@@ -373,7 +373,7 @@ def test_future_schema_version_raises() -> None:
         schema_version: "99.0.0"
         pipeline:
           - class: LineLength
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     with pytest.raises(SchemaVersionError, match="not compatible"):
@@ -387,7 +387,7 @@ def test_unknown_feature_class_raises() -> None:
         schema_version: "1.0.0"
         pipeline:
           - class: NonExistentFeature
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     with pytest.raises(FeatureNotFoundError, match="NonExistentFeature"):
@@ -401,7 +401,7 @@ def test_unknown_module_raises() -> None:
         schema_version: "1.0.0"
         pipeline:
           - class: LineLength
-            module: cobrabox.features.does_not_exist
+            module: cobrabox.features.nonexistent_does_not_exist
             params: {}
     """)
     with pytest.raises(FeatureNotFoundError, match="Cannot import module"):
@@ -431,7 +431,7 @@ def test_missing_pipeline_key_raises() -> None:
         schema_version: "1.0.0"
         features:
           - class: LineLength
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     with pytest.raises(DeserializationError, match="missing required 'pipeline' key"):
@@ -466,7 +466,7 @@ def test_major_version_mismatch_warns() -> None:
         schema_version: "1.0.0"
         pipeline:
           - class: LineLength
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     with pytest.warns(UserWarning, match="99.0.0"):
@@ -625,7 +625,7 @@ def test_params_passed_to_post_init() -> None:
         schema_version: "1.0.0"
         pipeline:
           - class: SlidingWindow
-            module: cobrabox.features.sliding_window
+            module: cobrabox.features.windowing.sliding_window
             params:
               window_size: 0
               step_size: 5
@@ -727,7 +727,7 @@ def test_schema_version_unreadable() -> None:
         schema_version: "not-a-version"
         pipeline:
           - class: LineLength
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     with pytest.raises(SchemaVersionError, match="Unreadable"):
@@ -741,7 +741,7 @@ def test_cobrabox_version_unreadable() -> None:
         schema_version: "1.0.0"
         pipeline:
           - class: LineLength
-            module: cobrabox.features.line_length
+            module: cobrabox.features.time_domain.line_length
             params: {}
     """)
     # Should not raise, just not warn

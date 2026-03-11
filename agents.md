@@ -60,7 +60,7 @@ Class hierarchy: `Data` ← `SignalData` ← (`EEG`, `FMRI`)
 - `AggregatorFeature` (`(Data, Iterator[Data]) → Data`): folds a stream back into one `Data` (e.g. `MeanAggregate`); responsible for merging per-window history into the result.
 - `Chord(BaseFeature)`: composes a `SplitterFeature` + `BaseFeature`/`Pipeline` + `AggregatorFeature` into a single `BaseFeature` (fan-out → map → fan-in). Itself composable with `|`.
 
-Feature discovery is automatic: `feature.py` scans all modules in `features/` and registers any callable with `_is_cobrabox_feature = True` **and** `__module__ == <that module>` (the `__module__` filter prevents base classes imported into feature files from being registered as duplicates). Adding a new feature means creating a new file in `features/` with a class inheriting the appropriate base — no manual registration needed.
+Feature discovery is automatic: `feature.py` scans all modules in `features/` (including subdirectories) and registers any callable with `_is_cobrabox_feature = True` **and** `__module__ == <that module>` (the `__module__` filter prevents base classes imported into feature files from being registered as duplicates). Adding a new feature means creating a new file in `features/<domain>/` with a class inheriting the appropriate base — no manual registration needed. Domain directories: `time_domain/`, `frequency_domain/`, `time_frequency/`, `connectivity/`, `decomposition/`, `windowing/`, `reductions/`.
 
 **Datasets** (`src/cobrabox/datasets.py`, `src/cobrabox/dataset_loader.py`, `src/cobrabox/dataset.py`): `cb.dataset(name)` returns a `Dataset[SignalData]`. `Dataset[T]` is a generic, immutable sequence of `Data` objects (`src/cobrabox/dataset.py`) with helpers: `.filter(subjectID=..., groupID=..., condition=...)` → `Dataset[T]`, `.groupby("groupID")` → `dict[str, Dataset[T]]`, `.describe()` prints a summary. Supports indexing, slicing, iteration, and `+` for concatenation. Built-in dummy datasets (`dummy_chain`, `dummy_random`, `dummy_star`, `dummy_noise`) are loaded from compressed CSV files in `data/dummy/`. The datasets differ in structure:
 - `dummy_chain`: Sequential data with known ground truth
@@ -78,7 +78,7 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 
 ## Key conventions
 
-- Feature classes live in `src/cobrabox/features/` as individual files, one class per file.
+- Feature classes live in `src/cobrabox/features/<domain>/` as individual files, one class per file.
 - Each file defines a `@dataclass` class inheriting `BaseFeature`, `SplitterFeature`, or `AggregatorFeature` from `src/cobrabox/base_feature.py`.
 - Base classes are generic: `BaseFeature[DataT]` and `SplitterFeature[DataT]`. Features that require time dimension should use `BaseFeature[SignalData]` or `SplitterFeature[SignalData]`; generic features use `BaseFeature[Data]`.
   - Use `[SignalData]` when the algorithm **inherently** needs time-series structure (uses `sampling_rate`, applies Hilbert/FFT on the time axis, etc.). Use `[Data]` when `dim` is a user-configurable parameter — even if callers always pass time-series data.
@@ -89,7 +89,7 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 - `history` is automatically maintained by `BaseFeature.apply`; `AggregatorFeature` subclasses are responsible for building history themselves.
 - Ruff line length is 100; target Python 3.14+ (`target-version = "py314"`); `requires-python = ">=3.11"`.
 - Test files for features are named `tests/test_feature_<feature_name>.py` (e.g. `line_length.py` → `test_feature_line_length.py`).
-- `src/cobrabox/features/dummy.py` is a negative reference (no useful docstring, no validation) — do not model new features after it.
+- `src/cobrabox/features/_dummy.py` is a negative reference (no useful docstring, no validation) — do not model new features after it.
 
 ## Build & CI
 
