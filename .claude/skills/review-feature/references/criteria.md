@@ -166,6 +166,31 @@ class LineLength(BaseFeature[SignalData]):
 `apply()` is inherited from `BaseFeature` and handles history and wrapping automatically.
 Only `AggregatorFeature` subclasses must build `history` themselves.
 
+### No loose helper functions
+
+Module-level private functions that are only called by the feature class must be moved
+inside the class as `@staticmethod` methods. This keeps the module's public surface clean
+and makes the helpers logically part of the feature they serve.
+
+```python
+# ❌ loose module-level helpers — only used by MyFeature
+def _compute_thing(arr: np.ndarray) -> np.ndarray: ...
+
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    def __call__(self, data: Data) -> xr.DataArray:
+        return _compute_thing(data.data.values)
+
+# ✅ helpers live inside the class
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    @staticmethod
+    def _compute_thing(arr: np.ndarray) -> np.ndarray: ...
+
+    def __call__(self, data: Data) -> xr.DataArray:
+        return self._compute_thing(data.data.values)
+```
+
 ### Imports
 
 Only import what is used. No unused imports. Standard order:
@@ -341,6 +366,39 @@ Must be explicit and match the base class contract:
 ### No bare `Any`
 
 `Any` is only acceptable with an inline comment explaining why it cannot be narrowed.
+
+### `Literal` for fixed string options
+
+When a field or parameter accepts only a fixed set of string values, type it as
+`typing.Literal[...]` rather than plain `str`. Use `typing.get_args()` to extract
+the allowed values for runtime validation, keeping the Literal as the single source
+of truth.
+
+```python
+# ❌ plain str with a separate tuple for validation
+_VALID_METHODS = ("mean", "median", "max")
+
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    method: str = "mean"
+
+    def __post_init__(self) -> None:
+        if self.method not in _VALID_METHODS:
+            raise ValueError(...)
+
+# ✅ Literal type — type alias + get_args for validation
+from typing import Literal, get_args
+
+Method = Literal["mean", "median", "max"]
+
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    method: Method = "mean"
+
+    def __post_init__(self) -> None:
+        if self.method not in get_args(Method):
+            raise ValueError(f"method must be one of {get_args(Method)}, got {self.method!r}")
+```
 
 ---
 

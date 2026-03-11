@@ -434,6 +434,23 @@ Uses histogram-based entropy estimation with configurable binning strategy
 The number of bins can be specified manually or determined heuristically
 as n^(1/3) where n is the number of samples.
 
+### `RecurrenceMatrix`
+
+```python
+# state-vector mode (default)
+rec = cb.feature.RecurrenceMatrix().apply(data)
+
+# window/FC mode — just fc_metric, rest default
+rec = cb.feature.RecurrenceMatrix('cosine', ['pearson']).apply(data)
+
+# window/FC mode — full control
+rec = cb.feature.RecurrenceMatrix('cosine', ['pearson', 50, 0.25]).apply(data)
+```
+
+Computes a pairwise recurrence (self-similarity) matrix from a time-series. Behaviour depends on the shape of the input and `fc_options`. For 2-D input `(N, T)`, can operate in state-vector mode (each time-point as a state vector) or window/FC mode where functional connectivity matrices are computed per window and then compared. For 3-D input `(N, N, T)` (pre-computed FC matrices), computes similarity between FC matrices across time.
+
+Returns an `(n, n)` matrix with dims `('t1', 't2')`. Supports similarity metrics: `'cosine'`, `'correlation'`, `'euclidean'`. FC metrics: `'pearson'`, `'spearman'`, `'MI'`, `'PLV'`, `'AEC'`.
+
 ### `SpikeCount`
 
 ```python
@@ -514,6 +531,20 @@ Uses histogram-based probability estimation with configurable bin width to compu
 Shannon entropy. Returns a scalar value representing the mean entropy across all
 time points. Useful for quantifying the unpredictability or randomness of signal
 amplitudes.
+
+### `Nonreversibility`
+
+```python
+result = cb.feature.Nonreversibility().apply(data)
+```
+
+Computes dc_norm: normalised deviation from causal normality (time-irreversibility). Fits a VAR(1) model in forward and reverse time directions, rescales coefficient matrices to have spectral radius < 1, and quantifies asymmetry between forward and reverse dynamics:
+
+dc_norm = ||A - B^T||_F / (||A + B^T||_F + ||A - B^T||_F)
+
+Result is bounded in [0, 1). A dc_norm of 0 indicates perfect time-reversibility; larger values indicate stronger irreversibility.
+
+Returns a DataArray with a single spatial coordinate ('dc_norm'); the time dimension is removed. Requires at least 2 channels and 2 timepoints.
 
 ### `FourierTransformSurrogates` (splitter)
 

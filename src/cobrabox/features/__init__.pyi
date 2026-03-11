@@ -28,12 +28,14 @@ from .mean import Mean as Mean
 from .mean_aggregate import MeanAggregate as MeanAggregate
 from .min import Min as Min
 from .mutual_information import MutualInformation as MutualInformation
+from .nonreversibility import Nonreversibility as Nonreversibility
 from .partial_correlation import PartialCorrelation as PartialCorrelation
 from .partial_correlation import PartialCorrelationMatrix as PartialCorrelationMatrix
 from .partial_directed_coherence import PartialDirectedCoherence as PartialDirectedCoherence
 from .phase_locking_value import PhaseLockingValue as PhaseLockingValue
 from .phase_locking_value import PhaseLockingValueMatrix as PhaseLockingValueMatrix
 from .reciprocal_connectivity import ReciprocalConnectivity as ReciprocalConnectivity
+from .recurrence_matrix import RecurrenceMatrix as RecurrenceMatrix
 from .sample_entropy import SampleEntropy as SampleEntropy
 from .sliding_window import SlidingWindow as SlidingWindow
 from .sliding_window_reduce import SlidingWindowReduce as SlidingWindowReduce
@@ -72,12 +74,14 @@ __all__ = [
     "MeanAggregate",
     "Min",
     "MutualInformation",
+    "Nonreversibility",
     "PartialCorrelation",
     "PartialCorrelationMatrix",
     "PartialDirectedCoherence",
     "PhaseLockingValue",
     "PhaseLockingValueMatrix",
     "ReciprocalConnectivity",
+    "RecurrenceMatrix",
     "SampleEntropy",
     "SlidingWindow",
     "SlidingWindowReduce",

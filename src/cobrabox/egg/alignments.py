@@ -74,10 +74,10 @@ ALIGNMENTS: dict[str, dict] = {
     },
     "LempelZiv": {
         "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
+        "good":  0,
+        "label": "True Neutral",
         "abbrev": "lz",
-        "lore":  "Reads the entropy of patterns without imposing order",
+        "lore":  "Counts pattern distinctness — impartial accountant of signal complexity",
     },
     "LineLength": {
         "law":   0,
@@ -109,17 +109,31 @@ ALIGNMENTS: dict[str, dict] = {
     },
     "MutualInformation": {
         "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
-        "abbrev": "mi",
-        "lore":  "Measures statistical dependence — reveals hidden channel kinship",
+        "good":  0,
+        "label": "True Neutral",
+        "abbrev": "mu",
+        "lore":  "Measures statistical dependence — impartial accountant, no semantic intent",
     },
-    "ConcatAggregate": {
+    "Nonreversibility": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
+        "abbrev": "nr",
+        "lore":  "Reads the arrow of time through VAR(1) asymmetry — faithful time's arrow",
+    },
+    "RecurrenceMatrix": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "rm",
+        "lore":  "Maps self-similarity across time — cartographer of recurrence plots",
+    },
+    "ConcatAggregate": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
         "abbrev": "ca",
-        "lore":  "Stacks windows faithfully, preserving every shard of meaning",
+        "lore":  "Collapses by strict rule; neither creates nor destroys meaning",
     },
     "ContinuousWaveletTransform": {
         "law":   0,
@@ -192,18 +206,18 @@ ALIGNMENTS: dict[str, dict] = {
         "lore":  "Reads the roughness of the signal through the lens of fractal geometry",
     },
     "FractalDimKatz": {
-        "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
         "abbrev": "fk",
-        "lore":  "Measures complexity with ruthless efficiency — no tunable mercy",
+        "lore":  "Obeys the law of the fixed formula, discards everything else",
     },
     "FourierTransformSurrogates": {
-        "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
         "abbrev": "fs",
-        "lore":  "Generates null hypotheses — faithful to spectrum, shuffling phases",
+        "lore":  "Imposes null hypotheses via strict phase-shuffling protocol",
     },
     "GrangerCausality": {
         "law":   0,
@@ -270,10 +284,10 @@ ALIGNMENTS: dict[str, dict] = {
     },
     "SampleEntropy": {
         "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
+        "good":  0,
+        "label": "True Neutral",
         "abbrev": "se",
-        "lore":  "Measures the regularity of complexity without imposing structure",
+        "lore":  "Measures regularity of complexity — impartial accountant of signal disorder",
     },
 }
 # fmt: on

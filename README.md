@@ -121,27 +121,25 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `Hilbert` - Analytic signal, envelope, phase, or instantaneous frequency
 - `SpikeCount` - Outlier detection using IQR method
 - `Autocorr` - Normalized autocorrelation at a single lag
-- `Min` / `Max` / `Mean` - Reduce over any dimension
 - `LempelZiv` - Lempel-Ziv complexity per channel
-- `Autocorr` - Normalized autocorrelation at a single lag
 - `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
 - `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
 - `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
 - `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
+- `Nonreversibility` - Normalised deviation from causal normality (time-irreversibility)
+- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Connectivity Features
 
 - `Correlation` - Pairwise Pearson or Spearman correlation matrix between channels
 - `Covariance` - Pairwise sample covariance matrix between channels
+- `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
 - `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
 - `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
-- `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
 - `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
-- `MutualInformation` - Pairwise mutual information matrix between channels
-- `PartialDirectedCoherence` - Directional frequency-domain connectivity via VAR model
-- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection)
+- `RecurrenceMatrix` - Pairwise recurrence (self-similarity) matrix across time-points or windows
 
 ### Specialized Features
 
@@ -167,6 +165,10 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 ### Signal Decomposition
 
 - `EMD` - Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs)
+
+### Specialized Features
+
+- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
 
 ### qEEG Measures
 
@@ -207,19 +209,21 @@ ds1 + ds2                            # concatenate two Datasets
 
 Available identifiers:
 
-- `dummy_chain`
-- `dummy_random`
-- `dummy_star`
-- `dummy_noise`
+- `dummy_chain` - Sequential data with known ground truth
+- `dummy_random` - Random Gaussian noise
+- `dummy_star` - Star-shaped pattern with one central channel
+- `dummy_noise` - High-dimensional noise for stress testing
 
 ## Coverage
 
-- Test coverage is measured with `pytest-cov`.
+- Test coverage is measured with `pytest-cov` (target: 95%).
 - Coverage output is shown by default in test runs (configured in `pyproject.toml`).
 - Run tests with:
 
 ```bash
-uv run pytest -q
+uv run pytest -q                    # run all tests
+uv run pytest --cov-fail-under=95   # enforce 95% coverage threshold
+uv run pytest --cov-report=html     # generate HTML report in htmlcov/
 ```
 
 ## Feature Alignments (D&D Style)
@@ -232,15 +236,27 @@ uv run python -m cobrabox.dnd_alignment --roster
 
 # Check a pipeline's aggregate alignment
 uv run python -m cobrabox.dnd_alignment SlidingWindow LineLength MeanAggregate
+
+# Check a chord pipeline (splitter + map + aggregator)
+uv run python -m cobrabox.dnd_alignment --chord SlidingWindow LineLength MeanAggregate
 ```
 
-**Example alignments:**
+The alignment grid categorizes features by their "moral character":
+- **Law axis**: Lawful (+1) imposes structure (windowing, categorization); Neutral (0) passively describes; Chaotic (-1) is disruptive
+- **Good axis**: Good (+1) preserves meaning; Neutral (0) is indifferent; Evil (-1) discards/distorts
 
-- **SlidingWindow** — Lawful Good: "Rigidly structured, principled expansion of data"
-- **SpikesCalc** — Lawful Evil: "Judges by the book of IQR, condemning outliers"
-- **MeanAggregate** — Lawful Neutral: "Collapses by strict rule; neither creates nor destroys meaning"
+**Current roster:**
 
-Run the command above to see where your favorite features fall on the grid!
+| Alignment | Features |
+|-----------|----------|
+| Lawful Good | SlidingWindow, BandFilter, Bandpower |
+| Lawful Neutral | SlidingWindowReduce, MeanAggregate, Mean, ConcatAggregate, Cordance, FractalDimKatz, FourierTransformSurrogates, EpileptogenicityIndex |
+| Lawful Evil | SpikeCount, Max, Min |
+| Neutral Good | AmplitudeEntropy, AmplitudeVariation, LineLength, DiscreteWaveletTransform, Nonreversibility, RecurrenceMatrix, ContinuousWaveletTransform, Hilbert, Coherence, Autocorr, Spectrogram, EnvelopeCorrelation, FractalDimHiguchi, GrangerCausality, GrangerCausalityMatrix, PartialCorrelation, PartialCorrelationMatrix, PhaseLockingValue, PhaseLockingValueMatrix, PartialDirectedCoherence, ReciprocalConnectivity |
+| True Neutral | LempelZiv, MutualInformation, SampleEntropy |
+| Chaotic Neutral | Dummy |
+
+Run the command above to see the full grid!
 
 ## Documentation
 

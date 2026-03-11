@@ -12,62 +12,6 @@ from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
 
-def _fit_var1(X: np.ndarray) -> np.ndarray:
-    """Fit VAR(1) coefficient matrix A for forward model X_t = A @ X_{t-1}.
-
-    Args:
-        X: Array of shape (n_channels, n_time).
-
-    Returns:
-        Coefficient matrix A of shape (n_channels, n_channels).
-    """
-    X_t = X[:, 1:]  # current:  (n, T-1)
-    X_tm1 = X[:, :-1]  # lag-1:    (n, T-1)
-    # Solve X_t.T = X_tm1.T @ A.T in least-squares sense
-    A_T, _, _, _ = np.linalg.lstsq(X_tm1.T, X_t.T, rcond=None)
-    return A_T.T  # (n, n)
-
-
-def _rescale_to_unit_spectral_radius(M: np.ndarray) -> np.ndarray:
-    """Scale M so its largest eigenvalue magnitude is strictly less than 1."""
-    sr = np.max(np.abs(np.linalg.eigvals(M)))
-    if sr >= 1.0:
-        M = M / sr
-    return M
-
-
-def _compute_dc_norm(X: np.ndarray) -> float:
-    """Compute dc_norm for a single (n_channels, n_time) segment.
-
-    dc_norm = ||A - B^T||_F / (||A + B^T||_F + ||A - B^T||_F)
-
-    where A is the forward VAR(1) coefficient matrix and B is the reverse
-    VAR(1) coefficient matrix, both rescaled to have spectral radius < 1.
-    Result is bounded in [0, 1).
-
-    Args:
-        X: Array of shape (n_channels, n_time).
-
-    Returns:
-        Scalar dc_norm value in [0, 1). Returns 0.0 if denominator is zero.
-
-    Raises:
-        ValueError: If n_time < 2.
-    """
-    if X.shape[1] < 2:
-        raise ValueError("Need at least 2 timepoints to fit VAR(1).")
-
-    A = _rescale_to_unit_spectral_radius(_fit_var1(X))
-    B = _rescale_to_unit_spectral_radius(_fit_var1(X[:, ::-1]))
-
-    diff_norm = np.linalg.norm(A - B.T, "fro")
-    sum_norm = np.linalg.norm(A + B.T, "fro")
-    denom = sum_norm + diff_norm
-    if denom < 1e-12:
-        return 0.0
-    return float(diff_norm / denom)
-
-
 @dataclass
 class Nonreversibility(BaseFeature[SignalData]):
     """Compute dc_norm: normalised deviation from causal normality (time-irreversibility).
@@ -98,15 +42,73 @@ class Nonreversibility(BaseFeature[SignalData]):
 
     Example:
         >>> result = cb.feature.Nonreversibility().apply(data)
+
+    References:
+        TODO: Add citation for the dc_norm / time-irreversibility VAR(1) measure.
     """
 
     output_type: ClassVar[type[Data]] = Data
 
+    @staticmethod
+    def _fit_var1(X: np.ndarray) -> np.ndarray:
+        """Fit VAR(1) coefficient matrix A for forward model X_t = A @ X_{t-1}.
+
+        Args:
+            X: Array of shape (n_channels, n_time).
+
+        Returns:
+            Coefficient matrix A of shape (n_channels, n_channels).
+        """
+        X_t = X[:, 1:]  # current:  (n, T-1)
+        X_tm1 = X[:, :-1]  # lag-1:    (n, T-1)
+        # Solve X_t.T = X_tm1.T @ A.T in least-squares sense
+        A_T, _, _, _ = np.linalg.lstsq(X_tm1.T, X_t.T, rcond=None)
+        return A_T.T  # (n, n)
+
+    @staticmethod
+    def _rescale_to_unit_spectral_radius(M: np.ndarray) -> np.ndarray:
+        """Scale M so its largest eigenvalue magnitude is strictly less than 1."""
+        sr = np.max(np.abs(np.linalg.eigvals(M)))
+        if sr >= 1.0:
+            M = M / sr
+        return M
+
+    def _compute_dc_norm(self, X: np.ndarray) -> float:
+        """Compute dc_norm for a single (n_channels, n_time) segment.
+
+        dc_norm = ||A - B^T||_F / (||A + B^T||_F + ||A - B^T||_F)
+
+        where A is the forward VAR(1) coefficient matrix and B is the reverse
+        VAR(1) coefficient matrix, both rescaled to have spectral radius < 1.
+        Result is bounded in [0, 1).
+
+        Args:
+            X: Array of shape (n_channels, n_time).
+
+        Returns:
+            Scalar dc_norm value in [0, 1). Returns 0.0 if denominator is zero.
+
+        Raises:
+            ValueError: If n_time < 2.
+        """
+        if X.shape[1] < 2:
+            raise ValueError("Need at least 2 timepoints to fit VAR(1).")
+
+        A = self._rescale_to_unit_spectral_radius(self._fit_var1(X))
+        B = self._rescale_to_unit_spectral_radius(self._fit_var1(X[:, ::-1]))
+
+        diff_norm = np.linalg.norm(A - B.T, "fro")
+        sum_norm = np.linalg.norm(A + B.T, "fro")
+        denom = sum_norm + diff_norm
+        if denom < 1e-12:
+            return 0.0
+        return float(diff_norm / denom)
+
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data  # time is always last (Data.__init__ transposes it)
 
-        if "time" not in xr_data.dims:
-            raise ValueError("data must have 'time' dimension")
+        if "space" not in xr_data.dims:
+            raise ValueError("data must have a 'space' dimension")
 
         if xr_data.sizes["space"] < 2:
             raise ValueError(
@@ -114,9 +116,5 @@ class Nonreversibility(BaseFeature[SignalData]):
             )
 
         X = xr_data.values  # shape (n_space, n_time)
-        dc = _compute_dc_norm(X)
-        return xr.DataArray(
-            [dc],
-            dims=["space"],
-            coords={"space": ["dc_norm"]},
-        )
+        dc = self._compute_dc_norm(X)
+        return xr.DataArray([dc], dims=["space"], coords={"space": ["dc_norm"]})

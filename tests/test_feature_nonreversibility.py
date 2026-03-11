@@ -59,18 +59,18 @@ def test_nonreversibility_raises_on_single_channel() -> None:
         cb.feature.Nonreversibility().apply(data)
 
 
-def test_nonreversibility_raises_on_missing_time_dim() -> None:
-    """Nonreversibility raises ValueError when 'time' dimension is absent."""
+def test_nonreversibility_raises_on_missing_space_dim() -> None:
+    """Nonreversibility raises ValueError when 'space' dimension is absent."""
 
-    class _FakeData:
+    class _FakeSignalData:
         @property
         def data(self) -> xr.DataArray:
-            return xr.DataArray(np.ones((3, 2)), dims=["foo", "space"])
+            return xr.DataArray(np.ones((3, 2)), dims=["time", "freq"])
 
-        sampling_rate = None
+        sampling_rate = 100.0
 
-    with pytest.raises(ValueError, match="must have 'time' dimension"):
-        Nonreversibility()(_FakeData())  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="'space' dimension"):
+        Nonreversibility()(_FakeSignalData())  # type: ignore[arg-type]
 
 
 def test_nonreversibility_raises_on_too_few_timepoints() -> None:
@@ -80,3 +80,59 @@ def test_nonreversibility_raises_on_too_few_timepoints() -> None:
 
     with pytest.raises(ValueError, match="at least 2 timepoints"):
         cb.feature.Nonreversibility().apply(data)
+
+
+def test_nonreversibility_spectral_radius_rescaling() -> None:
+    """dc_norm stays in [0, 1) even when the VAR(1) matrix has spectral radius >= 1."""
+    rng = np.random.default_rng(seed=99)
+    # Construct a signal with a near-unit-root AR structure so that the
+    # fitted VAR(1) coefficient matrix has spectral radius >= 1 before rescaling.
+    n_time, n_space = 300, 3
+    X = np.zeros((n_time, n_space))
+    X[0] = rng.standard_normal(n_space)
+    for t in range(1, n_time):
+        X[t] = 1.05 * X[t - 1] + 0.1 * rng.standard_normal(n_space)
+    data = cb.SignalData.from_numpy(X, dims=["time", "space"], sampling_rate=100.0)
+
+    out = cb.feature.Nonreversibility().apply(data)
+    dc = float(out.data.values.flat[0])
+
+    assert 0.0 <= dc < 1.0
+
+
+def test_nonreversibility_zero_denominator_returns_zero() -> None:
+    """dc_norm returns 0.0 when denominator is effectively zero (flat signal)."""
+    # An all-zeros signal produces A = 0 and B = 0, so denom = ||0||_F + ||0||_F = 0.
+    arr = np.zeros((50, 3))
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+
+    out = cb.feature.Nonreversibility().apply(data)
+    dc = float(out.data.values.flat[0])
+
+    assert dc == pytest.approx(0.0)
+
+
+def test_nonreversibility_does_not_mutate_input() -> None:
+    """Nonreversibility.apply() leaves the input SignalData object unchanged."""
+    rng = np.random.default_rng(seed=1)
+    arr = rng.standard_normal((100, 4))
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    original_history = list(data.history)
+    original_shape = data.data.shape
+    original_values = np.copy(data.to_numpy())
+
+    _ = cb.feature.Nonreversibility().apply(data)
+
+    assert data.history == original_history
+    assert data.data.shape == original_shape
+    np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_nonreversibility_public_api() -> None:
+    """Nonreversibility is accessible via cb.feature.Nonreversibility."""
+    assert hasattr(cb.feature, "Nonreversibility")
+    rng = np.random.default_rng(seed=3)
+    arr = rng.standard_normal((100, 3))
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    out = cb.feature.Nonreversibility().apply(data)
+    assert isinstance(out, cb.Data)

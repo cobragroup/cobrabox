@@ -146,6 +146,16 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.nonreversibility
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.recurrence_matrix
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.cordance
     options:
         show_root_heading: true
@@ -212,6 +222,16 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_source: true
 
 ::: cobrabox.features.reciprocal_connectivity
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.nonreversibility
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.recurrence_matrix
     options:
         show_root_heading: true
         show_source: true
