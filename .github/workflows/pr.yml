@@ -78,7 +78,7 @@ jobs:
         run: |
           uv run pytest \
             --cov-report=xml \
-            --cov-report=term-missing
+            --cov-report=term-missing \
             --cov-fail-under=95
 
       - name: Upload coverage report
