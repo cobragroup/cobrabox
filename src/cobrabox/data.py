@@ -736,7 +736,7 @@ class EEG(SignalData):
                     f"ref_channel {ref_channel!r} must be 'average', "
                     f"'bipolar', or one of the space coords: {space_coords}."
                 )
-        self.ref_channel: str | None = ref_channel
+        object.__setattr__(self, "ref_channel", ref_channel)
 
 
 class FMRI(SignalData):
