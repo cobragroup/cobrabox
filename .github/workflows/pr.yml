@@ -78,8 +78,8 @@ jobs:
         run: |
           uv run pytest \
             --cov-report=xml \
-            --cov-report=term-missing
-          # --cov-fail-under=95  # TODO: enforce 95% coverage threshold
+            --cov-report=term-missing \
+            --cov-fail-under=95
 
       - name: Upload coverage report
         if: always()
@@ -143,3 +143,24 @@ jobs:
 
       - name: Run examples
         run: make run-examples
+
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync --group docs
+
+      - name: Build documentation
+        run: uv run mkdocs build
