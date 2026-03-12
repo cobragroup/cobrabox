@@ -79,7 +79,7 @@ def _collect_classes() -> dict[str, list[str]]:
 
         # Get relative path from FEATURES_DIR without .py extension
         rel_path = module_path.relative_to(FEATURES_DIR)
-        module_key = str(rel_path.with_suffix(""))
+        module_key = "/".join(rel_path.with_suffix("").parts)
 
         classes = find_feature_classes(module_path)
         if classes:
