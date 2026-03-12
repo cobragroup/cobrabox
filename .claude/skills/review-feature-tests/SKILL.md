@@ -37,15 +37,26 @@ Load `references/test-patterns.md` for any missing scenarios that need planned c
 ### 3. Write the plan
 
 Derive feature name from filename (e.g. `my_feature.py` → `my_feature`).
-Create `docs/agent-reviews/` if it does not exist.
-Write plan to `docs/agent-reviews/<feature-name>-tests.md` using the output format below.
+Determine the domain from the feature file path (e.g. `src/cobrabox/features/time_domain/line_length.py` → `time_domain`).
+
+The domain subdirectories are:
+- `time_domain/` — Morphological & temporal statistics
+- `frequency_domain/` — Spectral analysis
+- `time_frequency/` — Joint time-frequency methods
+- `connectivity/` — Inter-channel relationships
+- `decomposition/` — Signal decomposition methods
+- `windowing/` — Windowing & aggregation
+- `reductions/` — Basic statistical reductions
+
+Create `docs/agent-reviews/<domain>/` if it does not exist.
+Write plan to `docs/agent-reviews/<domain>/<feature-name>-tests.md` using the output format below.
 
 ### 4. Validate review file with markdownlint
 
 Run markdownlint on the generated review file to ensure it has no markdown formatting issues:
 
 ```bash
-markdownlint docs/agent-reviews/<feature-name>-tests.md
+markdownlint docs/agent-reviews/<domain>/<feature-name>-tests.md
 ```
 
 If markdownlint reports any errors, fix them in the review file before proceeding.
@@ -64,7 +75,7 @@ Common issues to fix:
 Print a single line:
 
 ```text
-Review written to docs/agent-reviews/<feature-name>-tests.md — <MISSING|NEEDS WORK|PASS> (<N> issues)
+Review written to docs/agent-reviews/<domain>/<feature-name>-tests.md — <MISSING|NEEDS WORK|PASS> (<N> issues)
 ```
 
 ---

@@ -1,6 +1,6 @@
 [project]
 name = "cobrabox"
-version = "0.3.4"
+version = "0.4.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -61,7 +61,7 @@ addopts = "--cov=cobrabox --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src/cobrabox"]
-omit = ["src/cobrabox/features/dummy.py", "src/cobrabox/egg/*"]
+omit = ["src/cobrabox/features/dummy.py", "src/cobrabox/egg/*", "src/cobrabox/features/*/__init__.py", "src/cobrabox/features/*/*/__init__.py"]
 relative_files = true
 
 [tool.coverage.report]
@@ -74,5 +74,5 @@ exclude_lines = [
 python-version = "3.14"
 
 [tool.ty.src]
-exclude = ["src/cobrabox/features/dummy.py"]
+exclude = ["src/cobrabox/features/dummy.py", "src/cobrabox/features/*/__init__.py", "src/cobrabox/features/*/*/__init__.py"]
 

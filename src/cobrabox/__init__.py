@@ -1,19 +1,16 @@
 # Make feature module accessible as cb.feature
-from . import (
-    feature,  # noqa: F401
-    serialization,
-)
+from . import feature, serialization  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
 from .datasets import dataset
 from .egg.gorkastyle import gorkastyle
-from .features.concat_aggregate import ConcatAggregate
-from .features.line_length import LineLength
-from .features.mean_aggregate import MeanAggregate
-from .features.nonreversibility import Nonreversibility
-from .features.recurrence_matrix import RecurrenceMatrix
-from .features.sliding_window import SlidingWindow
+from .features.time_domain.line_length import LineLength
+from .features.time_domain.nonreversibility import Nonreversibility
+from .features.time_domain.recurrence_matrix import RecurrenceMatrix
+from .features.windowing.concat_aggregate import ConcatAggregate
+from .features.windowing.mean_aggregate import MeanAggregate
+from .features.windowing.sliding_window import SlidingWindow
 from .serialization import deserialize, load, save, serialize
 
 # Package-level aliases for class methods

@@ -182,3 +182,37 @@ def test_infer_sampling_rate_single_time_point() -> None:
     ar = xr.DataArray(np.ones((1, 2)), dims=["time", "space"])
     ds = cb.Data(ar)
     assert ds.sampling_rate is None
+
+
+def test_eeg_construction_does_not_raise() -> None:
+    """EEG.__init__ must not raise when setting ref_channel after super().__init__().
+
+    Regression test: the parent freezes the object at the end of Data.__init__;
+    EEG previously tried to assign self.ref_channel = ref_channel afterwards,
+    which raised AttributeError because the object was already frozen.
+    """
+    arr = RNG.standard_normal((100, 4))
+    ar = xr.DataArray(arr, dims=["time", "space"])
+    eeg = cb.EEG(ar, sampling_rate=256.0, subjectID="sub-01")
+    assert isinstance(eeg, cb.EEG)
+    assert eeg.ref_channel is None
+
+
+def test_eeg_ref_channel_stored() -> None:
+    """EEG stores ref_channel correctly after construction."""
+    arr = RNG.standard_normal((50, 3))
+    ar = xr.DataArray(arr, dims=["time", "space"], coords={"space": ["Fp1", "Fp2", "Cz"]})
+    eeg = cb.EEG(ar, ref_channel="average")
+    assert eeg.ref_channel == "average"
+
+    eeg2 = cb.EEG(ar, ref_channel="Cz")
+    assert eeg2.ref_channel == "Cz"
+
+
+def test_eeg_ref_channel_immutable() -> None:
+    """EEG is still immutable after construction — ref_channel cannot be reassigned."""
+    arr = RNG.standard_normal((50, 2))
+    ar = xr.DataArray(arr, dims=["time", "space"])
+    eeg = cb.EEG(ar)
+    with pytest.raises(AttributeError, match="Cannot modify attribute"):
+        eeg.ref_channel = "average"

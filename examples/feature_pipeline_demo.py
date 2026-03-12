@@ -25,7 +25,6 @@ win_max = (
 ).apply(data)
 
 feat = cb.feature.LineLength().apply(data)
-dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(data)
 
 # Compute coherence
 coh = cb.feature.Coherence().apply(data)
@@ -52,6 +51,7 @@ print("max over windows history:", win_max.history)
 print("feature.data.shape:", feat.data.shape)
 print("feature.history:", feat.history)
 print("coherence shape:", coh.data.shape)
+
 print("coherence history:", coh.history)
 print("SlidingWindowReduce shape:", win_reduce.data.shape)
 print("SlidingWindowReduce history:", win_reduce.history)
@@ -59,5 +59,3 @@ print("AmplitudeVariation shape:", amp_var.data.shape)
 print("AmplitudeVariation history:", amp_var.history)
 print("windowed AmplitudeVariation shape:", win_amp_var.data.shape)
 print("windowed AmplitudeVariation history:", win_amp_var.history)
-
-print("dummy", dummy.data)

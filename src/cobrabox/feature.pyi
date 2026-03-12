@@ -13,7 +13,6 @@ from .features import Cordance as Cordance
 from .features import Correlation as Correlation
 from .features import Covariance as Covariance
 from .features import DiscreteWaveletTransform as DiscreteWaveletTransform
-from .features import Dummy as Dummy
 from .features import EMD as EMD
 from .features import EnvelopeCorrelation as EnvelopeCorrelation
 from .features import EpileptogenicityIndex as EpileptogenicityIndex
@@ -57,7 +56,6 @@ __all__ = [
     "Correlation",
     "Covariance",
     "DiscreteWaveletTransform",
-    "Dummy",
     "EMD",
     "EnvelopeCorrelation",
     "EpileptogenicityIndex",

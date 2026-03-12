@@ -62,12 +62,28 @@ def find_feature_classes(path: Path) -> list[str]:
 
 
 def _collect_classes() -> dict[str, list[str]]:
-    """Return {module_stem: [ClassName, ...]} for all feature modules."""
+    """Return {module_path: [ClassName, ...]} for all feature modules.
+
+    Keys are relative paths from FEATURES_DIR, e.g. "time_domain/line_length".
+    """
     result: dict[str, list[str]] = {}
-    for module_path in sorted(p for p in FEATURES_DIR.glob("*.py") if p.name != "__init__.py"):
+
+    # Recursively scan all .py files in FEATURES_DIR
+    for module_path in sorted(FEATURES_DIR.rglob("*.py")):
+        # Skip __init__.py files (both root and subdirectories)
+        if module_path.name == "__init__.py":
+            continue
+        # Skip _dummy.py (internal reference implementation)
+        if module_path.name == "_dummy.py":
+            continue
+
+        # Get relative path from FEATURES_DIR without .py extension
+        rel_path = module_path.relative_to(FEATURES_DIR)
+        module_key = str(rel_path.with_suffix(""))
+
         classes = find_feature_classes(module_path)
         if classes:
-            result[module_path.stem] = classes
+            result[module_key] = classes
     return result
 
 
@@ -76,14 +92,25 @@ def _all_block(names: list[str]) -> str:
     return f"\n__all__ = [\n{items}]\n"
 
 
+def _split_import_line(import_path: str, cls: str) -> str:
+    line = f"from {import_path} import {cls} as {cls}\n"
+    if len(line.encode("utf-8")) <= 100:
+        return line
+    return f"from {import_path} import (\n    {cls} as {cls},\n)\n"
+
+
 def generate_features_stub(classes_by_module: dict[str, list[str]]) -> str:
     """Stub for cobrabox/features/__init__.pyi."""
     lines: list[str] = [HEADER_FEATURES]
     all_names: list[str] = []
-    for stem, classes in classes_by_module.items():
+
+    for module_path, classes in classes_by_module.items():
+        # "time_domain/line_length" -> ".time_domain.line_length"
+        import_path = f".{module_path.replace('/', '.')}"
         for cls in classes:
-            lines.append(f"from .{stem} import {cls} as {cls}\n")
+            lines.append(_split_import_line(import_path, cls))
             all_names.append(cls)
+
     lines.append(_all_block(all_names))
     return "".join(lines)
 
