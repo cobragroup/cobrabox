@@ -56,6 +56,12 @@ plugins:
       include_source: true
       ignore_h1_titles: true
 
+exclude_docs: |
+  agent-reviews/
+
+hooks:
+  - docs/hooks.py
+
 nav:
   - Home:
       - CobraBox: index.md
@@ -84,3 +90,5 @@ nav:
       - Setup Guide: contributing/setup.md
       - Feature Guide: contributing/features.md
       - Pull Requests: contributing/pr.md
+  - About:
+      - Version: version.md
