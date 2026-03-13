@@ -42,6 +42,7 @@ from .features import SlidingWindow as SlidingWindow
 from .features import SlidingWindowReduce as SlidingWindowReduce
 from .features import Spectrogram as Spectrogram
 from .features import SpikeCount as SpikeCount
+from .features import SVD as SVD
 
 __all__ = [
     "AmplitudeEntropy",
@@ -80,6 +81,7 @@ __all__ = [
     "PhaseLockingValueMatrix",
     "ReciprocalConnectivity",
     "RecurrenceMatrix",
+    "SVD",
     "SampleEntropy",
     "SlidingWindow",
     "SlidingWindowReduce",
