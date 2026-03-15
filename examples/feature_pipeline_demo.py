@@ -25,7 +25,6 @@ win_max = (
 ).apply(data)
 
 feat = cb.feature.LineLength().apply(data)
-dummy = cb.feature.Dummy(mandatory_arg=1, optional_arg=2).apply(data)
 
 # Compute coherence
 coh = cb.feature.Coherence().apply(data)
@@ -35,13 +34,13 @@ win_reduce = cb.feature.SlidingWindowReduce(
     window_size=10, step_size=5, dim="time", agg="mean"
 ).apply(data)
 
-# AmpVar — amplitude variation (std) over time
-amp_var = cb.feature.AmpVar().apply(data)
+# AmplitudeVariation — amplitude variation (std) over time
+amp_var = cb.feature.AmplitudeVariation().apply(data)
 
-# AmpVar in a Chord — windowed amplitude variation
+# AmplitudeVariation in a Chord — windowed amplitude variation
 win_amp_var = (
     cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.AmpVar()
+    | cb.feature.AmplitudeVariation()
     | cb.feature.MeanAggregate()
 ).apply(data)
 
@@ -52,12 +51,11 @@ print("max over windows history:", win_max.history)
 print("feature.data.shape:", feat.data.shape)
 print("feature.history:", feat.history)
 print("coherence shape:", coh.data.shape)
+
 print("coherence history:", coh.history)
 print("SlidingWindowReduce shape:", win_reduce.data.shape)
 print("SlidingWindowReduce history:", win_reduce.history)
-print("AmpVar shape:", amp_var.data.shape)
-print("AmpVar history:", amp_var.history)
-print("windowed AmpVar shape:", win_amp_var.data.shape)
-print("windowed AmpVar history:", win_amp_var.history)
-
-print("dummy", dummy.data)
+print("AmplitudeVariation shape:", amp_var.data.shape)
+print("AmplitudeVariation history:", amp_var.history)
+print("windowed AmplitudeVariation shape:", win_amp_var.data.shape)
+print("windowed AmplitudeVariation history:", win_amp_var.history)

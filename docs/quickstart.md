@@ -88,9 +88,28 @@ arr = result.to_numpy()
 xr_data = result.data
 ```
 
+## 7. Save and Load Pipelines
+
+Any feature, pipeline, or chord can be serialized to YAML or JSON and reloaded later:
+
+```python
+# Save to file
+cb.save(pipeline, "my_pipeline.yaml")
+
+# Load from file
+loaded = cb.load("my_pipeline.yaml")
+result = loaded.apply(data)
+
+# Or convert to a string (e.g. for storing in a database)
+yaml_str = pipeline.to_yaml()
+restored = cb.Pipeline.from_yaml(yaml_str)
+```
+
+See [Pipelines — Serialization](guide/pipelines.md#serialization) for the full reference.
+
 ## What's Next?
 
 - [Core Concepts](guide/core-concepts.md) — Immutability, metadata, history, and the feature system
 - [Feature Guide](guide/features.md) — All feature types and how to create custom ones
-- [Pipelines](guide/pipelines.md) — `|` syntax, Chord, and batch processing
+- [Pipelines](guide/pipelines.md) — `|` syntax, Chord, batch processing, and serialization
 - [Data Containers](guide/data-containers.md) — Deep dive into the `Data` class

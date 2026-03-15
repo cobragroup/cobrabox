@@ -1,13 +1,18 @@
 [project]
 name = "cobrabox"
-version = "0.2.8"
+version = "0.4.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "emd>=0.7.0",
+    "dill>=0.3.0",
+    "ipython>=9.10.0",
     "mne-connectivity>=0.7.0",
     "numpy>=2.4.2",
     "pandas>=3.0.1",
+    "pywavelets>=1.9.0",
+    "pyyaml>=6.0",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.1",
     "tqdm>=4.67.3",
@@ -60,7 +65,12 @@ markers = [
 
 [tool.coverage.run]
 source = ["src/cobrabox"]
-omit = ["src/cobrabox/features/dummy.py", "src/cobrabox/egg/*"]
+omit = [
+    "src/cobrabox/features/dummy.py",
+    "src/cobrabox/egg/*",
+    "src/cobrabox/features/*/__init__.py",
+    "src/cobrabox/features/*/*/__init__.py"
+]
 relative_files = true
 
 [tool.coverage.report]
@@ -69,6 +79,13 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
+[tool.ty.environment]
+python-version = "3.14"
+
 [tool.ty.src]
-exclude = ["src/cobrabox/features/dummy.py"]
+exclude = [
+    "src/cobrabox/features/dummy.py",
+    "src/cobrabox/features/*/__init__.py",
+    "src/cobrabox/features/*/*/__init__.py"
+]
 

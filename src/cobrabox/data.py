@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Any
+from typing import Any, Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -332,6 +332,14 @@ class Data:
         lines.append(f"  history   : {self.history}")
         return "\n".join(lines)
 
+    @overload
+    def to_numpy(self) -> np.ndarray: ...
+    @overload
+    def to_numpy(self, style: Literal["default"]) -> np.ndarray: ...
+    @overload
+    def to_numpy(
+        self, style: Literal["gorkastyle"]
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]: ...
     def to_numpy(
         self, style: str = "default"
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -628,7 +636,7 @@ class SignalData(Data):
         new_data: xr.DataArray | Data,
         operation_name: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> Data:
+    ) -> SignalData:
         """Override to add singleton time dimension if result lacks it.
 
         SignalData requires a time dimension, so if the feature result doesn't
@@ -728,7 +736,7 @@ class EEG(SignalData):
                     f"ref_channel {ref_channel!r} must be 'average', "
                     f"'bipolar', or one of the space coords: {space_coords}."
                 )
-        self.ref_channel: str | None = ref_channel
+        object.__setattr__(self, "ref_channel", ref_channel)
 
 
 class FMRI(SignalData):

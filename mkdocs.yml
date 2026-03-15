@@ -56,6 +56,12 @@ plugins:
       include_source: true
       ignore_h1_titles: true
 
+exclude_docs: |
+  agent-reviews/
+
+hooks:
+  - docs/hooks.py
+
 nav:
   - Home:
       - CobraBox: index.md
@@ -72,7 +78,17 @@ nav:
       - Data API: api/data.md
       - Features API: api/features.md
       - Datasets API: api/datasets.md
+  - Features by Domain:
+      - Time Domain: domain/time_domain.md
+      - Frequency Domain: domain/frequency_domain.md
+      - Time-Frequency: domain/time_frequency.md
+      - Connectivity: domain/connectivity.md
+      - Decomposition: domain/decomposition.md
+      - Windowing & Aggregation: domain/windowing.md
+      - Reductions: domain/reductions.md
   - Contributing:
       - Setup Guide: contributing/setup.md
       - Feature Guide: contributing/features.md
       - Pull Requests: contributing/pr.md
+  - About:
+      - Version: version.md

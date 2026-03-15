@@ -40,7 +40,7 @@ uv sync --group dev
 Install pre-commit hooks:
 
 ```bash
-uvx pre-commit install
+uv run pre-commit install
 ```
 
 ## Verify Installation

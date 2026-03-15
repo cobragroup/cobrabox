@@ -36,26 +36,28 @@ operates on the time axis; use `Data` for dimension-agnostic features.
 
 ### `output_type` classvar (optional)
 
-Features can set `output_type` to control the output container type:
+Features **only need to set `output_type` when changing from the default behavior**. The base class provides sensible defaults:
 
-| `output_type` value | Result container | Use when |
-| ------------------- | ---------------- | -------- |
-| `None` (default)    | Same as input    | Feature preserves input container type |
-| `Data`              | Plain `Data`     | Feature removes time dimension (e.g., correlation matrices) |
+| `output_type` value | Result container | When to set it |
+| ------------------- | ---------------- | -------------- |
+| `None` (default)    | Same as input    | **Omit this** - preserves input container type automatically |
+| `Data`              | Plain `Data`     | **Only set when** removing time dimension (e.g., correlation matrices) |
 
 ```python
-# ✅ Feature that preserves container type (default)
+# ✅ Feature that preserves container type - OMIT output_type entirely
 @dataclass
 class Spectrogram(BaseFeature[SignalData]):
-    # output_type defaults to None - returns SignalData
+    # No output_type needed - defaults to preserving SignalData
     ...
 
-# ✅ Feature that returns plain Data (no time dimension)
+# ✅ Feature that returns plain Data - ONLY set when changing type
 @dataclass
 class Coherence(BaseFeature[SignalData]):
-    output_type: ClassVar[type[Data]] = Data
+    output_type: ClassVar[type[Data]] = Data  # Removes time dimension
     ...
 ```
+
+**Rule of thumb**: If your feature preserves the time dimension, don't declare `output_type`. Only declare it when you need to return a different container type than what was passed in.
 
 ```python
 # ✅ time-series feature
@@ -89,6 +91,52 @@ def line_length(data: Data, ...) -> xr.DataArray:
 
 Must be PascalCase matching the filename (`line_length.py` → `LineLength`).
 
+#### Descriptive naming required
+
+Class names must be descriptive and clearly indicate what the feature computes. Avoid abbreviations, acronyms, or shortened forms that are not immediately obvious.
+
+```python
+# ✅ Descriptive, clear names
+class LineLength(BaseFeature[SignalData]):
+class AmplitudeEntropy(BaseFeature[Data]):
+class MutualInformation(BaseFeature[SignalData]):
+class PhaseLockingValue(BaseFeature[SignalData]):
+
+# ❌ Abbreviated, unclear names
+class Ampent(BaseFeature[Data]):  # What is "Ampent"?
+class Mi(BaseFeature[SignalData]):  # Abbreviation
+class Pldv(BaseFeature[SignalData]):  # Acronym
+class Fd(BaseFeature[Data]):  # Too short, unclear
+```
+
+**Guidelines:**
+
+- Use full words: `AmplitudeEntropy` not `Ampent`
+- Use widely recognized acronyms only if they are domain-standard: `PCA`, `FFT` are acceptable
+- When in doubt, prefer the longer, clearer name
+- The class name should describe *what* is being computed, not *how* it's implemented
+
+### `_is_cobrabox_feature` marker (NOT NEEDED for class-based features)
+
+**Class-based features automatically inherit `_is_cobrabox_feature = True` from `BaseFeature`.**
+
+```python
+# ✅ Class-based features - NO marker needed, inherited from BaseFeature
+@dataclass
+class LineLength(BaseFeature[SignalData]):
+    # _is_cobrabox_feature is inherited as True
+    ...
+
+# ❌ Unnecessary - already inherited
+_is_cobrabox_feature = True  # Don't add this for class-based features!
+
+@dataclass
+class LineLength(BaseFeature[SignalData]):
+    ...
+```
+
+The marker is only needed at the **module level** for legacy function-based features (not using the dataclass pattern). Since all modern features use the class-based pattern, **never add `_is_cobrabox_feature = True` to new feature files**.
+
 ### `__call__` signature
 
 `data` is the **argument** to `__call__`, not a class field. Parameters are dataclass fields.
@@ -117,6 +165,31 @@ class LineLength(BaseFeature[SignalData]):
 
 `apply()` is inherited from `BaseFeature` and handles history and wrapping automatically.
 Only `AggregatorFeature` subclasses must build `history` themselves.
+
+### No loose helper functions
+
+Module-level private functions that are only called by the feature class must be moved
+inside the class as `@staticmethod` methods. This keeps the module's public surface clean
+and makes the helpers logically part of the feature they serve.
+
+```python
+# ❌ loose module-level helpers — only used by MyFeature
+def _compute_thing(arr: np.ndarray) -> np.ndarray: ...
+
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    def __call__(self, data: Data) -> xr.DataArray:
+        return _compute_thing(data.data.values)
+
+# ✅ helpers live inside the class
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    @staticmethod
+    def _compute_thing(arr: np.ndarray) -> np.ndarray: ...
+
+    def __call__(self, data: Data) -> xr.DataArray:
+        return self._compute_thing(data.data.values)
+```
 
 ### Imports
 
@@ -191,6 +264,55 @@ Returns:
     DataArray.
 ```
 
+#### No fake singleton dimensions
+
+Features that return scalar values (0-dimensional output) should return a proper 0-d xarray DataArray, NOT an array with fake singleton dimensions like `(1, 1)` with made-up dim names.
+
+```python
+# ✅ Return a proper 0-dimensional scalar
+return xr.DataArray(scalar_value)
+
+# ✅ Return reduced dimensions naturally
+return data.sum(dim="time")  # Shape: (space,) not (1, space)
+
+# ❌ Creating fake singleton dimensions
+return xr.DataArray([[scalar]], dims=["time", "space"], coords={"time": [0], "space": [0]})
+
+# ❌ Made-up dimension names that don't exist in input
+return xr.DataArray(result, dims=["dim1", "dim2"])  # Where dim1/dim2 are not from input
+```
+
+Use `xr.apply_ufunc(..., output_core_dims=[[]])` for dimensionality reduction to scalars, or simply return the reduced array which naturally drops the reduced dimension.
+
+### `Raises:` section
+
+Recommended when the feature raises `ValueError` in `__call__` or `__post_init__`.
+List each raised exception type and the condition that triggers it.
+
+```python
+# ✅
+Raises:
+    ValueError: If ``method`` is not a valid sift method.
+    ValueError: If ``max_imfs`` is not positive.
+
+# acceptable — omit if the feature raises nothing
+```
+
+### `References:` section
+
+Required for features implementing a published algorithm. Include full citation(s)
+so reviewers can verify correctness against the source. Omit for self-evident operations
+(mean, max, etc.) with no specific algorithm reference.
+
+```python
+# ✅
+References:
+    Leuchter, A. F., et al. (1994). Cordance: a new method...
+    *NeuroImage*, 1(3), 208-219.
+
+# acceptable — omit for features with no literature basis
+```
+
 ### `Example:` section
 
 At least one working snippet showing typical usage via `.apply()`.
@@ -244,6 +366,39 @@ Must be explicit and match the base class contract:
 ### No bare `Any`
 
 `Any` is only acceptable with an inline comment explaining why it cannot be narrowed.
+
+### `Literal` for fixed string options
+
+When a field or parameter accepts only a fixed set of string values, type it as
+`typing.Literal[...]` rather than plain `str`. Use `typing.get_args()` to extract
+the allowed values for runtime validation, keeping the Literal as the single source
+of truth.
+
+```python
+# ❌ plain str with a separate tuple for validation
+_VALID_METHODS = ("mean", "median", "max")
+
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    method: str = "mean"
+
+    def __post_init__(self) -> None:
+        if self.method not in _VALID_METHODS:
+            raise ValueError(...)
+
+# ✅ Literal type — type alias + get_args for validation
+from typing import Literal, get_args
+
+Method = Literal["mean", "median", "max"]
+
+@dataclass
+class MyFeature(BaseFeature[Data]):
+    method: Method = "mean"
+
+    def __post_init__(self) -> None:
+        if self.method not in get_args(Method):
+            raise ValueError(f"method must be one of {get_args(Method)}, got {self.method!r}")
+```
 
 ---
 

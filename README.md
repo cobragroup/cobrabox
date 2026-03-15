@@ -61,6 +61,7 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 - **Splitters** (`SplitterFeature`): yield a lazy stream of `Data` per window (e.g. `SlidingWindow`)
 - **Aggregators** (`AggregatorFeature`): fold a stream back into one `Data` (e.g. `MeanAggregate`)
 - **Chord**: combines a splitter + pipeline + aggregator into a single composable feature
+- **Serialization**: save/load any feature, pipeline, or chord to YAML or JSON
 - All features append to `history` automatically
 
 ## Working with Dimensions and Coordinates
@@ -112,18 +113,33 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
-- `AmpVar` - Amplitude variation (standard deviation) over time
+- `AmplitudeVariation` - Amplitude variation (standard deviation) over time
 - `Bandpower` - Power in frequency bands using Welch's method
+- `BandFilter` - Butterworth bandpass filter into frequency bands
 - `Coherence` - Magnitude-squared coherence between channel pairs
 - `Spectrogram` - Time-frequency power spectrogram
-- `SpikesCalc` - Outlier detection using IQR method
+- `Hilbert` - Analytic signal, envelope, phase, or instantaneous frequency
+- `SpikeCount` - Outlier detection using IQR method
 - `Autocorr` - Normalized autocorrelation at a single lag
+- `LempelZiv` - Lempel-Ziv complexity per channel
+- `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
+- `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
+- `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
+- `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
+- `Nonreversibility` - Normalised deviation from causal normality (time-irreversibility)
+- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Connectivity Features
 
-- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
+- `Correlation` - Pairwise Pearson or Spearman correlation matrix between channels
+- `Covariance` - Pairwise sample covariance matrix between channels
 - `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
+- `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
+- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
+- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
+- `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
+- `RecurrenceMatrix` - Pairwise recurrence (self-similarity) matrix across time-points or windows
 
 ### Specialized Features
 
@@ -134,7 +150,47 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `SlidingWindow` - Split data into overlapping windows (splitter)
 - `SlidingWindowReduce` - Single-step windowing + aggregation (simpler alternative to Chord)
 - `MeanAggregate` - Average windowed results (aggregator)
+- `ConcatAggregate` - Stack windowed results along new dimension (aggregator)
 - `Chord` - Combine splitter + feature + aggregator
+
+### Surrogate Generation
+
+- `FourierTransformSurrogates` - Generate Fourier transform surrogates preserving power spectrum
+
+### Wavelet Transforms
+
+- `DiscreteWaveletTransform` - Multi-level discrete wavelet decomposition (DWT)
+- `ContinuousWaveletTransform` - Continuous wavelet transform for time-frequency analysis
+
+### Signal Decomposition
+
+- `EMD` - Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs)
+
+### Specialized Features
+
+- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
+
+### qEEG Measures
+
+- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower
+
+## Serialization
+
+Save any feature, pipeline, or chord to YAML or JSON and reload it later — or share it with collaborators:
+
+```python
+# Save to file
+cb.save(pipeline, "my_pipeline.yaml")
+
+# Load from file
+pipeline = cb.load("my_pipeline.yaml")
+
+# Or work with strings directly
+yaml_str = cb.serialize(pipeline)
+pipeline  = cb.deserialize(yaml_str)
+```
+
+See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a full walkthrough.
 
 ## Built-in Dummy Datasets
 
@@ -153,25 +209,59 @@ ds1 + ds2                            # concatenate two Datasets
 
 Available identifiers:
 
-- `dummy_chain`
-- `dummy_random`
-- `dummy_star`
-- `dummy_noise`
+- `dummy_chain` - Sequential data with known ground truth
+- `dummy_random` - Random Gaussian noise
+- `dummy_star` - Star-shaped pattern with one central channel
+- `dummy_noise` - High-dimensional noise for stress testing
 
 ## Coverage
 
-- Test coverage is measured with `pytest-cov`.
+- Test coverage is measured with `pytest-cov` (target: 95%).
 - Coverage output is shown by default in test runs (configured in `pyproject.toml`).
 - Run tests with:
 
 ```bash
-uv run pytest -q
+uv run pytest -q                    # run all tests
+uv run pytest --cov-fail-under=95   # enforce 95% coverage threshold
+uv run pytest --cov-report=html     # generate HTML report in htmlcov/
 ```
+
+## Feature Alignments (D&D Style)
+
+Every feature in CobraBox has a D&D alignment that captures its "moral character" — how it treats your data:
+
+```bash
+# See the full roster
+uv run python -m cobrabox.dnd_alignment --roster
+
+# Check a pipeline's aggregate alignment
+uv run python -m cobrabox.dnd_alignment SlidingWindow LineLength MeanAggregate
+
+# Check a chord pipeline (splitter + map + aggregator)
+uv run python -m cobrabox.dnd_alignment --chord SlidingWindow LineLength MeanAggregate
+```
+
+The alignment grid categorizes features by their "moral character":
+- **Law axis**: Lawful (+1) imposes structure (windowing, categorization); Neutral (0) passively describes; Chaotic (-1) is disruptive
+- **Good axis**: Good (+1) preserves meaning; Neutral (0) is indifferent; Evil (-1) discards/distorts
+
+**Current roster:**
+
+| Alignment | Features |
+|-----------|----------|
+| Lawful Good | SlidingWindow, BandFilter, Bandpower |
+| Lawful Neutral | SlidingWindowReduce, MeanAggregate, Mean, ConcatAggregate, Cordance, FractalDimKatz, FourierTransformSurrogates, EpileptogenicityIndex |
+| Lawful Evil | SpikeCount, Max, Min |
+| Neutral Good | AmplitudeEntropy, AmplitudeVariation, LineLength, DiscreteWaveletTransform, Nonreversibility, RecurrenceMatrix, ContinuousWaveletTransform, Hilbert, Coherence, Autocorr, Spectrogram, EnvelopeCorrelation, FractalDimHiguchi, GrangerCausality, GrangerCausalityMatrix, PartialCorrelation, PartialCorrelationMatrix, PhaseLockingValue, PhaseLockingValueMatrix, PartialDirectedCoherence, ReciprocalConnectivity |
+| True Neutral | LempelZiv, MutualInformation, SampleEntropy |
+| Chaotic Neutral | Dummy |
+
+Run the command above to see the full grid!
 
 ## Documentation
 
 - Setup repo: [`docs/setup_repo.md`](docs/setup_repo.md)
-- Contribute a feature: [`docs/contributing_feature.md`](docs/contributing_feature.md)
+- Contribute a feature: [`docs/contributing/features.md`](docs/contributing/features.md)
 - Make a pull request: [`docs/how_to_make_a_pr.md`](docs/how_to_make_a_pr.md)
 - Set up GitHub SSH key: [`docs/setup_github_ssh_key.md`](docs/setup_github_ssh_key.md)
 - Docs index: [`docs/README.md`](docs/README.md)

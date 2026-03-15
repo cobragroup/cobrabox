@@ -1,0 +1,4 @@
+pipeline:
+  - class: "LineLength"
+    module: "cobrabox.features.time_domain.line_length"
+    params: {}

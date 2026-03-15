@@ -16,7 +16,14 @@ from __future__ import annotations
 
 # fmt: off
 ALIGNMENTS: dict[str, dict] = {
-    "AmpVar": {
+    "AmplitudeEntropy": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "ae",
+        "lore":  "Reads the disorder of amplitudes through histograms — faithful entropy",
+    },
+    "AmplitudeVariation": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
@@ -37,7 +44,7 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "sr",
         "lore":  "Methodically carves time into windows, then summarizes without prejudice",
     },
-    "SpikesCalc": {
+    "SpikeCount": {
         "law":   1,
         "good":  -1,
         "label": "Lawful Evil",
@@ -65,6 +72,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "mi",
         "lore":  "The mirror of Max — same cold devotion to order, different floor",
     },
+    "LempelZiv": {
+        "law":   0,
+        "good":  0,
+        "label": "True Neutral",
+        "abbrev": "lz",
+        "lore":  "Counts pattern distinctness — impartial accountant of signal complexity",
+    },
     "LineLength": {
         "law":   0,
         "good":  1,
@@ -79,12 +93,61 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "du",
         "lore":  "Print statements, no validation — chaos without malice, just bad practice",
     },
+    "DiscreteWaveletTransform": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "dw",
+        "lore":  "Decomposes time into multi-resolution levels — reveals hidden scales",
+    },
     "Mean": {
         "law":   1,
         "good":  0,
         "label": "Lawful Neutral",
         "abbrev": "mn",
         "lore":  "Averages faithfully and without prejudice — the purest bureaucrat",
+    },
+    "MutualInformation": {
+        "law":   0,
+        "good":  0,
+        "label": "True Neutral",
+        "abbrev": "mu",
+        "lore":  "Measures statistical dependence — impartial accountant, no semantic intent",
+    },
+    "Nonreversibility": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "nr",
+        "lore":  "Reads the arrow of time through VAR(1) asymmetry — faithful time's arrow",
+    },
+    "RecurrenceMatrix": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "rm",
+        "lore":  "Maps self-similarity across time — cartographer of recurrence plots",
+    },
+    "ConcatAggregate": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "ca",
+        "lore":  "Collapses by strict rule; neither creates nor destroys meaning",
+    },
+    "ContinuousWaveletTransform": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "cw",
+        "lore":  "Unfolds time into frequency with continuous scales — reveals hidden rhythms",
+    },
+    "Cordance": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "cd",
+        "lore":  "Classifies channels by Leuchter's law — absolute and relative power united",
     },
     "BandFilter": {
         "law":   1,
@@ -135,6 +198,41 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "ec",
         "lore":  "Exorcises zero-lag phantoms, revealing genuine kinship between channels",
     },
+    "FractalDimHiguchi": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "fh",
+        "lore":  "Reads the roughness of the signal through the lens of fractal geometry",
+    },
+    "FractalDimKatz": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "fk",
+        "lore":  "Obeys the law of the fixed formula, discards everything else",
+    },
+    "FourierTransformSurrogates": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "fs",
+        "lore":  "Imposes null hypotheses via strict phase-shuffling protocol",
+    },
+    "GrangerCausality": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "gc",
+        "lore":  "Tests if the past of one channel predicts another — honest temporal judge",
+    },
+    "GrangerCausalityMatrix": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "gm",
+        "lore":  "Maps the web of temporal influence — thorough and without prejudice",
+    },
     "EpileptogenicityIndex": {
         "law":   1,
         "good":  0,
@@ -169,6 +267,27 @@ ALIGNMENTS: dict[str, dict] = {
         "label": "Neutral Good",
         "abbrev": "pv",
         "lore":  "Charts the web of phase consent, pair by tireless pair",
+    },
+    "PartialDirectedCoherence": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "pd",
+        "lore":  "Reveals directional influence through spectral VAR analysis",
+    },
+    "ReciprocalConnectivity": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "rc",
+        "lore":  "Summarizes net flow to name sources and sinks",
+    },
+    "SampleEntropy": {
+        "law":   0,
+        "good":  0,
+        "label": "True Neutral",
+        "abbrev": "se",
+        "lore":  "Measures regularity of complexity — impartial accountant of signal disorder",
     },
 }
 # fmt: on

@@ -24,9 +24,10 @@ Follow these steps in order:
 
 Read `$ARGUMENTS` in full.
 
-**Special case**: If the file is `src/cobrabox/features/dummy.py`, skip the review and report:
+**Special case**: If the file is `src/cobrabox/features/_dummy.py`, skip the review and report:
+
 ```text
-Review skipped — dummy.py is an intentional negative reference (not to be fixed)
+Review skipped — _dummy.py is an intentional negative reference (not to be fixed)
 ```
 
 ### 2. Run ruff
@@ -46,15 +47,46 @@ feature file against all four criterion categories.
 ### 4. Write the review file
 
 Determine the feature name from the filename (e.g. `my_feature.py` → `my_feature`).
-Create `docs/agent-reviews/` if it does not exist. Write the review to
-`docs/agent-reviews/<feature-name>.md` using the output format below.
+Determine the domain from the feature file path (e.g. `src/cobrabox/features/time_domain/line_length.py` → `time_domain`).
 
-### 5. Report to conversation
+The domain subdirectories are:
+- `time_domain/` — Morphological & temporal statistics
+- `frequency_domain/` — Spectral analysis
+- `time_frequency/` — Joint time-frequency methods
+- `connectivity/` — Inter-channel relationships
+- `decomposition/` — Signal decomposition methods
+- `windowing/` — Windowing & aggregation
+- `reductions/` — Basic statistical reductions
+- `_dummy/` — Negative reference (no reviews)
+
+Create `docs/agent-reviews/<domain>/` if it does not exist. Write the review to
+`docs/agent-reviews/<domain>/<feature-name>.md` using the output format below.
+
+### 5. Validate review file with markdownlint
+
+Run markdownlint on the generated review file to ensure it has no markdown formatting issues:
+
+```bash
+markdownlint docs/agent-reviews/<domain>/<feature-name>.md
+```
+
+If markdownlint reports any errors, fix them in the review file before proceeding.
+
+Common issues to fix:
+
+- Missing blank lines around headings (MD022)
+- Missing blank lines around lists (MD032)
+- Missing blank lines around fenced code blocks (MD031)
+- Missing language specifier on code blocks (MD040)
+
+**Important exception for MD050 (strong-style)**: Do NOT convert `__` to `**` when it appears inside code blocks or inline code. Patterns like `__future__`, `__call__`, `__init__`, etc. are Python dunder names and must remain as `__name__`. Only fix bold text that uses `__text__` outside of code.
+
+### 6. Report to conversation
 
 After writing the file, print a single line to the conversation:
 
 ```text
-Review written to docs/agent-reviews/<feature-name>.md — <PASS|NEEDS WORK> (<N> issues)
+Review written to docs/agent-reviews/<domain>/<feature-name>.md — <PASS|NEEDS WORK> (<N> issues)
 ```
 
 ---
