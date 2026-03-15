@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from .data import SignalData
 from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
-from .downloader import ensure_remote_files, get_remote_dataset_spec
+from .downloader import REMOTE_DATASETS, ensure_remote_files, get_remote_dataset_spec
 
 # ---------------------------------------------------------------------------
 # Metadata for built-in local datasets (no subset concept)
@@ -115,10 +115,9 @@ def dataset(identifier: str, *, subset: Sequence[str] | None = None) -> Dataset[
         dataset_dir = ensure_remote_files(spec, subset=subset)
         return spec.loader(dataset_dir, subset)
 
-    _remote = ["swiss_eeg_short", "swiss_eeg_long", "bonn_eeg"]
     raise ValueError(
         f"Unknown dataset identifier: {identifier!r}. "
-        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *_remote]}"
+        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
     )
 
 
@@ -161,8 +160,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
             subsets=tuple(keys) if keys is not None else None,
         )
 
-    _remote = ["swiss_eeg_short", "swiss_eeg_long", "bonn_eeg"]
     raise ValueError(
         f"Unknown dataset identifier: {identifier!r}. "
-        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *_remote]}"
+        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
     )

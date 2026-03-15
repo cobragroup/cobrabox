@@ -39,10 +39,40 @@ def _sampling_rate_from_info(info: dict) -> float | None:
         return None
     try:
         return float(fs)
-    except TypeError as e:
+    except (TypeError, ValueError) as e:
         raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
-    except ValueError as e:
-        raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
+
+
+def _load_one_csv_xz(path: Path, identifier: str) -> SignalData | None:
+    """Load a single .csv.xz file into a SignalData, or return None if empty."""
+    df = pd.read_csv(path, compression="xz")
+    if df.empty:
+        return None
+    columns = list(df.columns)
+    if not columns:  # pragma: no cover
+        raise ValueError(f"{path.name}: expected at least one column")
+
+    time = df.index.to_numpy(dtype=float)
+    values = df.to_numpy()
+    da = xr.DataArray(
+        values,
+        dims=["time", "space"],
+        coords={"time": time, "space": columns},
+        attrs={"source_file": path.name, "identifier": identifier},
+    )
+    extra: dict = {}
+    info: dict = {}
+    json_path = _sidecar_json_for_csv(path)
+    if json_path.exists():
+        try:
+            with open(json_path, encoding="utf-8") as f:
+                info = json.load(f)
+            if isinstance(info, dict):
+                extra.update(info)
+        except Exception:
+            pass
+    sampling_rate = _sampling_rate_from_info(info) if info else None
+    return SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
 
 
 def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dataset[SignalData]:
@@ -59,41 +89,7 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dat
             f"(expected: dummy_struct_VAR_{variant}_*.csv.xz)."
         )
 
-    items: list[SignalData] = []
-    for path in candidates:
-        df = pd.read_csv(path, compression="xz")
-        if df.empty:
-            continue
-        columns = list(df.columns)
-        if not columns:  # pragma: no cover
-            raise ValueError(f"{path.name}: expected at least one column")
-
-        # For these dummy datasets, time is implicit row index.
-        time = df.index.to_numpy(dtype=float)
-        space = columns
-        values = df.to_numpy()
-        da = xr.DataArray(
-            values,
-            dims=["time", "space"],
-            coords={"time": time, "space": space},
-            attrs={"source_file": path.name, "identifier": identifier},
-        )
-        # Attach optional metadata from matching JSON sidecar
-        extra = {}
-        info: dict = {}
-        json_path = _sidecar_json_for_csv(path)
-        if json_path.exists():
-            try:
-                with open(json_path, encoding="utf-8") as f:
-                    info = json.load(f)
-                if isinstance(info, dict):
-                    extra.update(info)
-            except Exception:
-                # Ignore JSON parsing issues and continue without extra metadata
-                pass
-        sampling_rate = _sampling_rate_from_info(info) if info else None
-        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
-
+    items = [item for path in candidates if (item := _load_one_csv_xz(path, identifier))]
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return Dataset(items)
@@ -111,37 +107,7 @@ def load_noise_dummy(
     if not candidates:
         raise FileNotFoundError(f"No .csv.xz files found for '{identifier}' in {noise_dir}.")
 
-    items: list[SignalData] = []
-    for path in candidates:
-        df = pd.read_csv(path, compression="xz")
-        if df.empty:
-            continue
-        columns = list(df.columns)
-        if not columns:  # pragma: no cover
-            raise ValueError(f"{path.name}: expected at least one column")
-
-        time = df.index.to_numpy(dtype=float)
-        values = df.to_numpy()
-        da = xr.DataArray(
-            values,
-            dims=["time", "space"],
-            coords={"time": time, "space": columns},
-            attrs={"source_file": path.name, "identifier": identifier},
-        )
-        extra = {}
-        info: dict = {}
-        json_path = _sidecar_json_for_csv(path)
-        if json_path.exists():
-            try:
-                with open(json_path, encoding="utf-8") as f:
-                    info = json.load(f)
-                if isinstance(info, dict):
-                    extra.update(info)
-            except Exception:
-                pass
-        sampling_rate = _sampling_rate_from_info(info) if info else None
-        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
-
+    items = [item for path in candidates if (item := _load_one_csv_xz(path, identifier))]
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return Dataset(items)
@@ -162,37 +128,7 @@ def load_realistic_swiss(
             "matching pattern 'fit_Swiss_VAR_ID1_*.csv.xz'."
         )
 
-    items: list[SignalData] = []
-    for path in candidates:
-        df = pd.read_csv(path, compression="xz")
-        if df.empty:
-            continue
-        columns = list(df.columns)
-        if not columns:  # pragma: no cover
-            raise ValueError(f"{path.name}: expected at least one column")
-
-        time = df.index.to_numpy(dtype=float)
-        values = df.to_numpy()
-        da = xr.DataArray(
-            values,
-            dims=["time", "space"],
-            coords={"time": time, "space": columns},
-            attrs={"source_file": path.name, "identifier": identifier},
-        )
-        extra = {}
-        info: dict = {}
-        json_path = _sidecar_json_for_csv(path)
-        if json_path.exists():
-            try:
-                with open(json_path, encoding="utf-8") as f:
-                    info = json.load(f)
-                if isinstance(info, dict):
-                    extra.update(info)
-            except Exception:
-                pass
-        sampling_rate = _sampling_rate_from_info(info) if info else None
-        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None))
-
+    items = [item for path in candidates if (item := _load_one_csv_xz(path, identifier))]
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return Dataset(items)
@@ -295,7 +231,6 @@ def _load_swiss_eeg_short(
             if not members:
                 continue
 
-            parsed = False
             for member in members:
                 suffix = Path(member).suffix.lower()
                 if suffix not in {".csv", ".txt", ".tsv", ".npy", ".npz", ".mat"}:
@@ -331,10 +266,8 @@ def _load_swiss_eeg_short(
                 items.append(
                     SignalData.from_xarray(da, sampling_rate=sampling_rate, subjectID=zip_path.stem)
                 )
-                parsed = True
                 break
-
-            if not parsed:
+            else:
                 raise ValueError(f"{zip_path.name}: no supported numeric member found in archive.")
 
     if not items:
