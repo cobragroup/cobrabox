@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -286,6 +286,214 @@ def _load_swiss_eeg_long(
     if not items:
         raise ValueError("All swiss_eeg_long files were empty or unparsable.")
     return Dataset(items)
+
+
+_BONN_SAMPLING_RATE: float = 173.61  # Hz, fixed for all Bonn EEG recordings
+
+_BONN_SET_CONDITION: dict[str, str] = {
+    "Z": "healthy_eyes_open",
+    "O": "healthy_eyes_closed",
+    "N": "interictal_contralateral",
+    "F": "interictal_focal",
+    "S": "ictal",
+}
+
+_BONN_SET_GROUP: dict[str, str] = {
+    "Z": "healthy",
+    "O": "healthy",
+    "N": "interictal",
+    "F": "interictal",
+    "S": "ictal",
+}
+
+
+def _load_bonn_eeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+    """Load Bonn University EEG zip archives into SignalData objects.
+
+    Each of the five sets (Z, O, N, F, S) is a zip file containing 100
+    single-channel .txt recordings at 173.61 Hz, 4096 samples each (~23.6 s).
+    One ``SignalData`` is produced per .txt file.
+
+    Set meanings (Andrzejak et al. 2001):
+        Z — healthy subjects, eyes open
+        O — healthy subjects, eyes closed
+        N — interictal EEG, contralateral hemisphere
+        F — interictal EEG, epileptogenic zone
+        S — ictal EEG (seizures)
+
+    Args:
+        dataset_dir: Directory containing the downloaded ``.zip`` archives.
+        subset: If given, only load sets whose letter (e.g. ``"S"``, ``"Z"``)
+            is in this list.
+    """
+    zip_paths = sorted(dataset_dir.glob("*.zip"))
+    if subset is not None:
+        subset_set = set(subset)
+        zip_paths = [p for p in zip_paths if p.stem in subset_set]
+    if not zip_paths:
+        raise FileNotFoundError(f"No .zip files found for 'bonn_eeg' in {dataset_dir}.")
+
+    items: list[SignalData] = []
+    for zip_path in zip_paths:
+        set_letter = zip_path.stem  # "Z", "O", "N", "F", or "S"
+        condition = _BONN_SET_CONDITION.get(set_letter, set_letter)
+        group_id = _BONN_SET_GROUP.get(set_letter, set_letter)
+
+        with zipfile.ZipFile(zip_path) as zf:
+            txt_members = sorted(name for name in zf.namelist() if name.lower().endswith(".txt"))
+            for member in txt_members:
+                raw = zf.read(member)
+                try:
+                    signal = np.loadtxt(io.BytesIO(raw))
+                except Exception:
+                    continue
+                if signal.ndim != 1 or signal.size == 0:
+                    continue
+
+                values = signal[:, np.newaxis]  # (T, 1) — single channel
+                time = np.arange(len(values), dtype=float) / _BONN_SAMPLING_RATE
+                subject_id = Path(member).stem  # e.g. "Z000"
+                da = xr.DataArray(
+                    values,
+                    dims=["time", "space"],
+                    coords={"time": time, "space": ["ch0"]},
+                    attrs={
+                        "identifier": "bonn_eeg",
+                        "source_archive": zip_path.name,
+                        "source_member": member,
+                    },
+                )
+                items.append(
+                    SignalData.from_xarray(
+                        da,
+                        sampling_rate=_BONN_SAMPLING_RATE,
+                        subjectID=subject_id,
+                        groupID=group_id,
+                        condition=condition,
+                    )
+                )
+
+    if not items:
+        raise ValueError("All bonn_eeg archives were empty or unparsable.")
+    return Dataset(items)
+
+
+def _load_edf_dataset(
+    dataset_dir: Path,
+    identifier: str,
+    subject_key_fn: Callable[[str], str],
+    subset: Sequence[str] | None,
+) -> Dataset[SignalData]:
+    """Shared EDF loading logic for scalp EEG datasets.
+
+    Reads all ``.edf`` files in ``dataset_dir``, optionally filtered by
+    ``subset``. Uses MNE-Python for EDF parsing. One ``SignalData`` is
+    produced per file.
+
+    Args:
+        dataset_dir: Directory containing the downloaded ``.edf`` files.
+        identifier: Dataset identifier string (used in error messages and attrs).
+        subject_key_fn: Maps a file stem to a subject ID string.
+        subset: If given, only load files whose subject ID is in this list.
+    """
+    try:
+        import mne
+    except ImportError as e:
+        raise RuntimeError(
+            f"Loading {identifier!r} requires MNE-Python. "
+            "It is pulled in transitively by mne-connectivity, but if missing: "
+            "uv add mne"
+        ) from e
+
+    edf_paths = sorted(dataset_dir.glob("*.edf"))
+    if subset is not None:
+        subset_set = set(subset)
+        edf_paths = [p for p in edf_paths if subject_key_fn(p.stem) in subset_set]
+    if not edf_paths:
+        raise FileNotFoundError(f"No .edf files found for {identifier!r} in {dataset_dir}.")
+
+    items: list[SignalData] = []
+    for path in edf_paths:
+        subject_id = subject_key_fn(path.stem)
+        try:
+            raw = mne.io.read_raw_edf(str(path), preload=True, verbose=False)
+        except Exception:
+            continue
+        arr = raw.get_data().T  # (n_channels, n_samples) -> (n_samples, n_channels)
+        if arr.shape[0] == 0:
+            continue
+        fs = float(raw.info["sfreq"])
+        time = np.arange(arr.shape[0], dtype=float) / fs
+        da = xr.DataArray(
+            arr,
+            dims=["time", "space"],
+            coords={"time": time, "space": list(raw.ch_names)},
+            attrs={"identifier": identifier, "source_file": path.name},
+        )
+        items.append(SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id))
+
+    if not items:
+        raise ValueError(f"All {identifier!r} files were empty or unparsable.")
+    return Dataset(items)
+
+
+def _load_chb_mit(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+    """Load CHB-MIT scalp EEG ``.edf`` files into SignalData objects.
+
+    Each ``.edf`` file is one recording session (typically 1-2 hours) and
+    produces one ``SignalData`` object. The subject ID is parsed from the
+    filename stem (e.g. ``chb01_01.edf`` → subject ``chb01``).
+
+    Args:
+        dataset_dir: Directory containing the downloaded ``.edf`` files.
+        subset: If given, only load files whose subject ID (e.g. ``"chb01"``)
+            is in this list.
+    """
+    return _load_edf_dataset(
+        dataset_dir,
+        identifier="chb_mit",
+        subject_key_fn=lambda stem: stem.split("_", 1)[0],
+        subset=subset,
+    )
+
+
+def _load_siena_eeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+    """Load Siena Scalp EEG ``.edf`` files into SignalData objects.
+
+    Each ``.edf`` file is one long recording session (up to several hours) and
+    produces one ``SignalData`` object. The subject ID is parsed from the
+    filename stem (e.g. ``PN00-1.edf`` → subject ``PN00``).
+
+    Args:
+        dataset_dir: Directory containing the downloaded ``.edf`` files.
+        subset: If given, only load files whose subject ID (e.g. ``"PN00"``)
+            is in this list.
+    """
+    return _load_edf_dataset(
+        dataset_dir,
+        identifier="siena_eeg",
+        subject_key_fn=lambda stem: stem.split("-", 1)[0],
+        subset=subset,
+    )
+
+
+def _load_helsinki_neonatal(
+    dataset_dir: Path, subset: Sequence[str] | None = None
+) -> Dataset[SignalData]:
+    """Load Helsinki Neonatal EEG ``.edf`` files into SignalData objects.
+
+    Each ``.edf`` file is one neonate recording (median ~74 minutes) and
+    produces one ``SignalData`` object. The subject ID is the file stem
+    (e.g. ``eeg1.edf`` → subject ``eeg1``).
+
+    Args:
+        dataset_dir: Directory containing the downloaded ``.edf`` files.
+        subset: If given, only load files whose subject ID (e.g. ``"eeg1"``)
+            is in this list.
+    """
+    return _load_edf_dataset(
+        dataset_dir, identifier="helsinki_neonatal", subject_key_fn=lambda stem: stem, subset=subset
+    )
 
 
 def _load_swiss_eeg_short(

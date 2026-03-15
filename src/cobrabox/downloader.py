@@ -25,14 +25,20 @@ class RemoteFile:
 
 RemoteLoader = Callable[[Path, "Sequence[str] | None"], Dataset[SignalData]]
 
+# A callable that dynamically resolves the list of remote files for a dataset.
+FileIndexFn = Callable[[], "Sequence[RemoteFile]"]
+
 
 @dataclass(slots=True)
 class RemoteDatasetSpec:
     """Specification for a remotely hosted dataset.
 
-    Either ``files`` or ``file_index_url`` must be provided.
+    Exactly one of ``files``, ``file_index_url``, or ``file_index_fn`` must be
+    provided (``files`` may also be ``None`` until lazily resolved).
     ``file_index_url`` points to a text file containing one absolute URL per
     line; the list of files is resolved lazily on first download.
+    ``file_index_fn`` is a zero-argument callable that returns the file list;
+    use this when the index format requires custom parsing (e.g. JSON APIs).
     ``auth_hint`` is an optional message shown to users when the server
     responds with a 401 or 403 status, e.g. to explain how to obtain
     credentials.
@@ -49,16 +55,17 @@ class RemoteDatasetSpec:
     files: Sequence[RemoteFile] | None
     loader: RemoteLoader
     file_index_url: str | None = None
+    file_index_fn: FileIndexFn | None = None
     auth_hint: str | None = None
     description: str = ""
     subset_key_name: str | None = None  # e.g. "subjects"
     subset_key_fn: Callable[[str], str | None] | None = None  # filename -> subset key
 
     def __post_init__(self) -> None:
-        if self.files is None and self.file_index_url is None:
+        if self.files is None and self.file_index_url is None and self.file_index_fn is None:
             raise ValueError(
                 f"RemoteDatasetSpec '{self.identifier}' must define either "
-                "'files' or 'file_index_url'."
+                "'files', 'file_index_url', or 'file_index_fn'."
             )
 
     def subset_keys(self) -> list[str] | None:
@@ -135,7 +142,15 @@ def ensure_remote_files(
     dataset_dir = repo_root / spec.local_rel_dir
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    all_files = spec.files if spec.files is not None else _resolve_files_from_index(spec)
+    if spec.files is not None:
+        all_files = spec.files
+    elif spec.file_index_url is not None:
+        all_files = _resolve_files_from_index(spec)
+    else:
+        assert spec.file_index_fn is not None
+        resolved = list(spec.file_index_fn())
+        spec.files = resolved  # cache for subsequent calls
+        all_files = resolved
 
     if subset is not None:
         subset_set = set(subset)
@@ -304,24 +319,196 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
     )
 
 
+# UPF DSpace persistent bitstream UUIDs for the five Bonn EEG sets.
+# Source: https://repositori.upf.edu/handle/10230/42894 (DOI: 10.34810/data490)
+_BONN_UPF_BITSTREAMS: dict[str, str] = {
+    "Z": "bb2c41b0-6c8b-4c9c-b7c0-62f4f87c9b48",  # healthy, eyes open
+    "O": "ca3563e5-09bb-4373-84b3-c707e724432a",  # healthy, eyes closed
+    "N": "8b2c6173-2538-41ac-bff9-d569755ade66",  # interictal, contralateral
+    "F": "91342498-960f-410f-9df8-42f3c4da2b45",  # interictal, focal
+    "S": "500b0f1d-aa9b-49c2-abd8-0410acd4b86c",  # ictal
+}
+
+
 def _bonn_eeg_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_bonn_eeg  # avoid circular import at module level
+
+    base = "https://repositori.upf.edu/server/api/core/bitstreams"
     return RemoteDatasetSpec(
         identifier="bonn_eeg",
         local_rel_dir=Path("data") / "remote" / "bonn_eeg",
         files=[
-            RemoteFile(
-                url="https://www.kaggle.com/api/v1/datasets/download/quands/eeg-dataset",
-                filename="bonn_eeg.zip",
-            )
+            RemoteFile(url=f"{base}/{uuid}/content", filename=f"{letter}.zip", subset_key=letter)
+            for letter, uuid in _BONN_UPF_BITSTREAMS.items()
         ],
-        loader=_placeholder_loader("bonn_eeg"),
-        auth_hint=(
-            "Remote dataset 'bonn_eeg' appears to require Kaggle authentication. "
-            "Download the dataset from https://www.kaggle.com/datasets/quands/eeg-dataset "
-            "and place the zip file at the path shown below, or configure Kaggle API "
-            "credentials so the URL can be accessed directly."
+        loader=_load_bonn_eeg,
+        description=(
+            "Bonn University EEG dataset (Andrzejak et al. 2001): 5 sets of 100 "
+            "single-channel recordings (healthy, interictal, ictal). "
+            "Hosted by Universitat Pompeu Fabra (DOI: 10.34810/data490)."
         ),
-        description="Bonn EEG dataset (normal/interictal/ictal) from Kaggle.",
+        subset_key_name="sets",
+    )
+
+
+def _chb_mit_subject_key(filename: str) -> str | None:
+    """Parse subject ID from a CHB-MIT filename (e.g. 'chb01_01.edf' -> 'chb01')."""
+    stem = filename.rsplit(".", 1)[0]  # strip extension
+    return stem.split("_", 1)[0]  # "chb01_01" -> "chb01"
+
+
+def _chb_mit_file_index() -> Sequence[RemoteFile]:
+    """Fetch the CHB-MIT file list from the PhysioNet RECORDS file.
+
+    The RECORDS file lists one record name per line in the format
+    ``subjectdir/recordname`` (without extension), e.g. ``chb01/chb01_01``.
+    Each record corresponds to one EDF file.
+    """
+    base_url = "https://physionet.org/files/chbmit/1.0.0"
+    records_url = f"{base_url}/RECORDS"
+    try:
+        with urllib.request.urlopen(records_url) as resp:
+            lines = resp.read().decode("utf-8").splitlines()
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(
+            f"Failed to fetch CHB-MIT file index from {records_url!r}: HTTP {e.code}"
+        ) from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Network error fetching CHB-MIT file index from {records_url!r}: {e.reason!r}"
+        ) from e
+
+    files: list[RemoteFile] = []
+    for line in lines:
+        record = line.strip()
+        if not record:
+            continue
+        parts = record.split("/")
+        if len(parts) != 2:
+            continue
+        subject_id, record_stem = parts
+        filename = f"{record_stem}.edf"
+        files.append(
+            RemoteFile(
+                url=f"{base_url}/{subject_id}/{filename}", filename=filename, subset_key=subject_id
+            )
+        )
+    if not files:
+        raise RuntimeError("CHB-MIT file index returned no valid records.")
+    return files
+
+
+def _chb_mit_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_chb_mit  # avoid circular import at module level
+
+    return RemoteDatasetSpec(
+        identifier="chb_mit",
+        local_rel_dir=Path("data") / "remote" / "chb_mit",
+        files=None,
+        loader=_load_chb_mit,
+        file_index_fn=_chb_mit_file_index,
+        description=(
+            "CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures "
+            "(22 subjects, 256 Hz, 23 channels, ictal/interictal). "
+            "Children's Hospital Boston / MIT. "
+            "License: Open Data Commons Attribution License v1.0."
+        ),
+        subset_key_name="subjects",
+    )
+
+
+def _siena_subject_key(filename: str) -> str | None:
+    """Parse subject ID from a Siena EEG filename (e.g. 'PN00-1.edf' -> 'PN00')."""
+    stem = filename.rsplit(".", 1)[0]  # strip extension
+    return stem.split("-", 1)[0]  # "PN00-1" -> "PN00"
+
+
+def _siena_file_index() -> Sequence[RemoteFile]:
+    """Fetch the Siena Scalp EEG file list from the PhysioNet RECORDS file.
+
+    The RECORDS file lists one record name per line in the format
+    ``subjectdir/recordname`` (without extension), e.g. ``PN00/PN00-1``.
+    """
+    base_url = "https://physionet.org/files/siena-scalp-eeg/1.0.0"
+    records_url = f"{base_url}/RECORDS"
+    try:
+        with urllib.request.urlopen(records_url) as resp:
+            lines = resp.read().decode("utf-8").splitlines()
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(
+            f"Failed to fetch Siena EEG file index from {records_url!r}: HTTP {e.code}"
+        ) from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Network error fetching Siena EEG file index from {records_url!r}: {e.reason!r}"
+        ) from e
+
+    files: list[RemoteFile] = []
+    for line in lines:
+        record = line.strip()
+        if not record:
+            continue
+        parts = record.split("/")
+        if len(parts) != 2:
+            continue
+        subject_id, record_stem = parts
+        filename = f"{record_stem}.edf"
+        files.append(
+            RemoteFile(
+                url=f"{base_url}/{subject_id}/{filename}", filename=filename, subset_key=subject_id
+            )
+        )
+    if not files:
+        raise RuntimeError("Siena EEG file index returned no valid records.")
+    return files
+
+
+def _siena_eeg_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_siena_eeg  # avoid circular import at module level
+
+    return RemoteDatasetSpec(
+        identifier="siena_eeg",
+        local_rel_dir=Path("data") / "remote" / "siena_eeg",
+        files=None,
+        loader=_load_siena_eeg,
+        file_index_fn=_siena_file_index,
+        description=(
+            "Siena Scalp EEG Database: adult epilepsy patients with annotated seizures "
+            "(14 subjects, 512 Hz, 21+ channels, ictal/interictal). "
+            "University of Siena. "
+            "License: Creative Commons Attribution 4.0 International (CC BY 4.0)."
+        ),
+        subset_key_name="subjects",
+    )
+
+
+_HELSINKI_N_SUBJECTS: int = 79
+
+
+def _helsinki_neonatal_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_helsinki_neonatal  # avoid circular import at module level
+
+    base_url = "https://zenodo.org/records/2547147/files"
+    files = [
+        RemoteFile(
+            url=f"{base_url}/eeg{i}.edf?download=1", filename=f"eeg{i}.edf", subset_key=f"eeg{i}"
+        )
+        for i in range(1, _HELSINKI_N_SUBJECTS + 1)
+    ]
+    return RemoteDatasetSpec(
+        identifier="helsinki_neonatal",
+        local_rel_dir=Path("data") / "remote" / "helsinki_neonatal",
+        files=files,
+        loader=_load_helsinki_neonatal,
+        description=(
+            f"Helsinki Neonatal EEG Seizure Dataset: multichannel EEG from "
+            f"{_HELSINKI_N_SUBJECTS} term neonates with expert seizure annotations "
+            "(256 Hz, 19 EEG channels + ECG + respiratory). "
+            "Helsinki University Hospital NICU. "
+            "License: Creative Commons Attribution 4.0 International (CC BY 4.0). "
+            "DOI: 10.5281/zenodo.2547147."
+        ),
+        subset_key_name="subjects",
     )
 
 
@@ -329,6 +516,9 @@ REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "swiss_eeg_short": _swiss_eeg_short_spec(),
     "swiss_eeg_long": _swiss_eeg_long_spec(),
     "bonn_eeg": _bonn_eeg_spec(),
+    "chb_mit": _chb_mit_spec(),
+    "siena_eeg": _siena_eeg_spec(),
+    "helsinki_neonatal": _helsinki_neonatal_spec(),
 }
 
 

@@ -1287,3 +1287,486 @@ def test_swez_long_subject_key_returns_none_for_no_underscore() -> None:
     from cobrabox.downloader import _swez_long_subject_key
 
     assert _swez_long_subject_key("nounderscorefile.mat") is None
+
+
+# ---------------------------------------------------------------------------
+# _load_bonn_eeg
+# ---------------------------------------------------------------------------
+
+
+def _make_bonn_zip(path: Path, set_letter: str, n_files: int = 3) -> None:
+    """Write a minimal Bonn EEG zip with n_files single-column .txt recordings."""
+    signal = "\n".join(str(i) for i in range(4096))
+    with zipfile.ZipFile(path, mode="w") as zf:
+        for i in range(n_files):
+            zf.writestr(f"{set_letter}{i:03d}.txt", signal)
+
+
+def test_load_bonn_eeg_reads_txt_from_zips(tmp_path: Path) -> None:
+    """_load_bonn_eeg produces one SignalData per .txt file across all sets."""
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+    _make_bonn_zip(dataset_dir / "Z.zip", "Z", n_files=2)
+    _make_bonn_zip(dataset_dir / "S.zip", "S", n_files=3)
+
+    out = _load_bonn_eeg(dataset_dir)
+
+    assert len(out) == 5
+    assert all(isinstance(item, SignalData) for item in out)
+
+
+def test_load_bonn_eeg_sets_metadata_correctly(tmp_path: Path) -> None:
+    """_load_bonn_eeg assigns correct subjectID, groupID, condition, and sampling rate."""
+    from cobrabox.dataset_loader import _BONN_SAMPLING_RATE, _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+    _make_bonn_zip(dataset_dir / "S.zip", "S", n_files=1)
+
+    out = _load_bonn_eeg(dataset_dir)
+
+    assert len(out) == 1
+    item = out[0]
+    assert item.subjectID == "S000"
+    assert item.groupID == "ictal"
+    assert item.condition == "ictal"
+    assert item.sampling_rate == pytest.approx(_BONN_SAMPLING_RATE)
+    assert item.data.sizes["time"] == 4096
+    assert item.data.sizes["space"] == 1
+    assert list(item.data.coords["space"].values) == ["ch0"]
+
+
+def test_load_bonn_eeg_healthy_set_metadata(tmp_path: Path) -> None:
+    """_load_bonn_eeg assigns healthy groupID and descriptive condition for set Z."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+    _make_bonn_zip(dataset_dir / "Z.zip", "Z", n_files=1)
+
+    out = _load_bonn_eeg(dataset_dir)
+
+    assert out[0].groupID == "healthy"
+    assert out[0].condition == "healthy_eyes_open"
+
+
+def test_load_bonn_eeg_subset_filters_by_set(tmp_path: Path) -> None:
+    """_load_bonn_eeg only loads zips for sets in the subset list."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+    for letter in ("Z", "O", "S"):
+        _make_bonn_zip(dataset_dir / f"{letter}.zip", letter, n_files=2)
+
+    out = _load_bonn_eeg(dataset_dir, subset=["S"])
+
+    assert len(out) == 2
+    assert all(item.subjectID.startswith("S") for item in out)
+
+
+def test_load_bonn_eeg_raises_when_no_zips(tmp_path: Path) -> None:
+    """_load_bonn_eeg raises FileNotFoundError when no zip files are present."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"No \.zip files found"):
+        _load_bonn_eeg(dataset_dir)
+
+
+def test_load_bonn_eeg_raises_when_all_txt_unparsable(tmp_path: Path) -> None:
+    """_load_bonn_eeg raises ValueError when no .txt files can be parsed."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+
+    with zipfile.ZipFile(dataset_dir / "Z.zip", mode="w") as zf:
+        zf.writestr("Z000.txt", "not a number\nnot a number\n")
+
+    with pytest.raises(ValueError, match="empty or unparsable"):
+        _load_bonn_eeg(dataset_dir)
+
+
+def test_bonn_eeg_spec_has_five_sets() -> None:
+    """bonn_eeg spec has exactly 5 RemoteFile entries, one per set."""
+    spec = get_remote_dataset_spec("bonn_eeg")
+    assert spec is not None
+    assert spec.files is not None
+    assert len(spec.files) == 5
+    assert {f.subset_key for f in spec.files} == {"Z", "O", "N", "F", "S"}
+    assert spec.subset_key_name == "sets"
+
+
+def test_dataset_info_bonn_eeg_lists_sets() -> None:
+    """dataset_info returns the 5 set letters as subsets for bonn_eeg."""
+    from cobrabox.datasets import dataset_info
+
+    info = dataset_info("bonn_eeg")
+    assert info.subsets is not None
+    assert set(info.subsets) == {"Z", "O", "N", "F", "S"}
+
+
+# ---------------------------------------------------------------------------
+# _load_edf_dataset / _load_chb_mit / _load_siena_eeg / _load_helsinki_neonatal
+# ---------------------------------------------------------------------------
+
+
+class _MockRaw:
+    """Minimal MNE Raw-like object for testing EDF loaders."""
+
+    def __init__(self, n_channels: int = 3, n_samples: int = 512, sfreq: float = 256.0) -> None:
+        self._data = np.ones((n_channels, n_samples))
+        self.ch_names = [f"EEG {i}" for i in range(n_channels)]
+        self.info = {"sfreq": sfreq}
+
+    def get_data(self) -> np.ndarray:
+        return self._data
+
+
+def _patch_mne_read_raw_edf(monkeypatch: pytest.MonkeyPatch, mock_raw: _MockRaw) -> None:
+    """Monkeypatch mne.io.read_raw_edf to return mock_raw for any path."""
+    import mne
+
+    monkeypatch.setattr(mne.io, "read_raw_edf", lambda path, **kwargs: mock_raw)
+
+
+def test_load_chb_mit_reads_edf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_chb_mit loads EDF files and returns one SignalData per file."""
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+    (dataset_dir / "chb01_01.edf").write_bytes(b"fake")
+    (dataset_dir / "chb01_02.edf").write_bytes(b"fake")
+
+    mock_raw = _MockRaw(n_channels=3, n_samples=512, sfreq=256.0)
+    _patch_mne_read_raw_edf(monkeypatch, mock_raw)
+
+    out = _load_chb_mit(dataset_dir)
+
+    assert len(out) == 2
+    assert all(isinstance(item, SignalData) for item in out)
+    assert out[0].subjectID == "chb01"
+    assert out[0].sampling_rate == pytest.approx(256.0)
+    assert out[0].data.sizes["time"] == 512
+    assert out[0].data.sizes["space"] == 3
+
+
+def test_load_chb_mit_subject_id_from_stem(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_chb_mit extracts subject ID as the part before the first underscore."""
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+    (dataset_dir / "chb05_17.edf").write_bytes(b"fake")
+
+    _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
+
+    out = _load_chb_mit(dataset_dir)
+
+    assert out[0].subjectID == "chb05"
+
+
+def test_load_chb_mit_subset_filters_by_subject(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_chb_mit only loads files for subjects in the subset list."""
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+    for name in ("chb01_01.edf", "chb02_01.edf", "chb03_01.edf"):
+        (dataset_dir / name).write_bytes(b"fake")
+
+    _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
+
+    out = _load_chb_mit(dataset_dir, subset=["chb01", "chb03"])
+
+    subject_ids = {item.subjectID for item in out}
+    assert subject_ids == {"chb01", "chb03"}
+    assert len(out) == 2
+
+
+def test_load_chb_mit_raises_when_no_edf_files(tmp_path: Path) -> None:
+    """_load_chb_mit raises FileNotFoundError when no EDF files exist."""
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"No \.edf files found"):
+        _load_chb_mit(dataset_dir)
+
+
+def test_load_chb_mit_raises_when_all_files_unparsable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_chb_mit raises ValueError when MNE fails to parse every file."""
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+    (dataset_dir / "chb01_01.edf").write_bytes(b"corrupt")
+
+    import mne
+
+    monkeypatch.setattr(
+        mne.io, "read_raw_edf", lambda path, **kwargs: (_ for _ in ()).throw(OSError("bad"))
+    )  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="empty or unparsable"):
+        _load_chb_mit(dataset_dir)
+
+
+def test_load_chb_mit_raises_on_missing_mne(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_chb_mit raises RuntimeError with a helpful message when MNE is unavailable."""
+    import builtins
+
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+    (dataset_dir / "chb01_01.edf").write_bytes(b"fake")
+
+    original_import = builtins.__import__
+
+    def _block_mne(name: str, *args: object, **kwargs: object) -> object:
+        if name == "mne":
+            raise ImportError("No module named 'mne'")
+        return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(builtins, "__import__", _block_mne)
+
+    with pytest.raises(RuntimeError, match="MNE"):
+        _load_chb_mit(dataset_dir)
+
+
+# --- Siena ---
+
+
+def test_load_siena_eeg_reads_edf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_siena_eeg loads EDF files and returns one SignalData per file."""
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_siena_eeg
+
+    dataset_dir = tmp_path / "siena_eeg"
+    dataset_dir.mkdir()
+    (dataset_dir / "PN00-1.edf").write_bytes(b"fake")
+    (dataset_dir / "PN01-1.edf").write_bytes(b"fake")
+
+    mock_raw = _MockRaw(n_channels=21, n_samples=1024, sfreq=512.0)
+    _patch_mne_read_raw_edf(monkeypatch, mock_raw)
+
+    out = _load_siena_eeg(dataset_dir)
+
+    assert len(out) == 2
+    assert all(isinstance(item, SignalData) for item in out)
+    assert out[0].subjectID == "PN00"
+    assert out[0].sampling_rate == pytest.approx(512.0)
+    assert out[0].data.sizes["space"] == 21
+
+
+def test_load_siena_eeg_subject_id_from_stem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_siena_eeg extracts subject ID as the part before the first hyphen."""
+    from cobrabox.dataset_loader import _load_siena_eeg
+
+    dataset_dir = tmp_path / "siena_eeg"
+    dataset_dir.mkdir()
+    (dataset_dir / "PN13-2.edf").write_bytes(b"fake")
+
+    _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
+
+    out = _load_siena_eeg(dataset_dir)
+
+    assert out[0].subjectID == "PN13"
+
+
+def test_load_siena_eeg_subset_filters_by_subject(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_siena_eeg only loads files for subjects in the subset list."""
+    from cobrabox.dataset_loader import _load_siena_eeg
+
+    dataset_dir = tmp_path / "siena_eeg"
+    dataset_dir.mkdir()
+    for name in ("PN00-1.edf", "PN01-1.edf", "PN02-1.edf"):
+        (dataset_dir / name).write_bytes(b"fake")
+
+    _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
+
+    out = _load_siena_eeg(dataset_dir, subset=["PN00", "PN02"])
+
+    assert {item.subjectID for item in out} == {"PN00", "PN02"}
+
+
+def test_load_siena_eeg_raises_when_no_edf_files(tmp_path: Path) -> None:
+    """_load_siena_eeg raises FileNotFoundError when no EDF files exist."""
+    from cobrabox.dataset_loader import _load_siena_eeg
+
+    dataset_dir = tmp_path / "siena_eeg"
+    dataset_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"No \.edf files found"):
+        _load_siena_eeg(dataset_dir)
+
+
+# --- Helsinki Neonatal ---
+
+
+def test_load_helsinki_neonatal_reads_edf_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_helsinki_neonatal loads EDF files and returns one SignalData per file."""
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_helsinki_neonatal
+
+    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir.mkdir()
+    (dataset_dir / "eeg1.edf").write_bytes(b"fake")
+    (dataset_dir / "eeg2.edf").write_bytes(b"fake")
+
+    mock_raw = _MockRaw(n_channels=19, n_samples=1024, sfreq=256.0)
+    _patch_mne_read_raw_edf(monkeypatch, mock_raw)
+
+    out = _load_helsinki_neonatal(dataset_dir)
+
+    assert len(out) == 2
+    assert all(isinstance(item, SignalData) for item in out)
+    assert out[0].subjectID == "eeg1"
+    assert out[0].sampling_rate == pytest.approx(256.0)
+    assert out[0].data.sizes["space"] == 19
+
+
+def test_load_helsinki_neonatal_subject_id_is_file_stem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_helsinki_neonatal uses the full file stem as the subject ID."""
+    from cobrabox.dataset_loader import _load_helsinki_neonatal
+
+    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir.mkdir()
+    (dataset_dir / "eeg42.edf").write_bytes(b"fake")
+
+    _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
+
+    out = _load_helsinki_neonatal(dataset_dir)
+
+    assert out[0].subjectID == "eeg42"
+
+
+def test_load_helsinki_neonatal_subset_filters_by_subject(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_helsinki_neonatal only loads files for subjects in the subset list."""
+    from cobrabox.dataset_loader import _load_helsinki_neonatal
+
+    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir.mkdir()
+    for i in (1, 2, 3):
+        (dataset_dir / f"eeg{i}.edf").write_bytes(b"fake")
+
+    _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
+
+    out = _load_helsinki_neonatal(dataset_dir, subset=["eeg1", "eeg3"])
+
+    assert {item.subjectID for item in out} == {"eeg1", "eeg3"}
+
+
+def test_load_helsinki_neonatal_raises_when_no_edf_files(tmp_path: Path) -> None:
+    """_load_helsinki_neonatal raises FileNotFoundError when no EDF files exist."""
+    from cobrabox.dataset_loader import _load_helsinki_neonatal
+
+    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"No \.edf files found"):
+        _load_helsinki_neonatal(dataset_dir)
+
+
+# --- Spec registrations ---
+
+
+def test_chb_mit_spec_is_registered() -> None:
+    """chb_mit is registered in REMOTE_DATASETS with correct metadata."""
+    spec = get_remote_dataset_spec("chb_mit")
+    assert spec is not None
+    assert spec.identifier == "chb_mit"
+    assert spec.subset_key_name == "subjects"
+    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
+
+
+def test_siena_eeg_spec_is_registered() -> None:
+    """siena_eeg is registered in REMOTE_DATASETS with correct metadata."""
+    spec = get_remote_dataset_spec("siena_eeg")
+    assert spec is not None
+    assert spec.identifier == "siena_eeg"
+    assert spec.subset_key_name == "subjects"
+    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
+
+
+def test_helsinki_neonatal_spec_is_registered() -> None:
+    """helsinki_neonatal is registered in REMOTE_DATASETS with 79 static file entries."""
+    from cobrabox.downloader import _HELSINKI_N_SUBJECTS
+
+    spec = get_remote_dataset_spec("helsinki_neonatal")
+    assert spec is not None
+    assert spec.identifier == "helsinki_neonatal"
+    assert spec.subset_key_name == "subjects"
+    assert spec.files is not None
+    assert len(spec.files) == _HELSINKI_N_SUBJECTS
+    subset_keys = {f.subset_key for f in spec.files}
+    assert "eeg1" in subset_keys
+    assert "eeg79" in subset_keys
+
+
+def test_helsinki_neonatal_file_urls_point_to_zenodo() -> None:
+    """All Helsinki Neonatal file URLs point to the correct Zenodo record."""
+    spec = get_remote_dataset_spec("helsinki_neonatal")
+    assert spec is not None
+    assert spec.files is not None
+    for rf in spec.files:
+        assert "zenodo.org" in rf.url
+        assert "2547147" in rf.url
+        assert rf.filename.endswith(".edf")
+
+
+def test_remote_dataset_spec_file_index_fn_validates() -> None:
+    """RemoteDatasetSpec raises ValueError when none of files/file_index_url/file_index_fn."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+    from cobrabox.downloader import RemoteDatasetSpec
+
+    with pytest.raises(ValueError, match="must define either"):
+        RemoteDatasetSpec(
+            identifier="bad",
+            local_rel_dir=Path("data/remote/bad"),
+            files=None,
+            loader=_load_bonn_eeg,
+            file_index_url=None,
+            file_index_fn=None,
+        )
+
+
+def test_remote_dataset_spec_file_index_fn_accepted() -> None:
+    """RemoteDatasetSpec accepts file_index_fn as an alternative to files/file_index_url."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+    from cobrabox.downloader import RemoteDatasetSpec
+
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/remote/test"),
+        files=None,
+        loader=_load_bonn_eeg,
+        file_index_fn=list,
+    )
+    assert spec.file_index_fn is not None
