@@ -38,6 +38,9 @@ class RemoteDatasetSpec:
     credentials.
     ``subset_key_name`` names what the subset dimension represents (e.g.
     ``"subjects"``). ``None`` means the dataset has no subset concept.
+    ``subset_key_fn`` is an optional callable that maps a filename to a subset
+    key string; used when resolving files from a remote index so that each
+    ``RemoteFile`` gets its ``subset_key`` set automatically.
     ``description`` is a short human-readable description of the dataset.
     """
 
@@ -49,6 +52,7 @@ class RemoteDatasetSpec:
     auth_hint: str | None = None
     description: str = ""
     subset_key_name: str | None = None  # e.g. "subjects"
+    subset_key_fn: Callable[[str], str | None] | None = None  # filename -> subset key
 
     def __post_init__(self) -> None:
         if self.files is None and self.file_index_url is None:
@@ -74,7 +78,9 @@ def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
     """Resolve RemoteFile entries from a remote index text file.
 
     The index is expected to contain one absolute URL per line. Empty lines are
-    ignored. The local filename is taken as the last path component.
+    ignored. The local filename is taken as the last path component. If
+    ``spec.subset_key_fn`` is set, it is called with each filename to populate
+    ``RemoteFile.subset_key``.
     """
     assert spec.file_index_url is not None  # guarded by __post_init__
 
@@ -93,7 +99,14 @@ def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
         ) from e
 
     urls = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()]
-    files = [RemoteFile(url=url, filename=url.rsplit("/", 1)[-1]) for url in urls]
+    files = [
+        RemoteFile(
+            url=url,
+            filename=url.rsplit("/", 1)[-1],
+            subset_key=spec.subset_key_fn(url.rsplit("/", 1)[-1]) if spec.subset_key_fn else None,
+        )
+        for url in urls
+    ]
     # Cache the resolved files on the spec for subsequent calls.
     spec.files = files
     return files
@@ -266,14 +279,28 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
     )
 
 
+def _swez_long_subject_key(filename: str) -> str | None:
+    """Parse subject ID from a SWEZ long-term filename (e.g. 'ID01_1h.mat' -> 'ID01')."""
+    stem = filename.rsplit(".", 1)[0]  # strip extension
+    parts = stem.rsplit("_", 1)
+    return parts[0] if len(parts) == 2 else None
+
+
 def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_swiss_eeg_long  # avoid circular import at module level
+
     return RemoteDatasetSpec(
         identifier="swiss_eeg_long",
         local_rel_dir=Path("data") / "remote" / "swiss_eeg_long",
         files=None,
-        loader=_placeholder_loader("swiss_eeg_long"),
+        loader=_load_swiss_eeg_long,
         file_index_url="http://ieeg-swez.ethz.ch/longterm-files.txt",
-        description="Long-term scalp EEG recordings from SWEZ (ETH Zurich).",
+        description=(
+            "Long-term intracranial EEG recordings from the SWEZ dataset "
+            "(ETH Zurich, 18 subjects, ictal/interictal)."
+        ),
+        subset_key_name="subjects",
+        subset_key_fn=_swez_long_subject_key,
     )
 
 

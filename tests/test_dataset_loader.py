@@ -712,3 +712,578 @@ def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
     assert captured["loader_subset"] == ["ID1", "ID2"]
     assert captured["ensure_subset"] == ["ID1", "ID2"]
+
+
+# ---------------------------------------------------------------------------
+# _sidecar_json_for_csv — else branch (non-csv/non-csv.xz extension)
+# ---------------------------------------------------------------------------
+
+
+def test_sidecar_json_for_csv_non_csv_extension(tmp_path: Path) -> None:
+    """_sidecar_json_for_csv uses path.stem for non-.csv and non-.csv.xz files."""
+    p = tmp_path / "myfile.mat"
+    result = _sidecar_json_for_csv(p)
+    assert result.name == "info_myfile.json"
+
+
+# ---------------------------------------------------------------------------
+# _sampling_rate_from_info — returns None when no fs key present
+# ---------------------------------------------------------------------------
+
+
+def test_sampling_rate_from_info_returns_none_when_no_fs() -> None:
+    """_sampling_rate_from_info returns None when neither Settings.fs nor fs exist."""
+    from cobrabox.dataset_loader import _sampling_rate_from_info
+
+    assert _sampling_rate_from_info({}) is None
+    assert _sampling_rate_from_info({"Settings": {"other_key": 1}}) is None
+
+
+# ---------------------------------------------------------------------------
+# _extract_numeric_from_csv_bytes
+# ---------------------------------------------------------------------------
+
+
+def test_extract_numeric_from_csv_bytes_raises_when_no_numeric_columns() -> None:
+    """_extract_numeric_from_csv_bytes raises when no numeric columns are present."""
+    from cobrabox.dataset_loader import _extract_numeric_from_csv_bytes
+
+    raw = b"name,label\nfoo,bar\n"
+    with pytest.raises(ValueError, match="no numeric columns"):
+        _extract_numeric_from_csv_bytes(raw)
+
+
+def test_extract_numeric_from_csv_bytes_returns_values_and_channels() -> None:
+    """_extract_numeric_from_csv_bytes extracts numeric columns and channel names."""
+    from cobrabox.dataset_loader import _extract_numeric_from_csv_bytes
+
+    raw = b"ch0,ch1\n1.0,2.0\n3.0,4.0\n"
+    values, channels = _extract_numeric_from_csv_bytes(raw)
+    assert values.shape == (2, 2)
+    assert channels == ["ch0", "ch1"]
+
+
+# ---------------------------------------------------------------------------
+# _extract_numeric_from_npy_bytes
+# ---------------------------------------------------------------------------
+
+
+def test_extract_numeric_from_npy_bytes_2d_array() -> None:
+    """_extract_numeric_from_npy_bytes handles a plain 2D .npy array."""
+    from cobrabox.dataset_loader import _extract_numeric_from_npy_bytes
+
+    arr = np.array([[1.0, 2.0], [3.0, 4.0]])
+    buf = io.BytesIO()
+    np.save(buf, arr)
+    values, channels = _extract_numeric_from_npy_bytes(buf.getvalue())
+    np.testing.assert_allclose(values, arr)
+    assert channels == ["ch0", "ch1"]
+
+
+def test_extract_numeric_from_npy_bytes_1d_array_reshaped() -> None:
+    """_extract_numeric_from_npy_bytes reshapes a 1D array to a column vector."""
+    from cobrabox.dataset_loader import _extract_numeric_from_npy_bytes
+
+    arr = np.array([1.0, 2.0, 3.0])
+    buf = io.BytesIO()
+    np.save(buf, arr)
+    values, channels = _extract_numeric_from_npy_bytes(buf.getvalue())
+    assert values.shape == (3, 1)
+    assert channels == ["ch0"]
+
+
+def test_extract_numeric_from_npy_bytes_npz_file() -> None:
+    """_extract_numeric_from_npy_bytes reads the first array from an .npz file."""
+    from cobrabox.dataset_loader import _extract_numeric_from_npy_bytes
+
+    arr = np.array([[1.0, 2.0], [3.0, 4.0]])
+    buf = io.BytesIO()
+    np.savez(buf, signal=arr)
+    values, channels = _extract_numeric_from_npy_bytes(buf.getvalue())
+    assert values.shape == (2, 2)
+    assert channels == ["ch0", "ch1"]
+
+
+def test_extract_numeric_from_npy_bytes_empty_npz_raises() -> None:
+    """_extract_numeric_from_npy_bytes raises when the NPZ archive is empty."""
+    from cobrabox.dataset_loader import _extract_numeric_from_npy_bytes
+
+    buf = io.BytesIO()
+    np.savez(buf)  # no arrays
+    with pytest.raises(ValueError, match="contains no arrays"):
+        _extract_numeric_from_npy_bytes(buf.getvalue())
+
+
+def test_extract_numeric_from_npy_bytes_3d_array_raises() -> None:
+    """_extract_numeric_from_npy_bytes raises for arrays with more than 2 dimensions."""
+    from cobrabox.dataset_loader import _extract_numeric_from_npy_bytes
+
+    arr = np.ones((2, 3, 4))
+    buf = io.BytesIO()
+    np.save(buf, arr)
+    with pytest.raises(ValueError, match="Expected a 2D array"):
+        _extract_numeric_from_npy_bytes(buf.getvalue())
+
+
+# ---------------------------------------------------------------------------
+# _extract_numeric_from_mat_bytes
+# ---------------------------------------------------------------------------
+
+
+def test_extract_numeric_from_mat_bytes_extracts_signal_and_fs() -> None:
+    """_extract_numeric_from_mat_bytes reads signal data and sampling rate from .mat."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _extract_numeric_from_mat_bytes
+
+    arr = np.array([[1.0, 2.0], [3.0, 4.0]])
+    buf = io.BytesIO()
+    scipy.io.savemat(buf, {"EEG": arr, "fs": np.array([[512.0]])})
+    values, channels, fs = _extract_numeric_from_mat_bytes(buf.getvalue())
+    assert values.shape == (2, 2)
+    assert fs == pytest.approx(512.0)
+    assert channels == ["ch0", "ch1"]
+
+
+def test_extract_numeric_from_mat_bytes_row_vector_signal() -> None:
+    """_extract_numeric_from_mat_bytes handles a row-vector signal (scipy returns (1, N))."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _extract_numeric_from_mat_bytes
+
+    buf = io.BytesIO()
+    # MATLAB/scipy always stores 1D arrays as row vectors → (1, N) on load
+    scipy.io.savemat(buf, {"signal": np.array([1.0, 2.0, 3.0])})
+    values, _channels, fs = _extract_numeric_from_mat_bytes(buf.getvalue())
+    assert values.shape == (1, 3)
+    assert fs is None
+
+
+def test_extract_numeric_from_mat_bytes_raises_when_no_2d_array() -> None:
+    """_extract_numeric_from_mat_bytes raises when no 2D numeric array is found."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _extract_numeric_from_mat_bytes
+
+    buf = io.BytesIO()
+    scipy.io.savemat(buf, {"label": np.array([[[1.0, 2.0]]])})  # 3D, won't qualify
+    with pytest.raises(ValueError, match="does not contain a numeric 2D array"):
+        _extract_numeric_from_mat_bytes(buf.getvalue())
+
+
+# ---------------------------------------------------------------------------
+# _load_swez_sampling_rate
+# ---------------------------------------------------------------------------
+
+
+def test_load_swez_sampling_rate_returns_none_when_no_info_file(tmp_path: Path) -> None:
+    """_load_swez_sampling_rate returns None when no IDxx_info.mat exists."""
+    from cobrabox.dataset_loader import _load_swez_sampling_rate
+
+    assert _load_swez_sampling_rate(tmp_path, "ID01") is None
+
+
+def test_load_swez_sampling_rate_reads_fs_from_info_mat(tmp_path: Path) -> None:
+    """_load_swez_sampling_rate reads fs from an IDxx_info.mat sidecar."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swez_sampling_rate
+
+    scipy.io.savemat(str(tmp_path / "ID01_info.mat"), {"fs": np.array([[512.0]])})
+    assert _load_swez_sampling_rate(tmp_path, "ID01") == pytest.approx(512.0)
+
+
+# ---------------------------------------------------------------------------
+# _load_swiss_eeg_long
+# ---------------------------------------------------------------------------
+
+
+def test_load_swiss_eeg_long_reads_mat_files(tmp_path: Path) -> None:
+    """_load_swiss_eeg_long loads .mat files and returns one SignalData per file."""
+    import scipy.io
+
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+
+    # channels x time (SWEZ convention)
+    eeg = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # 2 channels, 3 samples
+    scipy.io.savemat(str(dataset_dir / "ID01_1h.mat"), {"EEG": eeg})
+    scipy.io.savemat(str(dataset_dir / "ID01_info.mat"), {"fs": np.array([[512.0]])})
+
+    out = _load_swiss_eeg_long(dataset_dir)
+
+    assert len(out) == 1
+    assert isinstance(out[0], SignalData)
+    assert out[0].subjectID == "ID01"
+    assert out[0].sampling_rate == pytest.approx(512.0)
+    # After transpose: time x channels → shape (3, 2)
+    assert out[0].data.sizes["time"] == 3
+    assert out[0].data.sizes["space"] == 2
+
+
+def test_load_swiss_eeg_long_subset_filters_by_subject(tmp_path: Path) -> None:
+    """_load_swiss_eeg_long only loads files for subjects in the subset list."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+    eeg = np.ones((2, 4))
+    for subj in ("ID01", "ID02", "ID03"):
+        scipy.io.savemat(str(dataset_dir / f"{subj}_1h.mat"), {"EEG": eeg})
+
+    out = _load_swiss_eeg_long(dataset_dir, subset=["ID01", "ID03"])
+
+    subject_ids = {item.subjectID for item in out}
+    assert subject_ids == {"ID01", "ID03"}
+    assert len(out) == 2
+
+
+def test_load_swiss_eeg_long_raises_when_no_mat_files(tmp_path: Path) -> None:
+    """_load_swiss_eeg_long raises FileNotFoundError when the directory has no .mat files."""
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+    with pytest.raises(FileNotFoundError, match=r"No \.mat files found"):
+        _load_swiss_eeg_long(dataset_dir)
+
+
+def test_load_swiss_eeg_long_raises_when_all_files_unparsable(tmp_path: Path) -> None:
+    """_load_swiss_eeg_long raises ValueError when all EEG arrays are empty/missing."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+    # Save a file with no EEG variable and no other 2D numeric array
+    scipy.io.savemat(str(dataset_dir / "ID01_1h.mat"), {"note": np.array([0.0])})
+
+    with pytest.raises(ValueError, match="empty or unparsable"):
+        _load_swiss_eeg_long(dataset_dir)
+
+
+def test_load_swiss_eeg_long_raises_on_hdf5_mat(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_swiss_eeg_long raises a clear RuntimeError for v7.3 HDF5 .mat files."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+
+    # Create a valid mat file so glob finds it
+    scipy.io.savemat(str(dataset_dir / "ID01_1h.mat"), {"EEG": np.ones((2, 4))})
+
+    # Simulate scipy raising NotImplementedError for v7.3 files
+    original_loadmat = scipy.io.loadmat
+
+    def _raise_not_implemented(path: str, **kwargs: object) -> object:
+        if "variable_names" in kwargs:
+            raise NotImplementedError("HDF5")
+        return original_loadmat(path, **kwargs)
+
+    monkeypatch.setattr(scipy.io, "loadmat", _raise_not_implemented)
+
+    with pytest.raises(RuntimeError, match=r"MATLAB v7\.3"):
+        _load_swiss_eeg_long(dataset_dir)
+
+
+# ---------------------------------------------------------------------------
+# _load_swiss_eeg_short — empty members branch
+# ---------------------------------------------------------------------------
+
+
+def test_swiss_eeg_short_loader_skips_zip_with_no_members(tmp_path: Path) -> None:
+    """Swiss short EEG loader skips archives that contain no files."""
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_swiss_eeg_short
+
+    dataset_dir = tmp_path / "swiss_eeg_short"
+    dataset_dir.mkdir()
+
+    # Empty zip (no members)
+    with zipfile.ZipFile(dataset_dir / "ID99.zip", mode="w"):
+        pass
+
+    # Valid zip alongside it
+    with zipfile.ZipFile(dataset_dir / "ID1.zip", mode="w") as zf:
+        zf.writestr("signal.csv", "ch0\n1.0\n2.0\n")
+
+    out = _load_swiss_eeg_short(dataset_dir)
+    assert len(out) == 1
+    assert isinstance(out[0], SignalData)
+    assert out[0].subjectID == "ID1"
+
+
+def test_swiss_eeg_short_loader_raises_when_no_supported_member(tmp_path: Path) -> None:
+    """Swiss short EEG loader raises when a zip contains only unsupported file types."""
+    from cobrabox.dataset_loader import _load_swiss_eeg_short
+
+    dataset_dir = tmp_path / "swiss_eeg_short"
+    dataset_dir.mkdir()
+
+    with zipfile.ZipFile(dataset_dir / "ID1.zip", mode="w") as zf:
+        zf.writestr("readme.pdf", b"not a signal")
+
+    with pytest.raises(ValueError, match="no supported numeric member"):
+        _load_swiss_eeg_short(dataset_dir)
+
+
+# ---------------------------------------------------------------------------
+# downloader — subset_key_fn used when resolving index
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_files_from_index_applies_subset_key_fn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_resolve_files_from_index populates subset_key via spec.subset_key_fn."""
+    import cobrabox.downloader as downloader
+
+    index_body = b"http://example.com/ID01_1h.mat\nhttp://example.com/ID01_2h.mat\n"
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return default
+
+    class _FakeResponse(io.BytesIO):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
+            self.close()
+
+    monkeypatch.setattr(
+        downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse(index_body)
+    )
+
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/test"),
+        files=None,
+        loader=lambda _p, _s=None: Dataset([]),
+        file_index_url="http://example.com/index.txt",
+        subset_key_name="subjects",
+        subset_key_fn=lambda fname: fname.rsplit("_", 1)[0],  # ID01_1h.mat -> ID01
+    )
+
+    from cobrabox.downloader import _resolve_files_from_index
+
+    files = _resolve_files_from_index(spec)
+
+    assert len(files) == 2
+    assert all(f.subset_key == "ID01" for f in files)
+
+
+def test_resolve_files_from_index_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_resolve_files_from_index raises RuntimeError on HTTP error from index URL."""
+    import cobrabox.downloader as downloader
+    from cobrabox.downloader import _resolve_files_from_index
+
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/test"),
+        files=None,
+        loader=lambda _p, _s=None: Dataset([]),
+        file_index_url="http://example.com/index.txt",
+    )
+
+    monkeypatch.setattr(
+        downloader.urllib.request,
+        "urlopen",
+        lambda url, *a, **kw: (_ for _ in ()).throw(
+            downloader.urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="HTTP 404"):
+        _resolve_files_from_index(spec)
+
+
+def test_resolve_files_from_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_resolve_files_from_index raises RuntimeError on network error."""
+    import cobrabox.downloader as downloader
+    from cobrabox.downloader import _resolve_files_from_index
+
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/test"),
+        files=None,
+        loader=lambda _p, _s=None: Dataset([]),
+        file_index_url="http://example.com/index.txt",
+    )
+
+    monkeypatch.setattr(
+        downloader.urllib.request,
+        "urlopen",
+        lambda url, *a, **kw: (_ for _ in ()).throw(
+            downloader.urllib.error.URLError("connection refused")
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="Network error"):
+        _resolve_files_from_index(spec)
+
+
+def test_ensure_remote_files_raises_on_url_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ensure_remote_files raises RuntimeError when a file download hits a network error."""
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    spec = RemoteDatasetSpec(
+        identifier="test_url_error",
+        local_rel_dir=Path("data") / "remote" / "test_url_error",
+        files=files,
+        loader=lambda _p, _s=None: Dataset([]),
+    )
+
+    import cobrabox.downloader as downloader
+
+    monkeypatch.setattr(
+        downloader.urllib.request,
+        "urlopen",
+        lambda url, *a, **kw: (_ for _ in ()).throw(downloader.urllib.error.URLError("timeout")),
+    )
+
+    with pytest.raises(RuntimeError, match="Network error"):
+        ensure_remote_files(spec, repo_root=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# RemoteDatasetSpec.subset_keys — edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_subset_keys_returns_none_when_files_not_yet_resolved() -> None:
+    """subset_keys() returns None when files is None (index not yet fetched)."""
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/test"),
+        files=None,
+        loader=lambda _p, _s=None: Dataset([]),
+        file_index_url="http://example.com/index.txt",
+        subset_key_name="subjects",
+    )
+    assert spec.subset_keys() is None
+
+
+def test_subset_keys_returns_none_when_no_subset_key_name() -> None:
+    """subset_keys() returns None when subset_key_name is not set."""
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/test"),
+        files=[RemoteFile(url="http://x.com/a.bin", filename="a.bin", subset_key="S1")],
+        loader=lambda _p, _s=None: Dataset([]),
+    )
+    assert spec.subset_keys() is None
+
+
+def test_subset_keys_returns_none_when_all_files_have_no_subset_key() -> None:
+    """subset_keys() returns None when files exist but none have a subset_key."""
+    spec = RemoteDatasetSpec(
+        identifier="test",
+        local_rel_dir=Path("data/test"),
+        files=[RemoteFile(url="http://x.com/a.bin", filename="a.bin")],
+        loader=lambda _p, _s=None: Dataset([]),
+        subset_key_name="subjects",
+    )
+    assert spec.subset_keys() is None
+
+
+# ---------------------------------------------------------------------------
+# DatasetInfo.__str__ and __repr__
+# ---------------------------------------------------------------------------
+
+
+def test_dataset_info_str_for_dataset_without_subsets() -> None:
+    """DatasetInfo.__str__ shows 'none' message when subset_key_name is None."""
+    from cobrabox.datasets import DatasetInfo
+
+    info = DatasetInfo(
+        identifier="dummy_chain",
+        description="Synthetic chain dataset.",
+        subset_key_name=None,
+        subsets=None,
+    )
+    text = str(info)
+    assert "none" in text
+    assert "cb.dataset" in text
+
+
+def test_dataset_info_repr_equals_str() -> None:
+    """DatasetInfo.__repr__ returns the same output as __str__."""
+    from cobrabox.datasets import DatasetInfo
+
+    info = DatasetInfo(
+        identifier="dummy_chain", description="Test.", subset_key_name=None, subsets=None
+    )
+    assert repr(info) == str(info)
+
+
+# ---------------------------------------------------------------------------
+# dataset() — local dataset branches and unknown identifier
+# ---------------------------------------------------------------------------
+
+
+def test_dataset_loads_dummy_noise(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """dataset() delegates to load_noise_dummy for 'dummy_noise'."""
+    import xarray as xr
+
+    from cobrabox.data import SignalData
+
+    da = xr.DataArray([[1.0, 2.0]], dims=["time", "space"])
+    fake_ds = Dataset([SignalData.from_xarray(da)])
+
+    monkeypatch.setattr(datasets, "load_noise_dummy", lambda ident: fake_ds)
+
+    out = datasets.dataset("dummy_noise")
+    assert len(out) == 1
+
+
+def test_dataset_loads_realistic_swiss(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """dataset() delegates to load_realistic_swiss for 'realistic_swiss'."""
+    import xarray as xr
+
+    from cobrabox.data import SignalData
+
+    da = xr.DataArray([[1.0, 2.0]], dims=["time", "space"])
+    fake_ds = Dataset([SignalData.from_xarray(da)])
+
+    monkeypatch.setattr(datasets, "load_realistic_swiss", lambda ident: fake_ds)
+
+    out = datasets.dataset("realistic_swiss")
+    assert len(out) == 1
+
+
+def test_dataset_raises_for_unknown_identifier() -> None:
+    """dataset() raises ValueError for completely unknown identifiers."""
+    with pytest.raises(ValueError, match="Unknown dataset identifier"):
+        datasets.dataset("nonexistent_xyz_123")
+
+
+# ---------------------------------------------------------------------------
+# _swez_long_subject_key
+# ---------------------------------------------------------------------------
+
+
+def test_swez_long_subject_key_parses_subject_from_filename() -> None:
+    """_swez_long_subject_key extracts the subject ID from a SWEZ filename."""
+    from cobrabox.downloader import _swez_long_subject_key
+
+    assert _swez_long_subject_key("ID01_1h.mat") == "ID01"
+    assert _swez_long_subject_key("ID18_295h.mat") == "ID18"
+
+
+def test_swez_long_subject_key_returns_none_for_no_underscore() -> None:
+    """_swez_long_subject_key returns None when the filename has no underscore."""
+    from cobrabox.downloader import _swez_long_subject_key
+
+    assert _swez_long_subject_key("nounderscorefile.mat") is None

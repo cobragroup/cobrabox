@@ -203,6 +203,91 @@ def _extract_numeric_from_mat_bytes(raw: bytes) -> tuple[np.ndarray, list[str], 
     return candidate, channels, sampling_rate
 
 
+def _load_swez_sampling_rate(dataset_dir: Path, subject_id: str) -> float | None:
+    """Try to read sampling rate from an IDxx_info.mat sidecar file."""
+    info_path = dataset_dir / f"{subject_id}_info.mat"
+    if not info_path.exists():
+        return None
+    try:
+        info = scipy.io.loadmat(str(info_path))
+        for key in ("fs", "Fs", "sampling_rate", "srate"):
+            if key in info:
+                return float(np.asarray(info[key]).squeeze())
+    except Exception:
+        pass
+    return None
+
+
+def _load_swiss_eeg_long(
+    dataset_dir: Path, subset: Sequence[str] | None = None
+) -> Dataset[SignalData]:
+    """Load SWEZ long-term iEEG .mat files into SignalData objects.
+
+    Each .mat file represents one hour of recording and produces one
+    ``SignalData`` object. The ``EEG`` variable (channels x time) is read
+    using ``scipy.io.loadmat`` with selective variable loading to avoid
+    pulling the full file into memory unnecessarily. Sampling rate is
+    looked up from an ``IDxx_info.mat`` sidecar when present.
+
+    Args:
+        dataset_dir: Directory containing the downloaded ``.mat`` files.
+        subset: If given, only load files whose subject ID (e.g. ``"ID01"``)
+            is in this list.
+    """
+    mat_paths = sorted(p for p in dataset_dir.glob("*.mat") if not p.stem.endswith("_info"))
+    if subset is not None:
+        subset_set = set(subset)
+        mat_paths = [p for p in mat_paths if p.stem.rsplit("_", 1)[0] in subset_set]
+    if not mat_paths:
+        raise FileNotFoundError(f"No .mat files found for 'swiss_eeg_long' in {dataset_dir}.")
+
+    fs_cache: dict[str, float | None] = {}
+    items: list[SignalData] = []
+    for path in mat_paths:
+        subject_id = path.stem.rsplit("_", 1)[0]  # "ID01_1h" -> "ID01"
+
+        if subject_id not in fs_cache:
+            fs_cache[subject_id] = _load_swez_sampling_rate(dataset_dir, subject_id)
+        sampling_rate = fs_cache[subject_id]
+
+        try:
+            mat = scipy.io.loadmat(str(path), variable_names=["EEG"])
+        except NotImplementedError as exc:
+            raise RuntimeError(
+                f"{path.name} appears to be a MATLAB v7.3 (HDF5) file, which is not "
+                "supported by scipy. Install h5py and load the file manually, or "
+                "convert it to an older MAT format."
+            ) from exc
+
+        eeg = mat.get("EEG")
+        if eeg is None or np.asarray(eeg).size == 0:
+            continue
+
+        arr = np.asarray(eeg, dtype=float)
+        if arr.ndim != 2:
+            continue
+        # SWEZ convention: channels x time — transpose to time x channels
+        values = arr.T
+        n_channels = values.shape[1]
+        channels = [f"ch{i}" for i in range(n_channels)]
+        time = (
+            np.arange(values.shape[0], dtype=float) / sampling_rate
+            if sampling_rate
+            else np.arange(values.shape[0], dtype=float)
+        )
+        da = xr.DataArray(
+            values,
+            dims=["time", "space"],
+            coords={"time": time, "space": channels},
+            attrs={"identifier": "swiss_eeg_long", "source_file": path.name},
+        )
+        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, subjectID=subject_id))
+
+    if not items:
+        raise ValueError("All swiss_eeg_long files were empty or unparsable.")
+    return Dataset(items)
+
+
 def _load_swiss_eeg_short(
     dataset_dir: Path, subset: Sequence[str] | None = None
 ) -> Dataset[SignalData]:
