@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import errno
+import socket
 import urllib.error
 import urllib.request
 import zipfile
@@ -27,6 +29,19 @@ RemoteLoader = Callable[[Path, "Sequence[str] | None"], Dataset[SignalData]]
 
 # A callable that dynamically resolves the list of remote files for a dataset.
 FileIndexFn = Callable[[], "Sequence[RemoteFile]"]
+
+# Type for the subset parameter accepted by :func:`ensure_remote_files` and
+# :func:`~cobrabox.datasets.dataset`:
+#
+#   list[str]
+#       All files for those subset keys (existing behaviour).
+#
+#   dict[str, int | list[str] | None]
+#       Per-key file-level selection:
+#         int        → first N files for that key (in file-index order)
+#         list[str]  → specific filenames for that key
+#         None       → all files for that key (same as including it in a plain list)
+SubsetSpec = list[str] | dict[str, int | list[str] | None]
 
 
 @dataclass(slots=True)
@@ -60,6 +75,8 @@ class RemoteDatasetSpec:
     description: str = ""
     subset_key_name: str | None = None  # e.g. "subjects"
     subset_key_fn: Callable[[str], str | None] | None = None  # filename -> subset key
+    size_hint: str | None = None  # Approximate total download size, e.g. "~10 MB"
+    subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
 
     def __post_init__(self) -> None:
         if self.files is None and self.file_index_url is None and self.file_index_fn is None:
@@ -92,17 +109,17 @@ def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
     assert spec.file_index_url is not None  # guarded by __post_init__
 
     try:
-        with urllib.request.urlopen(spec.file_index_url) as response:
+        with urllib.request.urlopen(spec.file_index_url, timeout=30) as response:
             raw = response.read()
     except urllib.error.HTTPError as e:
         raise RuntimeError(
             f"Failed to download file index for remote dataset '{spec.identifier}' "
             f"from {spec.file_index_url!r}: HTTP {e.code}"
         ) from e
-    except urllib.error.URLError as e:
+    except (TimeoutError, urllib.error.URLError) as e:
         raise RuntimeError(
             f"Network error while downloading file index for remote dataset "
-            f"'{spec.identifier}' from {spec.file_index_url!r}: {e.reason!r}"
+            f"'{spec.identifier}' from {spec.file_index_url!r}: {e!r}"
         ) from e
 
     urls = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()]
@@ -119,8 +136,53 @@ def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
     return files
 
 
+def _filter_files_by_dict_subset(
+    subset: dict[str, int | list[str] | None], all_files: Sequence[RemoteFile]
+) -> list[RemoteFile]:
+    """Return the ``RemoteFile`` entries selected by a dict-form subset spec.
+
+    Files without a ``subset_key`` (e.g. shared sidecar files) are always
+    included.  For each subject key in *subset*:
+
+    - ``None``      → all files for that key
+    - ``int N``     → first *N* files (in file-index order); raises if N < 1
+    - ``list[str]`` → files whose ``filename`` is in the list; unknown names
+                      raise ``ValueError`` when the full file list is known
+    """
+    result: list[RemoteFile] = []
+    # Sidecar / shared files (no subset_key) are always included.
+    result.extend(f for f in all_files if f.subset_key is None)
+
+    for subject_key, value in subset.items():
+        subject_files = [f for f in all_files if f.subset_key == subject_key]
+        if value is None:
+            result.extend(subject_files)
+        elif isinstance(value, int):
+            if value < 1:
+                raise ValueError(
+                    f"File count for subset key '{subject_key}' must be >= 1, got {value!r}."
+                )
+            result.extend(subject_files[:value])
+        else:  # list[str]
+            if not value:
+                raise ValueError(
+                    f"File list for subset key '{subject_key}' must be non-empty; "
+                    "use None to include all files."
+                )
+            by_name = {f.filename: f for f in subject_files}
+            if by_name:  # only validate when the file list is known
+                unknown = [fn for fn in value if fn not in by_name]
+                if unknown:
+                    raise ValueError(
+                        f"Unknown filenames for subset key '{subject_key}': {unknown}.\n"
+                        f"Known files: {sorted(by_name)}"
+                    )
+            result.extend(by_name[fn] for fn in value if fn in by_name)
+    return result
+
+
 def ensure_remote_files(
-    spec: RemoteDatasetSpec, *, subset: Sequence[str] | None = None, repo_root: Path | None = None
+    spec: RemoteDatasetSpec, *, subset: SubsetSpec | None = None, repo_root: Path | None = None
 ) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
@@ -130,8 +192,11 @@ def ensure_remote_files(
 
     Args:
         spec: The remote dataset specification.
-        subset: If given, only download files whose ``subset_key`` is in this
-            list. Files without a ``subset_key`` are always included.
+        subset: If given, restrict which files are downloaded.  Accepts either
+            a ``list[str]`` of subset keys (e.g. subject IDs) to download all
+            files for those keys, or a ``dict`` for file-level control — see
+            :data:`SubsetSpec`.  Files without a ``subset_key`` are always
+            included.
         repo_root: Override the inferred repository root.
 
     Returns the resolved local dataset directory.
@@ -153,8 +218,11 @@ def ensure_remote_files(
         all_files = resolved
 
     if subset is not None:
-        subset_set = set(subset)
-        files = [f for f in all_files if f.subset_key is None or f.subset_key in subset_set]
+        if isinstance(subset, dict):
+            files = _filter_files_by_dict_subset(subset, all_files)
+        else:
+            subset_set = set(subset)
+            files = [f for f in all_files if f.subset_key is None or f.subset_key in subset_set]
     else:
         files = list(all_files)
 
@@ -167,7 +235,7 @@ def ensure_remote_files(
         tmp_path = dest_path.with_name(dest_path.name + ".part")
 
         try:
-            with urllib.request.urlopen(url) as response:
+            with urllib.request.urlopen(url, timeout=120) as response:
                 content_length = response.headers.get("Content-Length")
                 total_size = int(content_length) if content_length else None
                 with (
@@ -193,11 +261,30 @@ def ensure_remote_files(
                 f"Failed to download remote dataset file for '{spec.identifier}' "
                 f"from {url!r}: HTTP {e.code}"
             ) from e
-        except urllib.error.URLError as e:
+        except (TimeoutError, urllib.error.URLError) as e:
             tmp_path.unlink(missing_ok=True)
+            reason = getattr(e, "reason", str(e))
+            if isinstance(e, socket.timeout) or isinstance(reason, socket.timeout):
+                raise RuntimeError(
+                    f"Download timed out for '{remote_file.filename}' "
+                    f"(no data received for 120 s). "
+                    f"Check your connection and retry."
+                ) from e
             raise RuntimeError(
                 f"Network error while downloading remote dataset file for "
-                f"'{spec.identifier}' from {url!r}: {e.reason!r}"
+                f"'{spec.identifier}' from {url!r}: {reason!r}"
+            ) from e
+        except OSError as e:
+            tmp_path.unlink(missing_ok=True)
+            if e.errno == errno.ENOSPC:
+                raise RuntimeError(
+                    f"No space left on device while downloading '{remote_file.filename}' "
+                    f"for dataset '{spec.identifier}'. "
+                    f"Free up disk space and retry, or use subset= to download fewer files."
+                ) from e
+            raise RuntimeError(
+                f"Unexpected OS error while downloading remote dataset file for "
+                f"'{spec.identifier}' from {url!r}: {e!r}"
             ) from e
         except Exception as e:  # pragma: no cover - defensive catch-all
             tmp_path.unlink(missing_ok=True)
@@ -291,6 +378,8 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
             f"({len(_SWISS_EEG_SHORT_IDS)} subjects, ictal/interictal)."
         ),
         subset_key_name="subjects",
+        size_hint="~50 MB",
+        subset_size_hint="~3 MB per subject",
     )
 
 
@@ -316,6 +405,8 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         ),
         subset_key_name="subjects",
         subset_key_fn=_swez_long_subject_key,
+        size_hint=">1 TB (hundreds of hourly files per subject)",
+        subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
     )
 
 
@@ -348,6 +439,8 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
             "Hosted by Universitat Pompeu Fabra (DOI: 10.34810/data490)."
         ),
         subset_key_name="sets",
+        size_hint="~10 MB",
+        subset_size_hint="~2 MB per set",
     )
 
 
@@ -367,15 +460,15 @@ def _chb_mit_file_index() -> Sequence[RemoteFile]:
     base_url = "https://physionet.org/files/chbmit/1.0.0"
     records_url = f"{base_url}/RECORDS"
     try:
-        with urllib.request.urlopen(records_url) as resp:
+        with urllib.request.urlopen(records_url, timeout=30) as resp:
             lines = resp.read().decode("utf-8").splitlines()
     except urllib.error.HTTPError as e:
         raise RuntimeError(
             f"Failed to fetch CHB-MIT file index from {records_url!r}: HTTP {e.code}"
         ) from e
-    except urllib.error.URLError as e:
+    except (TimeoutError, urllib.error.URLError) as e:
         raise RuntimeError(
-            f"Network error fetching CHB-MIT file index from {records_url!r}: {e.reason!r}"
+            f"Network error fetching CHB-MIT file index from {records_url!r}: {e!r}"
         ) from e
 
     files: list[RemoteFile] = []
@@ -386,8 +479,9 @@ def _chb_mit_file_index() -> Sequence[RemoteFile]:
         parts = record.split("/")
         if len(parts) != 2:
             continue
-        subject_id, record_stem = parts
-        filename = f"{record_stem}.edf"
+        subject_id, filename = parts
+        if not filename.lower().endswith(".edf"):
+            filename = f"{filename}.edf"
         files.append(
             RemoteFile(
                 url=f"{base_url}/{subject_id}/{filename}", filename=filename, subset_key=subject_id
@@ -414,6 +508,8 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
             "License: Open Data Commons Attribution License v1.0."
         ),
         subset_key_name="subjects",
+        size_hint="~30 GB",
+        subset_size_hint="~1.5 GB per subject",
     )
 
 
@@ -432,15 +528,15 @@ def _siena_file_index() -> Sequence[RemoteFile]:
     base_url = "https://physionet.org/files/siena-scalp-eeg/1.0.0"
     records_url = f"{base_url}/RECORDS"
     try:
-        with urllib.request.urlopen(records_url) as resp:
+        with urllib.request.urlopen(records_url, timeout=30) as resp:
             lines = resp.read().decode("utf-8").splitlines()
     except urllib.error.HTTPError as e:
         raise RuntimeError(
             f"Failed to fetch Siena EEG file index from {records_url!r}: HTTP {e.code}"
         ) from e
-    except urllib.error.URLError as e:
+    except (TimeoutError, urllib.error.URLError) as e:
         raise RuntimeError(
-            f"Network error fetching Siena EEG file index from {records_url!r}: {e.reason!r}"
+            f"Network error fetching Siena EEG file index from {records_url!r}: {e!r}"
         ) from e
 
     files: list[RemoteFile] = []
@@ -451,8 +547,9 @@ def _siena_file_index() -> Sequence[RemoteFile]:
         parts = record.split("/")
         if len(parts) != 2:
             continue
-        subject_id, record_stem = parts
-        filename = f"{record_stem}.edf"
+        subject_id, filename = parts
+        if not filename.lower().endswith(".edf"):
+            filename = f"{filename}.edf"
         files.append(
             RemoteFile(
                 url=f"{base_url}/{subject_id}/{filename}", filename=filename, subset_key=subject_id
@@ -479,6 +576,8 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
             "License: Creative Commons Attribution 4.0 International (CC BY 4.0)."
         ),
         subset_key_name="subjects",
+        size_hint="~15 GB",
+        subset_size_hint="~1 GB per subject",
     )
 
 
@@ -509,6 +608,8 @@ def _helsinki_neonatal_spec() -> RemoteDatasetSpec:
             "DOI: 10.5281/zenodo.2547147."
         ),
         subset_key_name="subjects",
+        size_hint="~4 GB",
+        subset_size_hint="~50 MB per subject",
     )
 
 

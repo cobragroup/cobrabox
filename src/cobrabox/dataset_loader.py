@@ -231,13 +231,25 @@ def _load_swiss_eeg_long(
 
     Args:
         dataset_dir: Directory containing the downloaded ``.mat`` files.
-        subset: If given, only load files whose subject ID (e.g. ``"ID01"``)
-            is in this list.
+        subset: If given, restrict which files are loaded.  Two modes are
+            detected automatically:
+
+            - *Subject keys* (e.g. ``["ID01"]``, no ``"_"`` in any element):
+              load all files whose subject ID matches.
+            - *File stems* (e.g. ``["ID01_1h", "ID01_3h"]``, contain ``"_"``):
+              load only the exact files named by those stems.  This is the
+              form produced internally when a dict-form subset is used with
+              :func:`~cobrabox.datasets.dataset`.
     """
     mat_paths = sorted(p for p in dataset_dir.glob("*.mat") if not p.stem.endswith("_info"))
     if subset is not None:
         subset_set = set(subset)
-        mat_paths = [p for p in mat_paths if p.stem.rsplit("_", 1)[0] in subset_set]
+        if any("_" in s for s in subset_set):
+            # Stem-based filtering: exact match against the file stem.
+            mat_paths = [p for p in mat_paths if p.stem in subset_set]
+        else:
+            # Subject-key filtering: match subject ID derived from the stem.
+            mat_paths = [p for p in mat_paths if p.stem.rsplit("_", 1)[0] in subset_set]
     if not mat_paths:
         raise FileNotFoundError(f"No .mat files found for 'swiss_eeg_long' in {dataset_dir}.")
 

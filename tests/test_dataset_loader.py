@@ -620,6 +620,254 @@ def test_ensure_remote_files_subset_filters_downloads(
     assert set(downloaded) == {"http://example.com/ID1.zip", "http://example.com/ID5.zip"}
 
 
+# ---------------------------------------------------------------------------
+# SubsetSpec dict form — _filter_files_by_dict_subset unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_filter_files_by_dict_subset_none_includes_all_subject_files() -> None:
+    """None value returns all files for that subject key."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    files = [
+        RemoteFile(url="u", filename="a.mat", subset_key="ID01"),
+        RemoteFile(url="u", filename="b.mat", subset_key="ID01"),
+        RemoteFile(url="u", filename="c.mat", subset_key="ID02"),
+    ]
+    result = _filter_files_by_dict_subset({"ID01": None}, files)
+    assert [f.filename for f in result if f.subset_key == "ID01"] == ["a.mat", "b.mat"]
+    assert not any(f.subset_key == "ID02" for f in result)
+
+
+def test_filter_files_by_dict_subset_int_returns_first_n() -> None:
+    """Int value returns the first N files for that subject key."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    files = [RemoteFile(url="u", filename=f"ID01_{i}h.mat", subset_key="ID01") for i in range(1, 6)]
+    result = _filter_files_by_dict_subset({"ID01": 3}, files)
+    assert [f.filename for f in result] == ["ID01_1h.mat", "ID01_2h.mat", "ID01_3h.mat"]
+
+
+def test_filter_files_by_dict_subset_int_zero_raises() -> None:
+    """Int value of 0 raises ValueError."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    files = [RemoteFile(url="u", filename="ID01_1h.mat", subset_key="ID01")]
+    with pytest.raises(ValueError, match="must be >= 1"):
+        _filter_files_by_dict_subset({"ID01": 0}, files)
+
+
+def test_filter_files_by_dict_subset_list_filters_by_filename() -> None:
+    """List value returns only the named files."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    files = [
+        RemoteFile(url="u", filename="ID01_1h.mat", subset_key="ID01"),
+        RemoteFile(url="u", filename="ID01_2h.mat", subset_key="ID01"),
+        RemoteFile(url="u", filename="ID01_3h.mat", subset_key="ID01"),
+    ]
+    result = _filter_files_by_dict_subset({"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, files)
+    assert [f.filename for f in result] == ["ID01_1h.mat", "ID01_3h.mat"]
+
+
+def test_filter_files_by_dict_subset_empty_list_raises() -> None:
+    """Empty list value raises ValueError."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    files = [RemoteFile(url="u", filename="ID01_1h.mat", subset_key="ID01")]
+    with pytest.raises(ValueError, match="non-empty"):
+        _filter_files_by_dict_subset({"ID01": []}, files)
+
+
+def test_filter_files_by_dict_subset_unknown_filename_raises() -> None:
+    """Unknown filename raises ValueError when the file list is known."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    files = [RemoteFile(url="u", filename="ID01_1h.mat", subset_key="ID01")]
+    with pytest.raises(ValueError, match="Unknown filenames"):
+        _filter_files_by_dict_subset({"ID01": ["ID01_99h.mat"]}, files)
+
+
+def test_filter_files_by_dict_subset_no_subset_key_always_included() -> None:
+    """Files with no subset_key are always included regardless of the dict."""
+    from cobrabox.downloader import RemoteFile, _filter_files_by_dict_subset
+
+    sidecar = RemoteFile(url="u", filename="info.mat", subset_key=None)
+    subject = RemoteFile(url="u", filename="ID01_1h.mat", subset_key="ID01")
+    result = _filter_files_by_dict_subset({"ID01": 1}, [sidecar, subject])
+    assert any(f.filename == "info.mat" for f in result)
+
+
+# ---------------------------------------------------------------------------
+# SubsetSpec dict form — ensure_remote_files integration
+# ---------------------------------------------------------------------------
+
+
+def test_ensure_remote_files_dict_subset_int_downloads_first_n(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dict subset with int value only downloads the first N files per subject."""
+    files = [
+        RemoteFile(url=f"http://x.com/ID01_{i}h.mat", filename=f"ID01_{i}h.mat", subset_key="ID01")
+        for i in range(1, 5)
+    ]
+    spec = RemoteDatasetSpec(
+        identifier="test_dict_int",
+        local_rel_dir=Path("data") / "remote" / "test_dict_int",
+        files=files,
+        loader=lambda _p, _s: Dataset([]),
+    )
+
+    downloaded: list[str] = []
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return default
+
+    class _FakeResponse(io.BytesIO):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            self.close()
+
+    def _fake_urlopen(url: str, *a: object, **kw: object) -> _FakeResponse:
+        downloaded.append(url)
+        return _FakeResponse(b"DATA")
+
+    import cobrabox.downloader as downloader
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+
+    ensure_remote_files(spec, subset={"ID01": 2}, repo_root=tmp_path)
+
+    assert len(downloaded) == 2
+    assert "ID01_1h.mat" in downloaded[0]
+    assert "ID01_2h.mat" in downloaded[1]
+
+
+def test_ensure_remote_files_dict_subset_list_downloads_named_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dict subset with list value downloads only the explicitly named files."""
+    files = [
+        RemoteFile(url=f"http://x.com/ID01_{i}h.mat", filename=f"ID01_{i}h.mat", subset_key="ID01")
+        for i in range(1, 4)
+    ]
+    spec = RemoteDatasetSpec(
+        identifier="test_dict_list",
+        local_rel_dir=Path("data") / "remote" / "test_dict_list",
+        files=files,
+        loader=lambda _p, _s: Dataset([]),
+    )
+
+    downloaded: list[str] = []
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return default
+
+    class _FakeResponse(io.BytesIO):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            self.close()
+
+    def _fake_urlopen(url: str, *a: object, **kw: object) -> _FakeResponse:
+        downloaded.append(url)
+        return _FakeResponse(b"DATA")
+
+    import cobrabox.downloader as downloader
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+
+    ensure_remote_files(spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, repo_root=tmp_path)
+
+    assert len(downloaded) == 2
+    assert any("ID01_1h.mat" in u for u in downloaded)
+    assert any("ID01_3h.mat" in u for u in downloaded)
+    assert not any("ID01_2h.mat" in u for u in downloaded)
+
+
+# ---------------------------------------------------------------------------
+# SubsetSpec dict form — dataset() validation and loader forwarding
+# ---------------------------------------------------------------------------
+
+
+def test_dataset_dict_subset_invalid_subject_key_raises() -> None:
+    """dataset() raises ValueError for unknown subject keys in dict form."""
+    with pytest.raises(ValueError, match="Unknown subset keys"):
+        datasets.dataset("swiss_eeg_short", subset={"INVALID_ID": 2})
+
+
+def test_dataset_dict_subset_int_zero_raises() -> None:
+    """dataset() raises ValueError when a dict value is 0."""
+    with pytest.raises(ValueError, match="must be >= 1"):
+        datasets.dataset("swiss_eeg_short", subset={"ID1": 0})
+
+
+def test_dataset_dict_subset_empty_list_raises() -> None:
+    """dataset() raises ValueError when a dict value is an empty list."""
+    with pytest.raises(ValueError, match="non-empty"):
+        datasets.dataset("swiss_eeg_short", subset={"ID1": []})
+
+
+def test_dataset_dict_subset_passes_stems_to_loader(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """dataset() passes file stems (not subject keys) to the loader for dict-form subsets."""
+    import xarray as xr
+
+    from cobrabox.data import SignalData
+
+    captured: dict[str, object] = {}
+
+    def _fake_loader(path: Path, subset: object = None) -> Dataset:
+        captured["loader_subset"] = subset
+        da = xr.DataArray([[1.0]], dims=["time", "space"])
+        return Dataset([SignalData.from_xarray(da)])
+
+    spec = get_remote_dataset_spec("swiss_eeg_short")
+    assert spec is not None
+    assert spec.files is not None
+
+    patched_spec = RemoteDatasetSpec(
+        identifier=spec.identifier,
+        local_rel_dir=spec.local_rel_dir,
+        files=spec.files,
+        loader=_fake_loader,
+        description=spec.description,
+        subset_key_name=spec.subset_key_name,
+    )
+
+    def _fake_get_spec(identifier: str) -> RemoteDatasetSpec | None:
+        return patched_spec if identifier == "swiss_eeg_short" else None
+
+    def _fake_ensure(
+        s: RemoteDatasetSpec, *, subset: object = None, repo_root: Path | None = None
+    ) -> Path:
+        p = tmp_path / s.local_rel_dir
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", _fake_get_spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure)
+
+    datasets.dataset("swiss_eeg_short", subset={"ID1": 1})
+
+    # The loader should receive a list of stems, not the dict.
+    loader_subset = captured["loader_subset"]
+    assert isinstance(loader_subset, list)
+    assert loader_subset == ["ID1"]  # stem of "ID1.zip" is "ID1"
+
+
 def test_dataset_info_returns_local_dataset_info() -> None:
     """dataset_info returns description for local datasets."""
     from cobrabox.datasets import dataset_info
@@ -941,6 +1189,44 @@ def test_load_swiss_eeg_long_subset_filters_by_subject(tmp_path: Path) -> None:
     subject_ids = {item.subjectID for item in out}
     assert subject_ids == {"ID01", "ID03"}
     assert len(out) == 2
+
+
+def test_load_swiss_eeg_long_subset_by_stem_filters_exact_files(tmp_path: Path) -> None:
+    """_load_swiss_eeg_long with stem-based subset loads only the exact named files."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+    eeg = np.ones((2, 4))
+    for hour in (1, 2, 3):
+        scipy.io.savemat(str(dataset_dir / f"ID01_{hour}h.mat"), {"EEG": eeg})
+
+    out = _load_swiss_eeg_long(dataset_dir, subset=["ID01_1h", "ID01_3h"])
+
+    assert len(out) == 2
+    # Both items belong to ID01 (subject ID is still derived from the stem).
+    assert all(item.subjectID == "ID01" for item in out)
+
+
+def test_load_swiss_eeg_long_subject_key_subset_still_works(tmp_path: Path) -> None:
+    """_load_swiss_eeg_long with subject-key subset still loads all hours for that subject."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+    eeg = np.ones((2, 4))
+    for hour in (1, 2):
+        scipy.io.savemat(str(dataset_dir / f"ID01_{hour}h.mat"), {"EEG": eeg})
+    scipy.io.savemat(str(dataset_dir / "ID02_1h.mat"), {"EEG": eeg})
+
+    out = _load_swiss_eeg_long(dataset_dir, subset=["ID01"])
+
+    assert len(out) == 2
+    assert all(item.subjectID == "ID01" for item in out)
 
 
 def test_load_swiss_eeg_long_raises_when_no_mat_files(tmp_path: Path) -> None:

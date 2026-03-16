@@ -3,11 +3,18 @@ from __future__ import annotations
 import textwrap
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 from .data import SignalData
 from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
-from .downloader import REMOTE_DATASETS, ensure_remote_files, get_remote_dataset_spec
+from .downloader import (
+    REMOTE_DATASETS,
+    SubsetSpec,
+    _filter_files_by_dict_subset,
+    ensure_remote_files,
+    get_remote_dataset_spec,
+)
 
 # ---------------------------------------------------------------------------
 # Metadata for built-in local datasets (no subset concept)
@@ -37,16 +44,29 @@ class DatasetInfo:
         subset_key_name: What the subset dimension is called (e.g. ``"subjects"``),
             or ``None`` if no subset concept exists.
         subsets: Available subset keys, or ``None`` if unknown or not applicable.
+        size_hint: Approximate total download size (e.g. ``"~10 MB"``), or
+            ``None`` if unknown.
+        subset_size_hint: Approximate size per subset (e.g. ``"~2 MB per set"``),
+            or ``None`` if unknown.
     """
 
     identifier: str
     description: str
     subset_key_name: str | None
     subsets: tuple[str, ...] | None
+    size_hint: str | None = None
+    subset_size_hint: str | None = None
 
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
         lines.append(f"  description : {self.description}")
+        if self.size_hint is not None or self.subset_size_hint is not None:
+            parts = []
+            if self.size_hint is not None:
+                parts.append(f"total {self.size_hint}")
+            if self.subset_size_hint is not None:
+                parts.append(self.subset_size_hint)
+            lines.append(f"  size        : {', '.join(parts)} (approximate)")
         if self.subset_key_name is None or self.subsets is None:
             lines.append(
                 f"  subsets     : none — call cb.dataset({self.identifier!r}) to load all."
@@ -75,16 +95,31 @@ class DatasetInfo:
 # ---------------------------------------------------------------------------
 
 
-def dataset(identifier: str, *, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+def dataset(identifier: str, *, subset: SubsetSpec | None = None) -> Dataset[SignalData]:
     """Load a dataset by identifier.
 
     Args:
         identifier: Dataset name, e.g. ``"dummy_chain"`` or
             ``"swiss_eeg_short"``.
-        subset: Optional list of subset keys to load (e.g. subject IDs for
-            ``"swiss_eeg_short"``).  Only files matching these keys are
-            downloaded and loaded.  Call :func:`dataset_info` to see which
-            keys are available.  ``None`` loads everything.
+        subset: Restrict which data is downloaded and loaded.  Two forms:
+
+            - ``list[str]``: subject / set keys to load in full, e.g.
+              ``["ID1", "ID2"]``.  Call :func:`dataset_info` to see available
+              keys.
+            - ``dict[str, int | list[str] | None]``: per-key file-level
+              control.  Map each key to:
+
+              - ``int N``     — first *N* files (in file-index order)
+              - ``list[str]`` — specific filenames
+              - ``None``      — all files for that key
+
+              Example::
+
+                  cb.dataset("swiss_eeg_long", subset={"ID01": 2})
+                  cb.dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})
+                  cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})
+
+            ``None`` loads everything.
 
     Returns:
         :class:`~cobrabox.Dataset` of :class:`~cobrabox.SignalData` objects.
@@ -104,16 +139,43 @@ def dataset(identifier: str, *, subset: Sequence[str] | None = None) -> Dataset[
     if spec is not None:
         # Validate subset keys early, before triggering any downloads.
         if subset is not None:
+            keys_to_validate = list(subset.keys()) if isinstance(subset, dict) else list(subset)
             known = spec.subset_keys()
             if known is not None:
-                invalid = [s for s in subset if s not in known]
+                invalid = [s for s in keys_to_validate if s not in known]
                 if invalid:
                     raise ValueError(
                         f"Unknown subset keys for '{identifier}': {invalid}.\n"
                         f"Valid {spec.subset_key_name or 'keys'}: {known}"
                     )
+            # Validate dict values before any download.
+            if isinstance(subset, dict):
+                for key, value in subset.items():
+                    if isinstance(value, int) and value < 1:
+                        raise ValueError(
+                            f"File count for subset key '{key}' must be >= 1, got {value!r}."
+                        )
+                    if isinstance(value, list) and not value:
+                        raise ValueError(
+                            f"File list for subset key '{key}' must be non-empty; "
+                            "use None to include all files."
+                        )
+
         dataset_dir = ensure_remote_files(spec, subset=subset)
-        return spec.loader(dataset_dir, subset)
+
+        # Derive the subset to pass to the loader.
+        # For the dict form: expand to a flat list of file stems so the loader
+        # can filter by exact filename rather than by subject key.
+        # spec.files is now populated (ensure_remote_files resolved it above).
+        if isinstance(subset, dict):
+            selected = _filter_files_by_dict_subset(subset, spec.files or [])
+            loader_subset: Sequence[str] | None = [
+                Path(f.filename).stem for f in selected if f.subset_key is not None
+            ]
+        else:
+            loader_subset = list(subset) if subset is not None else None
+
+        return spec.loader(dataset_dir, loader_subset)
 
     raise ValueError(
         f"Unknown dataset identifier: {identifier!r}. "
@@ -158,6 +220,8 @@ def dataset_info(identifier: str) -> DatasetInfo:
             description=spec.description,
             subset_key_name=spec.subset_key_name,
             subsets=tuple(keys) if keys is not None else None,
+            size_hint=spec.size_hint,
+            subset_size_hint=spec.subset_size_hint,
         )
 
     raise ValueError(
