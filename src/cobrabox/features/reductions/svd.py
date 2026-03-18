@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal, get_args
 
 import numpy as np
 import xarray as xr
 
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import Data
+
+_SVDOutputMode = Literal["V", "U"]
 
 
 @dataclass
@@ -63,8 +66,18 @@ class SVD(BaseFeature[Data]):
         # No unstacking -> main output is Vh(component,features)
         >>> out = cb.feature.SVD(dim="time", n_components=10, return_unstacked_V=False).apply(data)
         >>> svd = out.data.attrs["svd"]
-        >>> U = svd["U"]  # sample scores / timecourses (if output="V")
+        >>>         U = svd["U"]  # sample scores / timecourses (if output="V")
         >>> S = svd["S"]  # singular values
+
+    Raises:
+        ValueError: If ``dim`` is not found in the input data dimensions.
+        ValueError: If ``n_components`` is not positive.
+        ValueError: If ``output`` is not one of ``{"V", "U"}``.
+
+    References:
+        Golub, G. H., & Kahan, W. (1965). Calculating the singular values and pseudo-inverse
+        of a matrix. *Journal of the Society for Industrial and Applied Mathematics: Series B,
+        Numerical Analysis*, 2(2), 205-224.
     """
 
     dim: str
@@ -73,17 +86,19 @@ class SVD(BaseFeature[Data]):
     zscore: bool = False
     mask: xr.DataArray | None = None
     return_unstacked_V: bool = True
-    output: str = "V"  # "V" or "U"
+    output: _SVDOutputMode = "V"
 
-    def __call__(self, data: Data) -> xr.DataArray:
+    def __call__(self, data: Data) -> xr.DataArray | Data:
         da = data.data
 
         if self.dim not in da.dims:
             raise ValueError(f"dim '{self.dim}' not found in {da.dims}")
         if self.n_components <= 0:
             raise ValueError("n_components must be > 0")
-        if self.output not in {"V", "U"}:
-            raise ValueError("output must be 'V' or 'U'")
+        if self.output not in get_args(_SVDOutputMode):
+            raise ValueError(
+                f"output must be one of {get_args(_SVDOutputMode)}, got {self.output!r}"
+            )
 
         # Stack all non-dim dims into "features" -> (dim, features)
         other_dims = [d for d in da.dims if d != self.dim]

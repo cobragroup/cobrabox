@@ -189,3 +189,38 @@ def test_feature_svd_does_not_mutate_input() -> None:
     assert data.data.shape == original_shape
     np.testing.assert_array_equal(data.to_numpy(), original_values)
     assert data.subjectID == "s1"
+
+
+def test_feature_svd_output_u_mode() -> None:
+    """SVD with output='U' returns U and stores V in attrs."""
+    arr = np.random.default_rng(42).normal(size=(30, 5)).astype(float)
+    data = cb.from_numpy(arr, dims=["time", "channel"], sampling_rate=100.0)
+
+    out = cb.feature.SVD(dim="time", n_components=3, center=True, output="U").apply(data)
+
+    assert out.data.name == "U"
+    assert out.data.dims == ("time", "component")
+    assert out.data.shape == (30, 3)
+
+    svd = out.data.attrs["svd"]
+    assert svd["U"] is None
+    assert svd["Vh"] is not None
+    assert svd["Vh"].shape == (3, 5)
+    assert svd["S"].shape == (3,)
+
+
+def test_feature_svd_no_centering_no_zscore() -> None:
+    """SVD with center=False, zscore=False skips normalization and stores None in attrs."""
+    arr = np.random.default_rng(42).normal(size=(25, 4)).astype(float)
+    data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+
+    out = cb.feature.SVD(
+        dim="time", n_components=3, center=False, zscore=False, return_unstacked_V=False
+    ).apply(data)
+
+    svd = out.data.attrs["svd"]
+    assert svd["mean"] is None
+    assert svd["std"] is None
+    assert svd["masked"] is False
+    assert svd["center"] is False
+    assert svd["zscore"] is False
