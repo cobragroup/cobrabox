@@ -26,6 +26,7 @@ from .frequency_domain.spectrogram import Spectrogram as Spectrogram
 from .reductions.max import Max as Max
 from .reductions.mean import Mean as Mean
 from .reductions.min import Min as Min
+from .reductions.svd import SVD as SVD
 from .time_domain.amplitude_variation import AmplitudeVariation as AmplitudeVariation
 from .time_domain.autocorr import Autocorr as Autocorr
 from .time_domain.envelope_correlation import EnvelopeCorrelation as EnvelopeCorrelation
@@ -86,6 +87,7 @@ __all__ = [
     "PhaseLockingValueMatrix",
     "ReciprocalConnectivity",
     "RecurrenceMatrix",
+    "SVD",
     "SampleEntropy",
     "SlidingWindow",
     "SlidingWindowReduce",
