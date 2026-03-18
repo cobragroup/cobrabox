@@ -47,6 +47,21 @@ def test_phase_locking_value_matrix_returns_square_matrix() -> None:
     assert result.data.shape == (3, 3)
 
 
+def test_phase_locking_value_matrix_default_coords() -> None:
+    """PhaseLockingValueMatrix uses all coordinates when coords is None."""
+    data = cb.data.SignalData.from_numpy(
+        rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    result = cb.feature.PhaseLockingValueMatrix().apply(data)
+
+    assert isinstance(result, cb.Data)
+    assert result.data.dims == ("coord_i", "coord_j")
+    assert result.data.shape == (4, 4)
+    assert list(result.data.coords["coord_i"].values) == [0, 1, 2, 3]
+    assert list(result.data.coords["coord_j"].values) == [0, 1, 2, 3]
+
+
 def test_phase_locking_value_diagonal_is_one() -> None:
     """PLV of a coordinate with itself equals 1.0."""
     data = cb.data.SignalData.from_numpy(

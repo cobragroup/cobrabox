@@ -90,22 +90,26 @@ class PhaseLockingValueMatrix(BaseFeature[SignalData]):
 
     Args:
         coords: List of coordinate names to compute pairwise PLV for.
+                If None, uses all space coordinates.
 
     Returns:
         xarray DataArray with dims ``(coord_i, coord_j)`` and shape
         ``(len(coords), len(coords))``.
 
     Raises:
-        ValueError: If ``coords`` is empty.
+        ValueError: If ``coords`` is an empty list.
         ValueError: If any coordinate is not found in the space dimension.
 
     Example:
+        >>> # Test specific coordinates
         >>> result = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+        >>> # Test all coordinates (default)
+        >>> result_all = cb.feature.PhaseLockingValueMatrix().apply(data)
     """
 
     output_type: ClassVar[type[Data]] = Data
 
-    coords: list[str] | list[int]
+    coords: list[str] | list[int] | None = None
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
@@ -114,26 +118,30 @@ class PhaseLockingValueMatrix(BaseFeature[SignalData]):
         if space_dim not in xr_data.dims:
             raise ValueError(f"dimension '{space_dim}' not found in data dimensions {xr_data.dims}")
 
-        if not self.coords:
-            raise ValueError("coords must have at least one coordinate")
-
         space_coords = xr_data.coords[space_dim].values
 
-        for c in self.coords:
+        if self.coords is None:
+            coords_list = list(space_coords)
+        else:
+            if not self.coords:
+                raise ValueError("coords must have at least one coordinate")
+            coords_list = self.coords
+
+        for c in coords_list:
             if c not in space_coords:
                 raise ValueError(f"coordinate '{c}' not found in space dimension: {space_coords}")
 
-        n = len(self.coords)
+        n = len(coords_list)
         result = np.full((n, n), np.nan)
 
-        for i, coord_i in enumerate(self.coords):
+        for i, coord_i in enumerate(coords_list):
             x_series = xr_data.sel({space_dim: coord_i}).values
-            for j, coord_j in enumerate(self.coords):
+            for j, coord_j in enumerate(coords_list):
                 y_series = xr_data.sel({space_dim: coord_j}).values
                 result[i, j] = _compute_plv(x_series, y_series)
 
         return xr.DataArray(
             result,
             dims=["coord_i", "coord_j"],
-            coords={"coord_i": self.coords, "coord_j": self.coords},
+            coords={"coord_i": coords_list, "coord_j": coords_list},
         )
