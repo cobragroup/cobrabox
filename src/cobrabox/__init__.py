@@ -3,7 +3,7 @@ from . import feature, serialization  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
-from .datasets import dataset, dataset_info
+from .datasets import dataset, dataset_info, list_datasets
 from .egg.gorkastyle import gorkastyle
 from .features.time_domain.line_length import LineLength
 from .features.time_domain.nonreversibility import Nonreversibility
@@ -39,6 +39,7 @@ __all__ = [
     "from_numpy",
     "from_xarray",
     "gorkastyle",
+    "list_datasets",
     "load",
     "save",
     "serialization",

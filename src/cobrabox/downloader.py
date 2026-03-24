@@ -713,12 +713,85 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
     )
 
 
+def _open_ieeg_subject_key(filename: str) -> str | None:
+    """Parse subject ID from an Open iEEG filename.
+
+    e.g. ``'sub-Detroit001_ses-01_task-sleep_ieeg.edf'`` → ``'sub-Detroit001'``
+    """
+    stem = filename.rsplit(".", 1)[0]
+    return stem.split("_", 1)[0]
+
+
+def _open_ieeg_file_index() -> Sequence[RemoteFile]:
+    """Fetch the subject list from participants.tsv and build the file index.
+
+    Reads the public S3-hosted participants.tsv to discover all subject IDs,
+    then constructs one :class:`RemoteFile` per subject pointing to the
+    interictal sleep EDF recording.
+    """
+    base_url = "https://s3.amazonaws.com/openneuro.org/ds005398"
+    participants_url = f"{base_url}/participants.tsv"
+    try:
+        with urllib.request.urlopen(participants_url, timeout=30) as resp:
+            content = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(
+            f"Failed to fetch Open iEEG participant list from {participants_url!r}: HTTP {e.code}"
+        ) from e
+    except (TimeoutError, urllib.error.URLError) as e:
+        raise RuntimeError(
+            f"Network error fetching Open iEEG participant list from {participants_url!r}: {e!r}"
+        ) from e
+
+    files: list[RemoteFile] = []
+    for line in content.splitlines()[1:]:  # skip header row
+        parts = line.split("\t")
+        if not parts or not parts[0].strip().startswith("sub-"):
+            continue
+        subject = parts[0].strip()  # e.g. "sub-Detroit001"
+        filename = f"{subject}_ses-01_task-sleep_ieeg.edf"
+        files.append(
+            RemoteFile(
+                url=f"{base_url}/{subject}/ses-01/ieeg/{filename}",
+                filename=filename,
+                subset_key=subject,
+            )
+        )
+
+    if not files:
+        raise RuntimeError("Open iEEG participant list returned no valid subjects.")
+    return files
+
+
+def _open_ieeg_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_open_ieeg  # avoid circular import at module level
+
+    return RemoteDatasetSpec(
+        identifier="open_ieeg",
+        local_rel_dir=Path("data") / "remote" / "open_ieeg",
+        files=None,
+        loader=_load_open_ieeg,
+        file_index_fn=_open_ieeg_file_index,
+        description=(
+            "Open iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy "
+            "patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. "
+            "License: CC0 (public domain). "
+            "DOI: 10.18112/openneuro.ds005398.v1.0.1."
+        ),
+        subset_key_name="subjects",
+        subset_key_fn=_open_ieeg_subject_key,
+        size_hint="~13 GB",
+        subset_size_hint="~70 MB per subject",
+    )
+
+
 REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "swiss_eeg_short": _swiss_eeg_short_spec(),
     "swiss_eeg_long": _swiss_eeg_long_spec(),
     "bonn_eeg": _bonn_eeg_spec(),
     "chb_mit": _chb_mit_spec(),
     "siena_eeg": _siena_eeg_spec(),
+    "open_ieeg": _open_ieeg_spec(),
 }
 
 

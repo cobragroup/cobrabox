@@ -489,22 +489,23 @@ def _load_siena_eeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> D
     )
 
 
-def _load_helsinki_neonatal(
-    dataset_dir: Path, subset: Sequence[str] | None = None
-) -> Dataset[SignalData]:
-    """Load Helsinki Neonatal EEG ``.edf`` files into SignalData objects.
+def _load_open_ieeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+    """Load Open iEEG Dataset ``.edf`` files into SignalData objects.
 
-    Each ``.edf`` file is one neonate recording (median ~74 minutes) and
-    produces one ``SignalData`` object. The subject ID is the file stem
-    (e.g. ``eeg1.edf`` → subject ``eeg1``).
+    Each ``.edf`` file is one interictal sleep recording and produces one
+    ``SignalData`` object. Subject IDs are parsed from the filename stem
+    (e.g. ``sub-Detroit001_ses-01_task-sleep_ieeg.edf`` → ``sub-Detroit001``).
 
     Args:
         dataset_dir: Directory containing the downloaded ``.edf`` files.
-        subset: If given, only load files whose subject ID (e.g. ``"eeg1"``)
-            is in this list.
+        subset: If given, only load files whose subject ID (e.g.
+            ``"sub-Detroit001"``) is in this list.
     """
     return _load_edf_dataset(
-        dataset_dir, identifier="helsinki_neonatal", subject_key_fn=lambda stem: stem, subset=subset
+        dataset_dir,
+        identifier="open_ieeg",
+        subject_key_fn=lambda stem: stem.split("_", 1)[0],
+        subset=subset,
     )
 
 

@@ -1713,7 +1713,7 @@ def test_dataset_info_bonn_eeg_lists_sets() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _load_edf_dataset / _load_chb_mit / _load_siena_eeg / _load_helsinki_neonatal
+# _load_edf_dataset / _load_chb_mit / _load_siena_eeg / _load_open_ieeg
 # ---------------------------------------------------------------------------
 
 
@@ -1921,77 +1921,141 @@ def test_load_siena_eeg_raises_when_no_edf_files(tmp_path: Path) -> None:
         _load_siena_eeg(dataset_dir)
 
 
-# --- Helsinki Neonatal ---
+# --- Open iEEG ---
 
 
-def test_load_helsinki_neonatal_reads_edf_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """_load_helsinki_neonatal loads EDF files and returns one SignalData per file."""
+def test_load_open_ieeg_reads_edf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_open_ieeg loads EDF files and sets subject ID from filename prefix."""
     from cobrabox.data import SignalData
-    from cobrabox.dataset_loader import _load_helsinki_neonatal
+    from cobrabox.dataset_loader import _load_open_ieeg
 
-    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir = tmp_path / "open_ieeg"
     dataset_dir.mkdir()
-    (dataset_dir / "eeg1.edf").write_bytes(b"fake")
-    (dataset_dir / "eeg2.edf").write_bytes(b"fake")
+    (dataset_dir / "sub-Detroit001_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
+    (dataset_dir / "sub-UCLA01_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
 
-    mock_raw = _MockRaw(n_channels=19, n_samples=1024, sfreq=256.0)
+    mock_raw = _MockRaw(n_channels=64, n_samples=1000, sfreq=1000.0)
     _patch_mne_read_raw_edf(monkeypatch, mock_raw)
 
-    out = _load_helsinki_neonatal(dataset_dir)
+    out = _load_open_ieeg(dataset_dir)
 
     assert len(out) == 2
     assert all(isinstance(item, SignalData) for item in out)
-    assert out[0].subjectID == "eeg1"
-    assert out[0].sampling_rate == pytest.approx(256.0)
-    assert out[0].data.sizes["space"] == 19
+    subject_ids = {item.subjectID for item in out}
+    assert subject_ids == {"sub-Detroit001", "sub-UCLA01"}
+    assert out[0].sampling_rate == pytest.approx(1000.0)
 
 
-def test_load_helsinki_neonatal_subject_id_is_file_stem(
+def test_load_open_ieeg_subject_id_is_bids_prefix(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """_load_helsinki_neonatal uses the full file stem as the subject ID."""
-    from cobrabox.dataset_loader import _load_helsinki_neonatal
+    """_load_open_ieeg extracts the sub-XXX prefix as the subject ID."""
+    from cobrabox.dataset_loader import _load_open_ieeg
 
-    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir = tmp_path / "open_ieeg"
     dataset_dir.mkdir()
-    (dataset_dir / "eeg42.edf").write_bytes(b"fake")
+    (dataset_dir / "sub-Detroit042_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
 
     _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
 
-    out = _load_helsinki_neonatal(dataset_dir)
+    out = _load_open_ieeg(dataset_dir)
 
-    assert out[0].subjectID == "eeg42"
+    assert out[0].subjectID == "sub-Detroit042"
 
 
-def test_load_helsinki_neonatal_subset_filters_by_subject(
+def test_load_open_ieeg_subset_filters_by_subject(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """_load_helsinki_neonatal only loads files for subjects in the subset list."""
-    from cobrabox.dataset_loader import _load_helsinki_neonatal
+    """_load_open_ieeg only loads files for subjects in the subset list."""
+    from cobrabox.dataset_loader import _load_open_ieeg
 
-    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir = tmp_path / "open_ieeg"
     dataset_dir.mkdir()
-    for i in (1, 2, 3):
-        (dataset_dir / f"eeg{i}.edf").write_bytes(b"fake")
+    for subject in ("sub-Detroit001", "sub-Detroit002", "sub-UCLA01"):
+        (dataset_dir / f"{subject}_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
 
     _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
 
-    out = _load_helsinki_neonatal(dataset_dir, subset=["eeg1", "eeg3"])
+    out = _load_open_ieeg(dataset_dir, subset=["sub-Detroit001", "sub-UCLA01"])
 
-    assert {item.subjectID for item in out} == {"eeg1", "eeg3"}
+    assert {item.subjectID for item in out} == {"sub-Detroit001", "sub-UCLA01"}
 
 
-def test_load_helsinki_neonatal_raises_when_no_edf_files(tmp_path: Path) -> None:
-    """_load_helsinki_neonatal raises FileNotFoundError when no EDF files exist."""
-    from cobrabox.dataset_loader import _load_helsinki_neonatal
+def test_load_open_ieeg_raises_when_no_edf_files(tmp_path: Path) -> None:
+    """_load_open_ieeg raises FileNotFoundError when no EDF files exist."""
+    from cobrabox.dataset_loader import _load_open_ieeg
 
-    dataset_dir = tmp_path / "helsinki_neonatal"
+    dataset_dir = tmp_path / "open_ieeg"
     dataset_dir.mkdir()
 
     with pytest.raises(FileNotFoundError, match=r"No \.edf files found"):
-        _load_helsinki_neonatal(dataset_dir)
+        _load_open_ieeg(dataset_dir)
+
+
+def test_open_ieeg_file_index_parses_participants_tsv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_open_ieeg_file_index builds RemoteFile list from participants.tsv."""
+    import urllib.request
+    from unittest.mock import MagicMock
+
+    from cobrabox.downloader import _open_ieeg_file_index
+
+    tsv_content = (
+        b"participant_id\tmethods\tsampling_frequency\n"
+        b"sub-Detroit001\t1\t1000\n"
+        b"sub-Detroit002\t1\t1000\n"
+        b"sub-UCLA01\t1\t2000\n"
+    )
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = tsv_content
+    mock_resp.__enter__ = lambda s: s
+    mock_resp.__exit__ = MagicMock(return_value=False)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **kw: mock_resp)
+
+    files = _open_ieeg_file_index()
+
+    assert len(files) == 3
+    subjects = {f.subset_key for f in files}
+    assert subjects == {"sub-Detroit001", "sub-Detroit002", "sub-UCLA01"}
+    assert all(f.filename.endswith("_ses-01_task-sleep_ieeg.edf") for f in files)
+    assert all("s3.amazonaws.com/openneuro.org/ds005398" in f.url for f in files)
+
+
+def test_open_ieeg_file_index_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_open_ieeg_file_index raises RuntimeError on HTTP error."""
+    import urllib.error
+    import urllib.request
+
+    from cobrabox.downloader import _open_ieeg_file_index
+
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda *a, **kw: (_ for _ in ()).throw(  # type: ignore[arg-type]
+            urllib.error.HTTPError(None, 404, "Not Found", {}, None)
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="HTTP 404"):
+        _open_ieeg_file_index()
+
+
+def test_open_ieeg_subject_key_parses_bids_prefix() -> None:
+    """_open_ieeg_subject_key extracts the sub-XXX portion of a BIDS filename."""
+    from cobrabox.downloader import _open_ieeg_subject_key
+
+    assert _open_ieeg_subject_key("sub-Detroit001_ses-01_task-sleep_ieeg.edf") == "sub-Detroit001"
+    assert _open_ieeg_subject_key("sub-UCLA01_ses-01_task-sleep_ieeg.edf") == "sub-UCLA01"
+
+
+def test_open_ieeg_spec_is_registered() -> None:
+    """open_ieeg is registered in REMOTE_DATASETS with correct metadata."""
+    spec = get_remote_dataset_spec("open_ieeg")
+    assert spec is not None
+    assert spec.identifier == "open_ieeg"
+    assert spec.subset_key_name == "subjects"
+    assert spec.file_index_fn is not None
+    assert spec.size_hint == "~13 GB"
 
 
 # --- Spec registrations ---
@@ -2013,32 +2077,6 @@ def test_siena_eeg_spec_is_registered() -> None:
     assert spec.identifier == "siena_eeg"
     assert spec.subset_key_name == "subjects"
     assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
-
-
-def test_helsinki_neonatal_spec_is_registered() -> None:
-    """helsinki_neonatal is registered in REMOTE_DATASETS with 79 static file entries."""
-    from cobrabox.downloader import _HELSINKI_N_SUBJECTS
-
-    spec = get_remote_dataset_spec("helsinki_neonatal")
-    assert spec is not None
-    assert spec.identifier == "helsinki_neonatal"
-    assert spec.subset_key_name == "subjects"
-    assert spec.files is not None
-    assert len(spec.files) == _HELSINKI_N_SUBJECTS
-    subset_keys = {f.subset_key for f in spec.files}
-    assert "eeg1" in subset_keys
-    assert "eeg79" in subset_keys
-
-
-def test_helsinki_neonatal_file_urls_point_to_zenodo() -> None:
-    """All Helsinki Neonatal file URLs point to the correct Zenodo record."""
-    spec = get_remote_dataset_spec("helsinki_neonatal")
-    assert spec is not None
-    assert spec.files is not None
-    for rf in spec.files:
-        assert "zenodo.org" in rf.url
-        assert "2547147" in rf.url
-        assert rf.filename.endswith(".edf")
 
 
 def test_remote_dataset_spec_file_index_fn_validates() -> None:
@@ -2070,3 +2108,39 @@ def test_remote_dataset_spec_file_index_fn_accepted() -> None:
         file_index_fn=list,
     )
     assert spec.file_index_fn is not None
+
+
+def test_list_datasets_returns_sorted_list() -> None:
+    """list_datasets() returns a sorted list of all known identifiers."""
+    from cobrabox.datasets import list_datasets
+
+    result = list_datasets()
+    assert isinstance(result, list)
+    assert result == sorted(result)
+
+
+def test_list_datasets_includes_local_datasets() -> None:
+    """list_datasets() includes all built-in local datasets."""
+    from cobrabox.datasets import list_datasets
+
+    result = list_datasets()
+    for name in ("dummy_chain", "dummy_random", "dummy_star", "dummy_noise", "realistic_swiss"):
+        assert name in result
+
+
+def test_list_datasets_includes_remote_datasets() -> None:
+    """list_datasets() includes all registered remote datasets."""
+    from cobrabox.datasets import list_datasets
+    from cobrabox.downloader import REMOTE_DATASETS
+
+    result = list_datasets()
+    for name in REMOTE_DATASETS:
+        assert name in result
+
+
+def test_list_datasets_accessible_via_cb() -> None:
+    """list_datasets is accessible at the top-level cb namespace."""
+    import cobrabox as cb
+
+    assert callable(cb.list_datasets)
+    assert cb.list_datasets() == cb.datasets.list_datasets()
