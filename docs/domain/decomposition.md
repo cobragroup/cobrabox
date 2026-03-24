@@ -5,13 +5,10 @@ Decomposition features break signals into simpler components.
 ## Features
 
 ### FourierTransformSurrogates
-Generate Fourier transform surrogates preserving power spectrum.
+Generate Fourier transform surrogates preserving power spectrum (splitter feature).
 
 ### EMD
 Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs).
-
-### WaveletTransform
-Multi-level discrete wavelet decomposition (DWT) or continuous wavelet transform.
 
 ## Usage
 

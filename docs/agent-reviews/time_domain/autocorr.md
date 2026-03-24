@@ -1,12 +1,12 @@
-# Feature Review: autocorr
+# Feature Review: Autocorr
 
-**File**: `src/cobrabox/features/autocorr.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_domain/autocorr.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-The Autocorr feature is well-implemented with clean code structure, proper type annotations, and comprehensive input validation. The feature correctly uses `BaseFeature[Data]` since it operates on any dimension (not requiring a time dimension specifically). The algorithm follows the MATLAB reference implementation with appropriate NaN handling. The only minor issue is a missing `Raises:` section in the docstring.
+Clean, well-structured feature implementing normalized autocorrelation. Follows the dataclass pattern correctly with proper validation, NaN handling, and dimension-agnostic design. Ruff is clean. Minor docstring gap: missing `Raises:` section for documented exceptions.
 
 ## Ruff
 
@@ -20,55 +20,62 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-All structural requirements are met:
+Line 1: `from __future__ import annotations` present.
 
-- ✅ `from __future__ import annotations` at line 1
-- ✅ `@dataclass` decorator with `BaseFeature[Data]` inheritance (line 14)
-- ✅ Class name `Autocorr` matches filename `autocorr.py`
-- ✅ `output_type: ClassVar[type[Data]] = Data` correctly set (line 44) — necessary since the dimension is removed
-- ✅ `__call__` signature correct: `(self, data: Data) -> xr.DataArray` (line 74)
-- ✅ No `apply()` override (inherits from base)
-- ✅ Clean imports in correct order
+Line 13-14: Correct `@dataclass` + `BaseFeature[Data]` inheritance. The feature is dimension-agnostic (user specifies `dim`), so `BaseFeature[Data]` is appropriate.
 
-The choice of `BaseFeature[Data]` is appropriate — the feature operates on any user-specified dimension, not just time series data.
+Line 44: `output_type: ClassVar[type[Data]] = Data` is correctly set — the feature removes the `dim` dimension entirely, returning a reduced array.
+
+Line 74: `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray`.
+
+Lines 52-72: Helper `_acf_numpy` is a `@staticmethod` inside the class — follows the "no loose helpers" rule.
+
+Imports are ordered correctly: `__future__`, stdlib, third-party, internal.
 
 ## Docstring
 
-Good coverage with Google-style formatting:
+Line 15: Good one-line summary.
 
-- ✅ One-line summary describes the computation
-- ✅ Extended description includes MATLAB reference (lines 18-19)
-- ✅ Args section documents all four fields (dim, fs, lag_steps, lag_ms)
-- ✅ Returns section describes the output shape and meaning (lines 30-33)
-- ✅ Example shows proper `.apply()` usage (line 36)
-- ❌ **Missing Raises section** — the feature validates multiple conditions but does not document them
+Lines 17-20: Extended description includes MATLAB reference for provenance.
 
-**Recommendation**: Add a Raises section documenting:
+Lines 21-22: Clear mutual exclusivity note for `lag_steps`/`lag_ms`.
 
-- `ValueError`: If both `lag_steps` and `lag_ms` are specified
-- `ValueError`: If `fs` is not positive
-- `ValueError`: If `dim` is not found in data dimensions
-- `ValueError`: If lag is out of valid range (1 to n-1)
+Lines 24-28: `Args:` section documents all four dataclass fields.
+
+Lines 30-33: `Returns:` section describes shape and semantics.
+
+Line 36: `Example:` section shows `.apply()` usage.
+
+**Missing**: `Raises:` section. The feature raises `ValueError` in `__post_init__` (lines 47-50) for mutually exclusive parameters and invalid `fs`, plus in `__call__` (lines 78, 90) for missing dimension and invalid lag. These should be documented.
+
+**Optional**: `References:` section could cite autocorrelation literature, but this is acceptable to omit for a standard statistical measure.
 
 ## Typing
 
-Excellent type coverage:
+Lines 39-42: All four fields have explicit type annotations.
 
-- ✅ All dataclass fields typed (lines 39-42)
-- ✅ `__call__` return type: `xr.DataArray` (line 74)
-- ✅ `@staticmethod` helper has return type: `-> float` (line 53)
-- ✅ Local variable `lag_ms_value` explicitly typed as `float` (line 84)
-- ✅ No bare `Any` types
+Line 74: `__call__` has explicit return type `xr.DataArray`.
+
+Line 84: `lag_ms_value` has explicit `float` annotation (though the cast is slightly redundant given the annotation, it is harmless).
+
+No bare `Any` types.
 
 ## Safety & Style
 
-- ✅ No `print()` statements
-- ✅ Input validation in `__post_init__` (lines 46-50) validates mutual exclusivity of lag parameters and fs > 0
-- ✅ Input validation in `__call__` (lines 77-78, 89-90) validates dimension existence and lag range
-- ✅ No mutation of input data — operates on `data.data` and returns new array via `xr.apply_ufunc`
-- ✅ Proper NaN handling in `_acf_numpy` (lines 57-63)
-- ✅ Division by zero protection (line 68-69)
+No `print()` statements.
+
+Lines 47-50: `__post_init__` validates mutual exclusivity of `lag_steps`/`lag_ms` and that `fs > 0`.
+
+Line 78: Validates that `dim` exists in data.
+
+Lines 88-90: Validates lag is within valid bounds (1 to n-1).
+
+Lines 57-63: Handles NaN values properly in `_acf_numpy` by returning NaN for all-NaN inputs and using `nanmean`/`nan_to_num` for partial NaN handling.
+
+Line 68-69: Guards against division by zero when autocorrelation at lag 0 is zero.
+
+No mutation of input `data` — works on `data.data` and returns new array.
 
 ## Action List
 
-1. [Severity: MEDIUM] Add `Raises:` section to docstring documenting all ValueError conditions raised in `__post_init__` (lines 47-50) and `__call__` (lines 78, 90).
+1. [Severity: MEDIUM] Add `Raises:` section to docstring documenting the three `ValueError` conditions (lines 47-50, 78, 90).

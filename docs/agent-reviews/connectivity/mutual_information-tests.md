@@ -1,9 +1,9 @@
 # Test Review: mutual_information
 
-**Feature**: `src/cobrabox/features/mutual_information.py`
-**Test file**: `tests/test_feature_mutual_information.py`
-**Date**: 2026-03-06
-**Verdict**: NEEDS WORK
+**Feature**: `src/cobrabox/features/connectivity/mutual_information.py`
+**Test file**: `tests/features/connectivity/test_feature_mutual_information.py`
+**Date**: 2026-03-24
+**Verdict**: PASS
 
 ## Coverage
 
@@ -11,123 +11,38 @@
 MutualInformation: 100% (70 statements, 0 missing)
 ```
 
-Excellent per-file coverage at 100%.
+All 70 lines of the feature file are covered. No HIGH severity issues.
 
 ## Summary
 
-The test file covers the MutualInformation feature comprehensively including:
-
-- Internal method testing (_vector_entropy, _get_binned)
-- Parameter validation (negative bins, non-integer bins, missing dimensions)
-- Low-dimensional data (2D: space x time) with both binning strategies
-- High-dimensional data (4D: something x sample x space x time) with both binning strategies
-- History, metadata preservation, sampling_rate handling, and immutability
-
-However, 7 test functions lack docstrings, and some test naming doesn't follow the required convention.
+The test file is comprehensive and meets all criteria. Tests cover parameter validation, happy path with both equiprobable and equidistant binning, high-dimensional data handling, history updates, metadata preservation, and immutability. The test fixtures and assertions are well-designed with appropriate tolerance checking against ground truth mutual information values.
 
 ## Keep
 
-- `test_mutual_information_history_updated` — proper docstring, tests history correctly
-- `test_mutual_information_metadata_preserved` — proper docstring, tests metadata correctly
-- `test_mutual_information_sampling_rate_none` — proper docstring, tests output_type correctly
-- `test_mutual_information_does_not_mutate_input` — proper docstring, tests immutability correctly
-- `test_low_dim_equidistant_bins` — tests low-dim data with equidistant bins
-- `test_low_dim_equiprobable_bins` — tests low-dim data with equiprobable bins
-- `test_high_dim_equiprobable_bins` — tests high-dim data with equiprobable bins
-- `test_high_dim_equidistant_bins` — tests high-dim data with equidistant bins
+Tests that are correct and complete — no changes needed:
+
+- `test_mutual_information_vector_entropy` — verifies entropy calculation with a clear binned distribution
+- `test_mutual_information_get_binned` — correct discretization test with known expected output
+- `test_mutual_information_negative_bins_raises` — validates bins constraint
+- `test_mutual_information_non_integer_bins_raises` — validates bins type constraint
+- `test_mutual_information_zero_bins_raises` — validates positive bins requirement
+- `test_mutual_information_invalid_dim_type_raises` — validates dim type
+- `test_mutual_information_invalid_other_dim_type_raises` — validates other_dim type
+- `test_mutual_information_invalid_dim_raises` — runtime dimension check
+- `test_mutual_information_invalid_other_dim_raises` — runtime other_dim check
+- `test_mutual_information_high_dim_without_other_dim_raises` — validates required other_dim for >2D
+- `test_low_dim_equidistant_bins` — correct MI calculation with equidistant bins (<5% error)
+- `test_low_dim_equiprobable_bins` — correct MI calculation with equiprobable bins (<10% error)
+- `test_high_dim_equiprobable_bins` — validates 4D data handling with correct MI patterns
+- `test_high_dim_equidistant_bins` — validates 4D data with equidistant bins
+- `test_mutual_information_history_updated` — correctly appends 'MutualInformation' to history
+- `test_mutual_information_metadata_preserved` — all metadata fields preserved
+- `test_mutual_information_sampling_rate_none` — correctly sets sampling_rate to None
+- `test_mutual_information_does_not_mutate_input` — verifies input immutability
 
 ## Fix
 
-### `test_entropy` → `test_mutual_information_vector_entropy`
-
-Issue: Missing docstring, name lacks feature prefix.
-
-```python
-def test_mutual_information_vector_entropy() -> None:
-    """_vector_entropy computes correct entropy for a binned distribution."""
-```
-
-### `test_binning` → `test_mutual_information_get_binned`
-
-Issue: Missing docstring, name lacks feature prefix.
-
-```python
-def test_mutual_information_get_binned() -> None:
-    """_get_binned correctly discretizes data into specified number of bins."""
-```
-
-### `test_bad_inits`
-
-Issue: Missing docstring, should be split into multiple tests for clarity.
-
-Replace with:
-
-```python
-def test_mutual_information_negative_bins_raises() -> None:
-    """MutualInformation raises ValueError for negative bins."""
-    with pytest.raises(ValueError, match="bins must be positive"):
-        MutualInformation(bins=-1)
-
-
-def test_mutual_information_non_integer_bins_raises() -> None:
-    """MutualInformation raises ValueError for non-integer bins."""
-    with pytest.raises(ValueError, match="bins must be an integer"):
-        MutualInformation(bins=2.5)
-
-
-def test_mutual_information_zero_bins_raises() -> None:
-    """MutualInformation raises ValueError for zero bins."""
-    with pytest.raises(ValueError, match="bins must be positive"):
-        MutualInformation(bins=0)
-
-
-def test_mutual_information_invalid_dim_type_raises() -> None:
-    """MutualInformation raises ValueError when dim is not a string."""
-    with pytest.raises(ValueError, match="dim must be a string"):
-        MutualInformation(dim=123)
-
-
-def test_mutual_information_invalid_other_dim_type_raises() -> None:
-    """MutualInformation raises ValueError when other_dim is not a string or None."""
-    with pytest.raises(ValueError, match="other_dim must be a string or None"):
-        MutualInformation(other_dim=123)
-```
-
-### `test_low_dim_equidistant_bins`
-
-Issue: Missing docstring.
-
-```python
-def test_low_dim_equidistant_bins(low_dim_data: cb.Data) -> None:
-    """MutualInformation computes correct MI for 2D data with equidistant bins."""
-```
-
-### `test_low_dim_equiprobable_bins`
-
-Issue: Missing docstring.
-
-```python
-def test_low_dim_equiprobable_bins(low_dim_data: cb.Data) -> None:
-    """MutualInformation computes correct MI for 2D data with equiprobable bins."""
-```
-
-### `test_high_dim_equiprobable_bins`
-
-Issue: Missing docstring.
-
-```python
-def test_high_dim_equiprobable_bins(high_dim_data: cb.Data) -> None:
-    """MutualInformation handles 4D data correctly with equiprobable bins."""
-```
-
-### `test_high_dim_equidistant_bins`
-
-Issue: Missing docstring.
-
-```python
-def test_high_dim_equidistant_bins(high_dim_data: cb.Data) -> None:
-    """MutualInformation handles 4D data correctly with equidistant bins."""
-```
+None. All existing tests are correct and complete.
 
 ## Add
 
@@ -135,6 +50,4 @@ None. All required scenarios are covered.
 
 ## Action List
 
-1. [Severity: MEDIUM] Add docstrings to `test_entropy`, `test_binning`, `test_bad_inits`, `test_low_dim_equidistant_bins`, `test_low_dim_equiprobable_bins`, `test_high_dim_equiprobable_bins`, `test_high_dim_equidistant_bins`
-2. [Severity: MEDIUM] Rename `test_entropy` to `test_mutual_information_vector_entropy` and `test_binning` to `test_mutual_information_get_binned`
-3. [Severity: LOW] Split `test_bad_inits` into separate test functions for each validation case
+None.

@@ -1,8 +1,8 @@
 # Test Review: bandfilter
 
-**Feature**: `src/cobrabox/features/bandfilter.py`
-**Test file**: `tests/test_feature_bandfilter.py`
-**Date**: 2026-03-06
+**Feature**: `src/cobrabox/features/frequency_domain/bandfilter.py`
+**Test file**: `tests/features/frequency_domain/test_feature_bandfilter.py`
+**Date**: 2026-03-24
 **Verdict**: PASS
 
 ## Coverage

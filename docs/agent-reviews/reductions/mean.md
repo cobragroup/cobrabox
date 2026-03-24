@@ -1,12 +1,12 @@
-# Feature Review: mean
+# Feature Review: Mean
 
-**File**: `src/cobrabox/features/mean.py`
-**Date**: 2026-03-06
-**Verdict**: NEEDS WORK
+**File**: `src/cobrabox/features/reductions/mean.py`
+**Date**: 2025-03-24
+**Verdict**: PASS
 
 ## Summary
 
-Clean, minimal implementation of a generic mean-reduction feature. The code is well-structured, properly typed, and passes all ruff checks. Only issue is a missing `Raises:` section in the docstring for the `ValueError` raised at line 30.
+A clean, well-structured reduction feature that computes the mean across a specified dimension. The implementation follows all cobrabox conventions: proper dataclass structure, complete Google-style docstring with all required sections, input validation for the dimension parameter, and correct typing throughout. The feature correctly inherits from `BaseFeature[Data]` (not `SignalData`) since it operates generically on any dimension, making it suitable for non-time-series reductions as well.
 
 ## Ruff
 
@@ -20,44 +20,42 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-All structural requirements met:
-
-- Line 1: `from __future__ import annotations` present
-- Line 11: `@dataclass` decorator applied
-- Line 12: Correctly inherits `BaseFeature[Data]` (generic, works with any dimension)
-- Line 27: Single field `dim: str` properly typed
-- Line 29: `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray`
-- No custom `apply()` method (correctly uses inherited implementation)
-- Class name `Mean` matches filename `mean.py`
-- Import order follows convention
+- **Line 1**: `from __future__ import annotations` present.
+- **Line 11**: `@dataclass` decorator correctly applied.
+- **Line 12**: Inherits `BaseFeature[Data]` — appropriate for a dimension-agnostic reduction feature (does not require time dimension).
+- **Line 12**: Class name `Mean` matches filename `mean.py` in PascalCase.
+- **Line 30**: Single dataclass field `dim: str` properly typed.
+- **Line 32**: `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray`.
+- No `apply()` override — correctly inherits from base class.
+- No loose helper functions — the implementation is self-contained.
+- Import order follows convention: `__future__`, stdlib, third-party, internal.
 
 ## Docstring
 
-Good Google-style docstring with most required sections:
+Complete Google-style docstring with all required sections:
 
-- ✅ One-line summary at line 13
-- ✅ `Args:` section documents the `dim` field
-- ✅ `Returns:` section describes output shape and values
-- ✅ `Example:` section shows usage with `.apply()`
-- ❌ Missing `Raises:` section (feature raises `ValueError` at line 30-31)
+- **One-line summary** (line 13): Clear verb phrase describing the operation.
+- **Args** (lines 15-16): Documents the `dim` field with type and description.
+- **Returns** (lines 18-21): Describes output shape (input shape minus reduced dimension) and value semantics.
+- **Raises** (lines 23-24): Documents `ValueError` for missing dimension.
+- **Example** (lines 26-27): Shows typical usage with `.apply()`.
 
-The `ValueError` raised when the specified dimension is not found should be documented.
+The docstring is accurate and follows the project's style conventions (using double backticks for code literals).
 
 ## Typing
 
-Fully typed:
-
-- Line 27: `dim: str` field annotation
-- Line 29: `data: Data` parameter and `-> xr.DataArray` return type
-- No bare `Any` types
+- **Line 30**: Field `dim: str` has explicit type annotation.
+- **Line 32**: `__call__` has complete type annotations for parameter and return type.
+- No bare `Any` types.
+- Type parameter `BaseFeature[Data]` correctly constrains the input type.
 
 ## Safety & Style
 
-- ✅ No `print()` statements
-- ✅ Input validation at lines 30-31: checks if `dim` exists in data dimensions
-- ✅ No mutation of input data (operates on `data.data.mean()`)
-- ✅ Line length within 100 characters
+- No `print()` statements.
+- **Lines 33-34**: Proper input validation — checks if `self.dim` exists in `data.data.dims` and raises `ValueError` with a clear message including available dimensions.
+- No mutation of input `data` — operates on `data.data` and returns new array.
+- Line length within 100 characters (longest line is 90 chars).
 
 ## Action List
 
-1. [Severity: MEDIUM] Add `Raises:` section to docstring documenting `ValueError` when `dim` is not found in data dimensions (line 30).
+None.

@@ -1,16 +1,12 @@
 # Feature Review: hilbert
 
-**File**: `src/cobrabox/features/hilbert.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_frequency/hilbert.py`
+**Date**: 2026-03-24
 **Verdict**: PASS
 
 ## Summary
 
-The Hilbert feature is well-implemented and clean. It correctly uses `BaseFeature[SignalData]`
-to indicate time-series dependency, has comprehensive docstring coverage with all required
-sections, and includes proper input validation in both `__post_init__` and `__call__`. The
-implementation correctly preserves the input DataArray's dimensions and coordinates, returning
-new arrays without mutating input.
+The `Hilbert` feature is an exemplary implementation following all cobrabox conventions. It applies the Hilbert transform to extract analytic signal representations (analytic signal, envelope, phase, or instantaneous frequency). The code is clean, well-documented, properly typed, and passes all linting checks without issues.
 
 ## Ruff
 
@@ -24,49 +20,48 @@ All checks passed!
 
 ## Signature & Structure
 
-The feature follows the correct structure:
+Excellent structure throughout:
 
 - Line 1: `from __future__ import annotations` is present
-- Line 16-17: `@dataclass` decorator with `BaseFeature[SignalData]` inheritance
-- Line 17: Correct base class choice — Hilbert transform requires time dimension
-- Line 53: Single dataclass field `feature` with proper `Literal` type annotation
+- Lines 16-17: `@dataclass` decorator with `BaseFeature[SignalData]` inheritance
+- Line 17: Class name `Hilbert` matches filename
 - Line 62: `__call__` signature correctly typed as `(self, data: SignalData) -> xr.DataArray`
-- No `output_type` classvar — correct since time dimension is preserved
-- No `_is_cobrabox_feature` marker — correctly omitted for class-based features
+- No `apply()` override — correctly uses inherited method
+- No loose module-level helper functions
+- Clean import ordering: future, stdlib, third-party, internal
 
-Imports are clean and in standard order (future, stdlib, third-party, internal).
+The feature correctly uses `BaseFeature[SignalData]` since it operates on the time axis.
 
 ## Docstring
 
 Comprehensive Google-style docstring with all required sections:
 
-- **One-line summary** (line 18): Clear verb phrase describing the feature
-- **Extended description** (lines 20-23): Explains what and why, not how
-- **Args** (lines 25-35): Documents the `feature` field with all four valid options
-- **Returns** (lines 37-39): Describes shape, dimensions, and dtype
-- **Raises** (lines 41-44): Lists both ValueError conditions
-- **Example** (lines 46-50): Four working examples showing all feature modes
-
-The docstring is exemplary — detailed without being verbose.
+- Line 18: One-line summary clearly states purpose
+- Lines 20-23: Extended description explains behavior and SciPy dependency
+- Lines 25-35: `Args:` section documents the `feature` parameter with all four valid options
+- Lines 37-39: `Returns:` section describes shape, dimensions, and dtypes
+- Lines 41-44: `Raises:` section documents both ValueError conditions
+- Lines 46-50: `Example:` section with 4 usage examples showing all feature modes
 
 ## Typing
 
-Fully typed:
+Full type coverage:
 
-- Line 53: Field `feature: Literal["analytic", "envelope", "phase", "frequency"] = "analytic"`
-- Line 62: Return type `xr.DataArray` is explicit
-- Line 55, 62: Method return types (`None`, `xr.DataArray`) are annotated
+- Line 53: Field `feature` properly typed as `Literal["analytic", "envelope", "phase", "frequency"]`
+- Line 62: `__call__` return type `xr.DataArray` explicitly annotated
+- Line 55: `__post_init__` return type `None` annotated
 - No bare `Any` types
+- Excellent use of `Literal` for the feature mode
 
 ## Safety & Style
 
 Clean implementation with proper safety practices:
 
-- Line 56-60: `__post_init__` validates `feature` parameter against `_VALID_FEATURES`
-- Line 76-79: `__call__` validates `sampling_rate` is set when `feature='frequency'`
+- Lines 56-60: `__post_init__` validates `feature` against `_VALID_FEATURES`
+- Lines 76-79: `__call__` validates `sampling_rate` when `feature='frequency'`
 - No `print()` statements
-- No mutation of input `data` — works on `data.data` and returns new DataArrays
-- Lines 70, 83: Returns preserve original dims and coords
+- No mutation of input `data` — returns new `xr.DataArray` instances
+- Line length within 100 character limit
 
 ## Action List
 

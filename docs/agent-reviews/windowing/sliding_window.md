@@ -1,12 +1,12 @@
 # Feature Review: sliding_window
 
-**File**: `src/cobrabox/features/sliding_window.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/windowing/sliding_window.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-Excellent implementation of a `SplitterFeature`. The code is clean, well-documented, and follows all project conventions. The docstring is comprehensive with all required sections (Args, Returns, Example). Input validation is thorough with `__post_init__` checking parameter constraints and `__call__` verifying data dimensions. The lazy generator pattern is correctly implemented using `yield`. No issues found.
+Clean, well-structured `SplitterFeature` implementation. Follows the dataclass pattern correctly with proper type annotations, input validation, and a comprehensive docstring. Only minor omission is the missing `Raises:` section which documents the `ValueError` exceptions raised during validation.
 
 ## Ruff
 
@@ -17,43 +17,54 @@ Clean — no issues found.
 ### `uvx ruff format --check`
 
 Clean — no formatting issues.
+Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 12: Correct `@dataclass` decorator applied.
-Line 13: Correctly inherits `SplitterFeature[SignalData]` — appropriate for a time-series windowing feature.
-Lines 36-37: Properly typed dataclass fields with default values using `field()`.
-Lines 45-57: Correct `__call__` signature matching base class contract: `Iterator[Data]`.
-No `output_type` classvar — correct omission since `SplitterFeature` yields `Data` objects.
-Class name `SlidingWindow` matches filename `sliding_window.py` in PascalCase.
+Line 12-13: Correct `@dataclass` decorator with `SplitterFeature[SignalData]` inheritance. The type parameter is appropriate since this feature operates on the time dimension.
+
+Line 36-37: Fields properly declared with type annotations and `field()` defaults.
+
+Line 45: `__call__` signature correctly typed as `(self, data: SignalData) -> Iterator[Data]`, matching the `SplitterFeature` contract.
+
+Line 39-43: `__post_init__` validation for field constraints (`window_size >= 1`, `step_size >= 1`).
+
+Line 49-50: Runtime validation in `__call__` ensuring window size fits within data.
+
+No loose helper functions — all logic contained within the class. No `apply()` override (correctly inherited).
 
 ## Docstring
 
-Comprehensive Google-style docstring with all required sections:
+Line 14-33: Google-style docstring with:
 
-- Lines 14-16: Clear one-line summary + extended description about lazy generation
-- Lines 18-20: Args section with type and constraint documentation for both fields
-- Lines 22-27: Returns section describing generator behavior and metadata preservation
-- Lines 29-33: Working example showing typical usage
-
-The docstring correctly notes that `history` is appended on each yielded window and metadata is preserved.
+- ✅ One-line summary (line 14)
+- ✅ Extended description about lazy generation (line 16)
+- ✅ `Args:` section documenting `window_size` and `step_size` (lines 18-20)
+- ✅ `Returns:` section describing generator behavior and history (lines 22-27)
+- ✅ `Example:` section with working code (lines 29-33)
+- ❌ Missing `Raises:` section — should document `ValueError` from `__post_init__` (lines 40-43) and `__call__` (line 50)
 
 ## Typing
 
-Line 36-37: Both fields properly typed as `int`.
-Line 45: `__call__` has correct parameter type `SignalData` matching the base class type parameter.
-Line 45: `__call__` has correct return type `Iterator[Data]`.
-All imports properly typed with `from __future__ import annotations` (line 1).
-No bare `Any` types present.
+All fields typed: `window_size: int` and `step_size: int` (lines 36-37).
+
+`__call__` return type correctly annotated as `Iterator[Data]` (line 45).
+
+No bare `Any` types.
 
 ## Safety & Style
 
-Line 39-43: Excellent `__post_init__` validation for both `window_size` and `step_size` ensuring they are >= 1.
-Line 49-50: Additional validation in `__call__` ensuring window_size does not exceed data length.
-Line 57: Uses `_copy_with_new_data` for immutability — correct pattern.
-No `print()` statements found.
-Proper handling of input data without mutation.
+No `print()` statements.
+
+Input validation:
+
+- `__post_init__` validates `window_size >= 1` and `step_size >= 1` with clear error messages
+- `__call__` validates that `window_size <= n_time` before processing
+
+No mutation of input `data` — uses `data._copy_with_new_data()` to create new instances (line 57).
+
+Lazy generator pattern correctly implemented with `yield` (lines 54-57), avoiding memory materialization of all windows.
 
 ## Action List
 
-None.
+1. [Severity: LOW] Add `Raises:` section to docstring documenting the two `ValueError` conditions (lines 40-43 and line 50).
