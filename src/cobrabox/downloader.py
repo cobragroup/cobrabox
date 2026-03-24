@@ -78,6 +78,8 @@ class RemoteDatasetSpec:
     known_subset_keys: tuple[str, ...] | None = None  # static list when known upfront
     size_hint: str | None = None  # Approximate total download size, e.g. "~10 MB"
     subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
+    seizures_per_subject: dict[str, int] | None = None  # Seizure count keyed by subset key
+    seizure_info_url: str | None = None  # URL where seizure count information was sourced
 
     def __post_init__(self) -> None:
         if self.files is None and self.file_index_url is None and self.file_index_fn is None:
@@ -383,6 +385,8 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
         subset_key_name="subjects",
         size_hint="~50 MB",
         subset_size_hint="~3 MB per subject",
+        # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940).
+        seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
     )
 
 
@@ -410,6 +414,9 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         subset_key_fn=_swez_long_subject_key,
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
+        # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
+        # Per-subject table is in the Laelaps paper; see seizure_info_url.
+        seizure_info_url="http://ieeg-swez.ethz.ch/",
     )
 
 
@@ -444,6 +451,10 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         subset_key_name="sets",
         size_hint="~10 MB",
         subset_size_hint="~2 MB per set",
+        # Set S contains 100 single-channel ictal recordings; Z/O/N/F are seizure-free.
+        # Source: Andrzejak et al. 2001 (DOI: 10.34810/data490).
+        seizures_per_subject={"Z": 0, "O": 0, "N": 0, "F": 0, "S": 100},
+        seizure_info_url="https://repositori.upf.edu/handle/10230/42894",
     )
 
 
@@ -511,6 +522,35 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
         known_subset_keys=_CHB_MIT_SUBJECTS,
         size_hint="~30 GB",
         subset_size_hint="~1.5 GB per subject",
+        # Counts sourced from per-subject summary files (chbXX/chbXX-summary.txt).
+        # chb21 is a repeat recording from the same patient as chb01.
+        seizures_per_subject={
+            "chb01": 7,
+            "chb02": 3,
+            "chb03": 7,
+            "chb04": 4,
+            "chb05": 5,
+            "chb06": 10,
+            "chb07": 3,
+            "chb08": 5,
+            "chb09": 4,
+            "chb10": 7,
+            "chb11": 3,
+            "chb12": 40,
+            "chb13": 12,
+            "chb14": 8,
+            "chb15": 22,
+            "chb16": 10,
+            "chb17": 3,
+            "chb18": 6,
+            "chb19": 3,
+            "chb20": 8,
+            "chb21": 4,
+            "chb22": 3,
+            "chb23": 7,
+            "chb24": 16,
+        },
+        seizure_info_url="https://physionet.org/content/chbmit/1.0.0/",
     )
 
 
@@ -577,38 +617,25 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
         known_subset_keys=_SIENA_SUBJECTS,
         size_hint="~15 GB",
         subset_size_hint="~1 GB per subject",
-    )
-
-
-_HELSINKI_N_SUBJECTS: int = 79
-
-
-def _helsinki_neonatal_spec() -> RemoteDatasetSpec:
-    from .dataset_loader import _load_helsinki_neonatal  # avoid circular import at module level
-
-    base_url = "https://zenodo.org/records/2547147/files"
-    files = [
-        RemoteFile(
-            url=f"{base_url}/eeg{i}.edf?download=1", filename=f"eeg{i}.edf", subset_key=f"eeg{i}"
-        )
-        for i in range(1, _HELSINKI_N_SUBJECTS + 1)
-    ]
-    return RemoteDatasetSpec(
-        identifier="helsinki_neonatal",
-        local_rel_dir=Path("data") / "remote" / "helsinki_neonatal",
-        files=files,
-        loader=_load_helsinki_neonatal,
-        description=(
-            f"Helsinki Neonatal EEG Seizure Dataset: multichannel EEG from "
-            f"{_HELSINKI_N_SUBJECTS} term neonates with expert seizure annotations "
-            "(256 Hz, 19 EEG channels + ECG + respiratory). "
-            "Helsinki University Hospital NICU. "
-            "License: Creative Commons Attribution 4.0 International (CC BY 4.0). "
-            "DOI: 10.5281/zenodo.2547147."
-        ),
-        subset_key_name="subjects",
-        size_hint="~4 GB",
-        subset_size_hint="~50 MB per subject",
+        # Sourced from subject_info.csv (Detti et al. 2020, 47 seizures total).
+        # Note: subject IDs skip some numbers (no PN02, PN04, PN08, etc.).
+        seizures_per_subject={
+            "PN00": 5,
+            "PN01": 2,
+            "PN03": 2,
+            "PN05": 3,
+            "PN06": 5,
+            "PN07": 1,
+            "PN09": 3,
+            "PN10": 10,
+            "PN11": 1,
+            "PN12": 4,
+            "PN13": 3,
+            "PN14": 4,
+            "PN16": 2,
+            "PN17": 2,
+        },
+        seizure_info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/subject_info.csv",
     )
 
 
@@ -618,7 +645,6 @@ REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "bonn_eeg": _bonn_eeg_spec(),
     "chb_mit": _chb_mit_spec(),
     "siena_eeg": _siena_eeg_spec(),
-    "helsinki_neonatal": _helsinki_neonatal_spec(),
 }
 
 

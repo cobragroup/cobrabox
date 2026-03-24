@@ -48,6 +48,10 @@ class DatasetInfo:
             ``None`` if unknown.
         subset_size_hint: Approximate size per subset (e.g. ``"~2 MB per set"``),
             or ``None`` if unknown.
+        seizures_per_subject: Number of seizures per subset key, or ``None`` if
+            not available.  Keys match the subset keys shown under *subsets*.
+        seizure_info_url: URL where the seizure count information was sourced,
+            or ``None`` if not available.
     """
 
     identifier: str
@@ -56,6 +60,8 @@ class DatasetInfo:
     subsets: tuple[str, ...] | None
     size_hint: str | None = None
     subset_size_hint: str | None = None
+    seizures_per_subject: dict[str, int] | None = None
+    seizure_info_url: str | None = None
 
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
@@ -84,6 +90,22 @@ class DatasetInfo:
             second = self.subsets[1] if len(self.subsets) > 1 else self.subsets[0]
             example = f'["{self.subsets[0]}", "{second}"]'
             lines.append(f'  usage       : cb.dataset("{self.identifier}", subset={example})')
+        if self.seizures_per_subject is not None:
+            counts = self.seizures_per_subject
+            total = sum(counts.values())
+            max_key = max(len(k) for k in counts)
+            max_val = len(str(max(counts.values())))
+            n_cols = 5
+            pairs = list(counts.items())
+            lines.append(f"  seizures/subject ({total} total):")
+            for i in range(0, len(pairs), n_cols):
+                chunk = pairs[i : i + n_cols]
+                row = "    " + "   ".join(f"{k:<{max_key}} {v:>{max_val}}" for k, v in chunk)
+                lines.append(row)
+            if self.seizure_info_url is not None:
+                lines.append(f"  seizure src : {self.seizure_info_url}")
+        elif self.seizure_info_url is not None:
+            lines.append(f"  seizure info: {self.seizure_info_url}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:
@@ -183,6 +205,24 @@ def dataset(identifier: str, *, subset: SubsetSpec | None = None) -> Dataset[Sig
     )
 
 
+def list_datasets() -> list[str]:
+    """Return all known dataset identifiers.
+
+    Includes built-in local datasets (no download required) and all
+    registered remote datasets.
+
+    Example::
+
+        cb.list_datasets()
+        # ['dummy_chain', 'dummy_noise', 'dummy_random', 'dummy_star',
+        #  'realistic_swiss', 'bonn_eeg', 'chb_mit', ...]
+
+    Returns:
+        Sorted list of dataset identifier strings.
+    """
+    return sorted([*_LOCAL_DATASET_INFO, *REMOTE_DATASETS])
+
+
 def dataset_info(identifier: str) -> DatasetInfo:
     """Return metadata for a dataset, including available subset keys.
 
@@ -222,6 +262,8 @@ def dataset_info(identifier: str) -> DatasetInfo:
             subsets=tuple(keys) if keys is not None else None,
             size_hint=spec.size_hint,
             subset_size_hint=spec.subset_size_hint,
+            seizures_per_subject=spec.seizures_per_subject,
+            seizure_info_url=spec.seizure_info_url,
         )
 
     raise ValueError(
