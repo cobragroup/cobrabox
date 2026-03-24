@@ -629,8 +629,20 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
 
 
 _SIENA_SUBJECTS: tuple[str, ...] = (
-    "PN00", "PN01", "PN03", "PN05", "PN06", "PN07",
-    "PN09", "PN10", "PN11", "PN12", "PN13", "PN14", "PN16", "PN17",
+    "PN00",
+    "PN01",
+    "PN03",
+    "PN05",
+    "PN06",
+    "PN07",
+    "PN09",
+    "PN10",
+    "PN11",
+    "PN12",
+    "PN13",
+    "PN14",
+    "PN16",
+    "PN17",
 )
 
 
@@ -785,6 +797,9 @@ def _open_ieeg_spec() -> RemoteDatasetSpec:
         subset_key_fn=_open_ieeg_subject_key,
         size_hint="~13 GB",
         subset_size_hint="~70 MB per subject",
+        # Interictal-only dataset: recordings are sleep segments with no ictal events.
+        seizures_per_subject=None,
+        seizure_info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
     )
 
 
