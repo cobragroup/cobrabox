@@ -75,6 +75,7 @@ class RemoteDatasetSpec:
     description: str = ""
     subset_key_name: str | None = None  # e.g. "subjects"
     subset_key_fn: Callable[[str], str | None] | None = None  # filename -> subset key
+    known_subset_keys: tuple[str, ...] | None = None  # static list when known upfront
     size_hint: str | None = None  # Approximate total download size, e.g. "~10 MB"
     subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
 
@@ -87,9 +88,11 @@ class RemoteDatasetSpec:
 
     def subset_keys(self) -> list[str] | None:
         """Return the list of available subset keys, or None if unknown/not applicable."""
+        if self.known_subset_keys is not None:
+            return list(self.known_subset_keys)
         if self.files is None or self.subset_key_name is None:
             return None
-        keys = [f.subset_key for f in self.files if f.subset_key is not None]
+        keys = list(dict.fromkeys(f.subset_key for f in self.files if f.subset_key is not None))
         return keys if keys else None
 
 
@@ -444,10 +447,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
     )
 
 
-def _chb_mit_subject_key(filename: str) -> str | None:
-    """Parse subject ID from a CHB-MIT filename (e.g. 'chb01_01.edf' -> 'chb01')."""
-    stem = filename.rsplit(".", 1)[0]  # strip extension
-    return stem.split("_", 1)[0]  # "chb01_01" -> "chb01"
+_CHB_MIT_SUBJECTS: tuple[str, ...] = tuple(f"chb{i:02d}" for i in range(1, 25))
 
 
 def _chb_mit_file_index() -> Sequence[RemoteFile]:
@@ -503,20 +503,18 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
         file_index_fn=_chb_mit_file_index,
         description=(
             "CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures "
-            "(22 subjects, 256 Hz, 23 channels, ictal/interictal). "
+            "(24 subjects, 256 Hz, 23 channels, ictal/interictal). "
             "Children's Hospital Boston / MIT. "
             "License: Open Data Commons Attribution License v1.0."
         ),
         subset_key_name="subjects",
+        known_subset_keys=_CHB_MIT_SUBJECTS,
         size_hint="~30 GB",
         subset_size_hint="~1.5 GB per subject",
     )
 
 
-def _siena_subject_key(filename: str) -> str | None:
-    """Parse subject ID from a Siena EEG filename (e.g. 'PN00-1.edf' -> 'PN00')."""
-    stem = filename.rsplit(".", 1)[0]  # strip extension
-    return stem.split("-", 1)[0]  # "PN00-1" -> "PN00"
+_SIENA_SUBJECTS: tuple[str, ...] = tuple(f"PN{i:02d}" for i in range(14))
 
 
 def _siena_file_index() -> Sequence[RemoteFile]:
@@ -576,6 +574,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
             "License: Creative Commons Attribution 4.0 International (CC BY 4.0)."
         ),
         subset_key_name="subjects",
+        known_subset_keys=_SIENA_SUBJECTS,
         size_hint="~15 GB",
         subset_size_hint="~1 GB per subject",
     )
