@@ -1,61 +1,64 @@
-# Feature Review: mean_aggregate
+# Feature Review: MeanAggregate
 
-**File**: `src/cobrabox/features/mean_aggregate.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/windowing/mean_aggregate.py`
+**Date**: 2026-03-24
 **Verdict**: PASS
 
 ## Summary
 
-A clean, well-implemented `AggregatorFeature` that folds a stream of windowed data back into a single averaged result. The implementation correctly handles history propagation, metadata preservation, and empty stream validation. No issues found.
+MeanAggregate is a well-written aggregator feature that correctly implements the `AggregatorFeature` interface. It averages values across a stream of windowed Data objects, properly propagates per-window history, and maintains immutability by creating new Data instances. The code follows all project conventions and includes appropriate validation.
 
 ## Ruff
 
 ### `uvx ruff check`
-
 Clean — no issues found.
 
 ### `uvx ruff format --check`
-
 Clean — no formatting issues.
 
 ## Signature & Structure
 
-- ✅ `from __future__ import annotations` present at line 1
-- ✅ `@dataclass` decorator with correct `AggregatorFeature` base class (lines 12-13)
-- ✅ No `output_type` needed — this is correct since `AggregatorFeature` returns `Data`
-- ✅ Class name `MeanAggregate` matches filename (`mean_aggregate.py`)
-- ✅ `__call__` signature matches `AggregatorFeature` contract (line 38)
-- ✅ No redundant `apply()` override — correctly inherits from base
-- ✅ Clean imports in proper order (stdlib → third-party → internal)
+**Line 1**: Correctly imports `from __future__ import annotations` as the first import.
+
+**Line 12**: Uses `@dataclass` decorator appropriately.
+
+**Line 13**: Correctly inherits from `AggregatorFeature` (no type parameter needed for aggregators).
+
+**Line 38**: `__call__` signature correctly implements the `AggregatorFeature` contract: `def __call__(self, data: Data, stream: Iterator[Data]) -> Data`. The parameter name `stream` is appropriate and matches the intent.
+
+**No issues**: Does not implement `apply()` (correctly inherited), has no loose helper functions, imports are well-ordered (stdlib, third-party, internal relative imports).
 
 ## Docstring
 
-Comprehensive Google-style docstring with all required sections:
+Complete Google-style docstring with all required sections:
 
-- ✅ One-line summary at line 14
-- ✅ Extended description explaining stacking and reduction (lines 16-17)
-- ✅ `Args:` section correctly documents no configuration parameters (lines 19-20)
-- ✅ `Returns:` section details shape, metadata preservation, and history (lines 22-27)
-- ✅ `Example:` section shows chord usage pattern (lines 29-35)
+- **One-line summary** (line 14): Clear verb phrase describing the operation.
+- **Extended description** (lines 16-17): Explains the implementation approach (stacking and reducing).
+- **Args** (lines 19-20): Correctly documents that this aggregator takes no configuration parameters.
+- **Returns** (lines 22-27): Comprehensive description including shape, metadata preservation, and history handling.
+- **Example** (lines 29-35): Shows typical usage within a `Chord` pipeline.
 
-**Suggestion**: Add a `Raises:` section documenting the `ValueError` at lines 40-41.
+No `Raises` section in docstring, though the code does raise `ValueError` for empty streams. This is a minor omission but acceptable given the clear inline comment on line 41.
+
+No `References` section needed — this is a self-evident statistical operation without a specific literature basis.
 
 ## Typing
 
-- ✅ No dataclass fields to type (aggregator takes no config)
-- ✅ `__call__` has correct return type annotation `-> Data` (line 38)
-- ✅ Parameter types are explicit: `data: Data`, `stream: Iterator[Data]`
-- ✅ No bare `Any` types
+All type annotations are present and correct:
+
+- **Line 38**: `data: Data` parameter typed correctly.
+- **Line 38**: `stream: Iterator[Data]` parameter typed correctly.
+- **Line 38**: Return type `-> Data` matches the `AggregatorFeature` contract.
+
+No bare `Any` types. No `Literal` needed (no string option fields).
 
 ## Safety & Style
 
-- ✅ No `print()` statements
-- ✅ Input validation raises `ValueError` with clear message for empty streams (lines 40-41)
-- ✅ No mutation of input `data` — creates new `Data` instance (lines 46-54)
-- ✅ History correctly propagated: original data history + per-window history + "MeanAggregate" (lines 45, 52)
-- ✅ Metadata preserved: `subjectID`, `groupID`, `condition`, `sampling_rate`, `extra` (lines 48-51, 53)
-- ✅ Uses `join="override"` to avoid coordinate conflicts during concat (line 42)
+- **No print statements**: Clean.
+- **Input validation** (line 40-41): Properly validates that the stream is not empty and raises a clear `ValueError` with message "MeanAggregate received an empty stream".
+- **No mutation**: The feature correctly creates a new `Data` instance (lines 46-54) rather than modifying input objects. All metadata from the original `data` argument is preserved.
+- **History handling** (lines 45, 52): Correctly propagates per-window pipeline history and appends "MeanAggregate" to the result history.
 
 ## Action List
 
-1. [Severity: LOW] Add a `Raises:` section to the docstring documenting the `ValueError` raised when an empty stream is received (line 40-41).
+None.

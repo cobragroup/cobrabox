@@ -55,6 +55,8 @@ plugins:
   - mkdocs-jupyter:
       include_source: true
       ignore_h1_titles: true
+      ignore:
+        - "hooks.py"
 
 exclude_docs: |
   agent-reviews/

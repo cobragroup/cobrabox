@@ -1,17 +1,19 @@
-# Test Review: coherence
+# Test Review: Coherence
 
-**Feature**: `src/cobrabox/features/coherence.py`
-**Test file**: `tests/test_feature_coherence.py`
-**Date**: 2026-03-06
+**Feature**: `src/cobrabox/features/connectivity/coherence.py`
+**Test file**: `tests/features/connectivity/test_feature_coherence.py`
+**Date**: 2026-03-24
 **Verdict**: PASS
 
 ## Coverage
 
+Report the per-file coverage percentage and any uncovered lines:
+
 ```text
-src/cobrabox/features/coherence.py: 100% (61 statements, 0 missing)
+Coherence: 100% (61 statements, 0 missing)
 ```
 
-All 61 statements in the feature are covered by the test suite.
+No uncovered lines found. Coverage is >=95% — no HIGH severity issues.
 
 ## Summary
 

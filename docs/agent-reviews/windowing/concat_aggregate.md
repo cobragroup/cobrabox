@@ -1,62 +1,76 @@
-# Feature Review: concat_aggregate
+# Feature Review: ConcatAggregate
 
-**File**: `src/cobrabox/features/concat_aggregate.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/windowing/concat_aggregate.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-Clean, well-structured `AggregatorFeature` that concatenates per-window data along a new
-"window" dimension. The implementation correctly handles the stream-to-single-Data conversion,
-preserves metadata, and properly propagates history. Only minor docstring completeness issue
-found.
+`ConcatAggregate` is a clean, well-structured `AggregatorFeature` that stacks
+windowed results along a new dimension. The implementation correctly handles
+history propagation and preserves all metadata. Ruff is clean and the code
+follows all structural conventions. One minor docstring enhancement is suggested
+to document the raised exception.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
 
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-- `from __future__ import annotations` present at line 1.
-- `@dataclass` decorator applied, inherits `AggregatorFeature` correctly.
-- Class name `ConcatAggregate` matches filename.
-- `__call__` signature correct for `AggregatorFeature` (line 36): takes `(data, stream)` and
-  returns `Data`.
-- No `apply()` override — correctly inherited.
-- Imports well-organized: stdlib, third-party, internal.
+All structural requirements met:
+
+- `from __future__ import annotations` present at line 1
+- `@dataclass` decorator with `AggregatorFeature` base class (lines 12-13)
+- Class name `ConcatAggregate` matches filename `concat_aggregate.py`
+- `__call__` signature correctly typed as `(self, data: Data, stream: Iterator[Data]) -> Data`
+- No loose helper functions
+- Proper import ordering (stdlib, third-party, internal relative imports)
 
 ## Docstring
 
-Google-style docstring present with all major sections:
+Google-style docstring present with most sections:
 
-- One-line summary clear and descriptive (line 14).
-- Extended description explains behavior (lines 16-18).
-- Returns section documents output structure (lines 20-24).
-- Example section shows Chord pipeline usage (lines 26-34).
+- One-line summary: Clear verb phrase describing the aggregation behavior
+- Extended description: Explains the stacking behavior and history propagation
+- `Returns:`: Well-documented with shape and metadata preservation details
+- `Example:`: Working snippet showing Chord usage with `SlidingWindow` and `LineLength`
 
-**Issue**: No `Raises:` section despite raising `ValueError` on line 39 for empty streams.
+**Missing**: `Raises:` section. The `__call__` method raises `ValueError` at line 39
+for empty streams, but this is not documented in the docstring.
+
+**Note**: No `Args:` section is appropriate here since `ConcatAggregate` has no
+dataclass fields (it is a parameterless aggregator).
 
 ## Typing
 
-- `__call__` has complete type annotations: `(self, data: Data, stream: Iterator[Data]) -> Data`.
-- No dataclass fields requiring types (the feature has no parameters).
-- No bare `Any` types.
+All typing requirements satisfied:
+
+- `__call__` return type explicitly annotated as `Data`
+- Parameter types match base class contract
+- No bare `Any` types
 
 ## Safety & Style
 
-- No `print()` statements.
-- Input validation present: raises `ValueError` if stream is empty (lines 38-39).
-- No mutation of input `data` — creates and returns new `Data` instance (lines 43-51).
-- History correctly propagated: combines original history, per-window operations, and
-  `"ConcatAggregate"` marker.
+No issues found:
+
+- No `print()` statements
+- Input validation present: raises `ValueError` for empty stream (line 38-39)
+- No mutation of input `data`: creates new `Data` object (lines 43-51)
+- History correctly propagated: merges original history, per-window operations, and "ConcatAggregate"
 
 ## Action List
 
-1. [Severity: LOW] Add `Raises:` section to docstring documenting the `ValueError` condition
-   when the stream is empty (line 39).
+1. [Severity: LOW] Add `Raises:` section to docstring documenting the `ValueError`
+   raised when an empty stream is received (line 39).
+
+   ```python
+   Raises:
+       ValueError: If the stream contains no windows.
+   ```

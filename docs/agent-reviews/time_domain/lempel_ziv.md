@@ -1,16 +1,12 @@
 # Feature Review: lempel_ziv
 
-**File**: `src/cobrabox/features/lempel_ziv.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_domain/lempel_ziv.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-A well-implemented feature following all cobrabox conventions. The LempelZiv class correctly
-inherits from `BaseFeature[SignalData]`, uses `xr.apply_ufunc` for vectorized computation over
-the time dimension, and properly sets `output_type = Data` since the time dimension is removed.
-The docstring is complete with algorithm description, citations, and usage example.
-The LZ76 counting algorithm is clearly attributed to NeuroKit2 with proper licensing note.
+Clean, well-structured feature implementing Lempel-Ziv Complexity. The code correctly inherits from `BaseFeature[SignalData]`, uses static methods for internal helpers, and includes a comprehensive docstring with algorithm description and literature reference. Ruff reports no issues. The implementation correctly handles the dimensionality reduction (time dimension removed) and returns dimensionless floats in (0, 1].
 
 ## Ruff
 
@@ -24,40 +20,44 @@ All checks passed!
 
 ## Signature & Structure
 
-Line 20: `@dataclass` decorator present.  
-Line 21: Correct inheritance `BaseFeature[SignalData]` — requires time dimension.  
-Line 48: `output_type: ClassVar[type[Data]] = Data` correctly declared since the feature
-removes the time dimension (returns scalar complexity values).  
-Line 50: `__call__` signature matches base class: `def __call__(self, data: SignalData) -> xr.DataArray:`.  
-No `apply()` override — correctly inherited from base class.  
+The feature follows the correct structure:
 
-All imports follow the standard order (future, stdlib, third-party, internal).
+- ✅ `from __future__ import annotations` present (line 7)
+- ✅ `@dataclass` decorator with `BaseFeature[SignalData]` inheritance (line 20-21)
+- ✅ `output_type: ClassVar[type[Data]] = Data` correctly set (line 48) — appropriate since the time dimension is removed
+- ✅ `__call__` signature: `def __call__(self, data: SignalData) -> xr.DataArray` (line 50)
+- ✅ Helper methods `_lzc_1d` and `_count` are `@staticmethod` inside the class (lines 53-96)
+- ✅ No `apply()` override — uses inherited implementation
+- ✅ Imports follow standard order: stdlib, third-party, internal
+
+The use of `xr.apply_ufunc` with `input_core_dims=["time"]` and `vectorize=True` is the correct pattern for channel-wise operations.
 
 ## Docstring
 
 Complete Google-style docstring with all required sections:
 
-- **One-line summary** (line 22): Clear verb phrase describing the computation.  
-- **Extended description** (lines 24-30): Explains binarization, normalization, and theoretical
-  basis. Includes attribution to NeuroKit2 implementation.  
-- **Args** (lines 32-33): Correctly states "None" since the feature has no dataclass fields.  
-- **Returns** (lines 35-38): Describes shape `(space,)` and value range `(0, 1]`.  
-- **References** (lines 40-42): Proper academic citation for Lempel & Ziv (1976).  
-- **Example** (lines 44-45): Shows correct `.apply()` usage pattern.  
+- ✅ **One-line summary**: "Compute Lempel-Ziv Complexity (LZC) over the time dimension." (line 22)
+- ✅ **Extended description**: Explains binarization by mean, LZC counting, and normalization (lines 24-30)
+- ✅ **Args**: Empty but present — appropriate since this feature has no parameters (line 32-33)
+- ✅ **Returns**: Describes shape `(space,)` and value range `(0, 1]` (lines 35-38)
+- ✅ **References**: Full citation to Lempel & Ziv (1976) (lines 40-42)
+- ✅ **Example**: Shows typical usage via `.apply()` (lines 44-46)
 
 ## Typing
 
-Line 50: `__call__` has explicit return type `xr.DataArray`.  
-Line 48: `output_type` uses `ClassVar[type[Data]]` with proper typing.  
-No bare `Any` types. All static methods have appropriate type annotations.
+- ✅ `__call__` return type: `xr.DataArray` (line 50)
+- ✅ Helper methods have type annotations: `_lzc_1d(signal: np.ndarray) -> float` (line 54), `_count(symbolic: np.ndarray) -> tuple[int, int]` (line 61)
+- ✅ `output_type` properly typed as `ClassVar[type[Data]]`
+- ✅ No bare `Any` types
 
 ## Safety & Style
 
-No `print()` statements found.  
-No input validation required — `SignalData` enforces time dimension at construction.  
-No mutation of input `data` — works on `data.data` via `xr.apply_ufunc` and returns new array.  
-Algorithm correctly attributed with MIT license reference to NeuroKit2.  
-Line lengths within 100 character limit.
+- ✅ No `print()` statements
+- ✅ No mutation of input `data` — creates new arrays via `_lzc_1d`
+- ✅ No validation issues — this feature requires time dimension (enforced by `SignalData`) and has no parameters to validate
+- ✅ Line length within 100 character limit
+
+The implementation correctly binarizes by mean and normalizes by the theoretical maximum. The LZ76 counting algorithm is clearly attributed to NeuroKit2 with MIT license reference.
 
 ## Action List
 

@@ -1,12 +1,16 @@
 # Feature Review: line_length
 
-**File**: `src/cobrabox/features/line_length.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_domain/line_length.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-The `LineLength` feature is exemplary and serves as the positive reference in the codebase. It correctly inherits from `BaseFeature[SignalData]`, has complete type annotations, a thorough Google-style docstring with all required sections (including Args with "None" since there are no dataclass fields), and follows all safety conventions. Ruff passes cleanly. No issues found.
+The `LineLength` feature is exemplary and serves as the positive reference in the
+codebase. It correctly inherits from `BaseFeature[SignalData]`, has complete type
+annotations, a thorough Google-style docstring with all required sections
+(including Args with "None" since there are no dataclass fields), and follows all
+safety conventions. Ruff passes cleanly. No issues found.
 
 ## Ruff
 
@@ -22,11 +26,14 @@ All checks passed!
 
 Line 1: `from __future__ import annotations` present and correctly placed.
 
-Line 12-13: Correctly decorated with `@dataclass` and inherits `BaseFeature[SignalData]` (appropriate for a time-series feature).
+Line 12-13: Correctly decorated with `@dataclass` and inherits
+`BaseFeature[SignalData]` (appropriate for a time-series feature).
 
-Line 32: Correctly sets `output_type: ClassVar[type[Data]] = Data` since this feature removes the time dimension.
+Line 32: Correctly sets `output_type: ClassVar[type[Data]] = Data` since this
+feature removes the time dimension.
 
-Line 34: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray`.
+Line 34: `__call__` signature is correct:
+`def __call__(self, data: SignalData) -> xr.DataArray`.
 
 No `apply()` method is implemented (correctly inherited from `BaseFeature`).
 
@@ -55,9 +62,11 @@ No bare `Any` types are used.
 
 No `print()` statements found.
 
-No input validation required—`SignalData` already enforces the `time` dimension at construction time.
+No input validation required—`SignalData` already enforces the `time` dimension
+at construction time.
 
-No mutation of input `data`—the feature correctly works on `data.data` and returns a new array.
+No mutation of input `data`—the feature correctly works on `data.data` and
+returns a new array.
 
 Line length is within limits (enforced by ruff).
 

@@ -100,6 +100,13 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "dw",
         "lore":  "Decomposes time into multi-resolution levels — reveals hidden scales",
     },
+    "EMD": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "em",
+        "lore":  "Decomposes adaptively without imposing basis — patient midwife of IMFs",
+    },
     "Mean": {
         "law":   1,
         "good":  0,
@@ -134,6 +141,20 @@ ALIGNMENTS: dict[str, dict] = {
         "label": "Lawful Neutral",
         "abbrev": "ca",
         "lore":  "Collapses by strict rule; neither creates nor destroys meaning",
+    },
+    "Correlation": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "cr",
+        "lore":  "Seeks linear kinship between channels — faithful, unbiased judge of association",
+    },
+    "Covariance": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "cv",
+        "lore":  "Measures joint variability honestly — no structure imposed, only truth revealed",
     },
     "ContinuousWaveletTransform": {
         "law":   0,
@@ -288,6 +309,16 @@ ALIGNMENTS: dict[str, dict] = {
         "label": "True Neutral",
         "abbrev": "se",
         "lore":  "Measures regularity of complexity — impartial accountant of signal disorder",
+    },
+    "SVD": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "sv",
+        "lore": (
+            "Imposes the rigid geometry of linear subspaces — "
+            "order from chaos, without malice"
+        ),
     },
 }
 # fmt: on
