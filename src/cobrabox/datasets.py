@@ -117,7 +117,9 @@ class DatasetInfo:
 # ---------------------------------------------------------------------------
 
 
-def dataset(identifier: str, *, subset: SubsetSpec | None = None) -> Dataset[SignalData]:
+def dataset(
+    identifier: str, *, subset: SubsetSpec | None = None, verify: bool = True
+) -> Dataset[SignalData]:
     """Load a dataset by identifier.
 
     Args:
@@ -142,6 +144,10 @@ def dataset(identifier: str, *, subset: SubsetSpec | None = None) -> Dataset[Sig
                   cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})
 
             ``None`` loads everything.
+        verify: If ``True`` (default) and files need to be downloaded, show
+            dataset info and an estimated download size and ask for
+            confirmation before proceeding.  Set to ``False`` to skip the
+            prompt (e.g. in scripts).
 
     Returns:
         :class:`~cobrabox.Dataset` of :class:`~cobrabox.SignalData` objects.
@@ -149,6 +155,7 @@ def dataset(identifier: str, *, subset: SubsetSpec | None = None) -> Dataset[Sig
     Raises:
         ValueError: If ``identifier`` is unknown, or if ``subset`` contains
             keys not present in the dataset.
+        RuntimeError: If ``verify=True`` and the user declines the download.
     """
     if identifier in {"dummy_chain", "dummy_random", "dummy_star"}:
         return load_structured_dummy(identifier)
@@ -183,7 +190,7 @@ def dataset(identifier: str, *, subset: SubsetSpec | None = None) -> Dataset[Sig
                             "use None to include all files."
                         )
 
-        dataset_dir = ensure_remote_files(spec, subset=subset)
+        dataset_dir = ensure_remote_files(spec, subset=subset, verify=verify)
 
         # Derive the subset to pass to the loader.
         # For the dict form: expand to a flat list of file stems so the loader

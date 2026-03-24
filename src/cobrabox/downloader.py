@@ -16,6 +16,62 @@ from .data import SignalData
 from .dataset import Dataset
 
 
+def _format_bytes(n: int) -> str:
+    """Format a byte count as a human-readable string."""
+    size = float(n)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if size < 1024 or unit == "TB":
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} B"  # unreachable, satisfies type checker
+
+
+def _head_size(url: str, timeout: int = 5) -> int | None:
+    """Return Content-Length from a HEAD request, or None if unavailable."""
+    try:
+        req = urllib.request.Request(url, method="HEAD")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            cl = resp.headers.get("Content-Length")
+            return int(cl) if cl else None
+    except Exception:
+        return None
+
+
+def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile]) -> bool:
+    """Print dataset info and download summary, then ask the user to confirm.
+
+    Returns ``True`` if the user confirmed, ``False`` otherwise.
+    """
+    print(f"\nDataset: {spec.identifier}")
+    if spec.description:
+        print(f"  {spec.description}")
+
+    n = len(to_download)
+    print(f"\n  Files to download: {n}")
+
+    # Attempt parallel HEAD requests to estimate total size.
+    max_head = min(16, n)
+    sample = to_download[:max_head]
+    with ThreadPoolExecutor(max_workers=max_head) as executor:
+        sizes = list(executor.map(lambda f: _head_size(f.url), sample))
+
+    if None in sizes:
+        size_str = "unknown"
+    else:
+        total_sample = sum(s for s in sizes if s is not None)
+        if max_head < n:
+            # Extrapolate from sample.
+            estimated = int(total_sample * n / max_head)
+            size_str = f"~{_format_bytes(estimated)} (estimated)"
+        else:
+            size_str = _format_bytes(total_sample)
+
+    print(f"  Estimated download size: {size_str}")
+
+    answer = input("\nProceed with download? [y/N] ").strip().lower()
+    return answer in {"y", "yes"}
+
+
 @dataclass(slots=True)
 class RemoteFile:
     """Description of a single remote file belonging to a dataset."""
@@ -187,7 +243,11 @@ def _filter_files_by_dict_subset(
 
 
 def ensure_remote_files(
-    spec: RemoteDatasetSpec, *, subset: SubsetSpec | None = None, repo_root: Path | None = None
+    spec: RemoteDatasetSpec,
+    *,
+    subset: SubsetSpec | None = None,
+    repo_root: Path | None = None,
+    verify: bool = True,
 ) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
@@ -203,8 +263,14 @@ def ensure_remote_files(
             :data:`SubsetSpec`.  Files without a ``subset_key`` are always
             included.
         repo_root: Override the inferred repository root.
+        verify: If ``True`` (default) and there are files to download, show
+            dataset info and an estimated download size, then ask the user to
+            confirm before proceeding.  Set to ``False`` to skip the prompt.
 
     Returns the resolved local dataset directory.
+
+    Raises:
+        RuntimeError: If ``verify=True`` and the user declines the download.
     """
     if repo_root is None:
         repo_root = _default_repo_root()
@@ -317,6 +383,14 @@ def ensure_remote_files(
 
     if not to_download:
         return dataset_dir
+
+    if verify:
+        confirmed = _prompt_download_verify(spec, to_download)
+        if not confirmed:
+            raise RuntimeError(
+                f"Download of '{spec.identifier}' cancelled by user. "
+                "Pass verify=False to skip this prompt."
+            )
 
     max_workers = min(4, len(to_download))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
