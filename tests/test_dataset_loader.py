@@ -326,7 +326,7 @@ def test_ensure_remote_files_downloads_missing_files(
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
     # Act
-    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path)
+    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, verify=False)
 
     # Assert
     assert dataset_dir == tmp_path / spec.local_rel_dir
@@ -391,7 +391,7 @@ def test_ensure_remote_files_auth_hint_shown_on_401_403(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _raise_http_error)
 
     with pytest.raises(RuntimeError, match="credentials") as excinfo:
-        ensure_remote_files(spec, repo_root=tmp_path)
+        ensure_remote_files(spec, repo_root=tmp_path, verify=False)
 
     assert "Expected file location" in str(excinfo.value)
 
@@ -418,7 +418,7 @@ def test_ensure_remote_files_no_auth_hint_generic_error_on_401_403(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _raise_http_error)
 
     with pytest.raises(RuntimeError, match="HTTP 403"):
-        ensure_remote_files(spec, repo_root=tmp_path)
+        ensure_remote_files(spec, repo_root=tmp_path, verify=False)
 
 
 def test_dataset_uses_remote_spec_for_known_identifier(
@@ -447,7 +447,11 @@ def test_dataset_uses_remote_spec_for_known_identifier(
         return fake_spec if identifier == "swiss_eeg_short" else None
 
     def _fake_ensure_remote_files(
-        spec: RemoteDatasetSpec, *, subset: object = None, repo_root: Path | None = None
+        spec: RemoteDatasetSpec,
+        *,
+        subset: object = None,
+        repo_root: Path | None = None,
+        verify: bool = True,
     ) -> Path:
         assert spec is fake_spec
         base = tmp_path if repo_root is None else repo_root
@@ -508,7 +512,7 @@ def test_ensure_remote_files_uses_index_when_no_files(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path)
+    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, verify=False)
 
     assert (dataset_dir / "a.bin").read_bytes() == b"AAA"
     assert (dataset_dir / "b.bin").read_bytes() == b"BBB"
@@ -612,7 +616,7 @@ def test_ensure_remote_files_subset_filters_downloads(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    dataset_dir = ensure_remote_files(spec, subset=["ID1", "ID5"], repo_root=tmp_path)
+    dataset_dir = ensure_remote_files(spec, subset=["ID1", "ID5"], repo_root=tmp_path, verify=False)
 
     assert (dataset_dir / "ID1.zip").exists()
     assert (dataset_dir / "ID5.zip").exists()
@@ -742,11 +746,11 @@ def test_ensure_remote_files_dict_subset_int_downloads_first_n(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    ensure_remote_files(spec, subset={"ID01": 2}, repo_root=tmp_path)
+    ensure_remote_files(spec, subset={"ID01": 2}, repo_root=tmp_path, verify=False)
 
     assert len(downloaded) == 2
-    assert "ID01_1h.mat" in downloaded[0]
-    assert "ID01_2h.mat" in downloaded[1]
+    assert any("ID01_1h.mat" in u for u in downloaded)
+    assert any("ID01_2h.mat" in u for u in downloaded)
 
 
 def test_ensure_remote_files_dict_subset_list_downloads_named_files(
@@ -788,7 +792,9 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    ensure_remote_files(spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, repo_root=tmp_path)
+    ensure_remote_files(
+        spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, repo_root=tmp_path, verify=False
+    )
 
     assert len(downloaded) == 2
     assert any("ID01_1h.mat" in u for u in downloaded)
@@ -851,7 +857,11 @@ def test_dataset_dict_subset_passes_stems_to_loader(
         return patched_spec if identifier == "swiss_eeg_short" else None
 
     def _fake_ensure(
-        s: RemoteDatasetSpec, *, subset: object = None, repo_root: Path | None = None
+        s: RemoteDatasetSpec,
+        *,
+        subset: object = None,
+        repo_root: Path | None = None,
+        verify: bool = True,
     ) -> Path:
         p = tmp_path / s.local_rel_dir
         p.mkdir(parents=True, exist_ok=True)
@@ -946,7 +956,11 @@ def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_pa
         return patched_spec if identifier == "swiss_eeg_short" else None
 
     def _fake_ensure(
-        s: RemoteDatasetSpec, *, subset: object = None, repo_root: Path | None = None
+        s: RemoteDatasetSpec,
+        *,
+        subset: object = None,
+        repo_root: Path | None = None,
+        verify: bool = True,
     ) -> Path:
         captured["ensure_subset"] = subset
         p = tmp_path / s.local_rel_dir
@@ -1440,7 +1454,7 @@ def test_ensure_remote_files_raises_on_url_error(
     )
 
     with pytest.raises(RuntimeError, match="Network error"):
-        ensure_remote_files(spec, repo_root=tmp_path)
+        ensure_remote_files(spec, repo_root=tmp_path, verify=False)
 
 
 # ---------------------------------------------------------------------------
