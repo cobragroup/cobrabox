@@ -457,8 +457,8 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
             f"({len(_SWISS_EEG_SHORT_IDS)} subjects, ictal/interictal)."
         ),
         subset_key_name="subjects",
-        size_hint="~50 MB",
-        subset_size_hint="~3 MB per subject",
+        size_hint="~11 GB",
+        subset_size_hint="~100 MB - 1 GB per subject",
         # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940).
         seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
     )
@@ -628,7 +628,10 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
     )
 
 
-_SIENA_SUBJECTS: tuple[str, ...] = tuple(f"PN{i:02d}" for i in range(14))
+_SIENA_SUBJECTS: tuple[str, ...] = (
+    "PN00", "PN01", "PN03", "PN05", "PN06", "PN07",
+    "PN09", "PN10", "PN11", "PN12", "PN13", "PN14", "PN16", "PN17",
+)
 
 
 def _siena_file_index() -> Sequence[RemoteFile]:
