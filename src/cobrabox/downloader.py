@@ -136,6 +136,7 @@ class RemoteDatasetSpec:
     subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
     seizures_per_subject: dict[str, int] | None = None  # Seizure count keyed by subset key
     seizure_info_url: str | None = None  # URL where seizure count information was sourced
+    max_parallel_downloads: int = 4  # Max concurrent file downloads
 
     def __post_init__(self) -> None:
         if self.files is None and self.file_index_url is None and self.file_index_fn is None:
@@ -392,7 +393,7 @@ def ensure_remote_files(
                 "Pass verify=False to skip this prompt."
             )
 
-    max_workers = min(4, len(to_download))
+    max_workers = min(spec.max_parallel_downloads, len(to_download))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
             executor.submit(_download_one, remote_file, position)
@@ -529,6 +530,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         # Source: Andrzejak et al. 2001 (DOI: 10.34810/data490).
         seizures_per_subject={"Z": 0, "O": 0, "N": 0, "F": 0, "S": 100},
         seizure_info_url="https://repositori.upf.edu/handle/10230/42894",
+        max_parallel_downloads=8,
     )
 
 
@@ -800,6 +802,7 @@ def _open_ieeg_spec() -> RemoteDatasetSpec:
         # Interictal-only dataset: recordings are sleep segments with no ictal events.
         seizures_per_subject=None,
         seizure_info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
+        max_parallel_downloads=8,
     )
 
 
