@@ -1,9 +1,9 @@
 # Test Review: bandpower
 
-**Feature**: `src/cobrabox/features/bandpower.py`
-**Test file**: `tests/test_feature_bandpower.py`
-**Date**: 2026-03-06
-**Verdict**: NEEDS WORK
+**Feature**: `src/cobrabox/features/frequency_domain/bandpower.py`
+**Test file**: `tests/features/frequency_domain/test_feature_bandpower.py`
+**Date**: 2026-03-24
+**Verdict**: PASS
 
 ## Coverage
 

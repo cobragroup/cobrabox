@@ -1,7 +1,7 @@
 # Feature Review: bandfilter
 
-**File**: `src/cobrabox/features/bandfilter.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/frequency_domain/bandfilter.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary

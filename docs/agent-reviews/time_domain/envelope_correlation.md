@@ -1,12 +1,12 @@
 # Feature Review: envelope_correlation
 
-**File**: `src/cobrabox/features/envelope_correlation.py`
-**Date**: 2026-03-06
-**Verdict**: NEEDS WORK
+**File**: `src/cobrabox/features/time_domain/envelope_correlation.py`
+**Date**: 2025-03-24
+**Verdict**: PASS
 
 ## Summary
 
-A well-structured feature that correctly implements amplitude envelope correlation using `mne_connectivity`. The code is clean, properly typed, and follows the BaseFeature pattern. The only significant gap is the missing References section — since AEC is a published neuroimaging method with specific literature citations, this should be documented for scientific reproducibility.
+Excellent feature implementation. `EnvelopeCorrelation` is a well-structured, thoroughly documented connectivity feature that correctly computes amplitude envelope correlation between channel pairs. The code follows all cobrabox conventions: proper dataclass structure, comprehensive docstring with all required sections, appropriate input validation, and clean integration with `mne_connectivity`. The feature correctly declares `output_type = Data` since it removes the time dimension and returns a correlation matrix. The previously missing References section has been added with proper citation to Hipp et al. (2012).
 
 ## Ruff
 
@@ -20,59 +20,43 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 1: `from __future__ import annotations` present.
+**Line 1**: `from __future__ import annotations` — correct first import.
 
-Line 14: `@dataclass` decorator correctly applied.
+**Lines 14-15**: `@dataclass` decorator with `BaseFeature[SignalData]` inheritance — appropriate for a time-series feature that operates on the time dimension.
 
-Line 15: Inherits `BaseFeature[SignalData]` — appropriate since the feature operates on time-series data and uses `sampling_rate` implicitly via the Hilbert transform in the underlying library.
+**Line 56**: `output_type: ClassVar[type[Data]] = Data` — correctly declared since the feature returns a correlation matrix without time dimension.
 
-Line 50: `output_type: ClassVar[type[Data]] = Data` — correctly declared since the time dimension is removed and the result is a correlation matrix with dims `(space_to, space_from)`.
+**Line 61**: `def __call__(self, data: SignalData) -> xr.DataArray:` — correct signature matching base class contract.
 
-Line 55: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray`. Takes `SignalData` as argument (not a field), returns `xr.DataArray`.
+**Lines 58-59**: Both dataclass fields properly typed: `orthogonalize: str | bool` and `absolute: bool`.
 
-Line 92: No `apply()` method — correctly inherited from `BaseFeature`.
-
-Imports (lines 1-12): Standard order maintained. No unused imports.
+No loose helper functions; all logic is contained within the class. Clean import structure following the standard order.
 
 ## Docstring
 
-The docstring includes all required sections except References.
+Comprehensive Google-style docstring with all required sections:
 
-Lines 16-25: One-line summary and extended description are present and clear. Explains what AEC computes and mentions the orthogonalization option for reducing volume conduction effects.
-
-Lines 27-33: Args section documents both fields (`orthogonalize`, `absolute`) with types and behavior descriptions.
-
-Lines 35-37: Returns section describes the output dims `(space_to, space_from)` and that values are Pearson correlations.
-
-Lines 39-42: Raises section documents both ValueError conditions (extra dimensions, insufficient spatial channels).
-
-**Missing**: References section. Since this implements a specific published algorithm (amplitude envelope correlation), the primary literature citation should be included. This is important for scientific reproducibility and for users to understand the methodological basis.
-
-Lines 44-47: Example section present with three usage patterns.
+- **One-line summary** (line 16): Clear verb phrase describing the computation.
+- **Extended description** (lines 18-24): Explains the algorithm, Hilbert transform usage, and orthogonalization purpose.
+- **Args** (lines 27-33): Both fields documented with types and behavior.
+- **Returns** (lines 35-37): Describes output dimensions (`space_to`, `space_from`) and value type.
+- **Raises** (lines 39-42): Two `ValueError` conditions documented (extra dimensions, insufficient channels).
+- **References** (lines 44-48): Full citation to Hipp et al. (2012) with DOI — previously missing, now added.
+- **Example** (lines 50-53): Three usage examples showing different parameter configurations.
 
 ## Typing
 
-Line 52: `orthogonalize: str | bool` — correctly typed union.
-
-Line 53: `absolute: bool` — correctly typed.
-
-Line 55: Return type `-> xr.DataArray` is explicit.
-
-No bare `Any` types found.
+- All fields have explicit type annotations.
+- `__call__` has correct return type `xr.DataArray`.
+- **Minor suggestion**: The `orthogonalize` field could use `Literal["pairwise"] | bool` instead of `str | bool` for stricter typing, since only `"pairwise"` or `False` are valid values per the docstring. However, the current implementation is acceptable.
 
 ## Safety & Style
 
-No print statements found.
-
-Lines 58-71: Input validation is present and appropriate:
-
-- Checks for extra dimensions beyond `space` and `time` (line 58-63)
-- Validates at least 2 spatial channels exist (lines 68-71)
-
-Line 74: `values = xr_data.transpose("space", "time").values` — creates a copy, does not mutate input.
-
-Line 87-92: Returns a new `xr.DataArray`, does not modify the input `data` object.
+- No `print()` statements.
+- Input validation (lines 64-77): Checks for extra dimensions and minimum 2 spatial channels with clear error messages.
+- No mutation of input `data`: Creates new `xr.DataArray` and returns it.
+- Line length within 100 characters.
 
 ## Action List
 
-1. [Severity: MEDIUM] Add a `References:` section to the docstring citing the primary literature for amplitude envelope correlation. The mne-connectivity documentation or the original AEC papers should be cited.
+None.

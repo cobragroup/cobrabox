@@ -1,7 +1,7 @@
 # Feature Review: granger_causality
 
-**File**: `src/cobrabox/features/granger_causality.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/connectivity/granger_causality.py`
+**Date**: 2026-03-24
 **Verdict**: PASS
 
 ## Summary
@@ -23,7 +23,7 @@ Clean — no formatting issues.
 Both classes correctly use:
 
 - `from __future__ import annotations` as first import (line 1)
-- `@dataclass` decorator with `BaseFeature[SignalData]` inheritance (lines 69, 145)
+- `@dataclass` decorator with `BaseFeature[SignalData]` inheritance (lines 70, 146)
 - `output_type: ClassVar[type[Data]] = Data` appropriately set since these features remove the time dimension (lines 109, 178)
 - Descriptive PascalCase class names matching the filename
 - Correct `__call__` signatures taking `data: SignalData` and returning `xr.DataArray` (lines 123, 193)

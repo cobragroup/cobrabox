@@ -1,62 +1,63 @@
 # Feature Review: max
 
-**File**: `src/cobrabox/features/max.py`
-**Date**: 2025-03-06
-**Verdict**: NEEDS WORK
+**File**: `src/cobrabox/features/reductions/max.py`
+**Date**: 2025-03-24
+**Verdict**: PASS
 
 ## Summary
 
-The `Max` feature is well-structured and follows the dataclass pattern correctly. It properly reduces a dimension using xarray's max operation and validates the input dimension exists. The implementation is clean with no ruff errors. The only issue is a missing `Raises:` section in the docstring to document the `ValueError` that is raised when the dimension is not found.
+Clean, well-structured reduction feature. The `Max` feature correctly computes the maximum value across a specified dimension, returning a plain `Data` container (as appropriate for dimension-reducing operations). All docstring sections are present, typing is complete, ruff is clean, and input validation is implemented.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
 
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-All structural requirements met:
+Line 1: `from __future__ import annotations` present.
 
-- Line 1: `from __future__ import annotations` present
-- Line 12: `@dataclass` decorator applied
-- Line 13: Inherits `BaseFeature[Data]` (appropriate for generic dimension reduction)
-- Line 28: `output_type: ClassVar[type[Data]] = Data` correctly set since this removes a dimension
-- Line 30: Field `dim: str` properly typed
-- Line 32: `__call__` signature correct: `def __call__(self, data: Data) -> xr.DataArray:`
-- No `apply()` override (correctly inherited)
-- Imports ordered correctly (stdlib, third-party, internal)
+Line 12: `@dataclass` decorator applied.
+
+Line 13: Correctly inherits `BaseFeature[Data]` — this is a generic reduction feature that works on any dimension, not specifically time-series.
+
+Line 31: `output_type: ClassVar[type[Data]] = Data` is correctly set. Since this feature removes a dimension, returning plain `Data` (rather than preserving the input container type like `SignalData`) is the right choice.
+
+Line 33: Single field `dim: str` is properly declared as a dataclass field (not a `__call__` argument).
+
+Line 35: `__call__` signature is correct: `def __call__(self, data: Data) -> xr.DataArray:`.
+
+No loose helper functions — the implementation is concise and self-contained.
 
 ## Docstring
 
-Google-style docstring with most sections present:
+Complete Google-style docstring with all required sections:
 
-- ✅ One-line summary (line 14)
-- ✅ `Args:` section documents `dim` parameter (lines 16-17)
-- ✅ `Returns:` section describes output shape and values (lines 19-22)
-- ✅ `Example:` section shows usage (lines 24-25)
-- ❌ Missing `Raises:` section — the feature raises `ValueError` on line 34 when the dimension is not found
+- **One-line summary** (line 14): Clear and descriptive.
+- **Args:** (lines 16-17): Documents the `dim` parameter with type and purpose.
+- **Returns:** (lines 19-22): Describes the output shape and value meaning.
+- **Raises:** (lines 24-25): Documents `ValueError` for missing dimension.
+- **Example:** (lines 27-28): Shows correct `.apply()` usage.
 
 ## Typing
 
-Fully typed:
-
-- Line 30: `dim: str` has type annotation
-- Line 32: Return type `xr.DataArray` declared
-- Line 28: `output_type` classvar properly typed with `ClassVar[type[Data]]`
-- No bare `Any` types
+- Field `dim: str` is properly typed (line 33).
+- `__call__` return type `xr.DataArray` is explicit (line 35).
+- The type parameter `BaseFeature[Data]` matches the `data: Data` argument.
+- No bare `Any` types.
 
 ## Safety & Style
 
-- ✅ No `print()` statements
-- ✅ Input validation present on lines 33-34: checks if `dim` exists in data dimensions and raises clear `ValueError`
-- ✅ No mutation of input `data` — operates on `data.data` and returns new array
-- Line 35 within 100 character limit
+- No `print()` statements.
+- Input validation at lines 36-37: Checks if `self.dim` exists in `data.data.dims` and raises a clear `ValueError` if not.
+- No mutation of input `data` — operates on `data.data` and returns a new xarray result.
+- Line length is within the 100-character limit.
 
 ## Action List
 
-1. [Severity: MEDIUM] Add a `Raises:` section to the docstring documenting the `ValueError` raised when the specified dimension is not found in the data. Insert after the `Returns:` section around line 22.
+None.
