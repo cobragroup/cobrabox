@@ -31,7 +31,17 @@ print(m.data.values)
 print()
 
 print("=" * 60)
-print("Example 3: Validation errors")
+print("Example 3: Default coordinates (all coordinates excluding control_vars)")
+print("=" * 60)
+m_all = cb.feature.PartialCorrelationMatrix(control_vars=[3]).apply(data)
+print("Pairwise partial correlations (all coordinates except 3, controlling for 3):")
+print(m_all.data.values)
+print(f"Shape: {m_all.data.shape}")
+print(f"Coordinates used: {list(m_all.data.coords['coord_i'].values)}")
+print()
+
+print("=" * 60)
+print("Example 4: Validation errors")
 print("=" * 60)
 
 print("Empty control_vars:")

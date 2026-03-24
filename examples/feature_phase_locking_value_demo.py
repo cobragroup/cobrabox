@@ -31,7 +31,17 @@ print(m.data.values)
 print()
 
 print("=" * 60)
-print("Example 3: Validation errors")
+print("Example 3: Default coordinates (all space coordinates)")
+print("=" * 60)
+m_all = cb.feature.PhaseLockingValueMatrix().apply(data)
+print("Pairwise phase locking value (all coordinates):")
+print(m_all.data.values)
+print(f"Shape: {m_all.data.shape}")
+print(f"Coordinates used: {list(m_all.data.coords['coord_i'].values)}")
+print()
+
+print("=" * 60)
+print("Example 4: Validation errors")
 print("=" * 60)
 
 
