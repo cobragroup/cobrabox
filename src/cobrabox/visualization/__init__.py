@@ -29,3 +29,13 @@ from .connectivity import ConnectivityPlotter, plot_connectivity
 from .interactive import InteractiveExplorer
 
 __all__ = ["ConnectivityPlotter", "InteractiveExplorer", "plot_connectivity"]
+
+
+def __getattr__(name: str):
+    """Lazily import SeizureExplorer to avoid requiring viz extras at import time."""
+    if name == "SeizureExplorer":
+        from .seizure_explorer import SeizureExplorer
+
+        return SeizureExplorer
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
