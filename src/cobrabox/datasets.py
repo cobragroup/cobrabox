@@ -52,6 +52,8 @@ class DatasetInfo:
             not available.  Keys match the subset keys shown under *subsets*.
         seizure_info_url: URL where the seizure count information was sourced,
             or ``None`` if not available.
+        info_url: General landing page / homepage for the dataset, or ``None``
+            if not available.
     """
 
     identifier: str
@@ -62,6 +64,7 @@ class DatasetInfo:
     subset_size_hint: str | None = None
     seizures_per_subject: dict[str, int] | None = None
     seizure_info_url: str | None = None
+    info_url: str | None = None
     license: str | None = None
 
     def __str__(self) -> str:
@@ -107,6 +110,8 @@ class DatasetInfo:
                 lines.append(f"  seizure src : {self.seizure_info_url}")
         elif self.seizure_info_url is not None:
             lines.append(f"  seizure info: {self.seizure_info_url}")
+        if self.info_url is not None:
+            lines.append(f"  info        : {self.info_url}")
         if self.license is not None:
             lines.append(f"  license     : {self.license}")
         return "\n".join(lines)
@@ -274,6 +279,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
             subset_size_hint=spec.subset_size_hint,
             seizures_per_subject=spec.seizures_per_subject,
             seizure_info_url=spec.seizure_info_url,
+            info_url=spec.info_url,
             license=spec.license,
         )
 

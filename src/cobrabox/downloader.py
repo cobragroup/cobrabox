@@ -136,6 +136,7 @@ class RemoteDatasetSpec:
     subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
     seizures_per_subject: dict[str, int] | None = None  # Seizure count keyed by subset key
     seizure_info_url: str | None = None  # URL where seizure count information was sourced
+    info_url: str | None = None  # Landing page / homepage for the dataset
     license: str | None = None  # License name / terms, e.g. "CC BY 4.0"
     max_parallel_downloads: int = 4  # Max concurrent file downloads
 
@@ -463,6 +464,7 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
         subset_size_hint="~100 MB - 1 GB per subject",
         # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940).
         seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
+        info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         license="Free for research and education only; commercial and military use prohibited.",
     )
 
@@ -498,6 +500,7 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
         # Per-subject table is in the Laelaps paper; see seizure_info_url.
         seizure_info_url="http://ieeg-swez.ethz.ch/",
+        info_url="http://ieeg-swez.ethz.ch/",
         license="Free for research and education only; commercial and military use prohibited.",
     )
 
@@ -537,6 +540,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         # Source: Andrzejak et al. 2001 (DOI: 10.34810/data490).
         seizures_per_subject={"Z": 0, "O": 0, "N": 0, "F": 0, "S": 100},
         seizure_info_url="https://repositori.upf.edu/handle/10230/42894",
+        info_url="https://repositori.upf.edu/handle/10230/42894",
         license="Free for research and education only; commercial and military use prohibited.",
         max_parallel_downloads=8,
     )
@@ -634,6 +638,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
             "chb24": 16,
         },
         seizure_info_url="https://physionet.org/content/chbmit/1.0.0/",
+        info_url="https://physionet.org/content/chbmit/1.0.0/",
         license="Open Data Commons Attribution License v1.0 (ODC-By-1.0)",
     )
 
@@ -734,6 +739,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
             "PN17": 2,
         },
         seizure_info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/subject_info.csv",
+        info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/",
         license="Creative Commons Attribution 4.0 International (CC-BY-4.0)",
     )
 
@@ -817,6 +823,7 @@ def _open_ieeg_spec() -> RemoteDatasetSpec:
         # Interictal-only dataset: recordings are sleep segments with no ictal events.
         seizures_per_subject=None,
         seizure_info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
+        info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,
     )
