@@ -1713,7 +1713,7 @@ def test_dataset_info_bonn_eeg_lists_sets() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _load_edf_dataset / _load_chb_mit / _load_siena_eeg / _load_open_ieeg
+# _load_edf_dataset / _load_chb_mit / _load_siena_eeg / _load_sleep_ieeg
 # ---------------------------------------------------------------------------
 
 
@@ -1921,15 +1921,15 @@ def test_load_siena_eeg_raises_when_no_edf_files(tmp_path: Path) -> None:
         _load_siena_eeg(dataset_dir)
 
 
-# --- Open iEEG ---
+# --- Sleep iEEG ---
 
 
-def test_load_open_ieeg_reads_edf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_load_open_ieeg loads EDF files and sets subject ID from filename prefix."""
+def test_load_sleep_ieeg_reads_edf_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_sleep_ieeg loads EDF files and sets subject ID from filename prefix."""
     from cobrabox.data import SignalData
-    from cobrabox.dataset_loader import _load_open_ieeg
+    from cobrabox.dataset_loader import _load_sleep_ieeg
 
-    dataset_dir = tmp_path / "open_ieeg"
+    dataset_dir = tmp_path / "sleep_ieeg"
     dataset_dir.mkdir()
     (dataset_dir / "sub-Detroit001_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
     (dataset_dir / "sub-UCLA01_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
@@ -1937,7 +1937,7 @@ def test_load_open_ieeg_reads_edf_files(tmp_path: Path, monkeypatch: pytest.Monk
     mock_raw = _MockRaw(n_channels=64, n_samples=1000, sfreq=1000.0)
     _patch_mne_read_raw_edf(monkeypatch, mock_raw)
 
-    out = _load_open_ieeg(dataset_dir)
+    out = _load_sleep_ieeg(dataset_dir)
 
     assert len(out) == 2
     assert all(isinstance(item, SignalData) for item in out)
@@ -1946,58 +1946,58 @@ def test_load_open_ieeg_reads_edf_files(tmp_path: Path, monkeypatch: pytest.Monk
     assert out[0].sampling_rate == pytest.approx(1000.0)
 
 
-def test_load_open_ieeg_subject_id_is_bids_prefix(
+def test_load_sleep_ieeg_subject_id_is_bids_prefix(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """_load_open_ieeg extracts the sub-XXX prefix as the subject ID."""
-    from cobrabox.dataset_loader import _load_open_ieeg
+    """_load_sleep_ieeg extracts the sub-XXX prefix as the subject ID."""
+    from cobrabox.dataset_loader import _load_sleep_ieeg
 
-    dataset_dir = tmp_path / "open_ieeg"
+    dataset_dir = tmp_path / "sleep_ieeg"
     dataset_dir.mkdir()
     (dataset_dir / "sub-Detroit042_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
 
     _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
 
-    out = _load_open_ieeg(dataset_dir)
+    out = _load_sleep_ieeg(dataset_dir)
 
     assert out[0].subjectID == "sub-Detroit042"
 
 
-def test_load_open_ieeg_subset_filters_by_subject(
+def test_load_sleep_ieeg_subset_filters_by_subject(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """_load_open_ieeg only loads files for subjects in the subset list."""
-    from cobrabox.dataset_loader import _load_open_ieeg
+    """_load_sleep_ieeg only loads files for subjects in the subset list."""
+    from cobrabox.dataset_loader import _load_sleep_ieeg
 
-    dataset_dir = tmp_path / "open_ieeg"
+    dataset_dir = tmp_path / "sleep_ieeg"
     dataset_dir.mkdir()
     for subject in ("sub-Detroit001", "sub-Detroit002", "sub-UCLA01"):
         (dataset_dir / f"{subject}_ses-01_task-sleep_ieeg.edf").write_bytes(b"fake")
 
     _patch_mne_read_raw_edf(monkeypatch, _MockRaw())
 
-    out = _load_open_ieeg(dataset_dir, subset=["sub-Detroit001", "sub-UCLA01"])
+    out = _load_sleep_ieeg(dataset_dir, subset=["sub-Detroit001", "sub-UCLA01"])
 
     assert {item.subjectID for item in out} == {"sub-Detroit001", "sub-UCLA01"}
 
 
-def test_load_open_ieeg_raises_when_no_edf_files(tmp_path: Path) -> None:
-    """_load_open_ieeg raises FileNotFoundError when no EDF files exist."""
-    from cobrabox.dataset_loader import _load_open_ieeg
+def test_load_sleep_ieeg_raises_when_no_edf_files(tmp_path: Path) -> None:
+    """_load_sleep_ieeg raises FileNotFoundError when no EDF files exist."""
+    from cobrabox.dataset_loader import _load_sleep_ieeg
 
-    dataset_dir = tmp_path / "open_ieeg"
+    dataset_dir = tmp_path / "sleep_ieeg"
     dataset_dir.mkdir()
 
     with pytest.raises(FileNotFoundError, match=r"No \.edf files found"):
-        _load_open_ieeg(dataset_dir)
+        _load_sleep_ieeg(dataset_dir)
 
 
-def test_open_ieeg_file_index_parses_participants_tsv(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_open_ieeg_file_index builds RemoteFile list from participants.tsv."""
+def test_sleep_ieeg_file_index_parses_participants_tsv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_sleep_ieeg_file_index builds RemoteFile list from participants.tsv."""
     import urllib.request
     from unittest.mock import MagicMock
 
-    from cobrabox.downloader import _open_ieeg_file_index
+    from cobrabox.downloader import _sleep_ieeg_file_index
 
     tsv_content = (
         b"participant_id\tmethods\tsampling_frequency\n"
@@ -2012,7 +2012,7 @@ def test_open_ieeg_file_index_parses_participants_tsv(monkeypatch: pytest.Monkey
     mock_resp.__exit__ = MagicMock(return_value=False)
     monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **kw: mock_resp)
 
-    files = _open_ieeg_file_index()
+    files = _sleep_ieeg_file_index()
 
     assert len(files) == 3
     subjects = {f.subset_key for f in files}
@@ -2021,12 +2021,12 @@ def test_open_ieeg_file_index_parses_participants_tsv(monkeypatch: pytest.Monkey
     assert all("s3.amazonaws.com/openneuro.org/ds005398" in f.url for f in files)
 
 
-def test_open_ieeg_file_index_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_open_ieeg_file_index raises RuntimeError on HTTP error."""
+def test_sleep_ieeg_file_index_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_sleep_ieeg_file_index raises RuntimeError on HTTP error."""
     import urllib.error
     import urllib.request
 
-    from cobrabox.downloader import _open_ieeg_file_index
+    from cobrabox.downloader import _sleep_ieeg_file_index
 
     monkeypatch.setattr(
         urllib.request,
@@ -2037,22 +2037,22 @@ def test_open_ieeg_file_index_raises_on_http_error(monkeypatch: pytest.MonkeyPat
     )
 
     with pytest.raises(RuntimeError, match="HTTP 404"):
-        _open_ieeg_file_index()
+        _sleep_ieeg_file_index()
 
 
-def test_open_ieeg_subject_key_parses_bids_prefix() -> None:
-    """_open_ieeg_subject_key extracts the sub-XXX portion of a BIDS filename."""
-    from cobrabox.downloader import _open_ieeg_subject_key
+def test_sleep_ieeg_subject_key_parses_bids_prefix() -> None:
+    """_sleep_ieeg_subject_key extracts the sub-XXX portion of a BIDS filename."""
+    from cobrabox.downloader import _sleep_ieeg_subject_key
 
-    assert _open_ieeg_subject_key("sub-Detroit001_ses-01_task-sleep_ieeg.edf") == "sub-Detroit001"
-    assert _open_ieeg_subject_key("sub-UCLA01_ses-01_task-sleep_ieeg.edf") == "sub-UCLA01"
+    assert _sleep_ieeg_subject_key("sub-Detroit001_ses-01_task-sleep_ieeg.edf") == "sub-Detroit001"
+    assert _sleep_ieeg_subject_key("sub-UCLA01_ses-01_task-sleep_ieeg.edf") == "sub-UCLA01"
 
 
-def test_open_ieeg_spec_is_registered() -> None:
-    """open_ieeg is registered in REMOTE_DATASETS with correct metadata."""
-    spec = get_remote_dataset_spec("open_ieeg")
+def test_sleep_ieeg_spec_is_registered() -> None:
+    """sleep_ieeg is registered in REMOTE_DATASETS with correct metadata."""
+    spec = get_remote_dataset_spec("sleep_ieeg")
     assert spec is not None
-    assert spec.identifier == "open_ieeg"
+    assert spec.identifier == "sleep_ieeg"
     assert spec.subset_key_name == "subjects"
     assert spec.file_index_fn is not None
     assert spec.size_hint == "~13 GB"

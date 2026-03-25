@@ -751,8 +751,8 @@ _OPEN_IEEG_SUBJECTS: tuple[str, ...] = (
 )
 
 
-def _open_ieeg_subject_key(filename: str) -> str | None:
-    """Parse subject ID from an Open iEEG filename.
+def _sleep_ieeg_subject_key(filename: str) -> str | None:
+    """Parse subject ID from an Sleep iEEG filename.
 
     e.g. ``'sub-Detroit001_ses-01_task-sleep_ieeg.edf'`` → ``'sub-Detroit001'``
     """
@@ -760,7 +760,7 @@ def _open_ieeg_subject_key(filename: str) -> str | None:
     return stem.split("_", 1)[0]
 
 
-def _open_ieeg_file_index() -> Sequence[RemoteFile]:
+def _sleep_ieeg_file_index() -> Sequence[RemoteFile]:
     """Fetch the subject list from participants.tsv and build the file index.
 
     Reads the public S3-hosted participants.tsv to discover all subject IDs,
@@ -774,11 +774,11 @@ def _open_ieeg_file_index() -> Sequence[RemoteFile]:
             content = resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
         raise RuntimeError(
-            f"Failed to fetch Open iEEG participant list from {participants_url!r}: HTTP {e.code}"
+            f"Failed to fetch Sleep iEEG participant list from {participants_url!r}: HTTP {e.code}"
         ) from e
     except (TimeoutError, urllib.error.URLError) as e:
         raise RuntimeError(
-            f"Network error fetching Open iEEG participant list from {participants_url!r}: {e!r}"
+            f"Network error fetching Sleep iEEG participant list from {participants_url!r}: {e!r}"
         ) from e
 
     files: list[RemoteFile] = []
@@ -797,26 +797,26 @@ def _open_ieeg_file_index() -> Sequence[RemoteFile]:
         )
 
     if not files:
-        raise RuntimeError("Open iEEG participant list returned no valid subjects.")
+        raise RuntimeError("Sleep iEEG participant list returned no valid subjects.")
     return files
 
 
-def _open_ieeg_spec() -> RemoteDatasetSpec:
-    from .dataset_loader import _load_open_ieeg  # avoid circular import at module level
+def _sleep_ieeg_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_sleep_ieeg  # avoid circular import at module level
 
     return RemoteDatasetSpec(
-        identifier="open_ieeg",
-        local_rel_dir=Path("data") / "remote" / "open_ieeg",
+        identifier="sleep_ieeg",
+        local_rel_dir=Path("data") / "remote" / "sleep_ieeg",
         files=None,
-        loader=_load_open_ieeg,
-        file_index_fn=_open_ieeg_file_index,
+        loader=_load_sleep_ieeg,
+        file_index_fn=_sleep_ieeg_file_index,
         description=(
-            "Open iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy "
+            "Sleep iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy "
             "patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. "
             "DOI: 10.18112/openneuro.ds005398.v1.0.1."
         ),
         subset_key_name="subjects",
-        subset_key_fn=_open_ieeg_subject_key,
+        subset_key_fn=_sleep_ieeg_subject_key,
         known_subset_keys=_OPEN_IEEG_SUBJECTS,
         size_hint="~13 GB",
         subset_size_hint="~70 MB per subject",
@@ -835,7 +835,7 @@ REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "bonn_eeg": _bonn_eeg_spec(),
     "chb_mit": _chb_mit_spec(),
     "siena_eeg": _siena_eeg_spec(),
-    "open_ieeg": _open_ieeg_spec(),
+    "sleep_ieeg": _sleep_ieeg_spec(),
 }
 
 

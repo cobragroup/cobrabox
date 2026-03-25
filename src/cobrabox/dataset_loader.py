@@ -489,8 +489,8 @@ def _load_siena_eeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> D
     )
 
 
-def _load_open_ieeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
-    """Load Open iEEG Dataset ``.edf`` files into SignalData objects.
+def _load_sleep_ieeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+    """Load Sleep iEEG Dataset ``.edf`` files into SignalData objects.
 
     Each ``.edf`` file is one interictal sleep recording and produces one
     ``SignalData`` object. Subject IDs are parsed from the filename stem
@@ -503,7 +503,7 @@ def _load_open_ieeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> D
     """
     return _load_edf_dataset(
         dataset_dir,
-        identifier="open_ieeg",
+        identifier="sleep_ieeg",
         subject_key_fn=lambda stem: stem.split("_", 1)[0],
         subset=subset,
     )
