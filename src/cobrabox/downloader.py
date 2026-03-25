@@ -822,7 +822,6 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
         subset_size_hint="~70 MB per subject",
         # Interictal-only dataset: recordings are sleep segments with no ictal events.
         seizures_per_subject=None,
-        seizure_info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
         info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,

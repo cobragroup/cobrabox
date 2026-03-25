@@ -89,6 +89,7 @@ class DatasetInfo:
                 width=72,
                 initial_indent=f"  {self.subset_key_name} ({n}): ",
                 subsequent_indent=" " * (len(self.subset_key_name) + 7),
+                break_on_hyphens=False,
             )
             lines.append(wrapped)
             second = self.subsets[1] if len(self.subsets) > 1 else self.subsets[0]
