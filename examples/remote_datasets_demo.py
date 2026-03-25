@@ -11,7 +11,7 @@ Available remote datasets
     swiss_eeg_long      >1 TB total, ~100-200 GB per subject (18 subjects)
     chb_mit             ~30 GB total, ~1.5 GB per subject (24 subjects)
     siena_eeg           ~15 GB total, ~1 GB per subject (14 subjects)
-    sleep_ieeg           ~13 GB total, ~70 MB per subject (185 subjects)
+    open_ieeg           ~13 GB total, ~70 MB per subject (185 subjects)
 
 Local (synthetic) datasets — no download needed
 ------------------------------------------------
@@ -38,7 +38,7 @@ print()
 
 # cb.dataset_info(identifier) returns a DatasetInfo object.  No network call
 # is made for datasets with a static file list (e.g. bonn_eeg, swiss_eeg_short,
-# chb_mit, siena_eeg, helsinki_neonatal).
+# chb_mit, siena_eeg).
 # Printing it gives a human-readable summary.
 info = cb.dataset_info("bonn_eeg")
 print(info)
@@ -69,7 +69,7 @@ print()
 #   cb.dataset("chb_mit",         subset=["chb01", "chb02"])
 #   cb.dataset("siena_eeg",       subset=["PN00"])
 #   cb.dataset("swiss_eeg_short", subset=["ID7", "ID8"])
-#   cb.dataset("sleep_ieeg",       subset=["sub-Detroit001"])
+#   cb.dataset("open_ieeg",        subset=["sub-Detroit001"])
 
 ds = cb.dataset("bonn_eeg", subset=["S", "Z"], verify=False)
 print(f"Loaded {len(ds)} recordings")
