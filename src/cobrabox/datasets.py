@@ -220,22 +220,22 @@ def dataset(
     )
 
 
-def list_datasets() -> list[str]:
-    """Return all known dataset identifiers.
-
-    Includes built-in local datasets (no download required) and all
-    registered remote datasets.
+def list_datasets() -> dict[str, list[str]]:
+    """Return all known dataset identifiers grouped by type.
 
     Example::
 
         cb.list_datasets()
-        # ['dummy_chain', 'dummy_noise', 'dummy_random', 'dummy_star',
-        #  'realistic_swiss', 'bonn_eeg', 'chb_mit', ...]
+        # {
+        #   'local':  ['dummy_chain', 'dummy_noise', ...],
+        #   'remote': ['bonn_eeg', 'chb_mit', ...],
+        # }
 
     Returns:
-        Sorted list of dataset identifier strings.
+        Dict with keys ``"local"`` (no download required) and ``"remote"``,
+        each mapping to a sorted list of identifier strings.
     """
-    return sorted([*_LOCAL_DATASET_INFO, *REMOTE_DATASETS])
+    return {"local": sorted(_LOCAL_DATASET_INFO), "remote": sorted(REMOTE_DATASETS)}
 
 
 def dataset_info(identifier: str) -> DatasetInfo:

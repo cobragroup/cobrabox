@@ -26,10 +26,10 @@ import cobrabox as cb
 # 1. List all available dataset identifiers
 # =============================================================================
 
-# cb.list_datasets() returns a sorted list of all known identifiers,
-# both local and remote.
-print("All available datasets:")
-print(cb.list_datasets())
+# cb.list_datasets() returns a dict with "local" and "remote" keys.
+datasets = cb.list_datasets()
+print("Local datasets (no download):", datasets["local"])
+print("Remote datasets:             ", datasets["remote"])
 print()
 
 # =============================================================================

@@ -2111,31 +2111,33 @@ def test_remote_dataset_spec_file_index_fn_accepted() -> None:
 
 
 def test_list_datasets_returns_sorted_list() -> None:
-    """list_datasets() returns a sorted list of all known identifiers."""
+    """list_datasets() returns a dict with sorted lists for 'local' and 'remote'."""
     from cobrabox.datasets import list_datasets
 
     result = list_datasets()
-    assert isinstance(result, list)
-    assert result == sorted(result)
+    assert isinstance(result, dict)
+    assert set(result.keys()) == {"local", "remote"}
+    assert result["local"] == sorted(result["local"])
+    assert result["remote"] == sorted(result["remote"])
 
 
 def test_list_datasets_includes_local_datasets() -> None:
-    """list_datasets() includes all built-in local datasets."""
+    """list_datasets() includes all built-in local datasets under 'local'."""
     from cobrabox.datasets import list_datasets
 
     result = list_datasets()
     for name in ("dummy_chain", "dummy_random", "dummy_star", "dummy_noise", "realistic_swiss"):
-        assert name in result
+        assert name in result["local"]
 
 
 def test_list_datasets_includes_remote_datasets() -> None:
-    """list_datasets() includes all registered remote datasets."""
+    """list_datasets() includes all registered remote datasets under 'remote'."""
     from cobrabox.datasets import list_datasets
     from cobrabox.downloader import REMOTE_DATASETS
 
     result = list_datasets()
     for name in REMOTE_DATASETS:
-        assert name in result
+        assert name in result["remote"]
 
 
 def test_list_datasets_accessible_via_cb() -> None:
