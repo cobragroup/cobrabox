@@ -2146,3 +2146,277 @@ def test_list_datasets_accessible_via_cb() -> None:
 
     assert callable(cb.list_datasets)
     assert cb.list_datasets() == cb.datasets.list_datasets()
+
+
+# ---------------------------------------------------------------------------
+# default repo_root resolution
+# ---------------------------------------------------------------------------
+
+
+def test_load_structured_dummy_uses_default_repo_root() -> None:
+    """load_structured_dummy works when repo_root is not provided."""
+    from cobrabox.dataset_loader import load_structured_dummy
+
+    result = load_structured_dummy("dummy_chain")
+    assert len(result) > 0
+
+
+def test_load_noise_dummy_uses_default_repo_root() -> None:
+    """load_noise_dummy works when repo_root is not provided."""
+    from cobrabox.dataset_loader import load_noise_dummy
+
+    result = load_noise_dummy()
+    assert len(result) > 0
+
+
+def test_load_realistic_swiss_uses_default_repo_root() -> None:
+    """load_realistic_swiss works when repo_root is not provided."""
+    from cobrabox.dataset_loader import load_realistic_swiss
+
+    result = load_realistic_swiss()
+    assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# _extract_numeric_from_mat_bytes edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_extract_numeric_from_mat_bytes_ignores_unconvertible_fs() -> None:
+    """Sampling rate is None when the fs key cannot be converted to float."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _extract_numeric_from_mat_bytes
+
+    buf = io.BytesIO()
+    # String-valued fs raises ValueError on float()
+    scipy.io.savemat(buf, {"fs": np.array(["bad"]), "signal": np.ones((10, 2))})
+    values, _channels, fs = _extract_numeric_from_mat_bytes(buf.getvalue())
+    assert fs is None
+    assert values.shape == (10, 2)
+
+
+def test_extract_numeric_from_mat_bytes_1d_signal_becomes_column_vector() -> None:
+    """A 1-D signal array is reshaped to (N, 1) with one generated channel."""
+    from unittest.mock import patch
+
+    from cobrabox.dataset_loader import _extract_numeric_from_mat_bytes
+
+    # scipy always loads MAT arrays as at least 2-D, so we mock loadmat to
+    # supply a genuinely 1-D array and exercise the reshape branch.
+    fake_data = {
+        "__header__": b"",
+        "__version__": "1.0",
+        "__globals__": [],
+        "signal": np.arange(50, dtype=float),
+    }
+    with patch("cobrabox.dataset_loader.scipy.io.loadmat", return_value=fake_data):
+        values, channels, _ = _extract_numeric_from_mat_bytes(b"fake")
+    assert values.shape == (50, 1)
+    assert channels == ["ch0"]
+
+
+# ---------------------------------------------------------------------------
+# _load_swez_sampling_rate — exception path
+# ---------------------------------------------------------------------------
+
+
+def test_load_swez_sampling_rate_returns_none_on_corrupt_mat(tmp_path: Path) -> None:
+    """Returns None without raising when the info .mat file is unreadable."""
+    from cobrabox.dataset_loader import _load_swez_sampling_rate
+
+    info_path = tmp_path / "ID01_info.mat"
+    info_path.write_bytes(b"this is not a valid mat file")
+    result = _load_swez_sampling_rate(tmp_path, "ID01")
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _load_swiss_eeg_long — non-2D EEG array
+# ---------------------------------------------------------------------------
+
+
+def test_load_swiss_eeg_long_skips_non_2d_eeg(tmp_path: Path) -> None:
+    """Files whose EEG variable is not 2-D are silently skipped."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_long
+
+    dataset_dir = tmp_path / "swiss_eeg_long"
+    dataset_dir.mkdir()
+
+    # One bad file (3-D EEG, ndim != 2) and one good file.
+    bad = dataset_dir / "ID01_1h.mat"
+    scipy.io.savemat(str(bad), {"EEG": np.ones((2, 4, 50), dtype=float)})
+
+    good = dataset_dir / "ID01_2h.mat"
+    scipy.io.savemat(str(good), {"EEG": np.ones((4, 200), dtype=float)})
+
+    result = _load_swiss_eeg_long(dataset_dir)
+    assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# _load_bonn_eeg — multi-dimensional txt signal skipped
+# ---------------------------------------------------------------------------
+
+
+def test_load_bonn_eeg_skips_multidimensional_signal(tmp_path: Path) -> None:
+    """Text members that produce a 2-D array are silently skipped."""
+    from cobrabox.dataset_loader import _load_bonn_eeg
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+    zip_path = dataset_dir / "S.zip"
+
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        # Two columns → np.loadtxt gives shape (N, 2), ndim==2 → skipped.
+        zf.writestr("S000.txt", "1.0 2.0\n3.0 4.0\n5.0 6.0\n")
+        # One column → valid 1-D signal.
+        zf.writestr("S001.txt", "1.0\n2.0\n3.0\n")
+
+    result = _load_bonn_eeg(dataset_dir)
+    assert len(result) == 1
+    assert result[0].subjectID == "S001"
+
+
+# ---------------------------------------------------------------------------
+# _load_edf_dataset — zero-sample recording skipped
+# ---------------------------------------------------------------------------
+
+
+def test_load_edf_dataset_skips_zero_sample_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """EDF files whose data array has 0 samples are silently skipped."""
+    from cobrabox.dataset_loader import _load_chb_mit
+
+    dataset_dir = tmp_path / "chb_mit"
+    dataset_dir.mkdir()
+    (dataset_dir / "chb01_01.edf").write_bytes(b"fake")
+    (dataset_dir / "chb01_02.edf").write_bytes(b"fake")
+
+    empty_raw = _MockRaw(n_channels=3, n_samples=0, sfreq=256.0)
+    good_raw = _MockRaw(n_channels=3, n_samples=512, sfreq=256.0)
+    call_count = 0
+
+    import mne
+
+    def _alternating(path: str, **kwargs: object) -> _MockRaw:
+        nonlocal call_count
+        call_count += 1
+        return empty_raw if call_count == 1 else good_raw
+
+    monkeypatch.setattr(mne.io, "read_raw_edf", _alternating)
+
+    result = _load_chb_mit(dataset_dir)
+    assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# _load_swiss_eeg_short — .npy / .mat members and empty-values path
+# ---------------------------------------------------------------------------
+
+
+def test_swiss_eeg_short_loader_reads_npy_from_zip(tmp_path: Path) -> None:
+    """_load_swiss_eeg_short can parse a .npy member inside a zip archive."""
+    from cobrabox.dataset_loader import _load_swiss_eeg_short
+
+    dataset_dir = tmp_path / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True)
+    zip_path = dataset_dir / "ID1.zip"
+
+    arr = np.ones((50, 3), dtype=float)
+    buf = io.BytesIO()
+    np.save(buf, arr)
+
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("signal.npy", buf.getvalue())
+
+    result = _load_swiss_eeg_short(dataset_dir)
+    assert len(result) == 1
+    assert result[0].subjectID == "ID1"
+
+
+def test_swiss_eeg_short_loader_reads_mat_from_zip(tmp_path: Path) -> None:
+    """_load_swiss_eeg_short can parse a .mat member inside a zip archive."""
+    import scipy.io
+
+    from cobrabox.dataset_loader import _load_swiss_eeg_short
+
+    dataset_dir = tmp_path / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True)
+    zip_path = dataset_dir / "ID2.zip"
+
+    buf = io.BytesIO()
+    scipy.io.savemat(buf, {"EEG": np.ones((4, 100), dtype=float), "fs": np.array(256.0)})
+
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("signal.mat", buf.getvalue())
+
+    result = _load_swiss_eeg_short(dataset_dir)
+    assert len(result) == 1
+    assert result[0].subjectID == "ID2"
+    assert result[0].sampling_rate == 256.0
+
+
+def test_swiss_eeg_short_loader_skips_member_with_empty_values(tmp_path: Path) -> None:
+    """Members whose data has 0 time samples are skipped; next member is tried."""
+    from cobrabox.dataset_loader import _load_swiss_eeg_short
+
+    dataset_dir = tmp_path / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True)
+    zip_path = dataset_dir / "ID1.zip"
+
+    empty_arr = np.ones((0, 3), dtype=float)
+    good_arr = np.ones((20, 2), dtype=float)
+    empty_buf = io.BytesIO()
+    good_buf = io.BytesIO()
+    np.save(empty_buf, empty_arr)
+    np.save(good_buf, good_arr)
+
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("empty.npy", empty_buf.getvalue())
+        zf.writestr("signal.npy", good_buf.getvalue())
+
+    result = _load_swiss_eeg_short(dataset_dir)
+    assert len(result) == 1
+
+
+def test_swiss_eeg_short_loader_raises_when_all_archives_empty(tmp_path: Path) -> None:
+    """ValueError is raised when every zip archive contains no members."""
+    from cobrabox.dataset_loader import _load_swiss_eeg_short
+
+    dataset_dir = tmp_path / "swiss_eeg_short"
+    dataset_dir.mkdir(parents=True)
+
+    # Two empty zip files (no members at all) → both skipped → items empty.
+    for name in ("ID1.zip", "ID2.zip"):
+        with zipfile.ZipFile(dataset_dir / name, "w"):
+            pass
+
+    with pytest.raises(ValueError, match="empty or unparsable"):
+        _load_swiss_eeg_short(dataset_dir)
+
+
+# ---------------------------------------------------------------------------
+# datasets.py — realistic_swiss and seizures display
+# ---------------------------------------------------------------------------
+
+
+def test_dataset_loads_realistic_swiss_via_cb() -> None:
+    """cb.dataset('realistic_swiss') routes to load_realistic_swiss."""
+    import cobrabox as cb
+
+    result = cb.dataset("realistic_swiss")
+    assert len(result) > 0
+
+
+def test_dataset_info_str_shows_seizures_per_subject() -> None:
+    """DatasetInfo.__str__ includes a seizures/subject block when data is present."""
+    from cobrabox.datasets import dataset_info
+
+    info = dataset_info("bonn_eeg")
+    text = str(info)
+    assert "seizures/subject" in text
+    assert "seizure src" in text
