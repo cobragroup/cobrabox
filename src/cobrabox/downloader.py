@@ -407,20 +407,6 @@ def ensure_remote_files(
     return dataset_dir
 
 
-def _placeholder_loader(identifier: str) -> RemoteLoader:
-    """Create a loader that raises a clear message until implemented."""
-
-    def _loader(_dataset_dir: Path, _subset: Sequence[str] | None = None) -> Dataset[SignalData]:
-        raise NotImplementedError(
-            f"Loader for remote dataset '{identifier}' is not implemented yet. "
-            f"Files should now be available under the configured 'data/remote' "
-            f"directory. Inspect the raw data layout and implement a proper "
-            f"loader to convert it into cobrabox Data/SignalData objects."
-        )
-
-    return _loader
-
-
 _SWISS_EEG_SHORT_IDS = [
     "ID1",
     "ID2",
@@ -460,9 +446,11 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
             f"({len(_SWISS_EEG_SHORT_IDS)} subjects, ictal/interictal)."
         ),
         subset_key_name="subjects",
+        known_subset_keys=tuple(_SWISS_EEG_SHORT_IDS),
         size_hint="~11 GB",
         subset_size_hint="~100 MB - 1 GB per subject",
-        # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940).
+        # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940)
+        # but the paper PDF is not publicly accessible as plain text.
         seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         license="Free for research and education only; commercial and military use prohibited.",
@@ -498,7 +486,8 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
         # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
-        # Per-subject table is in the Laelaps paper; see seizure_info_url.
+        # Per-subject breakdown is in the Laelaps paper, but the SWEZ website
+        # (seizure_info_url) has TLS issues preventing automated access.
         seizure_info_url="http://ieeg-swez.ethz.ch/",
         info_url="http://ieeg-swez.ethz.ch/",
         license="Free for research and education only; commercial and military use prohibited.",
