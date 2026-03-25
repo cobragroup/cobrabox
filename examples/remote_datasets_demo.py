@@ -33,12 +33,12 @@ print(info)
 print()
 
 # 3. Load a subset (list form)
-# verify=False skips the confirmation prompt; omit it (default True) in interactive use.
+# accept=True skips the confirmation prompt; omit it (default True) in interactive use.
 # Other examples:
 #   cb.dataset("chb_mit",         subset=["chb01", "chb02"])
 #   cb.dataset("swiss_eeg_short", subset=["ID7", "ID8"])
 #   cb.dataset("sleep_ieeg",       subset=["sub-Detroit001"])
-ds = cb.dataset("bonn_eeg", subset=["S", "Z"], verify=False)
+ds = cb.dataset("bonn_eeg", subset=["S", "Z"], accept=True)
 print(f"Loaded {len(ds)} recordings")
 print()
 

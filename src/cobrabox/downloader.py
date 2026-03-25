@@ -38,13 +38,18 @@ def _head_size(url: str, timeout: int = 5) -> int | None:
 
 
 def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile]) -> bool:
-    """Print dataset info and download summary, then ask the user to confirm.
+    """Print dataset info, license, and download summary, then ask the user to confirm.
 
     Returns ``True`` if the user confirmed, ``False`` otherwise.
     """
     print(f"\nDataset: {spec.identifier}")
     if spec.description:
         print(f"  {spec.description}")
+
+    if spec.license is not None:
+        print(f"\n  License: {spec.license}")
+    if spec.info_url is not None:
+        print(f"  More info: {spec.info_url}")
 
     n = len(to_download)
     print(f"\n  Files to download: {n}")
@@ -250,7 +255,7 @@ def ensure_remote_files(
     *,
     subset: SubsetSpec | None = None,
     repo_root: Path | None = None,
-    verify: bool = True,
+    accept: bool = False,
 ) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
@@ -266,14 +271,15 @@ def ensure_remote_files(
             :data:`SubsetSpec`.  Files without a ``subset_key`` are always
             included.
         repo_root: Override the inferred repository root.
-        verify: If ``True`` (default) and there are files to download, show
-            dataset info and an estimated download size, then ask the user to
-            confirm before proceeding.  Set to ``False`` to skip the prompt.
+        accept: If ``False`` (default) and there are files to download, show
+            the dataset license, estimated download size, and ask the user to
+            confirm before proceeding.  Set to ``True`` to skip the prompt
+            (e.g. in scripts where you have already accepted the license).
 
     Returns the resolved local dataset directory.
 
     Raises:
-        RuntimeError: If ``verify=True`` and the user declines the download.
+        RuntimeError: If ``accept=False`` and the user declines the download.
     """
     if repo_root is None:
         repo_root = _default_repo_root()
@@ -387,12 +393,12 @@ def ensure_remote_files(
     if not to_download:
         return dataset_dir
 
-    if verify:
+    if not accept:
         confirmed = _prompt_download_verify(spec, to_download)
         if not confirmed:
             raise RuntimeError(
                 f"Download of '{spec.identifier}' cancelled by user. "
-                "Pass verify=False to skip this prompt."
+                "Pass accept=True to skip this prompt."
             )
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))

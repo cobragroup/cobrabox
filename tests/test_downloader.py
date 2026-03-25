@@ -174,8 +174,8 @@ def test_prompt_verify_extrapolates_size_for_large_datasets(
 # ---------------------------------------------------------------------------
 
 
-def test_ensure_remote_files_verify_false_skips_prompt(tmp_path: Path) -> None:
-    """verify=False should never call _prompt_download_verify."""
+def test_ensure_remote_files_accept_true_skips_prompt(tmp_path: Path) -> None:
+    """accept=True should never call _prompt_download_verify."""
     remote = RemoteFile(url="http://example.com/a.zip", filename="a.zip")
     spec = RemoteDatasetSpec(
         identifier="test_dataset",
@@ -192,11 +192,11 @@ def test_ensure_remote_files_verify_false_skips_prompt(tmp_path: Path) -> None:
     ):
         # Pre-create the file so nothing needs downloading
         (tmp_path / "a.zip").write_bytes(b"PK\x05\x06" + b"\x00" * 18)
-        ensure_remote_files(spec, repo_root=tmp_path.parent, verify=False)
+        ensure_remote_files(spec, repo_root=tmp_path.parent, accept=True)
         mock_prompt.assert_not_called()
 
 
-def test_ensure_remote_files_verify_true_cancels_on_no(tmp_path: Path) -> None:
+def test_ensure_remote_files_accept_false_cancels_on_no(tmp_path: Path) -> None:
     """User declining the prompt raises RuntimeError."""
     remote = RemoteFile(url="http://example.com/a.zip", filename="a.zip")
     # Build a dataset dir that doesn't have the file yet
@@ -214,10 +214,10 @@ def test_ensure_remote_files_verify_true_cancels_on_no(tmp_path: Path) -> None:
         patch("cobrabox.downloader._default_repo_root", return_value=tmp_path),
     ):
         with pytest.raises(RuntimeError, match="cancelled by user"):
-            ensure_remote_files(spec, verify=True)
+            ensure_remote_files(spec, accept=False)
 
 
-def test_ensure_remote_files_verify_true_proceeds_on_yes(tmp_path: Path) -> None:
+def test_ensure_remote_files_accept_false_proceeds_on_yes(tmp_path: Path) -> None:
     """User confirming the prompt allows the download to proceed."""
     remote = RemoteFile(url="http://example.com/a.zip", filename="a.zip")
     dataset_dir = tmp_path / "test_dataset"
@@ -245,14 +245,14 @@ def test_ensure_remote_files_verify_true_proceeds_on_yes(tmp_path: Path) -> None
         patch("cobrabox.downloader._default_repo_root", return_value=tmp_path),
         patch("urllib.request.urlopen", side_effect=_fake_download),
     ):
-        result = ensure_remote_files(spec, verify=True)
+        result = ensure_remote_files(spec, accept=False)
 
     assert result == dataset_dir
     assert downloaded == ["http://example.com/a.zip"]
 
 
 def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
-    """When all files are already present, verify prompt is never shown."""
+    """When all files are already present, accept prompt is never shown."""
     dataset_dir = tmp_path / "test_dataset"
     dataset_dir.mkdir()
     # Create a valid (empty) zip so _has_valid_local_copy returns True
@@ -272,7 +272,7 @@ def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
         patch("cobrabox.downloader._prompt_download_verify") as mock_prompt,
         patch("cobrabox.downloader._default_repo_root", return_value=tmp_path),
     ):
-        ensure_remote_files(spec, verify=True)
+        ensure_remote_files(spec, accept=False)
         mock_prompt.assert_not_called()
 
 
@@ -366,7 +366,7 @@ def test_ensure_remote_files_uses_file_index_fn(
     )
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, verify=False)
+    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, accept=True)
     assert (dataset_dir / "a.bin").read_bytes() == b"DATA"
     # file_index_fn result should be cached on the spec
     assert spec.files is not None
@@ -424,7 +424,7 @@ def test_ensure_remote_files_redownloads_corrupt_zip(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    ensure_remote_files(spec, repo_root=tmp_path, verify=False)
+    ensure_remote_files(spec, repo_root=tmp_path, accept=True)
     assert downloaded == ["http://example.com/a.zip"]
 
 
@@ -453,7 +453,7 @@ def test_ensure_remote_files_raises_on_timeout(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _timeout)
 
     with pytest.raises(RuntimeError, match="timed out"):
-        ensure_remote_files(spec, repo_root=tmp_path, verify=False)
+        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
 
 
 def test_ensure_remote_files_raises_on_enospc(
@@ -491,23 +491,10 @@ def test_ensure_remote_files_raises_on_enospc(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse())
 
     with pytest.raises(RuntimeError, match="No space left"):
-        ensure_remote_files(spec, repo_root=tmp_path, verify=False)
+        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
 
 
 # ---------------------------------------------------------------------------
-# _placeholder_loader
-# ---------------------------------------------------------------------------
-
-
-def test_placeholder_loader_raises_not_implemented() -> None:
-    """_placeholder_loader returns a callable that raises NotImplementedError."""
-    from cobrabox.downloader import _placeholder_loader
-
-    loader = _placeholder_loader("my_dataset")
-    with pytest.raises(NotImplementedError, match="my_dataset"):
-        loader(Path("/some/path"), None)
-
-
 # ---------------------------------------------------------------------------
 # _chb_mit_file_index — error paths
 # ---------------------------------------------------------------------------
