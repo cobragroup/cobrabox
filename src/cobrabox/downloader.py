@@ -467,6 +467,9 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
     )
 
 
+_SWEZ_LONG_SUBJECTS: tuple[str, ...] = tuple(f"ID{i:02d}" for i in range(1, 19))
+
+
 def _swez_long_subject_key(filename: str) -> str | None:
     """Parse subject ID from a SWEZ long-term filename (e.g. 'ID01_1h.mat' -> 'ID01')."""
     stem = filename.rsplit(".", 1)[0]  # strip extension
@@ -489,6 +492,7 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         ),
         subset_key_name="subjects",
         subset_key_fn=_swez_long_subject_key,
+        known_subset_keys=_SWEZ_LONG_SUBJECTS,
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
         # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
@@ -734,6 +738,13 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
     )
 
 
+_OPEN_IEEG_SUBJECTS: tuple[str, ...] = (
+    *[f"sub-Detroit{i:03d}" for i in range(1, 96)],
+    *[f"sub-UCLA{i:02d}" for i in range(1, 51)],
+    *[f"sub-Detroit{i:03d}" for i in range(96, 136)],
+)
+
+
 def _open_ieeg_subject_key(filename: str) -> str | None:
     """Parse subject ID from an Open iEEG filename.
 
@@ -800,6 +811,7 @@ def _open_ieeg_spec() -> RemoteDatasetSpec:
         ),
         subset_key_name="subjects",
         subset_key_fn=_open_ieeg_subject_key,
+        known_subset_keys=_OPEN_IEEG_SUBJECTS,
         size_hint="~13 GB",
         subset_size_hint="~70 MB per subject",
         # Interictal-only dataset: recordings are sleep segments with no ictal events.
