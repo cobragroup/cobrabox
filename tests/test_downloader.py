@@ -581,14 +581,14 @@ def test_siena_file_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatch) -
 
 
 # ---------------------------------------------------------------------------
-# _open_ieeg_file_index — error paths
+# _sleep_ieeg_file_index — error paths
 # ---------------------------------------------------------------------------
 
 
-def test_open_ieeg_file_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_open_ieeg_file_index raises RuntimeError on network error."""
+def test_sleep_ieeg_file_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_sleep_ieeg_file_index raises RuntimeError on network error."""
     import cobrabox.downloader as downloader
-    from cobrabox.downloader import _open_ieeg_file_index
+    from cobrabox.downloader import _sleep_ieeg_file_index
 
     monkeypatch.setattr(
         downloader.urllib.request,
@@ -596,15 +596,15 @@ def test_open_ieeg_file_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatc
         lambda url, **kw: (_ for _ in ()).throw(downloader.urllib.error.URLError("timeout")),
     )
     with pytest.raises(RuntimeError, match="Network error"):
-        _open_ieeg_file_index()
+        _sleep_ieeg_file_index()
 
 
-def test_open_ieeg_file_index_raises_when_no_subjects(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_open_ieeg_file_index raises RuntimeError when participants.tsv has no subjects."""
+def test_sleep_ieeg_file_index_raises_when_no_subjects(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_sleep_ieeg_file_index raises RuntimeError when participants.tsv has no subjects."""
     import io
 
     import cobrabox.downloader as downloader
-    from cobrabox.downloader import _open_ieeg_file_index
+    from cobrabox.downloader import _sleep_ieeg_file_index
 
     empty_tsv = b"participant_id\tage\n"  # header only, no data rows
 
@@ -619,4 +619,4 @@ def test_open_ieeg_file_index_raises_when_no_subjects(monkeypatch: pytest.Monkey
         downloader.urllib.request, "urlopen", lambda url, **kw: _FakeResp(empty_tsv)
     )
     with pytest.raises(RuntimeError, match="no valid subjects"):
-        _open_ieeg_file_index()
+        _sleep_ieeg_file_index()
