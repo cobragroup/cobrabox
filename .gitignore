@@ -49,6 +49,7 @@ site/
 !.claude/**
 .claude/**/.DS_Store
 .claude/.DS_Store
+.claude/settings.local.json
 
 # Local data outputs (keep README placeholders)
 data/raw/*
