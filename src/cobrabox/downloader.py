@@ -595,8 +595,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
         description=(
             "CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures "
             "(24 subjects, 256 Hz, 23 channels, ictal/interictal). "
-            "Children's Hospital Boston / MIT. "
-            "License: Open Data Commons Attribution License v1.0."
+            "Children's Hospital Boston / MIT."
         ),
         subset_key_name="subjects",
         known_subset_keys=_CHB_MIT_SUBJECTS,
@@ -706,8 +705,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
         description=(
             "Siena Scalp EEG Database: adult epilepsy patients with annotated seizures "
             "(14 subjects, 512 Hz, 21+ channels, ictal/interictal). "
-            "University of Siena. "
-            "License: Creative Commons Attribution 4.0 International (CC BY 4.0)."
+            "University of Siena."
         ),
         subset_key_name="subjects",
         known_subset_keys=_SIENA_SUBJECTS,
@@ -798,7 +796,6 @@ def _open_ieeg_spec() -> RemoteDatasetSpec:
         description=(
             "Open iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy "
             "patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. "
-            "License: CC0 (public domain). "
             "DOI: 10.18112/openneuro.ds005398.v1.0.1."
         ),
         subset_key_name="subjects",
