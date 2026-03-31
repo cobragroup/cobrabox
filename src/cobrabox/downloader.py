@@ -552,7 +552,9 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         loader=_load_bonn_eeg,
         description=(
             "Bonn University EEG dataset (Andrzejak et al. 2001): 5 sets of 100 "
-            "single-channel recordings (healthy, interictal, ictal). "
+            "single-channel recordings. Sets: Z = healthy eyes open, O = healthy eyes closed, "
+            "N = interictal (seizure-free zone), F = interictal (epileptogenic zone), "
+            "S = ictal (seizure). "
             "Hosted by Universitat Pompeu Fabra (DOI: 10.34810/data490)."
         ),
         subset_key_name="sets",
