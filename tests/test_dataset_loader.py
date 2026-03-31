@@ -793,7 +793,7 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
     ensure_remote_files(
-spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, data_dir=tmp_path, accept=True
+        spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, data_dir=tmp_path, accept=True
     )
 
     assert len(downloaded) == 2
@@ -2419,4 +2419,3 @@ def test_dataset_info_str_shows_seizures_per_subject() -> None:
     info = dataset_info("bonn_eeg")
     text = str(info)
     assert "seizures/subject" in text
-    assert "seizure src" in text

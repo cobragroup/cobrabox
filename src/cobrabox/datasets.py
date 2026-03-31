@@ -70,6 +70,8 @@ class DatasetInfo:
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
         lines.append(f"  description : {self.description}")
+        if self.info_url is not None:
+            lines.append(f"  source      : {self.info_url}")
         if self.size_hint is not None or self.subset_size_hint is not None:
             parts = []
             if self.size_hint is not None:
@@ -107,16 +109,8 @@ class DatasetInfo:
                 chunk = pairs[i : i + n_cols]
                 row = "    " + "   ".join(f"{k:<{max_key}} {v:>{max_val}}" for k, v in chunk)
                 lines.append(row)
-            if self.seizure_info_url is not None:
-                lines.append(f"  seizure src : {self.seizure_info_url}")
-        elif self.seizure_info_url is not None:
-            lines.append(f"  seizure info: {self.seizure_info_url}")
         if self.license is not None:
             lines.append(f"  license     : {self.license}")
-            if self.info_url is not None:
-                lines.append(f"  license url : {self.info_url}")
-        elif self.info_url is not None:
-            lines.append(f"  info        : {self.info_url}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:
