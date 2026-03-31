@@ -43,8 +43,13 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
         print(f"  More info: {spec.info_url}")
 
     n = len(to_download)
-    print(f"\n  Files to download: {n}")
-    print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
+    total_files = len(spec.files) if spec.files is not None else None
+    files_str = f"{n}" if total_files is None else f"{n} of {total_files}"
+    print(f"\n  Files to download: {files_str}")
+    if spec.subset_size_hint is not None and total_files is not None and n < total_files:
+        print(f"  Estimated download size: {spec.subset_size_hint} x {n} files")
+    else:
+        print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
 
     answer = input("\nProceed with download? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
