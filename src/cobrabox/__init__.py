@@ -4,6 +4,7 @@ from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
 from .datasets import dataset, dataset_info, list_datasets
+from .downloader import get_data_dir, set_data_dir
 from .egg.gorkastyle import gorkastyle
 from .features.time_domain.line_length import LineLength
 from .features.time_domain.nonreversibility import Nonreversibility
@@ -38,10 +39,12 @@ __all__ = [
     "deserialize",
     "from_numpy",
     "from_xarray",
+    "get_data_dir",
     "gorkastyle",
     "list_datasets",
     "load",
     "save",
     "serialization",
     "serialize",
+    "set_data_dir",
 ]

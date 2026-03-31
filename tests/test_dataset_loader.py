@@ -326,7 +326,7 @@ def test_ensure_remote_files_downloads_missing_files(
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
     # Act
-    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+    dataset_dir = ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
     # Assert
     assert dataset_dir == tmp_path / spec.local_rel_dir
@@ -362,7 +362,7 @@ def test_ensure_remote_files_skips_existing_files(
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _failing_urlopen)
 
-    result_dir = ensure_remote_files(spec, repo_root=tmp_path)
+    result_dir = ensure_remote_files(spec, data_dir=tmp_path)
 
     assert result_dir == dataset_dir
     assert a_path.read_bytes() == b"ORIGINAL"
@@ -391,7 +391,7 @@ def test_ensure_remote_files_auth_hint_shown_on_401_403(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _raise_http_error)
 
     with pytest.raises(RuntimeError, match="credentials") as excinfo:
-        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
     assert "Expected file location" in str(excinfo.value)
 
@@ -418,7 +418,7 @@ def test_ensure_remote_files_no_auth_hint_generic_error_on_401_403(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _raise_http_error)
 
     with pytest.raises(RuntimeError, match="HTTP 403"):
-        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
 
 def test_dataset_uses_remote_spec_for_known_identifier(
@@ -450,11 +450,11 @@ def test_dataset_uses_remote_spec_for_known_identifier(
         spec: RemoteDatasetSpec,
         *,
         subset: object = None,
-        repo_root: Path | None = None,
+        data_dir: Path | None = None,
         accept: bool = False,
     ) -> Path:
         assert spec is fake_spec
-        base = tmp_path if repo_root is None else repo_root
+        base = tmp_path if data_dir is None else data_dir
         path = base / spec.local_rel_dir
         path.mkdir(parents=True, exist_ok=True)
         return path
@@ -512,7 +512,7 @@ def test_ensure_remote_files_uses_index_when_no_files(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+    dataset_dir = ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
     assert (dataset_dir / "a.bin").read_bytes() == b"AAA"
     assert (dataset_dir / "b.bin").read_bytes() == b"BBB"
@@ -616,7 +616,7 @@ def test_ensure_remote_files_subset_filters_downloads(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    dataset_dir = ensure_remote_files(spec, subset=["ID1", "ID5"], repo_root=tmp_path, accept=True)
+    dataset_dir = ensure_remote_files(spec, subset=["ID1", "ID5"], data_dir=tmp_path, accept=True)
 
     assert (dataset_dir / "ID1.zip").exists()
     assert (dataset_dir / "ID5.zip").exists()
@@ -746,7 +746,7 @@ def test_ensure_remote_files_dict_subset_int_downloads_first_n(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    ensure_remote_files(spec, subset={"ID01": 2}, repo_root=tmp_path, accept=True)
+    ensure_remote_files(spec, subset={"ID01": 2}, data_dir=tmp_path, accept=True)
 
     assert len(downloaded) == 2
     assert any("ID01_1h.mat" in u for u in downloaded)
@@ -793,7 +793,7 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
     ensure_remote_files(
-        spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, repo_root=tmp_path, accept=True
+spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, data_dir=tmp_path, accept=True
     )
 
     assert len(downloaded) == 2
@@ -860,7 +860,7 @@ def test_dataset_dict_subset_passes_stems_to_loader(
         s: RemoteDatasetSpec,
         *,
         subset: object = None,
-        repo_root: Path | None = None,
+        data_dir: Path | None = None,
         accept: bool = False,
     ) -> Path:
         p = tmp_path / s.local_rel_dir
@@ -1454,7 +1454,7 @@ def test_ensure_remote_files_raises_on_url_error(
     )
 
     with pytest.raises(RuntimeError, match="Network error"):
-        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
 
 # ---------------------------------------------------------------------------

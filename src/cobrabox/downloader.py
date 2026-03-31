@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import errno
+import os
+import platform
 import socket
 import urllib.error
 import urllib.request
@@ -133,9 +135,62 @@ class RemoteDatasetSpec:
         return keys if keys else None
 
 
-def _default_repo_root() -> Path:
-    """Infer the repository root from the package path."""
-    return Path(__file__).resolve().parents[2]
+def _default_data_dir() -> Path:
+    """Return the default directory for storing downloaded datasets.
+
+    Resolution order:
+    1. ``COBRABOX_DATA_DIR`` environment variable (if set).
+    2. OS-specific user cache directory:
+       - Linux  : ``~/.cache/cobrabox``
+       - macOS  : ``~/Library/Caches/cobrabox``
+       - Windows: ``%LOCALAPPDATA%\\cobrabox``
+    """
+    env = os.environ.get("COBRABOX_DATA_DIR")
+    if env:
+        return Path(env)
+    system = platform.system()
+    if system == "Darwin":
+        return Path.home() / "Library" / "Caches" / "cobrabox"
+    if system == "Windows":
+        local_app_data = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(local_app_data) / "cobrabox"
+    # Linux and everything else
+    xdg = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(xdg) / "cobrabox"
+
+
+_data_dir: Path | None = None
+
+
+def get_data_dir() -> Path:
+    """Return the directory where downloaded datasets are stored.
+
+    Returns the value set by :func:`set_data_dir`, or the default platform
+    cache directory if none has been set.  The directory is not created here;
+    it is created on first download.
+
+    Returns:
+        Resolved :class:`~pathlib.Path` to the data directory.
+    """
+    return _data_dir if _data_dir is not None else _default_data_dir()
+
+
+def set_data_dir(path: str | Path) -> None:
+    """Override the directory where downloaded datasets are stored.
+
+    Call this before :func:`~cobrabox.dataset` to redirect all downloads to a
+    custom location.  The directory is created automatically when needed.
+
+    Args:
+        path: Absolute or relative path to the desired data directory.
+
+    Example::
+
+        cb.set_data_dir("/mnt/data/cobrabox")
+        ds = cb.dataset("bonn_eeg", subset=["S"], verify=False)
+    """
+    global _data_dir
+    _data_dir = Path(path)
 
 
 def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
@@ -225,12 +280,12 @@ def ensure_remote_files(
     spec: RemoteDatasetSpec,
     *,
     subset: SubsetSpec | None = None,
-    repo_root: Path | None = None,
+    data_dir: Path | None = None,
     accept: bool = False,
 ) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
-    Files are stored under ``repo_root / spec.local_rel_dir``. Existing files
+    Files are stored under ``data_dir / spec.local_rel_dir``. Existing files
     are left untouched; missing files are streamed down in parallel and written
     atomically via a ``.part`` temp file.
 
@@ -241,7 +296,8 @@ def ensure_remote_files(
             files for those keys, or a ``dict`` for file-level control — see
             :data:`SubsetSpec`.  Files without a ``subset_key`` are always
             included.
-        repo_root: Override the inferred repository root.
+        data_dir: Override the data directory for this call.  Defaults to
+            :func:`get_data_dir`.
         accept: If ``False`` (default) and there are files to download, show
             the dataset license, estimated download size, and ask the user to
             confirm before proceeding.  Set to ``True`` to skip the prompt
@@ -252,10 +308,10 @@ def ensure_remote_files(
     Raises:
         RuntimeError: If ``accept=False`` and the user declines the download.
     """
-    if repo_root is None:
-        repo_root = _default_repo_root()
+    if data_dir is None:
+        data_dir = get_data_dir()
 
-    dataset_dir = repo_root / spec.local_rel_dir
+    dataset_dir = data_dir / spec.local_rel_dir
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
     if spec.files is not None:
@@ -412,7 +468,7 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
     base_url = "https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/dataset"
     return RemoteDatasetSpec(
         identifier="swiss_eeg_short",
-        local_rel_dir=Path("data") / "remote" / "swiss_eeg_short",
+        local_rel_dir=Path("swiss_eeg_short"),
         files=[
             RemoteFile(url=f"{base_url}/{id_}.zip", filename=f"{id_}.zip", subset_key=id_)
             for id_ in _SWISS_EEG_SHORT_IDS
@@ -449,7 +505,7 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
 
     return RemoteDatasetSpec(
         identifier="swiss_eeg_long",
-        local_rel_dir=Path("data") / "remote" / "swiss_eeg_long",
+        local_rel_dir=Path("swiss_eeg_long"),
         files=None,
         loader=_load_swiss_eeg_long,
         file_index_url="http://ieeg-swez.ethz.ch/longterm-files.txt",
@@ -488,7 +544,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
     base = "https://repositori.upf.edu/server/api/core/bitstreams"
     return RemoteDatasetSpec(
         identifier="bonn_eeg",
-        local_rel_dir=Path("data") / "remote" / "bonn_eeg",
+        local_rel_dir=Path("bonn_eeg"),
         files=[
             RemoteFile(url=f"{base}/{uuid}/content", filename=f"{letter}.zip", subset_key=letter)
             for letter, uuid in _BONN_UPF_BITSTREAMS.items()
@@ -562,7 +618,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
 
     return RemoteDatasetSpec(
         identifier="chb_mit",
-        local_rel_dir=Path("data") / "remote" / "chb_mit",
+        local_rel_dir=Path("chb_mit"),
         files=None,
         loader=_load_chb_mit,
         file_index_fn=_chb_mit_file_index,
@@ -673,7 +729,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
 
     return RemoteDatasetSpec(
         identifier="siena_eeg",
-        local_rel_dir=Path("data") / "remote" / "siena_eeg",
+        local_rel_dir=Path("siena_eeg"),
         files=None,
         loader=_load_siena_eeg,
         file_index_fn=_siena_file_index,
@@ -772,7 +828,7 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
 
     return RemoteDatasetSpec(
         identifier="sleep_ieeg",
-        local_rel_dir=Path("data") / "remote" / "sleep_ieeg",
+        local_rel_dir=Path("sleep_ieeg"),
         files=None,
         loader=_load_sleep_ieeg,
         file_index_fn=_sleep_ieeg_file_index,
