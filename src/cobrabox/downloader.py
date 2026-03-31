@@ -857,6 +857,105 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
     )
 
 
+_ZURICH_IEEG_SUBJECTS: tuple[str, ...] = tuple(f"sub-{i:02d}" for i in range(1, 21))
+
+
+def _zurich_ieeg_subject_key(filename: str) -> str | None:
+    """Parse subject ID from a Zurich iEEG filename.
+
+    e.g. ``'sub-01_ses-interictalsleep_run-01_ieeg.vhdr'`` → ``'sub-01'``
+    """
+    return filename.split("_", 1)[0]
+
+
+def _zurich_ieeg_file_index() -> Sequence[RemoteFile]:
+    """Fetch run lists from participants.tsv and per-subject scans.tsv files.
+
+    Reads participants.tsv to discover subject IDs, then fetches each
+    subject's scans.tsv to enumerate runs. Yields three
+    :class:`RemoteFile` entries per run (``.vhdr``, ``.eeg``, ``.vmrk``).
+    """
+    base_url = "https://s3.amazonaws.com/openneuro.org/ds003498"
+    participants_url = f"{base_url}/participants.tsv"
+    try:
+        with urllib.request.urlopen(participants_url, timeout=30) as resp:
+            content = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(
+            f"Failed to fetch Zurich iEEG participant list from {participants_url!r}: HTTP {e.code}"
+        ) from e
+    except (TimeoutError, urllib.error.URLError) as e:
+        raise RuntimeError(
+            f"Network error fetching Zurich iEEG participant list from {participants_url!r}: {e!r}"
+        ) from e
+
+    subjects = [
+        line.split("\t")[0].strip()
+        for line in content.splitlines()[1:]
+        if line.split("\t")[0].strip().startswith("sub-")
+    ]
+    if not subjects:
+        raise RuntimeError("Zurich iEEG participant list returned no valid subjects.")
+
+    files: list[RemoteFile] = []
+    for subject in subjects:
+        scans_url = (
+            f"{base_url}/{subject}/ses-interictalsleep/{subject}_ses-interictalsleep_scans.tsv"
+        )
+        try:
+            with urllib.request.urlopen(scans_url, timeout=30) as resp:
+                scans = resp.read().decode("utf-8")
+        except (urllib.error.HTTPError, TimeoutError, urllib.error.URLError) as e:
+            raise RuntimeError(f"Failed to fetch scans list for {subject!r}: {e!r}") from e
+
+        for line in scans.splitlines()[1:]:
+            parts = line.split("\t")
+            if not parts:
+                continue
+            vhdr_rel = parts[0].strip()  # e.g. "ieeg/sub-01_ses-interictalsleep_run-01_ieeg.vhdr"
+            if not vhdr_rel.endswith(".vhdr"):
+                continue
+            stem = vhdr_rel.split("/")[-1].rsplit(".", 1)[0]
+            for ext in ("vhdr", "eeg", "vmrk"):
+                fname = f"{stem}.{ext}"
+                files.append(
+                    RemoteFile(
+                        url=f"{base_url}/{subject}/ses-interictalsleep/ieeg/{fname}",
+                        filename=fname,
+                        subset_key=subject,
+                    )
+                )
+
+    if not files:
+        raise RuntimeError("Zurich iEEG: no run files found after scanning all subjects.")
+    return files
+
+
+def _zurich_ieeg_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_zurich_ieeg  # avoid circular import at module level
+
+    return RemoteDatasetSpec(
+        identifier="zurich_ieeg",
+        local_rel_dir=Path("data") / "remote" / "zurich_ieeg",
+        files=None,
+        loader=_load_zurich_ieeg,
+        file_index_fn=_zurich_ieeg_file_index,
+        description=(
+            "Zurich iEEG HFO Dataset: interictal ECoG during slow-wave sleep from 20 epilepsy "
+            "patients (TLE and extra-temporal), with HFO event markings. "
+            "2000 Hz, BrainVision format. DOI: 10.18112/openneuro.ds003498.v1.1.1."
+        ),
+        subset_key_name="subjects",
+        subset_key_fn=_zurich_ieeg_subject_key,
+        known_subset_keys=_ZURICH_IEEG_SUBJECTS,
+        size_hint="~60 GB",
+        subset_size_hint="~3 GB per subject (varies by recording nights)",
+        info_url="https://openneuro.org/datasets/ds003498/versions/1.1.1",
+        license="CC0 1.0 Universal (public domain)",
+        max_parallel_downloads=8,
+    )
+
+
 REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "swiss_eeg_short": _swiss_eeg_short_spec(),
     "swiss_eeg_long": _swiss_eeg_long_spec(),
@@ -864,6 +963,7 @@ REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "chb_mit": _chb_mit_spec(),
     "siena_eeg": _siena_eeg_spec(),
     "sleep_ieeg": _sleep_ieeg_spec(),
+    "zurich_ieeg": _zurich_ieeg_spec(),
 }
 
 

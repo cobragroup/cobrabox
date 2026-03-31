@@ -509,6 +509,63 @@ def _load_sleep_ieeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> 
     )
 
 
+def _load_zurich_ieeg(
+    dataset_dir: Path, subset: Sequence[str] | None = None
+) -> Dataset[SignalData]:
+    """Load Zurich iEEG HFO Dataset BrainVision files into SignalData objects.
+
+    Each ``.vhdr`` file is one 5-minute interictal run and produces one
+    ``SignalData`` object. Subject IDs are parsed from the filename stem
+    (e.g. ``sub-01_ses-interictalsleep_run-01_ieeg.vhdr`` → ``sub-01``).
+    The ``.eeg`` and ``.vmrk`` sidecar files must be present in the same
+    directory.
+
+    Args:
+        dataset_dir: Directory containing the downloaded BrainVision files.
+        subset: If given, only load files whose subject ID (e.g. ``"sub-01"``)
+            is in this list.
+    """
+    try:
+        import mne
+    except ImportError as e:
+        raise RuntimeError(
+            "Loading 'zurich_ieeg' requires MNE-Python. "
+            "It is pulled in transitively by mne-connectivity, but if missing: "
+            "uv add mne"
+        ) from e
+
+    vhdr_paths = sorted(dataset_dir.glob("*.vhdr"))
+    if subset is not None:
+        subset_set = set(subset)
+        vhdr_paths = [p for p in vhdr_paths if p.stem.split("_", 1)[0] in subset_set]
+    if not vhdr_paths:
+        raise FileNotFoundError(f"No .vhdr files found for 'zurich_ieeg' in {dataset_dir}.")
+
+    items: list[SignalData] = []
+    for path in vhdr_paths:
+        subject_id = path.stem.split("_", 1)[0]
+        try:
+            raw = mne.io.read_raw_brainvision(str(path), preload=True, verbose=False)
+        except Exception:
+            continue
+        arr = raw.get_data().T  # (n_channels, n_samples) → (n_samples, n_channels)
+        if arr.shape[0] == 0:
+            continue
+        fs = float(raw.info["sfreq"])
+        time = np.arange(arr.shape[0], dtype=float) / fs
+        da = xr.DataArray(
+            arr,
+            dims=["time", "space"],
+            coords={"time": time, "space": list(raw.ch_names)},
+            attrs={"identifier": "zurich_ieeg", "source_file": path.name},
+        )
+        items.append(SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id))
+
+    if not items:
+        raise ValueError("All 'zurich_ieeg' files were empty or unparsable.")
+    return Dataset(items)
+
+
 def _load_swiss_eeg_short(
     dataset_dir: Path, subset: Sequence[str] | None = None
 ) -> Dataset[SignalData]:
