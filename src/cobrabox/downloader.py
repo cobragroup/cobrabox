@@ -60,13 +60,14 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
     with ThreadPoolExecutor(max_workers=max_head) as executor:
         sizes = list(executor.map(lambda f: _head_size(f.url), sample))
 
-    if None in sizes:
+    known = [s for s in sizes if s is not None]
+    if not known:
         size_str = "unknown"
     else:
-        total_sample = sum(s for s in sizes if s is not None)
-        if max_head < n:
-            # Extrapolate from sample.
-            estimated = int(total_sample * n / max_head)
+        total_sample = sum(known)
+        if len(known) < n:
+            # Extrapolate from the files whose sizes we do know.
+            estimated = int(total_sample * n / len(known))
             size_str = f"~{_format_bytes(estimated)} (estimated)"
         else:
             size_str = _format_bytes(total_sample)
