@@ -12,7 +12,6 @@ from cobrabox.downloader import (
     RemoteDatasetSpec,
     RemoteFile,
     _format_bytes,
-    _head_size,
     _prompt_download_verify,
     ensure_remote_files,
 )
@@ -39,134 +38,77 @@ def test_format_bytes(n: int, expected: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# _head_size
-# ---------------------------------------------------------------------------
-
-
-def test_head_size_returns_content_length() -> None:
-    mock_resp = MagicMock()
-    mock_resp.headers.get.return_value = "1234"
-    mock_resp.__enter__ = lambda s: s
-    mock_resp.__exit__ = MagicMock(return_value=False)
-
-    with patch("urllib.request.urlopen", return_value=mock_resp):
-        result = _head_size("http://example.com/file.zip")
-
-    assert result == 1234
-
-
-def test_head_size_returns_none_when_no_content_length() -> None:
-    mock_resp = MagicMock()
-    mock_resp.headers.get.return_value = None
-    mock_resp.__enter__ = lambda s: s
-    mock_resp.__exit__ = MagicMock(return_value=False)
-
-    with patch("urllib.request.urlopen", return_value=mock_resp):
-        result = _head_size("http://example.com/file.zip")
-
-    assert result is None
-
-
-def test_head_size_returns_none_on_network_error() -> None:
-    import urllib.error
-
-    with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("timeout")):
-        result = _head_size("http://example.com/file.zip")
-
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
 # _prompt_download_verify
 # ---------------------------------------------------------------------------
 
 
-def _make_spec(tmp_path: Path, files: list[RemoteFile]) -> RemoteDatasetSpec:
+def _make_spec(
+    tmp_path: Path, files: list[RemoteFile], size_hint: str | None = None
+) -> RemoteDatasetSpec:
     return RemoteDatasetSpec(
         identifier="test_dataset",
         local_rel_dir=tmp_path,
         files=files,
         loader=lambda d, s: [],  # type: ignore[arg-type]
         description="A test dataset.",
+        size_hint=size_hint,
     )
 
 
 def test_prompt_verify_returns_true_on_yes(tmp_path: Path) -> None:
     files = [RemoteFile(url="http://example.com/a.zip", filename="a.zip")]
-    spec = _make_spec(tmp_path, files)
+    spec = _make_spec(tmp_path, files, size_hint="~1 MB")
 
-    with (
-        patch("cobrabox.downloader._head_size", return_value=1024 * 1024),
-        patch("builtins.input", return_value="y"),
-    ):
+    with patch("builtins.input", return_value="y"):
         assert _prompt_download_verify(spec, files) is True
 
 
 def test_prompt_verify_returns_true_on_yes_uppercase(tmp_path: Path) -> None:
     files = [RemoteFile(url="http://example.com/a.zip", filename="a.zip")]
-    spec = _make_spec(tmp_path, files)
+    spec = _make_spec(tmp_path, files, size_hint="~512 B")
 
-    with (
-        patch("cobrabox.downloader._head_size", return_value=512),
-        patch("builtins.input", return_value="YES"),
-    ):
+    with patch("builtins.input", return_value="YES"):
         assert _prompt_download_verify(spec, files) is True
 
 
 def test_prompt_verify_returns_false_on_no(tmp_path: Path) -> None:
     files = [RemoteFile(url="http://example.com/a.zip", filename="a.zip")]
-    spec = _make_spec(tmp_path, files)
+    spec = _make_spec(tmp_path, files, size_hint="~1 MB")
 
-    with (
-        patch("cobrabox.downloader._head_size", return_value=1024),
-        patch("builtins.input", return_value="n"),
-    ):
+    with patch("builtins.input", return_value="n"):
         assert _prompt_download_verify(spec, files) is False
 
 
 def test_prompt_verify_returns_false_on_empty_input(tmp_path: Path) -> None:
     files = [RemoteFile(url="http://example.com/a.zip", filename="a.zip")]
-    spec = _make_spec(tmp_path, files)
+    spec = _make_spec(tmp_path, files, size_hint="~1 MB")
 
-    with (
-        patch("cobrabox.downloader._head_size", return_value=1024),
-        patch("builtins.input", return_value=""),
-    ):
+    with patch("builtins.input", return_value=""):
         assert _prompt_download_verify(spec, files) is False
 
 
-def test_prompt_verify_shows_unknown_size_when_head_fails(
+def test_prompt_verify_shows_unknown_size_when_no_size_hint(
     tmp_path: Path, capsys: pytest.CaptureFixture
 ) -> None:
     files = [RemoteFile(url="http://example.com/a.zip", filename="a.zip")]
-    spec = _make_spec(tmp_path, files)
+    spec = _make_spec(tmp_path, files, size_hint=None)
 
-    with (
-        patch("cobrabox.downloader._head_size", return_value=None),
-        patch("builtins.input", return_value="n"),
-    ):
+    with patch("builtins.input", return_value="n"):
         _prompt_download_verify(spec, files)
 
     out = capsys.readouterr().out
     assert "unknown" in out
 
 
-def test_prompt_verify_extrapolates_size_for_large_datasets(
-    tmp_path: Path, capsys: pytest.CaptureFixture
-) -> None:
-    """When there are more files than the HEAD sample cap, size is extrapolated."""
-    # 20 files but HEAD is capped at 16; each sampled file reports 1 MB
-    files = [RemoteFile(url=f"http://example.com/{i}.zip", filename=f"{i}.zip") for i in range(20)]
-    spec = _make_spec(tmp_path, files)
+def test_prompt_verify_shows_size_hint(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    files = [RemoteFile(url="http://example.com/a.zip", filename="a.zip")]
+    spec = _make_spec(tmp_path, files, size_hint="~10 GB")
 
-    with (
-        patch("cobrabox.downloader._head_size", return_value=1024 * 1024),
-        patch("builtins.input", return_value="n"),
-    ):
+    with patch("builtins.input", return_value="n"):
         _prompt_download_verify(spec, files)
 
     out = capsys.readouterr().out
-    assert "estimated" in out
+    assert "~10 GB" in out
 
 
 # ---------------------------------------------------------------------------

@@ -26,17 +26,6 @@ def _format_bytes(n: int) -> str:
     return f"{size:.1f} B"  # unreachable, satisfies type checker
 
 
-def _head_size(url: str, timeout: int = 5) -> int | None:
-    """Return Content-Length from a HEAD request, or None if unavailable."""
-    try:
-        req = urllib.request.Request(url, method="HEAD")
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            cl = resp.headers.get("Content-Length")
-            return int(cl) if cl else None
-    except Exception:
-        return None
-
-
 def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile]) -> bool:
     """Print dataset info, license, and download summary, then ask the user to confirm.
 
@@ -53,26 +42,7 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
 
     n = len(to_download)
     print(f"\n  Files to download: {n}")
-
-    # Attempt parallel HEAD requests to estimate total size.
-    max_head = min(16, n)
-    sample = to_download[:max_head]
-    with ThreadPoolExecutor(max_workers=max_head) as executor:
-        sizes = list(executor.map(lambda f: _head_size(f.url), sample))
-
-    known = [s for s in sizes if s is not None]
-    if not known:
-        size_str = "unknown"
-    else:
-        total_sample = sum(known)
-        if len(known) < n:
-            # Extrapolate from the files whose sizes we do know.
-            estimated = int(total_sample * n / len(known))
-            size_str = f"~{_format_bytes(estimated)} (estimated)"
-        else:
-            size_str = _format_bytes(total_sample)
-
-    print(f"  Estimated download size: {size_str}")
+    print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
 
     answer = input("\nProceed with download? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
