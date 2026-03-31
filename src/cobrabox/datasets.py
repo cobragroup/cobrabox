@@ -111,10 +111,12 @@ class DatasetInfo:
                 lines.append(f"  seizure src : {self.seizure_info_url}")
         elif self.seizure_info_url is not None:
             lines.append(f"  seizure info: {self.seizure_info_url}")
-        if self.info_url is not None:
-            lines.append(f"  info        : {self.info_url}")
         if self.license is not None:
             lines.append(f"  license     : {self.license}")
+            if self.info_url is not None:
+                lines.append(f"  license url : {self.info_url}")
+        elif self.info_url is not None:
+            lines.append(f"  info        : {self.info_url}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:
