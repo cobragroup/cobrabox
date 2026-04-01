@@ -6,10 +6,10 @@ from .dataset import Dataset
 from .datasets import (
     dataset_info,
     delete_dataset,
-    describe_datasets,
     download_dataset,
     list_datasets,
     load_dataset,
+    show_datasets,
 )
 from .downloader import get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
@@ -43,7 +43,6 @@ __all__ = [
     "SplitterFeature",
     "dataset_info",
     "delete_dataset",
-    "describe_datasets",
     "deserialize",
     "download_dataset",
     "from_numpy",
@@ -57,4 +56,5 @@ __all__ = [
     "serialization",
     "serialize",
     "set_dataset_dir",
+    "show_datasets",
 ]

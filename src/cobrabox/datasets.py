@@ -295,12 +295,12 @@ def list_datasets() -> dict[str, list[str]]:
     return {"local": sorted(_LOCAL_DATASET_INFO), "remote": sorted(REMOTE_DATASETS)}
 
 
-def describe_datasets() -> list[dict[str, str | None]]:
+def show_datasets() -> list[dict[str, str | None]]:
     """Print a compact summary table of all available datasets and return the data.
 
     Example::
 
-        cb.describe_datasets()
+        cb.show_datasets()
         # Dataset               Type    Cached  Size           Subsets       License
         # --------------------  ------  ------  -------------  ------------  ----------
         # bonn_eeg              remote  yes     ~10 MB         5 sets        CC BY ...
@@ -430,7 +430,7 @@ def delete_dataset(
 
     Useful for freeing disk space after analysis is complete.  Use
     :func:`dataset_info` to inspect what subset keys are available, and
-    :func:`describe_datasets` to see which datasets are currently cached.
+    :func:`show_datasets` to see which datasets are currently cached.
 
     Args:
         identifier: Remote dataset name, e.g. ``"bonn_eeg"``.

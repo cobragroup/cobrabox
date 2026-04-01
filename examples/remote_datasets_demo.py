@@ -9,7 +9,7 @@ from __future__ import annotations
 import cobrabox as cb
 
 # 1. Browse all available datasets
-cb.describe_datasets()
+cb.show_datasets()
 print()
 
 # 2. List identifiers programmatically

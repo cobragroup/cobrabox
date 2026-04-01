@@ -199,15 +199,15 @@ def test_download_raises_for_invalid_subset(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 # ---------------------------------------------------------------------------
-# describe_datasets()
+# show_datasets()
 # ---------------------------------------------------------------------------
 
 
 def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_datasets() prints a table containing all known dataset identifiers."""
+    """show_datasets() prints a table containing all known dataset identifiers."""
     import cobrabox as cb
 
-    cb.describe_datasets()
+    cb.show_datasets()
     output = capsys.readouterr().out
 
     for ident in cb.list_datasets()["local"] + cb.list_datasets()["remote"]:
@@ -215,10 +215,10 @@ def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) ->
 
 
 def test_describe_all_includes_header(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_datasets() prints column headers."""
+    """show_datasets() prints column headers."""
     import cobrabox as cb
 
-    cb.describe_datasets()
+    cb.show_datasets()
     output = capsys.readouterr().out
     assert "Dataset" in output
     assert "Type" in output
@@ -227,19 +227,19 @@ def test_describe_all_includes_header(capsys: pytest.CaptureFixture[str]) -> Non
 
 
 def test_describe_all_includes_cached_header(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_datasets() prints a Cached column header."""
+    """show_datasets() prints a Cached column header."""
     import cobrabox as cb
 
-    cb.describe_datasets()
+    cb.show_datasets()
     output = capsys.readouterr().out
     assert "Cached" in output
 
 
 def test_describe_all_returns_list_of_dicts(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_datasets() returns one dict per dataset with the expected keys."""
+    """show_datasets() returns one dict per dataset with the expected keys."""
     import cobrabox as cb
 
-    rows = cb.describe_datasets()
+    rows = cb.show_datasets()
     capsys.readouterr()  # discard printed output
 
     assert isinstance(rows, list)
@@ -257,7 +257,7 @@ def test_describe_all_local_datasets_have_null_cached(capsys: pytest.CaptureFixt
     """Local datasets have cached=None in the returned rows."""
     import cobrabox as cb
 
-    rows = cb.describe_datasets()
+    rows = cb.show_datasets()
     capsys.readouterr()
 
     local_rows = [r for r in rows if r["type"] == "local"]
@@ -272,7 +272,7 @@ def test_describe_all_remote_datasets_have_string_cached(
     """Remote datasets have cached='yes' or 'no' in the returned rows."""
     import cobrabox as cb
 
-    rows = cb.describe_datasets()
+    rows = cb.show_datasets()
     capsys.readouterr()
 
     remote_rows = [r for r in rows if r["type"] == "remote"]
