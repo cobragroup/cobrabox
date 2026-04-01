@@ -173,7 +173,8 @@ def test_ensure_remote_files_accept_false_proceeds_on_yes(tmp_path: Path) -> Non
 
     downloaded: list[str] = []
 
-    def _fake_download(url: str, *args: object, **kwargs: object) -> MagicMock:
+    def _fake_download(req: object, *args: object, **kwargs: object) -> MagicMock:
+        url = req.full_url if hasattr(req, "full_url") else req
         downloaded.append(url)
         mock_resp = MagicMock()
         mock_resp.headers.get.return_value = None
@@ -355,7 +356,8 @@ def test_ensure_remote_files_redownloads_corrupt_zip(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(url: str, *a: object, **kw: object) -> _FakeResponse:
+    def _fake_urlopen(req: object, *a: object, **kw: object) -> _FakeResponse:
+        url = req.full_url if hasattr(req, "full_url") else req
         downloaded.append(url)
         # Return a minimal valid zip
         buf = io.BytesIO()

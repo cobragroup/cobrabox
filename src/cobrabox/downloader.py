@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import importlib.resources
 import json
 import os
 import platform
@@ -20,6 +21,30 @@ from .data import SignalData
 from .dataset import Dataset
 
 
+def _load_file_index() -> dict[str, list[RemoteFile]]:
+    """Load the bundled file index from file_index.json."""
+    ref = importlib.resources.files(__package__).joinpath("file_index.json")
+    with importlib.resources.as_file(ref) as path:
+        raw: dict[str, list[dict[str, str | None]]] = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        dataset_id: [
+            RemoteFile(url=e["url"], filename=e["filename"], subset_key=e.get("subset_key"))
+            for e in entries
+        ]
+        for dataset_id, entries in raw.items()
+    }
+
+
+_FILE_INDEX: dict[str, list[RemoteFile]] | None = None
+
+
+def _get_file_index() -> dict[str, list[RemoteFile]]:
+    global _FILE_INDEX
+    if _FILE_INDEX is None:
+        _FILE_INDEX = _load_file_index()
+    return _FILE_INDEX
+
+
 def _format_bytes(n: int) -> str:
     """Format a byte count as a human-readable string."""
     size = float(n)
@@ -30,8 +55,11 @@ def _format_bytes(n: int) -> str:
     return f"{size:.1f} B"  # unreachable, satisfies type checker
 
 
-def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile]) -> bool:
+def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile] | None) -> bool:
     """Print dataset info, license, and download summary, then ask the user to confirm.
+
+    ``to_download`` may be ``None`` when the file index has not been fetched yet
+    (dynamic datasets).  In that case the prompt shows size hints only.
 
     Returns ``True`` if the user confirmed, ``False`` otherwise.
     """
@@ -44,14 +72,18 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
     if spec.info_url is not None:
         print(f"  More info: {spec.info_url}")
 
-    n = len(to_download)
-    total_files = len(spec.files) if spec.files is not None else None
-    files_str = f"{n}" if total_files is None else f"{n} of {total_files}"
-    print(f"\n  Files to download: {files_str}")
-    if spec.subset_size_hint is not None and total_files is not None and n < total_files:
-        print(f"  Estimated download size: {spec.subset_size_hint} x {n} files")
+    if to_download is None:
+        # File index not yet fetched — show static size hints only.
+        print(f"\n  Estimated download size: {spec.size_hint or 'unknown'}")
     else:
-        print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
+        n = len(to_download)
+        total_files = len(spec.files) if spec.files is not None else None
+        files_str = f"{n}" if total_files is None else f"{n} of {total_files}"
+        print(f"\n  Files to download: {files_str}")
+        if spec.subset_size_hint is not None and total_files is not None and n < total_files:
+            print(f"  Estimated download size: {spec.subset_size_hint} x {n} files")
+        else:
+            print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
 
     answer = input("\nProceed with download? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
@@ -358,24 +390,40 @@ def ensure_remote_files(
     dataset_dir = data_dir / spec.local_rel_dir
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    if spec.files is not None:
-        all_files = spec.files
-    elif spec.file_index_url is not None:
-        all_files = _resolve_files_from_index(spec)
-    else:
+    def _resolve_all_files() -> Sequence[RemoteFile]:
+        """Fetch or return the full file list, caching the result on the spec."""
+        if spec.files is not None:
+            return spec.files
+        if spec.file_index_url is not None:
+            return _resolve_files_from_index(spec)
         assert spec.file_index_fn is not None
         resolved = list(spec.file_index_fn())
         spec.files = resolved  # cache for subsequent calls
-        all_files = resolved
+        return resolved
 
-    if subset is not None:
-        if isinstance(subset, dict):
-            files = _filter_files_by_dict_subset(subset, all_files)
-        else:
-            subset_set = set(subset)
-            files = [f for f in all_files if f.subset_key is None or f.subset_key in subset_set]
+    # Resolve file list only if already cached; otherwise defer network fetch
+    # until we know files are actually missing.
+    if spec.files is not None:
+        all_files: Sequence[RemoteFile] = spec.files
+        files_resolved = True
     else:
-        files = list(all_files)
+        all_files = []
+        files_resolved = False
+
+    def _get_files() -> list[RemoteFile]:
+        nonlocal all_files, files_resolved
+        if not files_resolved:
+            all_files = _resolve_all_files()
+            files_resolved = True
+        if subset is not None:
+            if isinstance(subset, dict):
+                return _filter_files_by_dict_subset(subset, all_files)
+            subset_set = set(subset)
+            return [f for f in all_files if f.subset_key is None or f.subset_key in subset_set]
+        return list(all_files)
+
+    # If the file list is already known, filter now; otherwise defer until needed.
+    files: list[RemoteFile] = _get_files() if files_resolved else []
 
     manifest_path = dataset_dir / "_manifest.json"
     manifest_lock = threading.Lock()
@@ -498,16 +546,25 @@ def ensure_remote_files(
 
     to_download = [f for f in files if not _has_valid_local_copy(f)]
 
-    if not to_download:
+    if not to_download and files_resolved:
         return dataset_dir
 
+    # If the file list wasn't resolved yet (dynamic index), we don't know which
+    # files are missing. Show the accept prompt first, then fetch the index.
     if not accept:
-        confirmed = _prompt_download_verify(spec, to_download)
+        confirmed = _prompt_download_verify(spec, to_download if files_resolved else None)
         if not confirmed:
             raise RuntimeError(
                 f"Download of '{spec.identifier}' cancelled by user. "
                 "Pass accept=True to skip this prompt."
             )
+
+    # Now safe to fetch the file index (user has accepted, or accept=True).
+    if not files_resolved:
+        files = _get_files()
+        to_download = [f for f in files if not _has_valid_local_copy(f)]
+        if not to_download:
+            return dataset_dir
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -587,9 +644,8 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
     return RemoteDatasetSpec(
         identifier="swiss_eeg_long",
         local_rel_dir=Path("swiss_eeg_long"),
-        files=None,
+        files=_get_file_index()["swiss_eeg_long"],
         loader=_load_swiss_eeg_long,
-        file_index_url="http://ieeg-swez.ethz.ch/longterm-files.txt",
         description=(
             "Long-term intracranial EEG recordings from the SWEZ dataset "
             "(ETH Zurich, 18 subjects, ictal/interictal)."
@@ -702,9 +758,8 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
     return RemoteDatasetSpec(
         identifier="chb_mit",
         local_rel_dir=Path("chb_mit"),
-        files=None,
+        files=_get_file_index()["chb_mit"],
         loader=_load_chb_mit,
-        file_index_fn=_chb_mit_file_index,
         description=(
             "CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures "
             "(24 subjects, 256 Hz, 23 channels, ictal/interictal). "
@@ -813,9 +868,8 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
     return RemoteDatasetSpec(
         identifier="siena_eeg",
         local_rel_dir=Path("siena_eeg"),
-        files=None,
+        files=_get_file_index()["siena_eeg"],
         loader=_load_siena_eeg,
-        file_index_fn=_siena_file_index,
         description=(
             "Siena Scalp EEG Database: adult epilepsy patients with annotated seizures "
             "(14 subjects, 512 Hz, 21+ channels, ictal/interictal). "
@@ -912,9 +966,8 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
     return RemoteDatasetSpec(
         identifier="sleep_ieeg",
         local_rel_dir=Path("sleep_ieeg"),
-        files=None,
+        files=_get_file_index()["sleep_ieeg"],
         loader=_load_sleep_ieeg,
-        file_index_fn=_sleep_ieeg_file_index,
         description=(
             "Sleep iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy "
             "patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. "
@@ -1012,10 +1065,9 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
 
     return RemoteDatasetSpec(
         identifier="zurich_ieeg",
-        local_rel_dir=Path("data") / "remote" / "zurich_ieeg",
-        files=None,
+        local_rel_dir=Path("zurich_ieeg"),
+        files=_get_file_index()["zurich_ieeg"],
         loader=_load_zurich_ieeg,
-        file_index_fn=_zurich_ieeg_file_index,
         description=(
             "Zurich iEEG HFO Dataset: interictal ECoG during slow-wave sleep from 20 epilepsy "
             "patients (TLE and extra-temporal), with HFO event markings. "

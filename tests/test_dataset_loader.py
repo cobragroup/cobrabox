@@ -314,7 +314,8 @@ def test_ensure_remote_files_downloads_missing_files(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(url: str, *args: object, **kwargs: object) -> _FakeResponse:
+    def _fake_urlopen(req: object, *args: object, **kwargs: object) -> _FakeResponse:
+        url = req.full_url if hasattr(req, "full_url") else req
         try:
             return _FakeResponse(payloads[url])
         except KeyError as exc:
@@ -452,6 +453,7 @@ def test_dataset_uses_remote_spec_for_known_identifier(
         subset: object = None,
         data_dir: Path | None = None,
         accept: bool = False,
+        force: bool = False,
     ) -> Path:
         assert spec is fake_spec
         base = tmp_path if data_dir is None else data_dir
@@ -501,7 +503,8 @@ def test_ensure_remote_files_uses_index_when_no_files(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(url: str, *args: object, **kwargs: object) -> _FakeResponse:
+    def _fake_urlopen(req: object, *args: object, **kwargs: object) -> _FakeResponse:
+        url = req.full_url if hasattr(req, "full_url") else req
         try:
             return _FakeResponse(payloads[url])
         except KeyError as exc:
@@ -604,7 +607,8 @@ def test_ensure_remote_files_subset_filters_downloads(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(url: str, *args: object, **kwargs: object) -> _FakeResponse:
+    def _fake_urlopen(req: object, *args: object, **kwargs: object) -> _FakeResponse:
+        url = req.full_url if hasattr(req, "full_url") else req
         downloaded.append(url)
         try:
             return _FakeResponse(payloads[url])
@@ -737,7 +741,8 @@ def test_ensure_remote_files_dict_subset_int_downloads_first_n(
         def __exit__(self, *args: object) -> None:
             self.close()
 
-    def _fake_urlopen(url: str, *a: object, **kw: object) -> _FakeResponse:
+    def _fake_urlopen(req: object, *a: object, **kw: object) -> _FakeResponse:
+        url = req.full_url if hasattr(req, "full_url") else req
         downloaded.append(url)
         return _FakeResponse(b"DATA")
 
@@ -783,7 +788,8 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
         def __exit__(self, *args: object) -> None:
             self.close()
 
-    def _fake_urlopen(url: str, *a: object, **kw: object) -> _FakeResponse:
+    def _fake_urlopen(req: object, *a: object, **kw: object) -> _FakeResponse:
+        url = req.full_url if hasattr(req, "full_url") else req
         downloaded.append(url)
         return _FakeResponse(b"DATA")
 
@@ -862,6 +868,7 @@ def test_dataset_dict_subset_passes_stems_to_loader(
         subset: object = None,
         data_dir: Path | None = None,
         accept: bool = False,
+        force: bool = False,
     ) -> Path:
         p = tmp_path / s.local_rel_dir
         p.mkdir(parents=True, exist_ok=True)
@@ -959,8 +966,9 @@ def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_pa
         s: RemoteDatasetSpec,
         *,
         subset: object = None,
-        repo_root: Path | None = None,
+        data_dir: Path | None = None,
         accept: bool = False,
+        force: bool = False,
     ) -> Path:
         captured["ensure_subset"] = subset
         p = tmp_path / s.local_rel_dir
@@ -2054,7 +2062,8 @@ def test_sleep_ieeg_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "sleep_ieeg"
     assert spec.subset_key_name == "subjects"
-    assert spec.file_index_fn is not None
+    assert spec.files is not None
+    assert len(spec.files) == 185
     assert spec.size_hint == "~13 GB"
 
 
@@ -2067,7 +2076,8 @@ def test_chb_mit_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "chb_mit"
     assert spec.subset_key_name == "subjects"
-    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
+    assert spec.files is not None
+    assert len(spec.files) == 686
 
 
 def test_siena_eeg_spec_is_registered() -> None:
@@ -2076,7 +2086,8 @@ def test_siena_eeg_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "siena_eeg"
     assert spec.subset_key_name == "subjects"
-    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
+    assert spec.files is not None
+    assert len(spec.files) == 41
 
 
 def test_remote_dataset_spec_file_index_fn_validates() -> None:

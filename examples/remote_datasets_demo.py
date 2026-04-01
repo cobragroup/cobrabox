@@ -39,7 +39,7 @@ print()
 #   cb.dataset("chb_mit",         subset=["chb01", "chb02"])
 #   cb.dataset("swiss_eeg_short", subset=["ID7", "ID8"])
 #   cb.dataset("sleep_ieeg",       subset=["sub-Detroit001"])
-ds = cb.dataset("bonn_eeg", subset=["S", "Z"], accept=True)
+ds = cb.dataset("swiss_eeg_long", subset=["ID01", "ID02"])
 print(f"Loaded {len(ds)} recordings")
 print()
 
