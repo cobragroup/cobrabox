@@ -12,6 +12,8 @@ from .downloader import (
     REMOTE_DATASETS,
     SubsetSpec,
     _filter_files_by_dict_subset,
+    _is_dataset_cached,
+    delete_remote_files,
     ensure_remote_files,
     get_remote_dataset_spec,
 )
@@ -293,36 +295,47 @@ def list_datasets() -> dict[str, list[str]]:
     return {"local": sorted(_LOCAL_DATASET_INFO), "remote": sorted(REMOTE_DATASETS)}
 
 
-def describe_all() -> None:
-    """Print a compact summary table of all available datasets.
+def describe_all() -> list[dict[str, str | None]]:
+    """Print a compact summary table of all available datasets and return the data.
 
     Example::
 
         cb.describe_all()
-        # Dataset               Type    Size           Subsets    License
-        # --------------------  ------  -------------  ---------  ----------
-        # bonn_eeg              remote  ~10 MB         5 sets     restricted
-        # dummy_chain           local   —              —          —
+        # Dataset               Type    Cached  Size           Subsets       License
+        # --------------------  ------  ------  -------------  ------------  ----------
+        # bonn_eeg              remote  yes     ~10 MB         5 sets        CC BY ...
+        # dummy_chain           local   —       —              —             —
         # ...
-    """
-    from .downloader import REMOTE_DATASETS, get_remote_dataset_spec
 
+    Returns:
+        List of dicts with keys ``"identifier"``, ``"type"``, ``"cached"``,
+        ``"size"``, ``"subsets"``, and ``"license"``.  Suitable for
+        programmatic use in notebooks or scripts.  ``"cached"`` is
+        ``"yes"``/``"no"`` for remote datasets and ``None`` for local ones.
+    """
     col_id = 22
     col_type = 8
+    col_cached = 8
     col_size = 15
     col_subsets = 14
     header = (
-        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Size':<{col_size}}"
-        f"{'Subsets':<{col_subsets}}License"
+        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Cached':<{col_cached}}"
+        f"{'Size':<{col_size}}{'Subsets':<{col_subsets}}License"
     )
-    sep = f"{'-' * col_id}{'-' * col_type}{'-' * col_size}{'-' * col_subsets}{'-' * 20}"
+    sep = (
+        f"{'-' * col_id}{'-' * col_type}{'-' * col_cached}"
+        f"{'-' * col_size}{'-' * col_subsets}{'-' * 20}"
+    )
     print(header)
     print(sep)
 
+    rows: list[dict[str, str | None]] = []
     all_ids = sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS)
     for ident in all_ids:
         if ident in _LOCAL_DATASET_INFO:
             row_type = "local"
+            cached_str = "—"
+            cached_val: str | None = None
             size = "—"
             subsets = "—"
             license_str = "—"
@@ -331,6 +344,8 @@ def describe_all() -> None:
             if spec is None:
                 continue
             row_type = "remote"
+            cached_val = "yes" if _is_dataset_cached(spec) else "no"
+            cached_str = cached_val
             raw_size = spec.size_hint or "—"
             size = raw_size[:14] + "…" if len(raw_size) > 15 else raw_size
             n = len(spec.subset_keys() or []) if spec.subset_keys() else None
@@ -339,9 +354,21 @@ def describe_all() -> None:
             license_str = lic[:30] + "…" if len(lic) > 31 else lic
 
         print(
-            f"{ident:<{col_id}}{row_type:<{col_type}}{size:<{col_size}}"
-            f"{subsets:<{col_subsets}}{license_str}"
+            f"{ident:<{col_id}}{row_type:<{col_type}}{cached_str:<{col_cached}}"
+            f"{size:<{col_size}}{subsets:<{col_subsets}}{license_str}"
         )
+        rows.append(
+            {
+                "identifier": ident,
+                "type": row_type,
+                "cached": cached_val,
+                "size": None if size == "—" else size,
+                "subsets": None if subsets == "—" else subsets,
+                "license": None if license_str == "—" else license_str,
+            }
+        )
+
+    return rows
 
 
 def dataset_info(identifier: str) -> DatasetInfo:
@@ -394,3 +421,50 @@ def dataset_info(identifier: str) -> DatasetInfo:
         f"Unknown dataset identifier: {identifier!r}. "
         f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
     )
+
+
+def delete_dataset(
+    identifier: str, *, subset: list[str] | None = None, confirm: bool = True
+) -> None:
+    """Delete locally cached files for a remote dataset.
+
+    Useful for freeing disk space after analysis is complete.  Use
+    :func:`dataset_info` to inspect what subset keys are available, and
+    :func:`describe_all` to see which datasets are currently cached.
+
+    Args:
+        identifier: Remote dataset name, e.g. ``"bonn_eeg"``.
+        subset: If given, only delete files for the listed subset keys (e.g.
+            ``["chb01", "chb02"]``).  ``None`` (default) deletes everything
+            for this dataset.
+        confirm: If ``True`` (default), print a summary and prompt before
+            deleting.  Set to ``False`` to skip the prompt (e.g. in
+            automated pipelines).
+
+    Raises:
+        ValueError: If ``identifier`` is a local dataset (nothing to delete)
+            or unknown.
+        RuntimeError: If ``confirm=True`` and the user declines the deletion.
+
+    Example::
+
+        # Delete a full dataset
+        cb.delete_dataset("bonn_eeg")
+
+        # Delete specific subjects only
+        cb.delete_dataset("chb_mit", subset=["chb01", "chb02"])
+
+        # Skip confirmation
+        cb.delete_dataset("bonn_eeg", confirm=False)
+    """
+    if identifier in _LOCAL_DATASET_INFO:
+        raise ValueError(f"'{identifier}' is a local dataset — nothing to delete.")
+
+    spec = get_remote_dataset_spec(identifier)
+    if spec is None:
+        raise ValueError(
+            f"Unknown dataset identifier: {identifier!r}. "
+            f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
+        )
+
+    delete_remote_files(spec, subset=subset, confirm=confirm)

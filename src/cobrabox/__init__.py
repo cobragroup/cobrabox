@@ -3,7 +3,7 @@ from . import feature, serialization  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
-from .datasets import dataset, dataset_info, describe_all, download, list_datasets
+from .datasets import dataset, dataset_info, delete_dataset, describe_all, download, list_datasets
 from .downloader import get_data_dir, set_data_dir
 from .egg.gorkastyle import gorkastyle
 from .features.time_domain.line_length import LineLength
@@ -36,6 +36,7 @@ __all__ = [
     "SplitterFeature",
     "dataset",
     "dataset_info",
+    "delete_dataset",
     "describe_all",
     "deserialize",
     "download",

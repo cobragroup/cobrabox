@@ -5,6 +5,7 @@ import importlib.resources
 import json
 import os
 import platform
+import shutil
 import socket
 import threading
 import urllib.error
@@ -55,6 +56,16 @@ def _format_bytes(n: int) -> str:
     return f"{size:.1f} B"  # unreachable, satisfies type checker
 
 
+def _in_jupyter() -> bool:
+    """Return True if running inside a Jupyter notebook or IPython shell."""
+    try:
+        from IPython import get_ipython  # type: ignore[import-untyped]
+
+        return get_ipython() is not None
+    except ImportError:
+        return False
+
+
 def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile] | None) -> bool:
     """Print dataset info, license, and download summary, then ask the user to confirm.
 
@@ -85,6 +96,8 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
         else:
             print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
 
+    if _in_jupyter():
+        print("  Tip: pass accept=True to cb.dataset() / cb.download() to skip this prompt.")
     answer = input("\nProceed with download? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
 
@@ -230,7 +243,7 @@ def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
     Example::
 
         cb.set_data_dir("/mnt/data/cobrabox")
-        ds = cb.dataset("bonn_eeg", subset=["S"], verify=False)
+        ds = cb.dataset("bonn_eeg", subset=["S"], accept=True)
     """
     global _data_dir
     _data_dir = Path(path)
@@ -243,6 +256,163 @@ def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
             existing = {}
         existing["data_dir"] = str(_data_dir)
         _COBRABOX_CONFIG_PATH.write_text(json.dumps(existing), encoding="utf-8")
+
+
+def _is_dataset_cached(spec: RemoteDatasetSpec) -> bool:
+    """Return True if the dataset has any locally cached data files."""
+    dataset_dir = get_data_dir() / spec.local_rel_dir
+    if not dataset_dir.is_dir():
+        return False
+    return any(
+        f
+        for f in dataset_dir.iterdir()
+        if f.is_file() and f.name != "_manifest.json" and not f.name.endswith(".part")
+    )
+
+
+def delete_remote_files(
+    spec: RemoteDatasetSpec,
+    *,
+    subset: list[str] | None = None,
+    confirm: bool = True,
+    data_dir: Path | None = None,
+) -> None:
+    """Delete locally cached files for a remote dataset.
+
+    Args:
+        spec: The remote dataset specification.
+        subset: If given, only delete files for the listed subset keys.
+            ``None`` (default) deletes the entire dataset directory.
+        confirm: If ``True`` (default), print a summary and prompt the user
+            before deleting.  Set to ``False`` to skip the prompt.
+        data_dir: Override the data directory for this call.  Defaults to
+            :func:`get_data_dir`.
+
+    Raises:
+        RuntimeError: If ``confirm=True`` and the user declines the deletion.
+    """
+    if data_dir is None:
+        data_dir = get_data_dir()
+
+    dataset_dir = data_dir / spec.local_rel_dir
+
+    if not dataset_dir.exists():
+        return
+
+    if subset is None:
+        # Delete entire dataset directory.
+        data_files = [
+            f
+            for f in dataset_dir.rglob("*")
+            if f.is_file() and f.name != "_manifest.json" and not f.name.endswith(".part")
+        ]
+        total_size = sum(f.stat().st_size for f in dataset_dir.rglob("*") if f.is_file())
+
+        if confirm:
+            print(f"\nDataset: {spec.identifier}")
+            print(f"  Local path : {dataset_dir}")
+            print(f"  Files      : {len(data_files)}")
+            print(f"  Disk space : {_format_bytes(total_size)}")
+            if _in_jupyter():
+                print("  Tip: pass confirm=False to cb.delete_dataset() to skip this prompt.")
+            answer = input("\nDelete all local files? [y/N] ").strip().lower()
+            if answer not in {"y", "yes"}:
+                raise RuntimeError(
+                    f"Deletion of '{spec.identifier}' cancelled by user. "
+                    "Pass confirm=False to skip this prompt."
+                )
+
+        shutil.rmtree(dataset_dir)
+
+    else:
+        # Resolve file list for subset filtering if not already cached.
+        if spec.files is None:
+            if spec.file_index_url is not None:
+                files: Sequence[RemoteFile] = _resolve_files_from_index(spec)
+            elif spec.file_index_fn is not None:
+                resolved = list(spec.file_index_fn())
+                spec.files = resolved
+                files = resolved
+            else:
+                return
+        else:
+            files = spec.files
+
+        subset_set = set(subset)
+        candidates = [f for f in files if f.subset_key in subset_set]
+        existing = [f for f in candidates if (dataset_dir / f.filename).exists()]
+
+        if not existing:
+            return
+
+        total_size = sum((dataset_dir / f.filename).stat().st_size for f in existing)
+
+        if confirm:
+            print(f"\nDataset: {spec.identifier}")
+            print(f"  Subjects   : {', '.join(sorted(subset_set))}")
+            print(f"  Files      : {len(existing)}")
+            print(f"  Disk space : {_format_bytes(total_size)}")
+            if _in_jupyter():
+                print("  Tip: pass confirm=False to cb.delete_dataset() to skip this prompt.")
+            answer = input("\nDelete these files? [y/N] ").strip().lower()
+            if answer not in {"y", "yes"}:
+                raise RuntimeError(
+                    f"Deletion of '{spec.identifier}' (subset: {sorted(subset_set)}) "
+                    "cancelled by user. Pass confirm=False to skip this prompt."
+                )
+
+        manifest_path = dataset_dir / "_manifest.json"
+        try:
+            manifest: dict[str, int] = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            manifest = {}
+
+        for f in existing:
+            (dataset_dir / f.filename).unlink(missing_ok=True)
+            manifest.pop(f.filename, None)
+
+        if manifest:
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        else:
+            manifest_path.unlink(missing_ok=True)
+
+
+def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
+    """Resolve RemoteFile entries from a remote index text file.
+
+    The index is expected to contain one absolute URL per line. Empty lines are
+    ignored. The local filename is taken as the last path component. If
+    ``spec.subset_key_fn`` is set, it is called with each filename to populate
+    ``RemoteFile.subset_key``.
+    """
+    assert spec.file_index_url is not None  # guarded by __post_init__
+
+    try:
+        with urllib.request.urlopen(spec.file_index_url, timeout=30) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(
+            f"Failed to download file index for remote dataset '{spec.identifier}' "
+            f"from {spec.file_index_url!r}: HTTP {e.code}"
+        ) from e
+    except (TimeoutError, urllib.error.URLError) as e:
+        raise RuntimeError(
+            f"Network error while downloading file index for remote dataset "
+            f"'{spec.identifier}' from {spec.file_index_url!r}: {e!r}"
+        ) from e
+
+    urls = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()]
+    files = [
+        RemoteFile(
+            url=url,
+            filename=url.rsplit("/", 1)[-1],
+            subset_key=spec.subset_key_fn(url.rsplit("/", 1)[-1]) if spec.subset_key_fn else None,
+        )
+        for url in urls
+    ]
+    # Cache the resolved files on the spec for subsequent calls.
+    spec.files = files
+    return files
 
 
 def _filter_files_by_dict_subset(
