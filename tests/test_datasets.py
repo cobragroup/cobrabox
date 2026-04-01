@@ -198,6 +198,28 @@ def test_download_raises_for_invalid_subset(monkeypatch: pytest.MonkeyPatch) -> 
         datasets.download_dataset("bonn_eeg", subset=["INVALID"])
 
 
+def test_download_raises_for_invalid_dict_subset_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    """download_dataset() raises ValueError for invalid dict-form subset values."""
+    from cobrabox import datasets, downloader
+
+    fake_spec = downloader.RemoteDatasetSpec(
+        identifier="bonn_eeg",
+        local_rel_dir=Path("bonn_eeg"),
+        files=[],
+        loader=lambda d, s: [],  # type: ignore[arg-type]
+        description="test",
+        known_subset_keys=("Z", "S"),
+        subset_key_name="sets",
+    )
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
+
+    with pytest.raises(ValueError, match="must be >= 1"):
+        datasets.download_dataset("bonn_eeg", subset={"Z": 0})
+
+    with pytest.raises(ValueError, match="non-empty"):
+        datasets.download_dataset("bonn_eeg", subset={"Z": []})
+
+
 # ---------------------------------------------------------------------------
 # show_datasets()
 # ---------------------------------------------------------------------------

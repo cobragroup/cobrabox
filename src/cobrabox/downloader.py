@@ -136,8 +136,6 @@ class RemoteDatasetSpec:
     credentials.
     ``subset_key_name`` names what the subset dimension represents (e.g.
     ``"subjects"``). ``None`` means the dataset has no subset concept.
-    ``subset_key_fn`` is an optional callable that maps a filename to a subset
-    key string.
     ``description`` is a short human-readable description of the dataset.
     """
 
@@ -148,7 +146,6 @@ class RemoteDatasetSpec:
     auth_hint: str | None = None
     description: str = ""
     subset_key_name: str | None = None  # e.g. "subjects"
-    subset_key_fn: Callable[[str], str | None] | None = None  # filename -> subset key
     known_subset_keys: tuple[str, ...] | None = None  # static list when known upfront
     size_hint: str | None = None  # Approximate total download size, e.g. "~10 MB"
     subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
@@ -326,19 +323,10 @@ def delete_remote_files(
         shutil.rmtree(dataset_dir)
 
     else:
-        # Resolve file list for subset filtering if not already cached.
         if spec.files is None:
-            if spec.file_index_url is not None:  # type: ignore[unresolved-attribute]
-                files: Sequence[RemoteFile] = _resolve_files_from_index(spec)
-            elif spec.file_index_fn is not None:  # type: ignore[unresolved-attribute]
-                resolved = list(spec.file_index_fn())  # type: ignore[unresolved-attribute]
-                spec.files = resolved
-                files = resolved
-            else:
-                return
-        else:
-            files = spec.files
+            return
 
+        files: Sequence[RemoteFile] = spec.files
         subset_set = set(subset)
         candidates = [f for f in files if f.subset_key in subset_set]
         existing = [f for f in candidates if (dataset_dir / f.filename).exists()]
@@ -376,44 +364,6 @@ def delete_remote_files(
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
         else:
             manifest_path.unlink(missing_ok=True)
-
-
-def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
-    """Resolve RemoteFile entries from a remote index text file.
-
-    The index is expected to contain one absolute URL per line. Empty lines are
-    ignored. The local filename is taken as the last path component. If
-    ``spec.subset_key_fn`` is set, it is called with each filename to populate
-    ``RemoteFile.subset_key``.
-    """
-    assert spec.file_index_url is not None  # type: ignore[unresolved-attribute]  # guarded by __post_init__
-
-    try:
-        with urllib.request.urlopen(spec.file_index_url, timeout=30) as response:  # type: ignore[unresolved-attribute]
-            raw = response.read()
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Failed to download file index for remote dataset '{spec.identifier}' "
-            f"from {spec.file_index_url!r}: HTTP {e.code}"  # type: ignore[unresolved-attribute]
-        ) from e
-    except (TimeoutError, urllib.error.URLError) as e:
-        raise RuntimeError(
-            f"Network error while downloading file index for remote dataset "
-            f"'{spec.identifier}' from {spec.file_index_url!r}: {e!r}"  # type: ignore[unresolved-attribute]
-        ) from e
-
-    urls = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()]
-    files = [
-        RemoteFile(
-            url=url,
-            filename=url.rsplit("/", 1)[-1],
-            subset_key=spec.subset_key_fn(url.rsplit("/", 1)[-1]) if spec.subset_key_fn else None,
-        )
-        for url in urls
-    ]
-    # Cache the resolved files on the spec for subsequent calls.
-    spec.files = files
-    return files
 
 
 def _filter_files_by_dict_subset(
@@ -744,7 +694,6 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
             "(ETH Zurich, 18 subjects, ictal/interictal)."
         ),
         subset_key_name="subsets (subjects)",
-        subset_key_fn=_swez_long_subject_key,
         known_subset_keys=_SWEZ_LONG_SUBJECTS,
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
@@ -943,7 +892,6 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
             "DOI: 10.18112/openneuro.ds005398.v1.0.1."
         ),
         subset_key_name="subsets (subjects)",
-        subset_key_fn=_sleep_ieeg_subject_key,
         known_subset_keys=_OPEN_IEEG_SUBJECTS,
         size_hint="~13 GB",
         subset_size_hint="~70 MB per subject",
@@ -980,7 +928,6 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
             "2000 Hz, BrainVision format. DOI: 10.18112/openneuro.ds003498.v1.1.1."
         ),
         subset_key_name="subsets (subjects)",
-        subset_key_fn=_zurich_ieeg_subject_key,
         known_subset_keys=_ZURICH_IEEG_SUBJECTS,
         size_hint="~60 GB",
         subset_size_hint="~3 GB per subject (varies by recording nights)",

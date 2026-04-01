@@ -269,6 +269,17 @@ def download_dataset(
                         f"Unknown subset keys for '{identifier}': {invalid}.\n"
                         f"Valid {spec.subset_key_name or 'keys'}: {known}"
                     )
+            if isinstance(subset, dict):
+                for key, value in subset.items():
+                    if isinstance(value, int) and value < 1:
+                        raise ValueError(
+                            f"File count for subset key '{key}' must be >= 1, got {value!r}."
+                        )
+                    if isinstance(value, list) and not value:
+                        raise ValueError(
+                            f"File list for subset key '{key}' must be non-empty; "
+                            "use None to include all files."
+                        )
         return ensure_remote_files(spec, subset=subset, accept=accept, force=force)
 
     raise ValueError(
