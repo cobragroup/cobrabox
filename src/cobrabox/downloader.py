@@ -100,9 +100,6 @@ class RemoteFile:
 
 RemoteLoader = Callable[[Path, "Sequence[str] | None"], Dataset[SignalData]]
 
-# A callable that dynamically resolves the list of remote files for a dataset.
-FileIndexFn = Callable[[], "Sequence[RemoteFile]"]
-
 # Type for the subset parameter accepted by :func:`ensure_remote_files` and
 # :func:`~cobrabox.datasets.dataset`:
 #
@@ -121,20 +118,13 @@ SubsetSpec = list[str] | dict[str, int | list[str] | None]
 class RemoteDatasetSpec:
     """Specification for a remotely hosted dataset.
 
-    Exactly one of ``files``, ``file_index_url``, or ``file_index_fn`` must be
-    provided (``files`` may also be ``None`` until lazily resolved).
-    ``file_index_url`` points to a text file containing one absolute URL per
-    line; the list of files is resolved lazily on first download.
-    ``file_index_fn`` is a zero-argument callable that returns the file list;
-    use this when the index format requires custom parsing (e.g. JSON APIs).
     ``auth_hint`` is an optional message shown to users when the server
     responds with a 401 or 403 status, e.g. to explain how to obtain
     credentials.
     ``subset_key_name`` names what the subset dimension represents (e.g.
     ``"subjects"``). ``None`` means the dataset has no subset concept.
     ``subset_key_fn`` is an optional callable that maps a filename to a subset
-    key string; used when resolving files from a remote index so that each
-    ``RemoteFile`` gets its ``subset_key`` set automatically.
+    key string.
     ``description`` is a short human-readable description of the dataset.
     """
 
@@ -142,8 +132,6 @@ class RemoteDatasetSpec:
     local_rel_dir: Path
     files: Sequence[RemoteFile] | None
     loader: RemoteLoader
-    file_index_url: str | None = None
-    file_index_fn: FileIndexFn | None = None
     auth_hint: str | None = None
     description: str = ""
     subset_key_name: str | None = None  # e.g. "subjects"
@@ -156,13 +144,6 @@ class RemoteDatasetSpec:
     info_url: str | None = None  # Landing page / homepage for the dataset
     license: str | None = None  # License name / terms, e.g. "CC BY 4.0"
     max_parallel_downloads: int = 4  # Max concurrent file downloads
-
-    def __post_init__(self) -> None:
-        if self.files is None and self.file_index_url is None and self.file_index_fn is None:
-            raise ValueError(
-                f"RemoteDatasetSpec '{self.identifier}' must define either "
-                "'files', 'file_index_url', or 'file_index_fn'."
-            )
 
     def subset_keys(self) -> list[str] | None:
         """Return the list of available subset keys, or None if unknown/not applicable."""
@@ -264,44 +245,6 @@ def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
         _COBRABOX_CONFIG_PATH.write_text(json.dumps(existing), encoding="utf-8")
 
 
-def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
-    """Resolve RemoteFile entries from a remote index text file.
-
-    The index is expected to contain one absolute URL per line. Empty lines are
-    ignored. The local filename is taken as the last path component. If
-    ``spec.subset_key_fn`` is set, it is called with each filename to populate
-    ``RemoteFile.subset_key``.
-    """
-    assert spec.file_index_url is not None  # guarded by __post_init__
-
-    try:
-        with urllib.request.urlopen(spec.file_index_url, timeout=30) as response:
-            raw = response.read()
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Failed to download file index for remote dataset '{spec.identifier}' "
-            f"from {spec.file_index_url!r}: HTTP {e.code}"
-        ) from e
-    except (TimeoutError, urllib.error.URLError) as e:
-        raise RuntimeError(
-            f"Network error while downloading file index for remote dataset "
-            f"'{spec.identifier}' from {spec.file_index_url!r}: {e!r}"
-        ) from e
-
-    urls = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()]
-    files = [
-        RemoteFile(
-            url=url,
-            filename=url.rsplit("/", 1)[-1],
-            subset_key=spec.subset_key_fn(url.rsplit("/", 1)[-1]) if spec.subset_key_fn else None,
-        )
-        for url in urls
-    ]
-    # Cache the resolved files on the spec for subsequent calls.
-    spec.files = files
-    return files
-
-
 def _filter_files_by_dict_subset(
     subset: dict[str, int | list[str] | None], all_files: Sequence[RemoteFile]
 ) -> list[RemoteFile]:
@@ -390,31 +333,9 @@ def ensure_remote_files(
     dataset_dir = data_dir / spec.local_rel_dir
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    def _resolve_all_files() -> Sequence[RemoteFile]:
-        """Fetch or return the full file list, caching the result on the spec."""
-        if spec.files is not None:
-            return spec.files
-        if spec.file_index_url is not None:
-            return _resolve_files_from_index(spec)
-        assert spec.file_index_fn is not None
-        resolved = list(spec.file_index_fn())
-        spec.files = resolved  # cache for subsequent calls
-        return resolved
-
-    # Resolve file list only if already cached; otherwise defer network fetch
-    # until we know files are actually missing.
-    if spec.files is not None:
-        all_files: Sequence[RemoteFile] = spec.files
-        files_resolved = True
-    else:
-        all_files = []
-        files_resolved = False
+    all_files: Sequence[RemoteFile] = spec.files if spec.files is not None else []
 
     def _get_files() -> list[RemoteFile]:
-        nonlocal all_files, files_resolved
-        if not files_resolved:
-            all_files = _resolve_all_files()
-            files_resolved = True
         if subset is not None:
             if isinstance(subset, dict):
                 return _filter_files_by_dict_subset(subset, all_files)
@@ -422,8 +343,7 @@ def ensure_remote_files(
             return [f for f in all_files if f.subset_key is None or f.subset_key in subset_set]
         return list(all_files)
 
-    # If the file list is already known, filter now; otherwise defer until needed.
-    files: list[RemoteFile] = _get_files() if files_resolved else []
+    files: list[RemoteFile] = _get_files()
 
     manifest_path = dataset_dir / "_manifest.json"
     manifest_lock = threading.Lock()
@@ -546,25 +466,16 @@ def ensure_remote_files(
 
     to_download = [f for f in files if not _has_valid_local_copy(f)]
 
-    if not to_download and files_resolved:
+    if not to_download:
         return dataset_dir
 
-    # If the file list wasn't resolved yet (dynamic index), we don't know which
-    # files are missing. Show the accept prompt first, then fetch the index.
     if not accept:
-        confirmed = _prompt_download_verify(spec, to_download if files_resolved else None)
+        confirmed = _prompt_download_verify(spec, to_download)
         if not confirmed:
             raise RuntimeError(
                 f"Download of '{spec.identifier}' cancelled by user. "
                 "Pass accept=True to skip this prompt."
             )
-
-    # Now safe to fetch the file index (user has accepted, or accept=True).
-    if not files_resolved:
-        files = _get_files()
-        to_download = [f for f in files if not _has_valid_local_copy(f)]
-        if not to_download:
-            return dataset_dir
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -710,48 +621,6 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
 _CHB_MIT_SUBJECTS: tuple[str, ...] = tuple(f"chb{i:02d}" for i in range(1, 25))
 
 
-def _chb_mit_file_index() -> Sequence[RemoteFile]:
-    """Fetch the CHB-MIT file list from the PhysioNet RECORDS file.
-
-    The RECORDS file lists one record name per line in the format
-    ``subjectdir/recordname`` (without extension), e.g. ``chb01/chb01_01``.
-    Each record corresponds to one EDF file.
-    """
-    base_url = "https://physionet.org/files/chbmit/1.0.0"
-    records_url = f"{base_url}/RECORDS"
-    try:
-        with urllib.request.urlopen(records_url, timeout=30) as resp:
-            lines = resp.read().decode("utf-8").splitlines()
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Failed to fetch CHB-MIT file index from {records_url!r}: HTTP {e.code}"
-        ) from e
-    except (TimeoutError, urllib.error.URLError) as e:
-        raise RuntimeError(
-            f"Network error fetching CHB-MIT file index from {records_url!r}: {e!r}"
-        ) from e
-
-    files: list[RemoteFile] = []
-    for line in lines:
-        record = line.strip()
-        if not record:
-            continue
-        parts = record.split("/")
-        if len(parts) != 2:
-            continue
-        subject_id, filename = parts
-        if not filename.lower().endswith(".edf"):
-            filename = f"{filename}.edf"
-        files.append(
-            RemoteFile(
-                url=f"{base_url}/{subject_id}/{filename}", filename=filename, subset_key=subject_id
-            )
-        )
-    if not files:
-        raise RuntimeError("CHB-MIT file index returned no valid records.")
-    return files
-
-
 def _chb_mit_spec() -> RemoteDatasetSpec:
     from .dataset_loader import _load_chb_mit  # avoid circular import at module level
 
@@ -821,47 +690,6 @@ _SIENA_SUBJECTS: tuple[str, ...] = (
 )
 
 
-def _siena_file_index() -> Sequence[RemoteFile]:
-    """Fetch the Siena Scalp EEG file list from the PhysioNet RECORDS file.
-
-    The RECORDS file lists one record name per line in the format
-    ``subjectdir/recordname`` (without extension), e.g. ``PN00/PN00-1``.
-    """
-    base_url = "https://physionet.org/files/siena-scalp-eeg/1.0.0"
-    records_url = f"{base_url}/RECORDS"
-    try:
-        with urllib.request.urlopen(records_url, timeout=30) as resp:
-            lines = resp.read().decode("utf-8").splitlines()
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Failed to fetch Siena EEG file index from {records_url!r}: HTTP {e.code}"
-        ) from e
-    except (TimeoutError, urllib.error.URLError) as e:
-        raise RuntimeError(
-            f"Network error fetching Siena EEG file index from {records_url!r}: {e!r}"
-        ) from e
-
-    files: list[RemoteFile] = []
-    for line in lines:
-        record = line.strip()
-        if not record:
-            continue
-        parts = record.split("/")
-        if len(parts) != 2:
-            continue
-        subject_id, filename = parts
-        if not filename.lower().endswith(".edf"):
-            filename = f"{filename}.edf"
-        files.append(
-            RemoteFile(
-                url=f"{base_url}/{subject_id}/{filename}", filename=filename, subset_key=subject_id
-            )
-        )
-    if not files:
-        raise RuntimeError("Siena EEG file index returned no valid records.")
-    return files
-
-
 def _siena_eeg_spec() -> RemoteDatasetSpec:
     from .dataset_loader import _load_siena_eeg  # avoid circular import at module level
 
@@ -919,47 +747,6 @@ def _sleep_ieeg_subject_key(filename: str) -> str | None:
     return stem.split("_", 1)[0]
 
 
-def _sleep_ieeg_file_index() -> Sequence[RemoteFile]:
-    """Fetch the subject list from participants.tsv and build the file index.
-
-    Reads the public S3-hosted participants.tsv to discover all subject IDs,
-    then constructs one :class:`RemoteFile` per subject pointing to the
-    interictal sleep EDF recording.
-    """
-    base_url = "https://s3.amazonaws.com/openneuro.org/ds005398"
-    participants_url = f"{base_url}/participants.tsv"
-    try:
-        with urllib.request.urlopen(participants_url, timeout=30) as resp:
-            content = resp.read().decode("utf-8")
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Failed to fetch Sleep iEEG participant list from {participants_url!r}: HTTP {e.code}"
-        ) from e
-    except (TimeoutError, urllib.error.URLError) as e:
-        raise RuntimeError(
-            f"Network error fetching Sleep iEEG participant list from {participants_url!r}: {e!r}"
-        ) from e
-
-    files: list[RemoteFile] = []
-    for line in content.splitlines()[1:]:  # skip header row
-        parts = line.split("\t")
-        if not parts or not parts[0].strip().startswith("sub-"):
-            continue
-        subject = parts[0].strip()  # e.g. "sub-Detroit001"
-        filename = f"{subject}_ses-01_task-sleep_ieeg.edf"
-        files.append(
-            RemoteFile(
-                url=f"{base_url}/{subject}/ses-01/ieeg/{filename}",
-                filename=filename,
-                subset_key=subject,
-            )
-        )
-
-    if not files:
-        raise RuntimeError("Sleep iEEG participant list returned no valid subjects.")
-    return files
-
-
 def _sleep_ieeg_spec() -> RemoteDatasetSpec:
     from .dataset_loader import _load_sleep_ieeg  # avoid circular import at module level
 
@@ -995,69 +782,6 @@ def _zurich_ieeg_subject_key(filename: str) -> str | None:
     e.g. ``'sub-01_ses-interictalsleep_run-01_ieeg.vhdr'`` → ``'sub-01'``
     """
     return filename.split("_", 1)[0]
-
-
-def _zurich_ieeg_file_index() -> Sequence[RemoteFile]:
-    """Fetch run lists from participants.tsv and per-subject scans.tsv files.
-
-    Reads participants.tsv to discover subject IDs, then fetches each
-    subject's scans.tsv to enumerate runs. Yields three
-    :class:`RemoteFile` entries per run (``.vhdr``, ``.eeg``, ``.vmrk``).
-    """
-    base_url = "https://s3.amazonaws.com/openneuro.org/ds003498"
-    participants_url = f"{base_url}/participants.tsv"
-    try:
-        with urllib.request.urlopen(participants_url, timeout=30) as resp:
-            content = resp.read().decode("utf-8")
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Failed to fetch Zurich iEEG participant list from {participants_url!r}: HTTP {e.code}"
-        ) from e
-    except (TimeoutError, urllib.error.URLError) as e:
-        raise RuntimeError(
-            f"Network error fetching Zurich iEEG participant list from {participants_url!r}: {e!r}"
-        ) from e
-
-    subjects = [
-        line.split("\t")[0].strip()
-        for line in content.splitlines()[1:]
-        if line.split("\t")[0].strip().startswith("sub-")
-    ]
-    if not subjects:
-        raise RuntimeError("Zurich iEEG participant list returned no valid subjects.")
-
-    files: list[RemoteFile] = []
-    for subject in subjects:
-        scans_url = (
-            f"{base_url}/{subject}/ses-interictalsleep/{subject}_ses-interictalsleep_scans.tsv"
-        )
-        try:
-            with urllib.request.urlopen(scans_url, timeout=30) as resp:
-                scans = resp.read().decode("utf-8")
-        except (urllib.error.HTTPError, TimeoutError, urllib.error.URLError) as e:
-            raise RuntimeError(f"Failed to fetch scans list for {subject!r}: {e!r}") from e
-
-        for line in scans.splitlines()[1:]:
-            parts = line.split("\t")
-            if not parts:
-                continue
-            vhdr_rel = parts[0].strip()  # e.g. "ieeg/sub-01_ses-interictalsleep_run-01_ieeg.vhdr"
-            if not vhdr_rel.endswith(".vhdr"):
-                continue
-            stem = vhdr_rel.split("/")[-1].rsplit(".", 1)[0]
-            for ext in ("vhdr", "eeg", "vmrk"):
-                fname = f"{stem}.{ext}"
-                files.append(
-                    RemoteFile(
-                        url=f"{base_url}/{subject}/ses-interictalsleep/ieeg/{fname}",
-                        filename=fname,
-                        subset_key=subject,
-                    )
-                )
-
-    if not files:
-        raise RuntimeError("Zurich iEEG: no run files found after scanning all subjects.")
-    return files
 
 
 def _zurich_ieeg_spec() -> RemoteDatasetSpec:

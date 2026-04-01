@@ -470,55 +470,6 @@ def test_dataset_uses_remote_spec_for_known_identifier(
     assert called
 
 
-def test_ensure_remote_files_uses_index_when_no_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """ensure_remote_files resolves files from a remote index when files is None."""
-    spec = RemoteDatasetSpec(
-        identifier="test_index",
-        local_rel_dir=Path("data") / "remote" / "test_index",
-        files=None,
-        loader=lambda _p: [],
-        file_index_url="http://example.com/index.txt",
-    )
-
-    index_body = b"http://example.com/a.bin\nhttp://example.com/b.bin\n"
-    payloads = {
-        "http://example.com/index.txt": index_body,
-        "http://example.com/a.bin": b"AAA",
-        "http://example.com/b.bin": b"BBB",
-    }
-
-    class _FakeHeaders:
-        def get(self, key: str, default: str | None = None) -> str | None:
-            return default
-
-    class _FakeResponse(io.BytesIO):
-        headers = _FakeHeaders()
-
-        def __enter__(self) -> _FakeResponse:
-            return self
-
-        def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
-            self.close()
-
-    def _fake_urlopen(url: object, *args: object, **kwargs: object) -> _FakeResponse:
-        try:
-            return _FakeResponse(payloads[getattr(url, "full_url", url)])
-        except KeyError as exc:
-            raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
-
-    import cobrabox.downloader as downloader
-
-    monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
-
-    dataset_dir = ensure_remote_files(spec, data_dir=tmp_path, accept=True)
-
-    assert (dataset_dir / "a.bin").read_bytes() == b"AAA"
-    assert (dataset_dir / "b.bin").read_bytes() == b"BBB"
-
-
 def test_swiss_eeg_short_loader_reads_csv_from_zip(tmp_path: Path) -> None:
     """Swiss short EEG loader reads numeric CSV inside a zip archive."""
     from cobrabox.data import SignalData
@@ -1340,102 +1291,6 @@ def test_swiss_eeg_short_loader_raises_when_no_supported_member(tmp_path: Path) 
         _load_swiss_eeg_short(dataset_dir)
 
 
-# ---------------------------------------------------------------------------
-# downloader — subset_key_fn used when resolving index
-# ---------------------------------------------------------------------------
-
-
-def test_resolve_files_from_index_applies_subset_key_fn(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_resolve_files_from_index populates subset_key via spec.subset_key_fn."""
-    import cobrabox.downloader as downloader
-
-    index_body = b"http://example.com/ID01_1h.mat\nhttp://example.com/ID01_2h.mat\n"
-
-    class _FakeHeaders:
-        def get(self, key: str, default: str | None = None) -> str | None:
-            return default
-
-    class _FakeResponse(io.BytesIO):
-        headers = _FakeHeaders()
-
-        def __enter__(self) -> _FakeResponse:
-            return self
-
-        def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
-            self.close()
-
-    monkeypatch.setattr(
-        downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse(index_body)
-    )
-
-    spec = RemoteDatasetSpec(
-        identifier="test",
-        local_rel_dir=Path("data/test"),
-        files=None,
-        loader=lambda _p, _s=None: Dataset([]),
-        file_index_url="http://example.com/index.txt",
-        subset_key_name="subjects",
-        subset_key_fn=lambda fname: fname.rsplit("_", 1)[0],  # ID01_1h.mat -> ID01
-    )
-
-    from cobrabox.downloader import _resolve_files_from_index
-
-    files = _resolve_files_from_index(spec)
-
-    assert len(files) == 2
-    assert all(f.subset_key == "ID01" for f in files)
-
-
-def test_resolve_files_from_index_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_resolve_files_from_index raises RuntimeError on HTTP error from index URL."""
-    import cobrabox.downloader as downloader
-    from cobrabox.downloader import _resolve_files_from_index
-
-    spec = RemoteDatasetSpec(
-        identifier="test",
-        local_rel_dir=Path("data/test"),
-        files=None,
-        loader=lambda _p, _s=None: Dataset([]),
-        file_index_url="http://example.com/index.txt",
-    )
-
-    monkeypatch.setattr(
-        downloader.urllib.request,
-        "urlopen",
-        lambda url, *a, **kw: (_ for _ in ()).throw(
-            downloader.urllib.error.HTTPError(url, 404, "Not Found", {}, None)
-        ),
-    )
-
-    with pytest.raises(RuntimeError, match="HTTP 404"):
-        _resolve_files_from_index(spec)
-
-
-def test_resolve_files_from_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_resolve_files_from_index raises RuntimeError on network error."""
-    import cobrabox.downloader as downloader
-    from cobrabox.downloader import _resolve_files_from_index
-
-    spec = RemoteDatasetSpec(
-        identifier="test",
-        local_rel_dir=Path("data/test"),
-        files=None,
-        loader=lambda _p, _s=None: Dataset([]),
-        file_index_url="http://example.com/index.txt",
-    )
-
-    monkeypatch.setattr(
-        downloader.urllib.request,
-        "urlopen",
-        lambda url, *a, **kw: (_ for _ in ()).throw(
-            downloader.urllib.error.URLError("connection refused")
-        ),
-    )
-
-    with pytest.raises(RuntimeError, match="Network error"):
-        _resolve_files_from_index(spec)
-
-
 def test_ensure_remote_files_raises_on_url_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1463,19 +1318,6 @@ def test_ensure_remote_files_raises_on_url_error(
 # ---------------------------------------------------------------------------
 # RemoteDatasetSpec.subset_keys — edge cases
 # ---------------------------------------------------------------------------
-
-
-def test_subset_keys_returns_none_when_files_not_yet_resolved() -> None:
-    """subset_keys() returns None when files is None (index not yet fetched)."""
-    spec = RemoteDatasetSpec(
-        identifier="test",
-        local_rel_dir=Path("data/test"),
-        files=None,
-        loader=lambda _p, _s=None: Dataset([]),
-        file_index_url="http://example.com/index.txt",
-        subset_key_name="subjects",
-    )
-    assert spec.subset_keys() is None
 
 
 def test_subset_keys_returns_none_when_no_subset_key_name() -> None:
@@ -1995,54 +1837,6 @@ def test_load_sleep_ieeg_raises_when_no_edf_files(tmp_path: Path) -> None:
         _load_sleep_ieeg(dataset_dir)
 
 
-def test_sleep_ieeg_file_index_parses_participants_tsv(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_sleep_ieeg_file_index builds RemoteFile list from participants.tsv."""
-    import urllib.request
-    from unittest.mock import MagicMock
-
-    from cobrabox.downloader import _sleep_ieeg_file_index
-
-    tsv_content = (
-        b"participant_id\tmethods\tsampling_frequency\n"
-        b"sub-Detroit001\t1\t1000\n"
-        b"sub-Detroit002\t1\t1000\n"
-        b"sub-UCLA01\t1\t2000\n"
-    )
-
-    mock_resp = MagicMock()
-    mock_resp.read.return_value = tsv_content
-    mock_resp.__enter__ = lambda s: s
-    mock_resp.__exit__ = MagicMock(return_value=False)
-    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **kw: mock_resp)
-
-    files = _sleep_ieeg_file_index()
-
-    assert len(files) == 3
-    subjects = {f.subset_key for f in files}
-    assert subjects == {"sub-Detroit001", "sub-Detroit002", "sub-UCLA01"}
-    assert all(f.filename.endswith("_ses-01_task-sleep_ieeg.edf") for f in files)
-    assert all("s3.amazonaws.com/openneuro.org/ds005398" in f.url for f in files)
-
-
-def test_sleep_ieeg_file_index_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_sleep_ieeg_file_index raises RuntimeError on HTTP error."""
-    import urllib.error
-    import urllib.request
-
-    from cobrabox.downloader import _sleep_ieeg_file_index
-
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
-        lambda *a, **kw: (_ for _ in ()).throw(  # type: ignore[arg-type]
-            urllib.error.HTTPError(None, 404, "Not Found", {}, None)
-        ),
-    )
-
-    with pytest.raises(RuntimeError, match="HTTP 404"):
-        _sleep_ieeg_file_index()
-
-
 def test_sleep_ieeg_subject_key_parses_bids_prefix() -> None:
     """_sleep_ieeg_subject_key extracts the sub-XXX portion of a BIDS filename."""
     from cobrabox.downloader import _sleep_ieeg_subject_key
@@ -2080,37 +1874,6 @@ def test_siena_eeg_spec_is_registered() -> None:
     assert spec.identifier == "siena_eeg"
     assert spec.subset_key_name == "subjects"
     assert spec.files is not None
-
-
-def test_remote_dataset_spec_file_index_fn_validates() -> None:
-    """RemoteDatasetSpec raises ValueError when none of files/file_index_url/file_index_fn."""
-    from cobrabox.dataset_loader import _load_bonn_eeg
-    from cobrabox.downloader import RemoteDatasetSpec
-
-    with pytest.raises(ValueError, match="must define either"):
-        RemoteDatasetSpec(
-            identifier="bad",
-            local_rel_dir=Path("data/remote/bad"),
-            files=None,
-            loader=_load_bonn_eeg,
-            file_index_url=None,
-            file_index_fn=None,
-        )
-
-
-def test_remote_dataset_spec_file_index_fn_accepted() -> None:
-    """RemoteDatasetSpec accepts file_index_fn as an alternative to files/file_index_url."""
-    from cobrabox.dataset_loader import _load_bonn_eeg
-    from cobrabox.downloader import RemoteDatasetSpec
-
-    spec = RemoteDatasetSpec(
-        identifier="test",
-        local_rel_dir=Path("data/remote/test"),
-        files=None,
-        loader=_load_bonn_eeg,
-        file_index_fn=list,
-    )
-    assert spec.file_index_fn is not None
 
 
 def test_list_datasets_returns_sorted_list() -> None:
