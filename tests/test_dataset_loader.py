@@ -2057,7 +2057,7 @@ def test_sleep_ieeg_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "sleep_ieeg"
     assert spec.subset_key_name == "subjects"
-    assert spec.file_index_fn is not None
+    assert spec.files is not None
     assert spec.size_hint == "~13 GB"
 
 
@@ -2070,7 +2070,7 @@ def test_chb_mit_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "chb_mit"
     assert spec.subset_key_name == "subjects"
-    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
+    assert spec.files is not None
 
 
 def test_siena_eeg_spec_is_registered() -> None:
@@ -2079,7 +2079,7 @@ def test_siena_eeg_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "siena_eeg"
     assert spec.subset_key_name == "subjects"
-    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
+    assert spec.files is not None
 
 
 def test_remote_dataset_spec_file_index_fn_validates() -> None:
