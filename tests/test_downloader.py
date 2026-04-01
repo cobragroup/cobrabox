@@ -233,6 +233,9 @@ class _NoOpBar:
     def update(self, n: int) -> None:
         pass
 
+    def close(self) -> None:
+        pass
+
 
 # ---------------------------------------------------------------------------
 # subset_keys — known_subset_keys fast path

@@ -15,6 +15,7 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from queue import Queue
 
 from tqdm import tqdm
 
@@ -482,9 +483,14 @@ def ensure_remote_files(
             manifest[filename] = size
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
-    def _download_one(remote_file: RemoteFile, position: int) -> None:
+    def _download_one(
+        remote_file: RemoteFile,
+        position_pool: Queue[int],
+        overall_bar: tqdm,  # type: ignore[type-arg]
+    ) -> None:
         dest_path = dataset_dir / remote_file.filename
         if _has_valid_local_copy(remote_file):
+            overall_bar.update(1)
             return
 
         url = remote_file.url
@@ -493,74 +499,81 @@ def ensure_remote_files(
         # Resume from a partial download if one exists.
         resumed_bytes = tmp_path.stat().st_size if tmp_path.exists() else 0
 
+        position = position_pool.get()
         try:
-            request = urllib.request.Request(url)
-            if resumed_bytes:
-                request.add_header("Range", f"bytes={resumed_bytes}-")
-            with urllib.request.urlopen(request, timeout=120) as response:
-                content_length = response.headers.get("Content-Length")
-                remaining = int(content_length) if content_length else None
-                total_size = (resumed_bytes + remaining) if remaining is not None else None
-                with (
-                    open(tmp_path, "ab" if resumed_bytes else "wb") as f,
-                    tqdm(
-                        total=total_size,
-                        initial=resumed_bytes,
-                        unit="B",
-                        unit_scale=True,
-                        unit_divisor=1024,
-                        desc=remote_file.filename,
-                        position=position,
-                        leave=True,
-                    ) as bar,
-                ):
-                    for chunk in iter(lambda: response.read(65536), b""):
-                        if _cancel.is_set():
-                            return
-                        f.write(chunk)
-                        bar.update(len(chunk))
-        except urllib.error.HTTPError as e:
-            tmp_path.unlink(missing_ok=True)
-            if spec.auth_hint and e.code in {401, 403}:
-                raise RuntimeError(f"{spec.auth_hint}\nExpected file location: {dest_path}") from e
-            raise RuntimeError(
-                f"Failed to download remote dataset file for '{spec.identifier}' "
-                f"from {url!r}: HTTP {e.code}"
-            ) from e
-        except (TimeoutError, urllib.error.URLError) as e:
-            tmp_path.unlink(missing_ok=True)
-            reason = getattr(e, "reason", str(e))
-            if isinstance(e, socket.timeout) or isinstance(reason, socket.timeout):
+            try:
+                request = urllib.request.Request(url)
+                if resumed_bytes:
+                    request.add_header("Range", f"bytes={resumed_bytes}-")
+                with urllib.request.urlopen(request, timeout=120) as response:
+                    content_length = response.headers.get("Content-Length")
+                    remaining = int(content_length) if content_length else None
+                    total_size = (resumed_bytes + remaining) if remaining is not None else None
+                    with (
+                        open(tmp_path, "ab" if resumed_bytes else "wb") as f,
+                        tqdm(
+                            total=total_size,
+                            initial=resumed_bytes,
+                            unit="B",
+                            unit_scale=True,
+                            unit_divisor=1024,
+                            desc=remote_file.filename,
+                            position=position,
+                            leave=False,
+                        ) as bar,
+                    ):
+                        for chunk in iter(lambda: response.read(65536), b""):
+                            if _cancel.is_set():
+                                return
+                            f.write(chunk)
+                            bar.update(len(chunk))
+            except urllib.error.HTTPError as e:
+                tmp_path.unlink(missing_ok=True)
+                if spec.auth_hint and e.code in {401, 403}:
+                    raise RuntimeError(
+                        f"{spec.auth_hint}\nExpected file location: {dest_path}"
+                    ) from e
                 raise RuntimeError(
-                    f"Download timed out for '{remote_file.filename}' "
-                    f"(no data received for 120 s). "
-                    f"Check your connection and retry."
+                    f"Failed to download remote dataset file for '{spec.identifier}' "
+                    f"from {url!r}: HTTP {e.code}"
                 ) from e
-            raise RuntimeError(
-                f"Network error while downloading remote dataset file for "
-                f"'{spec.identifier}' from {url!r}: {reason!r}"
-            ) from e
-        except OSError as e:
-            tmp_path.unlink(missing_ok=True)
-            if e.errno == errno.ENOSPC:
+            except (TimeoutError, urllib.error.URLError) as e:
+                tmp_path.unlink(missing_ok=True)
+                reason = getattr(e, "reason", str(e))
+                if isinstance(e, socket.timeout) or isinstance(reason, socket.timeout):
+                    raise RuntimeError(
+                        f"Download timed out for '{remote_file.filename}' "
+                        f"(no data received for 120 s). "
+                        f"Check your connection and retry."
+                    ) from e
                 raise RuntimeError(
-                    f"No space left on device while downloading '{remote_file.filename}' "
-                    f"for dataset '{spec.identifier}'. "
-                    f"Free up disk space and retry, or use subset= to download fewer files."
+                    f"Network error while downloading remote dataset file for "
+                    f"'{spec.identifier}' from {url!r}: {reason!r}"
                 ) from e
-            raise RuntimeError(
-                f"Unexpected OS error while downloading remote dataset file for "
-                f"'{spec.identifier}' from {url!r}: {e!r}"
-            ) from e
-        except Exception as e:  # pragma: no cover - defensive catch-all
-            tmp_path.unlink(missing_ok=True)
-            raise RuntimeError(
-                f"Unexpected error while downloading remote dataset file for "
-                f"'{spec.identifier}' from {url!r}: {e!r}"
-            ) from e
+            except OSError as e:
+                tmp_path.unlink(missing_ok=True)
+                if e.errno == errno.ENOSPC:
+                    raise RuntimeError(
+                        f"No space left on device while downloading '{remote_file.filename}' "
+                        f"for dataset '{spec.identifier}'. "
+                        f"Free up disk space and retry, or use subset= to download fewer files."
+                    ) from e
+                raise RuntimeError(
+                    f"Unexpected OS error while downloading remote dataset file for "
+                    f"'{spec.identifier}' from {url!r}: {e!r}"
+                ) from e
+            except Exception as e:  # pragma: no cover - defensive catch-all
+                tmp_path.unlink(missing_ok=True)
+                raise RuntimeError(
+                    f"Unexpected error while downloading remote dataset file for "
+                    f"'{spec.identifier}' from {url!r}: {e!r}"
+                ) from e
+        finally:
+            position_pool.put(position)
 
         tmp_path.replace(dest_path)
         _update_manifest(remote_file.filename, dest_path.stat().st_size)
+        overall_bar.update(1)
 
     def _has_valid_local_copy(remote_file: RemoteFile) -> bool:
         path = dataset_dir / remote_file.filename
@@ -602,10 +615,20 @@ def ensure_remote_files(
             )
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))
+    position_pool: Queue[int] = Queue()
+    for i in range(1, max_workers + 1):
+        position_pool.put(i)
+    overall_bar = tqdm(
+        total=len(to_download),
+        unit="file",
+        desc=f"Downloading {spec.identifier}",
+        position=0,
+        leave=True,
+    )
     executor = ThreadPoolExecutor(max_workers=max_workers)
     futures = [
-        executor.submit(_download_one, remote_file, position)
-        for position, remote_file in enumerate(to_download)
+        executor.submit(_download_one, remote_file, position_pool, overall_bar)
+        for remote_file in to_download
     ]
     try:
         for fut in futures:
@@ -613,10 +636,12 @@ def ensure_remote_files(
     except KeyboardInterrupt:
         _cancel.set()
         executor.shutdown(wait=False, cancel_futures=True)
+        overall_bar.close()
         print("\nDownload interrupted — partial files will be resumed on next run.")
         raise
     else:
         executor.shutdown(wait=False)
+        overall_bar.close()
 
     return dataset_dir
 
