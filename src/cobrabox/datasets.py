@@ -86,7 +86,7 @@ class DatasetInfo:
             lines.append(f"  size        : {', '.join(parts)} (approximate)")
         if self.subset_key_name is None or self.subsets is None:
             lines.append(
-                f"  subsets     : none — call cb.dataset({self.identifier!r}) to load all."
+                f"  subsets     : none — call cb.load_dataset({self.identifier!r}) to load all."
             )
         else:
             n = len(self.subsets)
@@ -101,7 +101,7 @@ class DatasetInfo:
             lines.append(wrapped)
             second = self.subsets[1] if len(self.subsets) > 1 else self.subsets[0]
             example = f'["{self.subsets[0]}", "{second}"]'
-            lines.append(f'  usage       : cb.dataset("{self.identifier}", subset={example})')
+            lines.append(f'  usage       : cb.load_dataset("{self.identifier}", subset={example})')
         if self.seizures_per_subject is not None:
             counts = self.seizures_per_subject
             total = sum(counts.values())
@@ -133,7 +133,7 @@ class DatasetInfo:
 # ---------------------------------------------------------------------------
 
 
-def dataset(
+def load_dataset(
     identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False, force: bool = False
 ) -> Dataset[SignalData]:
     """Load a dataset by identifier.
@@ -155,9 +155,9 @@ def dataset(
 
               Example::
 
-                  cb.dataset("swiss_eeg_long", subset={"ID01": 2})
-                  cb.dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})
-                  cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})
+                  cb.load_dataset("swiss_eeg_long", subset={"ID01": 2})
+                  cb.load_dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})
+                  cb.load_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})
 
             ``None`` loads everything.
         accept: If ``False`` (default) and files need to be downloaded, show
@@ -231,7 +231,7 @@ def dataset(
     )
 
 
-def download(
+def download_dataset(
     identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False, force: bool = False
 ) -> Path:
     """Download a remote dataset without loading it into memory.
@@ -295,12 +295,12 @@ def list_datasets() -> dict[str, list[str]]:
     return {"local": sorted(_LOCAL_DATASET_INFO), "remote": sorted(REMOTE_DATASETS)}
 
 
-def describe_all() -> list[dict[str, str | None]]:
+def describe_datasets() -> list[dict[str, str | None]]:
     """Print a compact summary table of all available datasets and return the data.
 
     Example::
 
-        cb.describe_all()
+        cb.describe_datasets()
         # Dataset               Type    Cached  Size           Subsets       License
         # --------------------  ------  ------  -------------  ------------  ----------
         # bonn_eeg              remote  yes     ~10 MB         5 sets        CC BY ...
@@ -381,7 +381,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
         # DatasetInfo: swiss_eeg_short
         #   description  : Short-term scalp EEG ...
         #   subjects (18): ID1, ID2, ID4a, ...
-        #   usage        : cb.dataset("swiss_eeg_short", subset=["ID1", "ID2"])
+        #   usage        : cb.load_dataset("swiss_eeg_short", subset=["ID1", "ID2"])
 
     Args:
         identifier: Dataset name, e.g. ``"swiss_eeg_short"``.
@@ -430,7 +430,7 @@ def delete_dataset(
 
     Useful for freeing disk space after analysis is complete.  Use
     :func:`dataset_info` to inspect what subset keys are available, and
-    :func:`describe_all` to see which datasets are currently cached.
+    :func:`describe_datasets` to see which datasets are currently cached.
 
     Args:
         identifier: Remote dataset name, e.g. ``"bonn_eeg"``.

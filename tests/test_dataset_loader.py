@@ -464,7 +464,7 @@ def test_dataset_uses_remote_spec_for_known_identifier(
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", _fake_get_remote_dataset_spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure_remote_files)
 
-    out = datasets.dataset("swiss_eeg_short")
+    out = datasets.load_dataset("swiss_eeg_short")
 
     assert len(out) == 1
     assert called
@@ -762,19 +762,19 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
 def test_dataset_dict_subset_invalid_subject_key_raises() -> None:
     """dataset() raises ValueError for unknown subject keys in dict form."""
     with pytest.raises(ValueError, match="Unknown subset keys"):
-        datasets.dataset("swiss_eeg_short", subset={"INVALID_ID": 2})
+        datasets.load_dataset("swiss_eeg_short", subset={"INVALID_ID": 2})
 
 
 def test_dataset_dict_subset_int_zero_raises() -> None:
     """dataset() raises ValueError when a dict value is 0."""
     with pytest.raises(ValueError, match="must be >= 1"):
-        datasets.dataset("swiss_eeg_short", subset={"ID1": 0})
+        datasets.load_dataset("swiss_eeg_short", subset={"ID1": 0})
 
 
 def test_dataset_dict_subset_empty_list_raises() -> None:
     """dataset() raises ValueError when a dict value is an empty list."""
     with pytest.raises(ValueError, match="non-empty"):
-        datasets.dataset("swiss_eeg_short", subset={"ID1": []})
+        datasets.load_dataset("swiss_eeg_short", subset={"ID1": []})
 
 
 def test_dataset_dict_subset_passes_stems_to_loader(
@@ -823,7 +823,7 @@ def test_dataset_dict_subset_passes_stems_to_loader(
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", _fake_get_spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure)
 
-    datasets.dataset("swiss_eeg_short", subset={"ID1": 1})
+    datasets.load_dataset("swiss_eeg_short", subset={"ID1": 1})
 
     # The loader should receive a list of stems, not the dict.
     loader_subset = captured["loader_subset"]
@@ -861,7 +861,7 @@ def test_dataset_info_str_contains_usage_hint() -> None:
     from cobrabox.datasets import dataset_info
 
     text = str(dataset_info("swiss_eeg_short"))
-    assert "cb.dataset" in text
+    assert "cb.load_dataset" in text
     assert "subset=" in text
     assert "ID1" in text
 
@@ -877,7 +877,7 @@ def test_dataset_info_raises_for_unknown_identifier() -> None:
 def test_dataset_subset_raises_for_invalid_keys() -> None:
     """dataset() raises ValueError when unknown subset keys are passed."""
     with pytest.raises(ValueError, match="Unknown subset keys"):
-        datasets.dataset("swiss_eeg_short", subset=["INVALID_ID"])
+        datasets.load_dataset("swiss_eeg_short", subset=["INVALID_ID"])
 
 
 def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -924,7 +924,7 @@ def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", _fake_get_spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure)
 
-    datasets.dataset("swiss_eeg_short", subset=["ID1", "ID2"])
+    datasets.load_dataset("swiss_eeg_short", subset=["ID1", "ID2"])
 
     assert captured["loader_subset"] == ["ID1", "ID2"]
     assert captured["ensure_subset"] == ["ID1", "ID2"]
@@ -1360,7 +1360,7 @@ def test_dataset_info_str_for_dataset_without_subsets() -> None:
     )
     text = str(info)
     assert "none" in text
-    assert "cb.dataset" in text
+    assert "cb.load_dataset" in text
 
 
 def test_dataset_info_repr_equals_str() -> None:
@@ -1389,7 +1389,7 @@ def test_dataset_loads_dummy_noise(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 
     monkeypatch.setattr(datasets, "load_noise_dummy", lambda ident: fake_ds)
 
-    out = datasets.dataset("dummy_noise")
+    out = datasets.load_dataset("dummy_noise")
     assert len(out) == 1
 
 
@@ -1404,14 +1404,14 @@ def test_dataset_loads_realistic_swiss(monkeypatch: pytest.MonkeyPatch, tmp_path
 
     monkeypatch.setattr(datasets, "load_realistic_swiss", lambda ident: fake_ds)
 
-    out = datasets.dataset("realistic_swiss")
+    out = datasets.load_dataset("realistic_swiss")
     assert len(out) == 1
 
 
 def test_dataset_raises_for_unknown_identifier() -> None:
     """dataset() raises ValueError for completely unknown identifiers."""
     with pytest.raises(ValueError, match="Unknown dataset identifier"):
-        datasets.dataset("nonexistent_xyz_123")
+        datasets.load_dataset("nonexistent_xyz_123")
 
 
 # ---------------------------------------------------------------------------
@@ -2171,10 +2171,10 @@ def test_swiss_eeg_short_loader_raises_when_all_archives_empty(tmp_path: Path) -
 
 
 def test_dataset_loads_realistic_swiss_via_cb() -> None:
-    """cb.dataset('realistic_swiss') routes to load_realistic_swiss."""
+    """cb.load_dataset('realistic_swiss') routes to load_realistic_swiss."""
     import cobrabox as cb
 
-    result = cb.dataset("realistic_swiss")
+    result = cb.load_dataset("realistic_swiss")
     assert len(result) > 0
 
 

@@ -36,7 +36,7 @@ class Correlation(BaseFeature[Data]):
         ValueError: If ``dim`` is not present in the input data's dimensions.
 
     Example:
-        >>> data = cb.dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("dummy_random")[0]
         >>> corr = cb.feature.Correlation().apply(data)
         >>> corr.data.dims
         ('space_to', 'space_from')

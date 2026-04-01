@@ -20,7 +20,7 @@ def test_dataset_dispatches_structured_identifiers(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr(datasets, "load_structured_dummy", _fake)
 
-    out = datasets.dataset("dummy_chain")
+    out = datasets.load_dataset("dummy_chain")
 
     assert len(out) == 1
     assert captured == ["dummy_chain"]
@@ -36,7 +36,7 @@ def test_dataset_dispatches_noise_identifier(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(datasets, "load_noise_dummy", _fake)
 
-    out = datasets.dataset("dummy_noise")
+    out = datasets.load_dataset("dummy_noise")
 
     assert len(out) == 1
     assert captured == ["dummy_noise"]
@@ -52,7 +52,7 @@ def test_dataset_dispatches_realistic_identifier(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(datasets, "load_realistic_swiss", _fake)
 
-    out = datasets.dataset("realistic_swiss")
+    out = datasets.load_dataset("realistic_swiss")
 
     assert len(out) == 1
     assert captured == ["realistic_swiss"]
@@ -61,7 +61,7 @@ def test_dataset_dispatches_realistic_identifier(monkeypatch: pytest.MonkeyPatch
 def test_dataset_raises_for_unknown_identifier() -> None:
     """dataset() rejects unsupported IDs with a clear message."""
     with pytest.raises(ValueError, match="Unknown dataset identifier"):
-        datasets.dataset("not_a_dataset")
+        datasets.load_dataset("not_a_dataset")
 
 
 def test_dataset_remote_verify_false_skips_prompt(
@@ -97,7 +97,7 @@ def test_dataset_remote_verify_false_skips_prompt(
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure)
 
-    datasets.dataset("swiss_eeg_short", accept=True)
+    datasets.load_dataset("swiss_eeg_short", accept=True)
 
     assert ensure_calls == [{"accept": True}]
 
@@ -135,7 +135,7 @@ def test_dataset_remote_verify_true_passed_through(
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", _fake_ensure)
 
-    datasets.dataset("swiss_eeg_short", accept=False)
+    datasets.load_dataset("swiss_eeg_short", accept=False)
 
     assert ensure_calls == [{"accept": False}]
 
@@ -159,7 +159,7 @@ def test_download_returns_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: tmp_path)
 
-    result = datasets.download("bonn_eeg", accept=True)
+    result = datasets.download_dataset("bonn_eeg", accept=True)
     assert result == tmp_path
 
 
@@ -168,7 +168,7 @@ def test_download_raises_for_local_dataset() -> None:
     import cobrabox as cb
 
     with pytest.raises(ValueError, match="local dataset"):
-        cb.download("dummy_chain")
+        cb.download_dataset("dummy_chain")
 
 
 def test_download_raises_for_unknown_dataset() -> None:
@@ -176,7 +176,7 @@ def test_download_raises_for_unknown_dataset() -> None:
     import cobrabox as cb
 
     with pytest.raises(ValueError, match="Unknown dataset"):
-        cb.download("nonexistent_dataset")
+        cb.download_dataset("nonexistent_dataset")
 
 
 def test_download_raises_for_invalid_subset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -195,19 +195,19 @@ def test_download_raises_for_invalid_subset(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
 
     with pytest.raises(ValueError, match="Unknown subset keys"):
-        datasets.download("bonn_eeg", subset=["INVALID"])
+        datasets.download_dataset("bonn_eeg", subset=["INVALID"])
 
 
 # ---------------------------------------------------------------------------
-# describe_all()
+# describe_datasets()
 # ---------------------------------------------------------------------------
 
 
 def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_all() prints a table containing all known dataset identifiers."""
+    """describe_datasets() prints a table containing all known dataset identifiers."""
     import cobrabox as cb
 
-    cb.describe_all()
+    cb.describe_datasets()
     output = capsys.readouterr().out
 
     for ident in cb.list_datasets()["local"] + cb.list_datasets()["remote"]:
@@ -215,10 +215,10 @@ def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) ->
 
 
 def test_describe_all_includes_header(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_all() prints column headers."""
+    """describe_datasets() prints column headers."""
     import cobrabox as cb
 
-    cb.describe_all()
+    cb.describe_datasets()
     output = capsys.readouterr().out
     assert "Dataset" in output
     assert "Type" in output
@@ -227,19 +227,19 @@ def test_describe_all_includes_header(capsys: pytest.CaptureFixture[str]) -> Non
 
 
 def test_describe_all_includes_cached_header(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_all() prints a Cached column header."""
+    """describe_datasets() prints a Cached column header."""
     import cobrabox as cb
 
-    cb.describe_all()
+    cb.describe_datasets()
     output = capsys.readouterr().out
     assert "Cached" in output
 
 
 def test_describe_all_returns_list_of_dicts(capsys: pytest.CaptureFixture[str]) -> None:
-    """describe_all() returns one dict per dataset with the expected keys."""
+    """describe_datasets() returns one dict per dataset with the expected keys."""
     import cobrabox as cb
 
-    rows = cb.describe_all()
+    rows = cb.describe_datasets()
     capsys.readouterr()  # discard printed output
 
     assert isinstance(rows, list)
@@ -257,7 +257,7 @@ def test_describe_all_local_datasets_have_null_cached(capsys: pytest.CaptureFixt
     """Local datasets have cached=None in the returned rows."""
     import cobrabox as cb
 
-    rows = cb.describe_all()
+    rows = cb.describe_datasets()
     capsys.readouterr()
 
     local_rows = [r for r in rows if r["type"] == "local"]
@@ -272,7 +272,7 @@ def test_describe_all_remote_datasets_have_string_cached(
     """Remote datasets have cached='yes' or 'no' in the returned rows."""
     import cobrabox as cb
 
-    rows = cb.describe_all()
+    rows = cb.describe_datasets()
     capsys.readouterr()
 
     remote_rows = [r for r in rows if r["type"] == "remote"]

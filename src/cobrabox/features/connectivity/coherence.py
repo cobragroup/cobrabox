@@ -30,7 +30,7 @@ class Coherence(BaseFeature[SignalData]):
             Must be >= 2 and <= n_time.
 
     Example:
-        >>> data = cb.dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("dummy_random")[0]
         >>> coh = cb.feature.Coherence().apply(data)
         >>> coh.data.dims
         ('space_to', 'space_from')

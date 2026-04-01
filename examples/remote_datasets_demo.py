@@ -9,7 +9,7 @@ from __future__ import annotations
 import cobrabox as cb
 
 # 1. Browse all available datasets
-cb.describe_all()
+cb.describe_datasets()
 print()
 
 # 2. List identifiers programmatically
@@ -25,23 +25,23 @@ print()
 
 # 4. Download without loading (useful for pre-fetching large datasets)
 # accept=True skips the confirmation prompt; omit it (default False) in interactive use.
-#   cb.download("chb_mit",         subset=["chb01", "chb02"], accept=True)
-#   cb.download("swiss_eeg_long",  subset={"ID01": 2},        accept=True)
-#   cb.download("sleep_ieeg",      subset=["sub-Detroit001"], accept=True)
+#   cb.download_dataset("chb_mit",         subset=["chb01", "chb02"], accept=True)
+#   cb.download_dataset("swiss_eeg_long",  subset={"ID01": 2},        accept=True)
+#   cb.download_dataset("sleep_ieeg",      subset=["sub-Detroit001"], accept=True)
 
 # 5. Load a subset directly (downloads if needed, then loads into memory)
 # List form — all files for the given subset keys:
-ds = cb.dataset("bonn_eeg", subset=["S", "Z"], accept=True)
+ds = cb.load_dataset("bonn_eeg", subset=["S", "Z"], accept=True)
 print(f"Loaded {len(ds)} recordings")
 print()
 
 # Dict form — file-level control for multi-file subjects:
-#   cb.dataset("swiss_eeg_long", subset={"ID01": 2})                    # first 2 files
-#   cb.dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})      # specific files
-#   cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})      # mix
+#   cb.load_dataset("swiss_eeg_long", subset={"ID01": 2})                    # first 2 files
+#   cb.load_dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})      # specific files
+#   cb.load_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})      # mix
 
 # 6. Redirect downloads to a custom location (persisted across sessions)
-#   cb.set_data_dir("/mnt/shared/cobrabox")
+#   cb.set_dataset_dir("/mnt/shared/cobrabox")
 
 # 7. Inspect the loaded Dataset
 ds.describe()

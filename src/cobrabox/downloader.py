@@ -59,7 +59,7 @@ def _format_bytes(n: int) -> str:
 def _in_jupyter() -> bool:
     """Return True if running inside a Jupyter notebook or IPython shell."""
     try:
-        from IPython import get_ipython  # type: ignore[import-untyped]
+        from IPython import get_ipython
 
         return get_ipython() is not None
     except ImportError:
@@ -97,7 +97,7 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
             print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
 
     if _in_jupyter():
-        print("  Tip: pass accept=True to cb.dataset() / cb.download() to skip this prompt.")
+        print("  Tip: pass accept=True to skip this prompt.")
     answer = input("\nProceed with download? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
 
@@ -114,7 +114,7 @@ class RemoteFile:
 RemoteLoader = Callable[[Path, "Sequence[str] | None"], Dataset[SignalData]]
 
 # Type for the subset parameter accepted by :func:`ensure_remote_files` and
-# :func:`~cobrabox.datasets.dataset`:
+# :func:`~cobrabox.datasets.load_dataset`:
 #
 #   list[str]
 #       All files for those subset keys (existing behaviour).
@@ -188,7 +188,8 @@ def _default_data_dir() -> Path:
 
     Resolution order:
     1. ``COBRABOX_DATA_DIR`` environment variable (if set).
-    2. In-process ``_data_dir`` set via :func:`set_data_dir` (checked in :func:`get_data_dir`).
+    2. In-process ``_data_dir`` set via :func:`set_dataset_dir`
+       (checked in :func:`get_dataset_dir`).
     3. ``~/.cobrabox/config.json`` → ``{"data_dir": "/some/path"}``
     4. OS-specific user cache directory:
        - Linux  : ``~/.cache/cobrabox``
@@ -215,10 +216,10 @@ def _default_data_dir() -> Path:
 _data_dir: Path | None = None
 
 
-def get_data_dir() -> Path:
+def get_dataset_dir() -> Path:
     """Return the directory where downloaded datasets are stored.
 
-    Returns the value set by :func:`set_data_dir`, or the default platform
+    Returns the value set by :func:`set_dataset_dir`, or the default platform
     cache directory if none has been set.  The directory is not created here;
     it is created on first download.
 
@@ -228,7 +229,7 @@ def get_data_dir() -> Path:
     return _data_dir if _data_dir is not None else _default_data_dir()
 
 
-def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
+def set_dataset_dir(path: str | Path, *, persist: bool = True) -> None:
     """Override the directory where downloaded datasets are stored.
 
     Call this before :func:`~cobrabox.dataset` to redirect all downloads to a
@@ -242,8 +243,8 @@ def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
 
     Example::
 
-        cb.set_data_dir("/mnt/data/cobrabox")
-        ds = cb.dataset("bonn_eeg", subset=["S"], accept=True)
+        cb.set_dataset_dir("/mnt/data/cobrabox")
+        ds = cb.load_dataset("bonn_eeg", subset=["S"], accept=True)
     """
     global _data_dir
     _data_dir = Path(path)
@@ -260,7 +261,7 @@ def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
 
 def _is_dataset_cached(spec: RemoteDatasetSpec) -> bool:
     """Return True if the dataset has any locally cached data files."""
-    dataset_dir = get_data_dir() / spec.local_rel_dir
+    dataset_dir = get_dataset_dir() / spec.local_rel_dir
     if not dataset_dir.is_dir():
         return False
     return any(
@@ -286,13 +287,13 @@ def delete_remote_files(
         confirm: If ``True`` (default), print a summary and prompt the user
             before deleting.  Set to ``False`` to skip the prompt.
         data_dir: Override the data directory for this call.  Defaults to
-            :func:`get_data_dir`.
+            :func:`get_dataset_dir`.
 
     Raises:
         RuntimeError: If ``confirm=True`` and the user declines the deletion.
     """
     if data_dir is None:
-        data_dir = get_data_dir()
+        data_dir = get_dataset_dir()
 
     dataset_dir = data_dir / spec.local_rel_dir
 
@@ -327,10 +328,10 @@ def delete_remote_files(
     else:
         # Resolve file list for subset filtering if not already cached.
         if spec.files is None:
-            if spec.file_index_url is not None:
+            if spec.file_index_url is not None:  # type: ignore[unresolved-attribute]
                 files: Sequence[RemoteFile] = _resolve_files_from_index(spec)
-            elif spec.file_index_fn is not None:
-                resolved = list(spec.file_index_fn())
+            elif spec.file_index_fn is not None:  # type: ignore[unresolved-attribute]
+                resolved = list(spec.file_index_fn())  # type: ignore[unresolved-attribute]
                 spec.files = resolved
                 files = resolved
             else:
@@ -385,20 +386,20 @@ def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
     ``spec.subset_key_fn`` is set, it is called with each filename to populate
     ``RemoteFile.subset_key``.
     """
-    assert spec.file_index_url is not None  # guarded by __post_init__
+    assert spec.file_index_url is not None  # type: ignore[unresolved-attribute]  # guarded by __post_init__
 
     try:
-        with urllib.request.urlopen(spec.file_index_url, timeout=30) as response:
+        with urllib.request.urlopen(spec.file_index_url, timeout=30) as response:  # type: ignore[unresolved-attribute]
             raw = response.read()
     except urllib.error.HTTPError as e:
         raise RuntimeError(
             f"Failed to download file index for remote dataset '{spec.identifier}' "
-            f"from {spec.file_index_url!r}: HTTP {e.code}"
+            f"from {spec.file_index_url!r}: HTTP {e.code}"  # type: ignore[unresolved-attribute]
         ) from e
     except (TimeoutError, urllib.error.URLError) as e:
         raise RuntimeError(
             f"Network error while downloading file index for remote dataset "
-            f"'{spec.identifier}' from {spec.file_index_url!r}: {e!r}"
+            f"'{spec.identifier}' from {spec.file_index_url!r}: {e!r}"  # type: ignore[unresolved-attribute]
         ) from e
 
     urls = [line.strip() for line in raw.decode("utf-8").splitlines() if line.strip()]
@@ -483,7 +484,7 @@ def ensure_remote_files(
             :data:`SubsetSpec`.  Files without a ``subset_key`` are always
             included.
         data_dir: Override the data directory for this call.  Defaults to
-            :func:`get_data_dir`.
+            :func:`get_dataset_dir`.
         accept: If ``False`` (default) and there are files to download, show
             the dataset license, estimated download size, and ask the user to
             confirm before proceeding.  Set to ``True`` to skip the prompt
@@ -498,7 +499,7 @@ def ensure_remote_files(
         RuntimeError: If ``accept=False`` and the user declines the download.
     """
     if data_dir is None:
-        data_dir = get_data_dir()
+        data_dir = get_dataset_dir()
 
     dataset_dir = data_dir / spec.local_rel_dir
     dataset_dir.mkdir(parents=True, exist_ok=True)

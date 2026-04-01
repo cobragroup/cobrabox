@@ -239,7 +239,7 @@ def _load_swiss_eeg_long(
             - *File stems* (e.g. ``["ID01_1h", "ID01_3h"]``, contain ``"_"``):
               load only the exact files named by those stems.  This is the
               form produced internally when a dict-form subset is used with
-              :func:`~cobrabox.datasets.dataset`.
+              :func:`~cobrabox.datasets.load_dataset`.
     """
     mat_paths = sorted(p for p in dataset_dir.glob("*.mat") if not p.stem.endswith("_info"))
     if subset is not None:

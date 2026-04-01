@@ -98,7 +98,7 @@ class DiscreteWaveletTransform(BaseFeature[SignalData]):
             the signal length.
 
     Example:
-        >>> data = cb.dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("dummy_random")[0]
         >>> dwt = cb.feature.DiscreteWaveletTransform(wavelet="db4", level=4).apply(data)
         >>> dwt.data.dims
         ('space', 'wavelet_level', 'coef_index')
@@ -227,7 +227,7 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
             options.
 
     Example:
-        >>> data = cb.dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("dummy_random")[0]
         >>> cwt = cb.feature.ContinuousWaveletTransform(n_scales=32).apply(data)
         >>> cwt.data.dims
         ('space', 'scale', 'time')

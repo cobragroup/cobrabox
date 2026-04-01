@@ -153,7 +153,7 @@ def test_ensure_remote_files_accept_false_cancels_on_no(tmp_path: Path) -> None:
 
     with (
         patch("cobrabox.downloader._prompt_download_verify", return_value=False),
-        patch("cobrabox.downloader.get_data_dir", return_value=tmp_path),
+        patch("cobrabox.downloader.get_dataset_dir", return_value=tmp_path),
     ):
         with pytest.raises(RuntimeError, match="cancelled by user"):
             ensure_remote_files(spec, accept=False)
@@ -184,7 +184,7 @@ def test_ensure_remote_files_accept_false_proceeds_on_yes(tmp_path: Path) -> Non
 
     with (
         patch("cobrabox.downloader._prompt_download_verify", return_value=True),
-        patch("cobrabox.downloader.get_data_dir", return_value=tmp_path),
+        patch("cobrabox.downloader.get_dataset_dir", return_value=tmp_path),
         patch("urllib.request.urlopen", side_effect=_fake_download),
     ):
         result = ensure_remote_files(spec, accept=False)
@@ -212,7 +212,7 @@ def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
 
     with (
         patch("cobrabox.downloader._prompt_download_verify") as mock_prompt,
-        patch("cobrabox.downloader.get_data_dir", return_value=tmp_path),
+        patch("cobrabox.downloader.get_dataset_dir", return_value=tmp_path),
     ):
         ensure_remote_files(spec, accept=False)
         mock_prompt.assert_not_called()
@@ -255,15 +255,15 @@ def test_subset_keys_returns_list_from_known_subset_keys() -> None:
 
 
 # ---------------------------------------------------------------------------
-# get_data_dir
+# get_dataset_dir
 # ---------------------------------------------------------------------------
 
 
-def test_get_data_dir_returns_path() -> None:
-    """get_data_dir returns a Path object."""
-    from cobrabox.downloader import get_data_dir
+def test_get_dataset_dir_returns_path() -> None:
+    """get_dataset_dir returns a Path object."""
+    from cobrabox.downloader import get_dataset_dir
 
-    d = get_data_dir()
+    d = get_dataset_dir()
     assert isinstance(d, Path)
 
 
