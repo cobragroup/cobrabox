@@ -2419,3 +2419,123 @@ def test_dataset_info_str_shows_seizures_per_subject() -> None:
     info = dataset_info("bonn_eeg")
     text = str(info)
     assert "seizures/subject" in text
+
+
+# ---------------------------------------------------------------------------
+# _load_zurich_ieeg — BrainVision loader
+# ---------------------------------------------------------------------------
+
+
+def _patch_mne_read_raw_brainvision(monkeypatch: pytest.MonkeyPatch, mock_raw: _MockRaw) -> None:
+    """Monkeypatch mne.io.read_raw_brainvision to return mock_raw for any path."""
+    import mne
+
+    monkeypatch.setattr(mne.io, "read_raw_brainvision", lambda path, **kwargs: mock_raw)
+
+
+def test_load_zurich_ieeg_reads_vhdr_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_zurich_ieeg loads .vhdr files and returns one SignalData per run."""
+    from cobrabox.data import SignalData
+    from cobrabox.dataset_loader import _load_zurich_ieeg
+
+    dataset_dir = tmp_path / "zurich_ieeg"
+    dataset_dir.mkdir()
+    for name in (
+        "sub-01_ses-interictalsleep_run-01_ieeg.vhdr",
+        "sub-01_ses-interictalsleep_run-02_ieeg.vhdr",
+    ):
+        (dataset_dir / name).write_bytes(b"fake")
+
+    mock_raw = _MockRaw(n_channels=50, n_samples=600000, sfreq=2000.0)
+    _patch_mne_read_raw_brainvision(monkeypatch, mock_raw)
+
+    out = _load_zurich_ieeg(dataset_dir)
+
+    assert len(out) == 2
+    assert all(isinstance(item, SignalData) for item in out)
+    assert out[0].subjectID == "sub-01"
+    assert out[0].sampling_rate == pytest.approx(2000.0)
+    assert out[0].data.sizes["time"] == 600000
+    assert out[0].data.sizes["space"] == 50
+
+
+def test_load_zurich_ieeg_subject_id_is_bids_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_zurich_ieeg extracts the sub-XX prefix as the subject ID."""
+    from cobrabox.dataset_loader import _load_zurich_ieeg
+
+    dataset_dir = tmp_path / "zurich_ieeg"
+    dataset_dir.mkdir()
+    (dataset_dir / "sub-10_ses-interictalsleep_run-03_ieeg.vhdr").write_bytes(b"fake")
+
+    _patch_mne_read_raw_brainvision(monkeypatch, _MockRaw())
+
+    out = _load_zurich_ieeg(dataset_dir)
+
+    assert out[0].subjectID == "sub-10"
+
+
+def test_load_zurich_ieeg_subset_filters_by_subject(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_zurich_ieeg only loads files whose subject ID is in the subset list."""
+    from cobrabox.dataset_loader import _load_zurich_ieeg
+
+    dataset_dir = tmp_path / "zurich_ieeg"
+    dataset_dir.mkdir()
+    for name in (
+        "sub-01_ses-interictalsleep_run-01_ieeg.vhdr",
+        "sub-02_ses-interictalsleep_run-01_ieeg.vhdr",
+        "sub-03_ses-interictalsleep_run-01_ieeg.vhdr",
+    ):
+        (dataset_dir / name).write_bytes(b"fake")
+
+    _patch_mne_read_raw_brainvision(monkeypatch, _MockRaw())
+
+    out = _load_zurich_ieeg(dataset_dir, subset=["sub-01", "sub-03"])
+
+    assert {item.subjectID for item in out} == {"sub-01", "sub-03"}
+    assert len(out) == 2
+
+
+def test_load_zurich_ieeg_raises_when_no_vhdr_files(tmp_path: Path) -> None:
+    """_load_zurich_ieeg raises FileNotFoundError when no .vhdr files exist."""
+    from cobrabox.dataset_loader import _load_zurich_ieeg
+
+    dataset_dir = tmp_path / "zurich_ieeg"
+    dataset_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"No \.vhdr files found"):
+        _load_zurich_ieeg(dataset_dir)
+
+
+def test_load_zurich_ieeg_skips_zero_sample_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_load_zurich_ieeg silently skips runs with 0 samples."""
+    from cobrabox.dataset_loader import _load_zurich_ieeg
+
+    dataset_dir = tmp_path / "zurich_ieeg"
+    dataset_dir.mkdir()
+    for name in (
+        "sub-01_ses-interictalsleep_run-01_ieeg.vhdr",
+        "sub-01_ses-interictalsleep_run-02_ieeg.vhdr",
+    ):
+        (dataset_dir / name).write_bytes(b"fake")
+
+    empty_raw = _MockRaw(n_channels=50, n_samples=0, sfreq=2000.0)
+    good_raw = _MockRaw(n_channels=50, n_samples=600000, sfreq=2000.0)
+    call_count = 0
+
+    import mne
+
+    def _alternating(path: str, **kwargs: object) -> _MockRaw:
+        nonlocal call_count
+        call_count += 1
+        return empty_raw if call_count == 1 else good_raw
+
+    monkeypatch.setattr(mne.io, "read_raw_brainvision", _alternating)
+
+    result = _load_zurich_ieeg(dataset_dir)
+    assert len(result) == 1

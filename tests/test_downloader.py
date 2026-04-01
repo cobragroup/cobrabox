@@ -134,7 +134,7 @@ def test_ensure_remote_files_accept_true_skips_prompt(tmp_path: Path) -> None:
     ):
         # Pre-create the file so nothing needs downloading
         (tmp_path / "a.zip").write_bytes(b"PK\x05\x06" + b"\x00" * 18)
-        ensure_remote_files(spec, repo_root=tmp_path.parent, accept=True)
+        ensure_remote_files(spec, data_dir=tmp_path.parent, accept=True)
         mock_prompt.assert_not_called()
 
 
@@ -153,7 +153,7 @@ def test_ensure_remote_files_accept_false_cancels_on_no(tmp_path: Path) -> None:
 
     with (
         patch("cobrabox.downloader._prompt_download_verify", return_value=False),
-        patch("cobrabox.downloader._default_repo_root", return_value=tmp_path),
+        patch("cobrabox.downloader.get_data_dir", return_value=tmp_path),
     ):
         with pytest.raises(RuntimeError, match="cancelled by user"):
             ensure_remote_files(spec, accept=False)
@@ -184,7 +184,7 @@ def test_ensure_remote_files_accept_false_proceeds_on_yes(tmp_path: Path) -> Non
 
     with (
         patch("cobrabox.downloader._prompt_download_verify", return_value=True),
-        patch("cobrabox.downloader._default_repo_root", return_value=tmp_path),
+        patch("cobrabox.downloader.get_data_dir", return_value=tmp_path),
         patch("urllib.request.urlopen", side_effect=_fake_download),
     ):
         result = ensure_remote_files(spec, accept=False)
@@ -212,7 +212,7 @@ def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
 
     with (
         patch("cobrabox.downloader._prompt_download_verify") as mock_prompt,
-        patch("cobrabox.downloader._default_repo_root", return_value=tmp_path),
+        patch("cobrabox.downloader.get_data_dir", return_value=tmp_path),
     ):
         ensure_remote_files(spec, accept=False)
         mock_prompt.assert_not_called()
@@ -255,16 +255,16 @@ def test_subset_keys_returns_list_from_known_subset_keys() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _default_repo_root
+# get_data_dir
 # ---------------------------------------------------------------------------
 
 
-def test_default_repo_root_returns_existing_path() -> None:
-    """_default_repo_root resolves to an existing directory."""
-    from cobrabox.downloader import _default_repo_root
+def test_get_data_dir_returns_path() -> None:
+    """get_data_dir returns a Path object."""
+    from cobrabox.downloader import get_data_dir
 
-    root = _default_repo_root()
-    assert root.is_dir()
+    d = get_data_dir()
+    assert isinstance(d, Path)
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +308,7 @@ def test_ensure_remote_files_uses_file_index_fn(
     )
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    dataset_dir = ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+    dataset_dir = ensure_remote_files(spec, data_dir=tmp_path, accept=True)
     assert (dataset_dir / "a.bin").read_bytes() == b"DATA"
     # file_index_fn result should be cached on the spec
     assert spec.files is not None
@@ -366,7 +366,7 @@ def test_ensure_remote_files_redownloads_corrupt_zip(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
     monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
 
-    ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+    ensure_remote_files(spec, data_dir=tmp_path, accept=True)
     assert downloaded == ["http://example.com/a.zip"]
 
 
@@ -395,7 +395,7 @@ def test_ensure_remote_files_raises_on_timeout(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _timeout)
 
     with pytest.raises(RuntimeError, match="timed out"):
-        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
 
 def test_ensure_remote_files_raises_on_enospc(
@@ -433,7 +433,7 @@ def test_ensure_remote_files_raises_on_enospc(
     monkeypatch.setattr(downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse())
 
     with pytest.raises(RuntimeError, match="No space left"):
-        ensure_remote_files(spec, repo_root=tmp_path, accept=True)
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
 
 
 # ---------------------------------------------------------------------------
@@ -548,3 +548,79 @@ def test_sleep_ieeg_file_index_raises_when_no_subjects(monkeypatch: pytest.Monke
     )
     with pytest.raises(RuntimeError, match="no valid subjects"):
         _sleep_ieeg_file_index()
+
+
+# ---------------------------------------------------------------------------
+# _zurich_ieeg_file_index — error paths and happy path
+# ---------------------------------------------------------------------------
+
+
+def test_zurich_ieeg_file_index_builds_three_files_per_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_zurich_ieeg_file_index returns .vhdr, .eeg, .vmrk for each run."""
+    import io
+
+    import cobrabox.downloader as downloader
+    from cobrabox.downloader import _zurich_ieeg_file_index
+
+    participants_tsv = b"participant_id\tage\nsub-01\t30\nsub-02\t25\n"
+    scans_tsv = (
+        b"filename\tacq_time\n"
+        b"ieeg/sub-XX_ses-interictalsleep_run-01_ieeg.vhdr\t2013-01-01T00:00:00Z\n"
+        b"ieeg/sub-XX_ses-interictalsleep_run-02_ieeg.vhdr\t2013-01-01T00:00:00Z\n"
+    )
+
+    class _FakeResp(io.BytesIO):
+        def __enter__(self) -> _FakeResp:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            self.close()
+
+    responses = iter([participants_tsv, scans_tsv, scans_tsv])
+    monkeypatch.setattr(
+        downloader.urllib.request, "urlopen", lambda url, **kw: _FakeResp(next(responses))
+    )
+
+    files = _zurich_ieeg_file_index()
+
+    # 2 subjects x 2 runs x 3 extensions = 12 files
+    assert len(files) == 12
+    exts = {f.filename.rsplit(".", 1)[-1] for f in files}
+    assert exts == {"vhdr", "eeg", "vmrk"}
+    subjects = {f.subset_key for f in files}
+    assert subjects == {"sub-01", "sub-02"}
+
+
+def test_zurich_ieeg_file_index_raises_on_url_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_zurich_ieeg_file_index raises RuntimeError on network error."""
+    import cobrabox.downloader as downloader
+    from cobrabox.downloader import _zurich_ieeg_file_index
+
+    monkeypatch.setattr(
+        downloader.urllib.request,
+        "urlopen",
+        lambda url, **kw: (_ for _ in ()).throw(downloader.urllib.error.URLError("timeout")),
+    )
+    with pytest.raises(RuntimeError, match="Network error"):
+        _zurich_ieeg_file_index()
+
+
+def test_zurich_ieeg_file_index_raises_when_no_subjects(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_zurich_ieeg_file_index raises RuntimeError when participants.tsv has no subjects."""
+    import io
+
+    import cobrabox.downloader as downloader
+    from cobrabox.downloader import _zurich_ieeg_file_index
+
+    class _FakeResp(io.BytesIO):
+        def __enter__(self) -> _FakeResp:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            self.close()
+
+    monkeypatch.setattr(
+        downloader.urllib.request, "urlopen", lambda url, **kw: _FakeResp(b"participant_id\tage\n")
+    )
+    with pytest.raises(RuntimeError, match="no valid subjects"):
+        _zurich_ieeg_file_index()
