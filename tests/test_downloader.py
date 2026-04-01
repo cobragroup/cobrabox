@@ -387,3 +387,52 @@ def test_ensure_remote_files_raises_on_enospc(
 
     with pytest.raises(RuntimeError, match="No space left"):
         ensure_remote_files(spec, data_dir=tmp_path, accept=True)
+
+
+# ---------------------------------------------------------------------------
+# KeyboardInterrupt cancellation
+# ---------------------------------------------------------------------------
+
+
+def test_keyboard_interrupt_during_download_raises_and_leaves_part_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """KeyboardInterrupt during download re-raises and leaves .part file for resumption."""
+    import io
+
+    import cobrabox.downloader as downloader
+
+    files = [RemoteFile(url="http://example.com/big.bin", filename="big.bin")]
+    spec = _make_spec(tmp_path, files)
+
+    chunk_count = 0
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return None
+
+    class _FakeResponse(io.RawIOBase):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _FakeResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            pass
+
+        def read(self, n: int = -1) -> bytes:
+            nonlocal chunk_count
+            chunk_count += 1
+            if chunk_count == 2:
+                raise KeyboardInterrupt
+            return b"x" * 65536
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse())
+    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+
+    with pytest.raises(KeyboardInterrupt):
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
+
+    # .part file should exist (resumable), final file should not
+    assert (tmp_path / "big.bin.part").exists()
+    assert not (tmp_path / "big.bin").exists()

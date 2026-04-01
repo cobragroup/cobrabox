@@ -517,6 +517,7 @@ def ensure_remote_files(
 
     manifest_path = dataset_dir / "_manifest.json"
     manifest_lock = threading.Lock()
+    _cancel = threading.Event()
 
     def _load_manifest() -> dict[str, int]:
         try:
@@ -563,6 +564,8 @@ def ensure_remote_files(
                     ) as bar,
                 ):
                     for chunk in iter(lambda: response.read(65536), b""):
+                        if _cancel.is_set():
+                            return
                         f.write(chunk)
                         bar.update(len(chunk))
         except urllib.error.HTTPError as e:
@@ -648,13 +651,21 @@ def ensure_remote_files(
             )
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [
-            executor.submit(_download_one, remote_file, position)
-            for position, remote_file in enumerate(to_download)
-        ]
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    futures = [
+        executor.submit(_download_one, remote_file, position)
+        for position, remote_file in enumerate(to_download)
+    ]
+    try:
         for fut in futures:
             fut.result()
+    except KeyboardInterrupt:
+        _cancel.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+        print("\nDownload interrupted — partial files will be resumed on next run.")
+        raise
+    else:
+        executor.shutdown(wait=False)
 
     return dataset_dir
 
