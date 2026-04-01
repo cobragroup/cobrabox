@@ -709,7 +709,7 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
             "Short-term scalp EEG recordings from the BioCAS 2018 challenge "
             f"({len(_SWISS_EEG_SHORT_IDS)} subjects, ictal/interictal)."
         ),
-        subset_key_name="subjects",
+        subset_key_name="subsets (subjects)",
         known_subset_keys=tuple(_SWISS_EEG_SHORT_IDS),
         size_hint="~11 GB",
         subset_size_hint="~100 MB - 1 GB per subject",
@@ -743,7 +743,7 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
             "Long-term intracranial EEG recordings from the SWEZ dataset "
             "(ETH Zurich, 18 subjects, ictal/interictal)."
         ),
-        subset_key_name="subjects",
+        subset_key_name="subsets (subjects)",
         subset_key_fn=_swez_long_subject_key,
         known_subset_keys=_SWEZ_LONG_SUBJECTS,
         size_hint=">1 TB (hundreds of hourly files per subject)",
@@ -787,9 +787,9 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
             "S = ictal (seizure). "
             "Hosted by Universitat Pompeu Fabra (DOI: 10.34810/data490)."
         ),
-        subset_key_name="sets",
+        subset_key_name="subsets",
         size_hint="~10 MB",
-        subset_size_hint="~2 MB per set",
+        subset_size_hint="~2 MB per subset",
         # Set S contains 100 single-channel ictal recordings; Z/O/N/F are seizure-free.
         # Source: Andrzejak et al. 2001 (DOI: 10.34810/data490).
         seizures_per_subject={"Z": 0, "O": 0, "N": 0, "F": 0, "S": 100},
@@ -816,7 +816,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
             "(24 subjects, 256 Hz, 23 channels, ictal/interictal). "
             "Children's Hospital Boston / MIT."
         ),
-        subset_key_name="subjects",
+        subset_key_name="subsets (subjects)",
         known_subset_keys=_CHB_MIT_SUBJECTS,
         size_hint="~30 GB",
         subset_size_hint="~1.5 GB per subject",
@@ -885,7 +885,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
             "(14 subjects, 512 Hz, 21+ channels, ictal/interictal). "
             "University of Siena."
         ),
-        subset_key_name="subjects",
+        subset_key_name="subsets (subjects)",
         known_subset_keys=_SIENA_SUBJECTS,
         size_hint="~15 GB",
         subset_size_hint="~1 GB per subject",
@@ -942,7 +942,7 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
             "patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. "
             "DOI: 10.18112/openneuro.ds005398.v1.0.1."
         ),
-        subset_key_name="subjects",
+        subset_key_name="subsets (subjects)",
         subset_key_fn=_sleep_ieeg_subject_key,
         known_subset_keys=_OPEN_IEEG_SUBJECTS,
         size_hint="~13 GB",
@@ -979,7 +979,7 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
             "patients (TLE and extra-temporal), with HFO event markings. "
             "2000 Hz, BrainVision format. DOI: 10.18112/openneuro.ds003498.v1.1.1."
         ),
-        subset_key_name="subjects",
+        subset_key_name="subsets (subjects)",
         subset_key_fn=_zurich_ieeg_subject_key,
         known_subset_keys=_ZURICH_IEEG_SUBJECTS,
         size_hint="~60 GB",

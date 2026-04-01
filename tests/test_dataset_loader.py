@@ -849,7 +849,7 @@ def test_dataset_info_returns_remote_dataset_info() -> None:
     info = dataset_info("swiss_eeg_short")
     assert info.identifier == "swiss_eeg_short"
     assert info.description
-    assert info.subset_key_name == "subjects"
+    assert info.subset_key_name == "subsets (subjects)"
     assert info.subsets is not None
     assert "ID1" in info.subsets
     assert "ID16" in info.subsets
@@ -1545,7 +1545,7 @@ def test_bonn_eeg_spec_has_five_sets() -> None:
     assert spec.files is not None
     assert len(spec.files) == 5
     assert {f.subset_key for f in spec.files} == {"Z", "O", "N", "F", "S"}
-    assert spec.subset_key_name == "sets"
+    assert spec.subset_key_name == "subsets"
 
 
 def test_dataset_info_bonn_eeg_lists_sets() -> None:
@@ -1850,7 +1850,7 @@ def test_sleep_ieeg_spec_is_registered() -> None:
     spec = get_remote_dataset_spec("sleep_ieeg")
     assert spec is not None
     assert spec.identifier == "sleep_ieeg"
-    assert spec.subset_key_name == "subjects"
+    assert spec.subset_key_name == "subsets (subjects)"
     assert spec.files is not None
     assert spec.size_hint == "~13 GB"
 
@@ -1863,7 +1863,7 @@ def test_chb_mit_spec_is_registered() -> None:
     spec = get_remote_dataset_spec("chb_mit")
     assert spec is not None
     assert spec.identifier == "chb_mit"
-    assert spec.subset_key_name == "subjects"
+    assert spec.subset_key_name == "subsets (subjects)"
     assert spec.files is not None
 
 
@@ -1872,7 +1872,7 @@ def test_siena_eeg_spec_is_registered() -> None:
     spec = get_remote_dataset_spec("siena_eeg")
     assert spec is not None
     assert spec.identifier == "siena_eeg"
-    assert spec.subset_key_name == "subjects"
+    assert spec.subset_key_name == "subsets (subjects)"
     assert spec.files is not None
 
 
