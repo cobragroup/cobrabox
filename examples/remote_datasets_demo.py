@@ -2,52 +2,48 @@
 
 Uses the Bonn EEG dataset as a concrete example (~2 MB per set, fast to download).
 Everything here applies to any other remote dataset — just swap the identifier.
-
-Remote datasets
----------------
-    bonn_eeg            ~10 MB total, ~2 MB per set (5 sets of 100 recordings)
-    swiss_eeg_short     ~11 GB total, ~100 MB - 1 GB per subject (18 subjects)
-    swiss_eeg_long      >1 TB total, ~100-200 GB per subject (18 subjects)
-    chb_mit             ~30 GB total, ~1.5 GB per subject (24 subjects)
-    siena_eeg           ~15 GB total, ~1 GB per subject (14 subjects)
-    sleep_ieeg           ~13 GB total, ~70 MB per subject (185 subjects)
-
-Local (synthetic) datasets — no download needed
-    dummy_chain     dummy_random     dummy_star     dummy_noise     realistic_swiss
 """
 
 from __future__ import annotations
 
 import cobrabox as cb
 
-# 1. List all datasets
+# 1. Browse all available datasets
+cb.describe_all()
+print()
+
+# 2. List identifiers programmatically
 datasets = cb.list_datasets()
 print("Local :", datasets["local"])
 print("Remote:", datasets["remote"])
 print()
 
-# 2. Inspect before downloading — prints a human-readable summary including
-#    subset keys, size hints, and seizure counts.
-info = cb.dataset_info("swiss_eeg_long")
+# 3. Inspect a dataset before downloading — shows subset keys, size, seizures, license.
+info = cb.dataset_info("bonn_eeg")
 print(info)
 print()
 
-# 3. Load a subset (list form)
-# accept=True skips the confirmation prompt; omit it (default True) in interactive use.
-# Other examples:
-#   cb.dataset("chb_mit",         subset=["chb01", "chb02"])
-#   cb.dataset("swiss_eeg_short", subset=["ID7", "ID8"])
-#   cb.dataset("sleep_ieeg",       subset=["sub-Detroit001"])
-ds = cb.dataset("swiss_eeg_long", subset=["ID01"])
+# 4. Download without loading (useful for pre-fetching large datasets)
+# accept=True skips the confirmation prompt; omit it (default False) in interactive use.
+#   cb.download("chb_mit",         subset=["chb01", "chb02"], accept=True)
+#   cb.download("swiss_eeg_long",  subset={"ID01": 2},        accept=True)
+#   cb.download("sleep_ieeg",      subset=["sub-Detroit001"], accept=True)
+
+# 5. Load a subset directly (downloads if needed, then loads into memory)
+# List form — all files for the given subset keys:
+ds = cb.dataset("bonn_eeg", subset=["S", "Z"], accept=True)
 print(f"Loaded {len(ds)} recordings")
 print()
 
-# 4. Load a subset (dict form) — file-level control for multi-file subjects
-#   cb.dataset("swiss_eeg_long", subset={"ID01": 2})                          # first 2 files
-#   cb.dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})            # specific files
-#   cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})            # mix
+# Dict form — file-level control for multi-file subjects:
+#   cb.dataset("swiss_eeg_long", subset={"ID01": 2})                    # first 2 files
+#   cb.dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]})      # specific files
+#   cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})      # mix
 
-# 5. Inspect the loaded Dataset
+# 6. Redirect downloads to a custom location (persisted across sessions)
+#   cb.set_data_dir("/mnt/shared/cobrabox")
+
+# 7. Inspect the loaded Dataset
 ds.describe()
 print()
 
@@ -57,9 +53,8 @@ print(f"Sampling rate : {rec.sampling_rate} Hz")
 print(f"subjectID     : {rec.subjectID}  groupID: {rec.groupID}  condition: {rec.condition}")
 print()
 
-# 6. Filter and group
+# 8. Filter and group
 ictal = ds.filter(groupID="ictal")
 by_condition = ds.groupby("condition")
 print(f"Ictal recordings: {len(ictal)}")
 print("Recordings per condition:", {k: len(v) for k, v in by_condition.items()})
-print()
