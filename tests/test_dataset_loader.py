@@ -314,10 +314,9 @@ def test_ensure_remote_files_downloads_missing_files(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(req: object, *args: object, **kwargs: object) -> _FakeResponse:
-        url = req.full_url if hasattr(req, "full_url") else req
+    def _fake_urlopen(url: object, *args: object, **kwargs: object) -> _FakeResponse:
         try:
-            return _FakeResponse(payloads[url])
+            return _FakeResponse(payloads[getattr(url, "full_url", url)])
         except KeyError as exc:
             raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
 
@@ -503,10 +502,9 @@ def test_ensure_remote_files_uses_index_when_no_files(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(req: object, *args: object, **kwargs: object) -> _FakeResponse:
-        url = req.full_url if hasattr(req, "full_url") else req
+    def _fake_urlopen(url: object, *args: object, **kwargs: object) -> _FakeResponse:
         try:
-            return _FakeResponse(payloads[url])
+            return _FakeResponse(payloads[getattr(url, "full_url", url)])
         except KeyError as exc:
             raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
 
@@ -607,11 +605,10 @@ def test_ensure_remote_files_subset_filters_downloads(
         def __exit__(self, *exc_info: object) -> None:  # type: ignore[override]
             self.close()
 
-    def _fake_urlopen(req: object, *args: object, **kwargs: object) -> _FakeResponse:
-        url = req.full_url if hasattr(req, "full_url") else req
-        downloaded.append(url)
+    def _fake_urlopen(url: object, *args: object, **kwargs: object) -> _FakeResponse:
+        downloaded.append(getattr(url, "full_url", url))
         try:
-            return _FakeResponse(payloads[url])
+            return _FakeResponse(payloads[getattr(url, "full_url", url)])
         except KeyError as exc:
             raise AssertionError(f"Unexpected URL requested: {url!r}") from exc
 
@@ -741,9 +738,8 @@ def test_ensure_remote_files_dict_subset_int_downloads_first_n(
         def __exit__(self, *args: object) -> None:
             self.close()
 
-    def _fake_urlopen(req: object, *a: object, **kw: object) -> _FakeResponse:
-        url = req.full_url if hasattr(req, "full_url") else req
-        downloaded.append(url)
+    def _fake_urlopen(url: object, *a: object, **kw: object) -> _FakeResponse:
+        downloaded.append(getattr(url, "full_url", url))
         return _FakeResponse(b"DATA")
 
     import cobrabox.downloader as downloader
@@ -788,9 +784,8 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
         def __exit__(self, *args: object) -> None:
             self.close()
 
-    def _fake_urlopen(req: object, *a: object, **kw: object) -> _FakeResponse:
-        url = req.full_url if hasattr(req, "full_url") else req
-        downloaded.append(url)
+    def _fake_urlopen(url: object, *a: object, **kw: object) -> _FakeResponse:
+        downloaded.append(getattr(url, "full_url", url))
         return _FakeResponse(b"DATA")
 
     import cobrabox.downloader as downloader
@@ -2062,8 +2057,7 @@ def test_sleep_ieeg_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "sleep_ieeg"
     assert spec.subset_key_name == "subjects"
-    assert spec.files is not None
-    assert len(spec.files) == 185
+    assert spec.file_index_fn is not None
     assert spec.size_hint == "~13 GB"
 
 
@@ -2076,8 +2070,7 @@ def test_chb_mit_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "chb_mit"
     assert spec.subset_key_name == "subjects"
-    assert spec.files is not None
-    assert len(spec.files) == 686
+    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
 
 
 def test_siena_eeg_spec_is_registered() -> None:
@@ -2086,8 +2079,7 @@ def test_siena_eeg_spec_is_registered() -> None:
     assert spec is not None
     assert spec.identifier == "siena_eeg"
     assert spec.subset_key_name == "subjects"
-    assert spec.files is not None
-    assert len(spec.files) == 41
+    assert spec.file_index_fn is not None  # dynamic file list from PhysioNet
 
 
 def test_remote_dataset_spec_file_index_fn_validates() -> None:

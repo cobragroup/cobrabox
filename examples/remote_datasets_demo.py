@@ -10,8 +10,7 @@ Remote datasets
     swiss_eeg_long      >1 TB total, ~100-200 GB per subject (18 subjects)
     chb_mit             ~30 GB total, ~1.5 GB per subject (24 subjects)
     siena_eeg           ~15 GB total, ~1 GB per subject (14 subjects)
-    sleep_ieeg          ~13 GB total, ~70 MB per subject (185 subjects)
-    zurich_ieeg         ~60 GB total, ~3 GB per subject (20 subjects)
+    sleep_ieeg           ~13 GB total, ~70 MB per subject (185 subjects)
 
 Local (synthetic) datasets — no download needed
     dummy_chain     dummy_random     dummy_star     dummy_noise     realistic_swiss
@@ -29,7 +28,7 @@ print()
 
 # 2. Inspect before downloading — prints a human-readable summary including
 #    subset keys, size hints, and seizure counts.
-info = cb.dataset_info("bonn_eeg")
+info = cb.dataset_info("swiss_eeg_long")
 print(info)
 print()
 
@@ -39,7 +38,7 @@ print()
 #   cb.dataset("chb_mit",         subset=["chb01", "chb02"])
 #   cb.dataset("swiss_eeg_short", subset=["ID7", "ID8"])
 #   cb.dataset("sleep_ieeg",       subset=["sub-Detroit001"])
-ds = cb.dataset("swiss_eeg_long", subset=["ID01", "ID02"])
+ds = cb.dataset("swiss_eeg_long", subset=["ID01"])
 print(f"Loaded {len(ds)} recordings")
 print()
 
