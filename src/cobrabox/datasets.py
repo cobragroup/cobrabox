@@ -54,6 +54,8 @@ class DatasetInfo:
             or ``None`` if not available.
         info_url: General landing page / homepage for the dataset, or ``None``
             if not available.
+        auth_hint: Optional hint shown when a download fails with 401/403,
+            e.g. how to obtain credentials.  ``None`` if not applicable.
     """
 
     identifier: str
@@ -66,6 +68,7 @@ class DatasetInfo:
     seizure_info_url: str | None = None
     info_url: str | None = None
     license: str | None = None
+    auth_hint: str | None = None
 
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
@@ -111,6 +114,12 @@ class DatasetInfo:
                 lines.append(row)
         if self.license is not None:
             lines.append(f"  license     : {self.license}")
+            if self.info_url is not None:
+                lines.append(f"  license url : {self.info_url}")
+        elif self.info_url is not None:
+            lines.append(f"  info        : {self.info_url}")
+        if self.auth_hint is not None:
+            lines.append(f"  auth        : {self.auth_hint}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:
@@ -123,7 +132,7 @@ class DatasetInfo:
 
 
 def dataset(
-    identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False
+    identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False, force: bool = False
 ) -> Dataset[SignalData]:
     """Load a dataset by identifier.
 
@@ -154,6 +163,8 @@ def dataset(
             confirmation before proceeding.  Set to ``True`` to skip the
             prompt (e.g. in scripts where you have already accepted the
             license).
+        force: If ``True``, delete any existing local files for the selected
+            subset and re-download from scratch.
 
     Returns:
         :class:`~cobrabox.Dataset` of :class:`~cobrabox.SignalData` objects.
@@ -196,7 +207,7 @@ def dataset(
                             "use None to include all files."
                         )
 
-        dataset_dir = ensure_remote_files(spec, subset=subset, accept=accept)
+        dataset_dir = ensure_remote_files(spec, subset=subset, accept=accept, force=force)
 
         # Derive the subset to pass to the loader.
         # For the dict form: expand to a flat list of file stems so the loader
@@ -211,6 +222,52 @@ def dataset(
             loader_subset = list(subset) if subset is not None else None
 
         return spec.loader(dataset_dir, loader_subset)
+
+    raise ValueError(
+        f"Unknown dataset identifier: {identifier!r}. "
+        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
+    )
+
+
+def download(
+    identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False, force: bool = False
+) -> Path:
+    """Download a remote dataset without loading it into memory.
+
+    Useful for pre-fetching large datasets before analysis, or for downloading
+    to a shared location.  Interrupted downloads are resumed automatically.
+
+    Args:
+        identifier: Remote dataset name, e.g. ``"chb_mit"``.
+        subset: Restrict which files are downloaded — same syntax as
+            :func:`dataset`.
+        accept: Skip the confirmation prompt.
+        force: Delete existing local files and re-download from scratch.
+
+    Returns:
+        Path to the local dataset directory.
+
+    Raises:
+        ValueError: If ``identifier`` is a local dataset (no download needed)
+            or unknown, or if ``subset`` contains invalid keys.
+        RuntimeError: If ``accept=False`` and the user declines the download.
+    """
+    if identifier in {*_LOCAL_DATASET_INFO}:
+        raise ValueError(f"'{identifier}' is a local dataset — no download needed.")
+
+    spec = get_remote_dataset_spec(identifier)
+    if spec is not None:
+        if subset is not None:
+            keys_to_validate = list(subset.keys()) if isinstance(subset, dict) else list(subset)
+            known = spec.subset_keys()
+            if known is not None:
+                invalid = [s for s in keys_to_validate if s not in known]
+                if invalid:
+                    raise ValueError(
+                        f"Unknown subset keys for '{identifier}': {invalid}.\n"
+                        f"Valid {spec.subset_key_name or 'keys'}: {known}"
+                    )
+        return ensure_remote_files(spec, subset=subset, accept=accept, force=force)
 
     raise ValueError(
         f"Unknown dataset identifier: {identifier!r}. "
@@ -234,6 +291,57 @@ def list_datasets() -> dict[str, list[str]]:
         each mapping to a sorted list of identifier strings.
     """
     return {"local": sorted(_LOCAL_DATASET_INFO), "remote": sorted(REMOTE_DATASETS)}
+
+
+def describe_all() -> None:
+    """Print a compact summary table of all available datasets.
+
+    Example::
+
+        cb.describe_all()
+        # Dataset               Type    Size           Subsets    License
+        # --------------------  ------  -------------  ---------  ----------
+        # bonn_eeg              remote  ~10 MB         5 sets     restricted
+        # dummy_chain           local   —              —          —
+        # ...
+    """
+    from .downloader import REMOTE_DATASETS, get_remote_dataset_spec
+
+    col_id = 22
+    col_type = 8
+    col_size = 15
+    col_subsets = 14
+    header = (
+        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Size':<{col_size}}"
+        f"{'Subsets':<{col_subsets}}License"
+    )
+    sep = f"{'-' * col_id}{'-' * col_type}{'-' * col_size}{'-' * col_subsets}{'-' * 20}"
+    print(header)
+    print(sep)
+
+    all_ids = sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS)
+    for ident in all_ids:
+        if ident in _LOCAL_DATASET_INFO:
+            row_type = "local"
+            size = "—"
+            subsets = "—"
+            license_str = "—"
+        else:
+            spec = get_remote_dataset_spec(ident)
+            if spec is None:
+                continue
+            row_type = "remote"
+            raw_size = spec.size_hint or "—"
+            size = raw_size[:14] + "…" if len(raw_size) > 15 else raw_size
+            n = len(spec.subset_keys() or []) if spec.subset_keys() else None
+            subsets = f"{n} {spec.subset_key_name or 'subsets'}" if n else "—"
+            lic = spec.license or "—"
+            license_str = lic[:30] + "…" if len(lic) > 31 else lic
+
+        print(
+            f"{ident:<{col_id}}{row_type:<{col_type}}{size:<{col_size}}"
+            f"{subsets:<{col_subsets}}{license_str}"
+        )
 
 
 def dataset_info(identifier: str) -> DatasetInfo:
@@ -279,6 +387,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
             seizure_info_url=spec.seizure_info_url,
             info_url=spec.info_url,
             license=spec.license,
+            auth_hint=spec.auth_hint,
         )
 
     raise ValueError(

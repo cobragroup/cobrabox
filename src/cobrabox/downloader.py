@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import platform
 import socket
+import threading
 import urllib.error
 import urllib.request
 import zipfile
@@ -140,12 +142,29 @@ class RemoteDatasetSpec:
         return keys if keys else None
 
 
+_COBRABOX_CONFIG_PATH = Path.home() / ".cobrabox" / "config.json"
+
+
+def _read_config_data_dir() -> Path | None:
+    """Read the persisted data_dir from ~/.cobrabox/config.json, or return None."""
+    try:
+        config = json.loads(_COBRABOX_CONFIG_PATH.read_text(encoding="utf-8"))
+        value = config.get("data_dir")
+        if value:
+            return Path(value)
+    except Exception:
+        pass
+    return None
+
+
 def _default_data_dir() -> Path:
     """Return the default directory for storing downloaded datasets.
 
     Resolution order:
     1. ``COBRABOX_DATA_DIR`` environment variable (if set).
-    2. OS-specific user cache directory:
+    2. In-process ``_data_dir`` set via :func:`set_data_dir` (checked in :func:`get_data_dir`).
+    3. ``~/.cobrabox/config.json`` → ``{"data_dir": "/some/path"}``
+    4. OS-specific user cache directory:
        - Linux  : ``~/.cache/cobrabox``
        - macOS  : ``~/Library/Caches/cobrabox``
        - Windows: ``%LOCALAPPDATA%\\cobrabox``
@@ -153,6 +172,9 @@ def _default_data_dir() -> Path:
     env = os.environ.get("COBRABOX_DATA_DIR")
     if env:
         return Path(env)
+    config_dir = _read_config_data_dir()
+    if config_dir is not None:
+        return config_dir
     system = platform.system()
     if system == "Darwin":
         return Path.home() / "Library" / "Caches" / "cobrabox"
@@ -180,7 +202,7 @@ def get_data_dir() -> Path:
     return _data_dir if _data_dir is not None else _default_data_dir()
 
 
-def set_data_dir(path: str | Path) -> None:
+def set_data_dir(path: str | Path, *, persist: bool = True) -> None:
     """Override the directory where downloaded datasets are stored.
 
     Call this before :func:`~cobrabox.dataset` to redirect all downloads to a
@@ -188,6 +210,9 @@ def set_data_dir(path: str | Path) -> None:
 
     Args:
         path: Absolute or relative path to the desired data directory.
+        persist: If ``True`` (default), write the setting to
+            ``~/.cobrabox/config.json`` so it survives process restarts.
+            Set to ``False`` to only change the in-process value.
 
     Example::
 
@@ -196,6 +221,15 @@ def set_data_dir(path: str | Path) -> None:
     """
     global _data_dir
     _data_dir = Path(path)
+    if persist:
+        config_dir = _COBRABOX_CONFIG_PATH.parent
+        config_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            existing = json.loads(_COBRABOX_CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            existing = {}
+        existing["data_dir"] = str(_data_dir)
+        _COBRABOX_CONFIG_PATH.write_text(json.dumps(existing), encoding="utf-8")
 
 
 def _resolve_files_from_index(spec: RemoteDatasetSpec) -> Sequence[RemoteFile]:
@@ -287,12 +321,14 @@ def ensure_remote_files(
     subset: SubsetSpec | None = None,
     data_dir: Path | None = None,
     accept: bool = False,
+    force: bool = False,
 ) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
     Files are stored under ``data_dir / spec.local_rel_dir``. Existing files
     are left untouched; missing files are streamed down in parallel and written
-    atomically via a ``.part`` temp file.
+    atomically via a ``.part`` temp file.  Interrupted downloads are resumed
+    automatically using HTTP range requests.
 
     Args:
         spec: The remote dataset specification.
@@ -307,6 +343,9 @@ def ensure_remote_files(
             the dataset license, estimated download size, and ask the user to
             confirm before proceeding.  Set to ``True`` to skip the prompt
             (e.g. in scripts where you have already accepted the license).
+        force: If ``True``, delete any existing local files for the selected
+            subset and re-download from scratch.  Useful when a previous
+            download is suspected to be corrupt.
 
     Returns the resolved local dataset directory.
 
@@ -338,6 +377,21 @@ def ensure_remote_files(
     else:
         files = list(all_files)
 
+    manifest_path = dataset_dir / "_manifest.json"
+    manifest_lock = threading.Lock()
+
+    def _load_manifest() -> dict[str, int]:
+        try:
+            return json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def _update_manifest(filename: str, size: int) -> None:
+        with manifest_lock:
+            manifest = _load_manifest()
+            manifest[filename] = size
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
     def _download_one(remote_file: RemoteFile, position: int) -> None:
         dest_path = dataset_dir / remote_file.filename
         if _has_valid_local_copy(remote_file):
@@ -346,14 +400,22 @@ def ensure_remote_files(
         url = remote_file.url
         tmp_path = dest_path.with_name(dest_path.name + ".part")
 
+        # Resume from a partial download if one exists.
+        resumed_bytes = tmp_path.stat().st_size if tmp_path.exists() else 0
+
         try:
-            with urllib.request.urlopen(url, timeout=120) as response:
+            request = urllib.request.Request(url)
+            if resumed_bytes:
+                request.add_header("Range", f"bytes={resumed_bytes}-")
+            with urllib.request.urlopen(request, timeout=120) as response:
                 content_length = response.headers.get("Content-Length")
-                total_size = int(content_length) if content_length else None
+                remaining = int(content_length) if content_length else None
+                total_size = (resumed_bytes + remaining) if remaining is not None else None
                 with (
-                    open(tmp_path, "wb") as f,
+                    open(tmp_path, "ab" if resumed_bytes else "wb") as f,
                     tqdm(
                         total=total_size,
+                        initial=resumed_bytes,
                         unit="B",
                         unit_scale=True,
                         unit_divisor=1024,
@@ -406,11 +468,19 @@ def ensure_remote_files(
             ) from e
 
         tmp_path.replace(dest_path)
+        _update_manifest(remote_file.filename, dest_path.stat().st_size)
 
     def _has_valid_local_copy(remote_file: RemoteFile) -> bool:
         path = dataset_dir / remote_file.filename
         if not path.exists():
             return False
+        # Fast path: check the manifest first.
+        with manifest_lock:
+            manifest = _load_manifest()
+        if remote_file.filename in manifest:
+            if manifest[remote_file.filename] == path.stat().st_size:
+                return True
+        # Fallback: for zip files, validate the archive.
         if path.suffix.lower() != ".zip":
             return True
         try:
@@ -419,6 +489,12 @@ def ensure_remote_files(
                 return zf.testzip() is None
         except Exception:
             return False
+
+    if force:
+        for f in files:
+            dest = dataset_dir / f.filename
+            dest.unlink(missing_ok=True)
+            dest.with_name(dest.name + ".part").unlink(missing_ok=True)
 
     to_download = [f for f in files if not _has_valid_local_copy(f)]
 
