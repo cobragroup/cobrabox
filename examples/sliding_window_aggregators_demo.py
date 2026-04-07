@@ -10,7 +10,7 @@ Key difference:
 
 import cobrabox as cb
 
-data = cb.dataset("dummy_chain")[0]
+data = cb.load_dataset("dummy_chain")[0]
 print(f"Input shape:  {dict(data.data.sizes)}")
 print(f"Input dims:   {data.data.dims}")
 print()

@@ -50,7 +50,7 @@ class Spectrogram(BaseFeature[SignalData]):
             ``nperseg`` is invalid, or if ``noverlap >= nperseg``.
 
     Example:
-        >>> data = cb.dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("dummy_random")[0]
         >>> sg = cb.feature.Spectrogram().apply(data)
         >>> sg.data.dims
         ('space', 'frequency', 'time')

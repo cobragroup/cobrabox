@@ -3,7 +3,15 @@ from . import feature, serialization  # noqa: F401
 from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
-from .datasets import dataset
+from .datasets import (
+    dataset_info,
+    delete_dataset,
+    download_dataset,
+    list_datasets,
+    load_dataset,
+    show_datasets,
+)
+from .downloader import DownloadCancelled, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
 from .features.time_domain.line_length import LineLength
 from .features.time_domain.nonreversibility import Nonreversibility
@@ -25,6 +33,7 @@ __all__ = [
     "ConcatAggregate",
     "Data",
     "Dataset",
+    "DownloadCancelled",
     "LineLength",
     "MeanAggregate",
     "Nonreversibility",
@@ -33,13 +42,20 @@ __all__ = [
     "SignalData",
     "SlidingWindow",
     "SplitterFeature",
-    "dataset",
+    "dataset_info",
+    "delete_dataset",
     "deserialize",
+    "download_dataset",
     "from_numpy",
     "from_xarray",
+    "get_dataset_dir",
     "gorkastyle",
+    "list_datasets",
     "load",
+    "load_dataset",
     "save",
     "serialization",
     "serialize",
+    "set_dataset_dir",
+    "show_datasets",
 ]

@@ -9,7 +9,7 @@ Chain `BaseFeature` instances with `|`:
 ```python
 import cobrabox as cb
 
-data = cb.dataset("dummy_chain")[0]
+data = cb.load_dataset("dummy_chain")[0]
 
 pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
 result = pipeline.apply(data)
@@ -21,7 +21,7 @@ Each step receives the output of the previous one. The pipeline is itself compos
 ```python
 pipeline = cb.feature.LineLength() | cb.feature.Mean(dim="space")
 
-results = [pipeline.apply(d) for d in cb.dataset("dummy_chain")]
+results = [pipeline.apply(d) for d in cb.load_dataset("dummy_chain")]
 ```
 
 ## Chord (fan-out → map → fan-in)
@@ -99,7 +99,7 @@ pipeline = (
     | cb.feature.MeanAggregate()
 )
 
-datasets = cb.dataset("dummy_chain")
+datasets = cb.load_dataset("dummy_chain")
 results = [pipeline.apply(d) for d in datasets]
 ```
 

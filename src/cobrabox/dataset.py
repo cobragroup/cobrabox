@@ -19,7 +19,7 @@ class Dataset(Generic[T]):
         items: Sequence of Data objects (list, tuple, or another Dataset).
 
     Example:
-        >>> ds = cb.dataset("dummy_chain")
+        >>> ds = cb.load_dataset("dummy_chain")
         >>> ds[0]                             # first item
         >>> ds.filter(groupID="A")            # returns new Dataset
         >>> ds.groupby("subjectID")           # returns dict[str, Dataset]

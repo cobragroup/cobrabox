@@ -61,10 +61,10 @@ A `Chord` is itself a `BaseFeature`, so it composes with `|` like any other step
 
 ## 5. Apply to a Dataset
 
-`cb.dataset()` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
+`cb.load_dataset()` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
 
 ```python
-ds = cb.dataset("dummy_chain")
+ds = cb.load_dataset("dummy_chain")
 ds.describe()              # print shapes, metadata summary
 ds.filter(groupID="A")     # subset by metadata
 ds.groupby("condition")    # dict[str, Dataset]
