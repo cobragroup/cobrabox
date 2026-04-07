@@ -220,7 +220,11 @@ def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
 
 
 class _NoOpBar:
-    """No-op tqdm progress bar for use in downloader tests."""
+    """No-op tqdm progress bar for use in downloader tests.
+
+    Can be used as a drop-in patch for the ``tqdm`` class itself (not just
+    instances), because it also exposes ``tqdm.write`` as a no-op staticmethod.
+    """
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         pass
@@ -235,6 +239,10 @@ class _NoOpBar:
         pass
 
     def close(self) -> None:
+        pass
+
+    @staticmethod
+    def write(msg: str, *args: object, **kwargs: object) -> None:
         pass
 
 
@@ -440,3 +448,233 @@ def test_keyboard_interrupt_during_download_raises_and_leaves_part_file(
     # .part file should exist (resumable), final file should not
     assert (tmp_path / "big.bin.part").exists()
     assert not (tmp_path / "big.bin").exists()
+
+
+# ---------------------------------------------------------------------------
+# Retry on transient network errors
+# ---------------------------------------------------------------------------
+
+
+def test_download_retries_on_network_error_and_succeeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A transient URLError is retried; download succeeds on the third attempt."""
+    import io
+
+    import cobrabox.downloader as downloader
+
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    spec = _make_spec(tmp_path, files)
+
+    attempt = 0
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return None
+
+    class _GoodResponse(io.RawIOBase):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _GoodResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            pass
+
+        def read(self, n: int = -1) -> bytes:
+            return b""  # EOF immediately → empty but valid file
+
+    def _urlopen(url: object, *a: object, **kw: object) -> object:
+        nonlocal attempt
+        attempt += 1
+        if attempt < 3:
+            raise downloader.urllib.error.URLError("connection reset")
+        return _GoodResponse()
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", _urlopen)
+    monkeypatch.setattr(downloader, "tqdm", _NoOpBar)
+    monkeypatch.setattr(downloader.time, "sleep", lambda _: None)  # instant retries
+
+    ensure_remote_files(spec, data_dir=tmp_path, accept=True)
+
+    assert attempt == 3
+    assert (tmp_path / "a.bin").exists()
+
+
+def test_download_raises_after_all_retries_exhausted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After all retry attempts fail the final RuntimeError is raised."""
+    import cobrabox.downloader as downloader
+
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    spec = _make_spec(tmp_path, files)
+
+    attempt = 0
+
+    def _urlopen(url: object, *a: object, **kw: object) -> object:
+        nonlocal attempt
+        attempt += 1
+        raise downloader.urllib.error.URLError("network unavailable")
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", _urlopen)
+    monkeypatch.setattr(downloader.time, "sleep", lambda _: None)
+
+    with pytest.raises(RuntimeError, match="Network error"):
+        ensure_remote_files(spec, data_dir=tmp_path, accept=True)
+
+    # One initial attempt + one per retry delay = 4 total
+    assert attempt == len(downloader._RETRY_DELAYS) + 1
+
+
+def test_download_retry_preserves_part_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The .part file is kept between retry attempts so the download can resume."""
+    import io
+
+    import cobrabox.downloader as downloader
+
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    spec = _make_spec(tmp_path, files)
+
+    part_path = tmp_path / "a.bin.part"
+    attempt = 0
+
+    class _FakeHeaders:
+        def get(self, key: str, default: str | None = None) -> str | None:
+            return None
+
+    class _PartialResponse(io.RawIOBase):
+        """Writes one chunk then raises a network error."""
+
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _PartialResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            pass
+
+        def read(self, n: int = -1) -> bytes:
+            raise downloader.urllib.error.URLError("dropped")
+
+    class _GoodResponse(io.RawIOBase):
+        headers = _FakeHeaders()
+
+        def __enter__(self) -> _GoodResponse:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            pass
+
+        def read(self, n: int = -1) -> bytes:
+            return b""
+
+    def _urlopen(url: object, *a: object, **kw: object) -> object:
+        nonlocal attempt
+        attempt += 1
+        if attempt == 1:
+            part_path.write_bytes(b"x" * 100)  # simulate partial progress
+            return _PartialResponse()
+        return _GoodResponse()
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", _urlopen)
+    monkeypatch.setattr(downloader, "tqdm", _NoOpBar)
+    monkeypatch.setattr(downloader.time, "sleep", lambda _: None)
+
+    ensure_remote_files(spec, data_dir=tmp_path, accept=True)
+
+    assert attempt == 2
+    assert (tmp_path / "a.bin").exists()
+
+
+# ---------------------------------------------------------------------------
+# dry_run mode
+# ---------------------------------------------------------------------------
+
+
+def test_dry_run_prints_summary_and_does_not_download(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """dry_run=True prints a summary and returns without downloading anything."""
+    import cobrabox.downloader as downloader
+
+    files = [
+        RemoteFile(url="http://example.com/a.bin", filename="a.bin", subset_key="A"),
+        RemoteFile(url="http://example.com/b.bin", filename="b.bin", subset_key="B"),
+    ]
+    spec = RemoteDatasetSpec(
+        identifier="test_dry",
+        local_rel_dir=tmp_path,
+        files=files,
+        loader=lambda d, s: [],  # type: ignore[arg-type]
+        size_hint="~5 MB",
+        subset_key_name="subsets",
+    )
+    monkeypatch.setattr(
+        downloader.urllib.request,
+        "urlopen",
+        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("should not download")),
+    )
+
+    result = ensure_remote_files(spec, data_dir=tmp_path.parent, accept=True, dry_run=True)
+
+    out = capsys.readouterr().out
+    assert "Dry run" in out
+    assert (
+        "a.bin" not in (tmp_path.parent / spec.local_rel_dir).parts
+        or not (tmp_path.parent / "a.bin").exists()
+    )
+    assert "~5 MB" in out
+    assert "A" in out
+    assert "B" in out
+    # Should return the would-be dataset dir path
+    assert result == tmp_path.parent / spec.local_rel_dir
+
+
+def test_dry_run_shows_cached_count(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    """dry_run reports how many files are already cached vs. to be downloaded."""
+    files = [
+        RemoteFile(url="http://example.com/a.bin", filename="a.bin", subset_key="A"),
+        RemoteFile(url="http://example.com/b.bin", filename="b.bin", subset_key="B"),
+    ]
+    spec = _make_spec(tmp_path, files)
+
+    # Pre-cache one file
+    (tmp_path / "a.bin").write_bytes(b"data")
+
+    ensure_remote_files(spec, data_dir=tmp_path.parent, accept=True, dry_run=True)
+
+    out = capsys.readouterr().out
+    assert "1 already cached" in out
+    assert "1 file" in out  # one to download
+
+
+def test_dry_run_when_all_cached(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    """dry_run reports nothing to download when all files are already cached."""
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    spec = _make_spec(tmp_path, files)
+    (tmp_path / "a.bin").write_bytes(b"data")
+
+    ensure_remote_files(spec, data_dir=tmp_path.parent, accept=True, dry_run=True)
+
+    out = capsys.readouterr().out
+    assert "already cached" in out
+    assert "Would download" not in out
+
+
+def test_dry_run_does_not_create_dataset_directory(tmp_path: Path) -> None:
+    """dry_run=True does not create the dataset directory."""
+    files = [RemoteFile(url="http://example.com/a.bin", filename="a.bin")]
+    new_dir = tmp_path / "new_dataset_dir"
+    spec = RemoteDatasetSpec(
+        identifier="test_dry_nodir",
+        local_rel_dir=new_dir,
+        files=files,
+        loader=lambda d, s: [],  # type: ignore[arg-type]
+    )
+
+    ensure_remote_files(spec, accept=True, dry_run=True)
+
+    assert not new_dir.exists()
