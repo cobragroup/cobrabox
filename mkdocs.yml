@@ -4,6 +4,8 @@ site_url: https://cobrabox.readthedocs.io
 repo_url: https://github.com/cobragroup/cobrabox
 repo_name: cobrabox
 
+strict: false
+
 theme:
   name: material
   palette:

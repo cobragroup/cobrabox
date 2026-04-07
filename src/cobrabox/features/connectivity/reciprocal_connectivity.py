@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 
 from ...base_feature import BaseFeature
-from ...data import Data
+from ...data import Data, SignalData
 
 
 @dataclass
@@ -97,10 +97,14 @@ class ReciprocalConnectivity(BaseFeature[Data]):
                     f"Unsupported connectivity measure {self.connectivity!r} for "
                     f"time-series input. Only 'pdc' is currently supported."
                 )
+            # Validate that data has sampling_rate (required for PDC)
+            if not isinstance(data, SignalData) or data.sampling_rate is None:
+                raise ValueError(
+                    "Time-series input requires data.sampling_rate to be set. "
+                    "Use SignalData (e.g., EEG or FMRI) instead of plain Data."
+                )
             pdc_feat = PartialDirectedCoherence(var_order=self.var_order, n_freqs=self.n_freqs)
-            # Call __call__ directly to get the raw DataArray;
-            # data must have sampling_rate set (checked inside PDC)
-            mat = pdc_feat(data)  # type: ignore[arg-type]
+            mat = pdc_feat(data)
 
         # ------------------------------------------------------------------ #
         # PATH B — pre-computed connectivity matrix
