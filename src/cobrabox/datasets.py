@@ -12,8 +12,8 @@ from .downloader import (
     REMOTE_DATASETS,
     RemoteDatasetSpec,
     SubsetSpec,
+    _dataset_cache_status,
     _filter_files_by_dict_subset,
-    _is_dataset_cached,
     delete_remote_files,
     ensure_remote_files,
     get_dataset_dir,
@@ -68,6 +68,7 @@ class DatasetInfo:
     subsets: tuple[str, ...] | None
     size_hint: str | None = None
     subset_size_hint: str | None = None
+    data_type: str | None = None
     seizures_per_subject: dict[str, int] | None = None
     seizure_info_url: str | None = None
     info_url: str | None = None
@@ -78,6 +79,8 @@ class DatasetInfo:
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
         lines.append(f"  description : {self.description}")
+        if self.data_type is not None:
+            lines.append(f"  data type   : {self.data_type}")
         if self.info_url is not None:
             lines.append(f"  source      : {self.info_url}")
         if self.size_hint is not None or self.subset_size_hint is not None:
@@ -119,10 +122,6 @@ class DatasetInfo:
                 lines.append(row)
         if self.license is not None:
             lines.append(f"  license     : {self.license}")
-            if self.info_url is not None:
-                lines.append(f"  license url : {self.info_url}")
-        elif self.info_url is not None:
-            lines.append(f"  info        : {self.info_url}")
         if self.auth_hint is not None:
             lines.append(f"  auth        : {self.auth_hint}")
         if self.local_path is not None:
@@ -253,8 +252,24 @@ def download_dataset(
 
     Args:
         identifier: Remote dataset name, e.g. ``"chb_mit"``.
-        subset: Restrict which files are downloaded — same syntax as
-            :func:`dataset`.
+        subset: Restrict which files are downloaded.  Two forms:
+
+            - ``list[str]``: subject / set keys to download in full, e.g.
+              ``["chb01", "chb02"]``.  Call :func:`dataset_info` to see
+              available keys.
+            - ``dict[str, int | list[str] | None]``: per-key file-level
+              control.  Map each key to:
+
+              - ``int N``     — first *N* files (in file-index order)
+              - ``list[str]`` — specific filenames
+              - ``None``      — all files for that key
+
+              Example::
+
+                  cb.download_dataset("swiss_eeg_long", subset={"ID01": 2})
+                  cb.download_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})
+
+            ``None`` downloads everything.
         accept: Skip the confirmation prompt.
         force: Delete existing local files and re-download from scratch.
 
@@ -305,29 +320,33 @@ def show_datasets() -> list[dict[str, str | None]]:
     Example::
 
         cb.show_datasets()
-        # Dataset               Type    Cached  Size           Subsets       License
-        # --------------------  ------  ------  -------------  ------------  ----------
-        # bonn_eeg              remote  yes     ~10 MB         5 sets        CC BY ...
-        # dummy_chain           local   —       —              —             —
-        # ...
+        # Dataset        Type    Data type         Cached  Seizures  Size     Subsets  License
+        # bonn_eeg       remote  ictal/interictal  yes     100       ~10 MB   5 sets   ...
+        # chb_mit        remote  ictal/interictal  3/24    200       ~30 GB   24 subj  ...
+        # dummy_chain    local   —                 —       —         —        —        —
 
     Returns:
-        List of dicts with keys ``"identifier"``, ``"type"``, ``"cached"``,
-        ``"size"``, ``"subsets"``, and ``"license"``.  Suitable for
-        programmatic use in notebooks or scripts.  ``"cached"`` is
-        ``"yes"``/``"no"`` for remote datasets and ``None`` for local ones.
+        List of dicts with keys ``"identifier"``, ``"type"``, ``"data_type"``,
+        ``"cached"``, ``"seizures"``, ``"size"``, ``"subsets"``, and
+        ``"license"``.  Suitable for programmatic use in notebooks or scripts.
+        ``"cached"`` is ``"yes"``/``"no"``/``"N/M"`` for remote datasets and
+        ``None`` for local ones.
     """
     col_id = 22
     col_type = 8
-    col_cached = 8
+    col_data_type = 18
+    col_cached = 9
+    col_seizures = 10
     col_size = 15
-    col_subsets = 14
+    col_subsets = 12
     header = (
-        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Cached':<{col_cached}}"
+        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Data type':<{col_data_type}}"
+        f"{'Cached':<{col_cached}}{'Seizures':<{col_seizures}}"
         f"{'Size':<{col_size}}{'Subsets':<{col_subsets}}License"
     )
     sep = (
-        f"{'-' * col_id}{'-' * col_type}{'-' * col_cached}"
+        f"{'-' * col_id}{'-' * col_type}{'-' * col_data_type}"
+        f"{'-' * col_cached}{'-' * col_seizures}"
         f"{'-' * col_size}{'-' * col_subsets}{'-' * 20}"
     )
     print(header)
@@ -338,8 +357,10 @@ def show_datasets() -> list[dict[str, str | None]]:
     for ident in all_ids:
         if ident in _LOCAL_DATASET_INFO:
             row_type = "local"
+            data_type_str = "—"
             cached_str = "—"
             cached_val: str | None = None
+            seizures_str = "—"
             size = "—"
             subsets = "—"
             license_str = "—"
@@ -348,8 +369,15 @@ def show_datasets() -> list[dict[str, str | None]]:
             if spec is None:
                 continue
             row_type = "remote"
-            cached_val = "yes" if _is_dataset_cached(spec) else "no"
+            raw_dt = spec.data_type or "—"
+            data_type_str = raw_dt[:17] + "…" if len(raw_dt) > 18 else raw_dt
+            cached_val = _dataset_cache_status(spec)
             cached_str = cached_val
+            if spec.seizures_per_subject is not None:
+                total_sz = sum(spec.seizures_per_subject.values())
+                seizures_str = str(total_sz)
+            else:
+                seizures_str = "—"
             raw_size = spec.size_hint or "—"
             size = raw_size[:14] + "…" if len(raw_size) > 15 else raw_size
             n = len(spec.subset_keys() or []) if spec.subset_keys() else None
@@ -358,14 +386,17 @@ def show_datasets() -> list[dict[str, str | None]]:
             license_str = lic[:30] + "…" if len(lic) > 31 else lic
 
         print(
-            f"{ident:<{col_id}}{row_type:<{col_type}}{cached_str:<{col_cached}}"
+            f"{ident:<{col_id}}{row_type:<{col_type}}{data_type_str:<{col_data_type}}"
+            f"{cached_str:<{col_cached}}{seizures_str:<{col_seizures}}"
             f"{size:<{col_size}}{subsets:<{col_subsets}}{license_str}"
         )
         rows.append(
             {
                 "identifier": ident,
                 "type": row_type,
+                "data_type": None if data_type_str == "—" else data_type_str,
                 "cached": cached_val,
+                "seizures": None if seizures_str == "—" else seizures_str,
                 "size": None if size == "—" else size,
                 "subsets": None if subsets == "—" else subsets,
                 "license": None if license_str == "—" else license_str,
@@ -416,6 +447,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
             subsets=tuple(keys) if keys is not None else None,
             size_hint=spec.size_hint,
             subset_size_hint=spec.subset_size_hint,
+            data_type=spec.data_type,
             seizures_per_subject=spec.seizures_per_subject,
             seizure_info_url=spec.seizure_info_url,
             info_url=spec.info_url,
