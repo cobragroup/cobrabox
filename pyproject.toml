@@ -1,6 +1,6 @@
 [project]
 name = "cobrabox"
-version = "0.4.3"
+version = "0.4.4"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -34,8 +34,11 @@ docs = [
     "mkdocs-jupyter>=0.25.0",
 ]
 [build-system]
-requires = ["uv_build>=0.1,<0.11"]
+requires = ["uv_build>=0.1,<0.12"]
 build-backend = "uv_build"
+
+[tool.uv]
+exclude-newer = "1 week"
 
 [tool.ruff]
 line-length = 100

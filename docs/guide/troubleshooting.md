@@ -294,6 +294,6 @@ result = cb.Chord(
 If your issue is not covered here:
 
 1. Check the [API Reference](../api/index.md) for feature-specific documentation
-2. Review [feature examples](../../examples/) in the repo
+2. Review [feature examples](https://github.com/cobragroup/cobrabox/tree/main/examples) in the repo
 3. Look at the test files in `tests/` for usage patterns
 4. Run the agent review for the feature: `/review-feature src/cobrabox/features/my_feature.py`

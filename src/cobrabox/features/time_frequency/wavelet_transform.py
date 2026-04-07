@@ -125,13 +125,11 @@ class DiscreteWaveletTransform(BaseFeature[SignalData]):
     def __post_init__(self) -> None:
         if self.level is not None and self.level < 1:
             raise ValueError(f"level must be >= 1, got {self.level}")
-        try:
-            pywt.Wavelet(self.wavelet)  # type: ignore[attr-defined]
-        except ValueError as exc:
+        if self.wavelet not in pywt.wavelist(kind="discrete"):  # type: ignore
             raise ValueError(
                 f"Unknown discrete wavelet '{self.wavelet}'. "
                 "Use pywt.wavelist(kind='discrete') to see valid options."
-            ) from exc
+            )
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
@@ -255,7 +253,7 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
                 f"scaling must be one of {_VALID_CWT_SCALINGS!r}, got {self.scaling!r}"
             )
         try:
-            pywt.ContinuousWavelet(self.wavelet)  # type: ignore[attr-defined]
+            pywt.ContinuousWavelet(self.wavelet)  # type: ignore
         except ValueError as exc:
             raise ValueError(
                 f"Unknown continuous wavelet '{self.wavelet}'. "
