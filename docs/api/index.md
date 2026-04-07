@@ -18,6 +18,6 @@ Auto-generated API documentation for all CobraBox modules.
 - [`from_xarray`](data.md#cobrabox.data.Data.from_xarray) - Create from xarray
 - [`feature.*`](features.md) - All feature functions
 - [`Dataset`](datasets.md#cobraboxdatasetDataset) - Typed collection of Data objects
-- [`dataset()`](datasets.md#cobrabox.datasets.dataset) - Load built-in datasets
+- [`load_dataset()`](datasets.md#cobrabox.datasets.load_dataset) - Load datasets (local and remote)
 - `cb.save(obj, path)` / `cb.load(path)` - Pipeline file I/O
 - `cb.serialize(obj)` / `cb.deserialize(content)` - Pipeline string I/O

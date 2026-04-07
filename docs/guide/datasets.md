@@ -8,7 +8,7 @@ CobraBox provides built-in dummy datasets and a `Dataset[T]` collection class fo
 import cobrabox as cb
 
 # Load a dataset — returns Dataset[SignalData]
-ds = cb.dataset("dummy_chain")
+ds = cb.load_dataset("dummy_chain")
 
 # Inspect at a glance
 ds.describe()
@@ -26,7 +26,7 @@ ds.describe()
 ### Indexing and iteration
 
 ```python
-ds = cb.dataset("dummy_chain")
+ds = cb.load_dataset("dummy_chain")
 
 # Integer index → single item
 item = ds[0]
@@ -47,8 +47,8 @@ print(item in ds)
 ### Combining datasets
 
 ```python
-ds1 = cb.dataset("dummy_chain")
-ds2 = cb.dataset("dummy_random")
+ds1 = cb.load_dataset("dummy_chain")
+ds2 = cb.load_dataset("dummy_random")
 
 combined = ds1 + ds2   # → Dataset[SignalData]
 print(len(combined))
@@ -119,7 +119,7 @@ under `data/remote/` and reused on subsequent calls — a dataset is only downlo
 cb.list_datasets()
 # {
 #   'local':  ['dummy_chain', 'dummy_noise', 'dummy_random', 'dummy_star', 'realistic_swiss'],
-#   'remote': ['bonn_eeg', 'chb_mit', 'siena_eeg', 'sleep_ieeg', 'swiss_eeg_long', 'swiss_eeg_short'],
+#   'remote': ['bonn_eeg', 'chb_mit', 'siena_eeg', 'sleep_ieeg', 'swiss_eeg_long', 'swiss_eeg_short', 'zurich_ieeg'],
 # }
 ```
 
@@ -134,7 +134,7 @@ print(info)
 #   description : CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures ...
 #   size        : total ~30 GB, ~1.5 GB per subject (approximate)
 #   subjects (24): chb01, chb02, chb03, ..., chb24
-#   usage       : cb.dataset("chb_mit", subset=["chb01", "chb02"])
+#   usage       : cb.load_dataset("chb_mit", subset=["chb01", "chb02"])
 #   seizures/subject (200 total):
 #     chb01  7   chb02  3   chb03  7   ...
 #   seizure src : https://physionet.org/content/chbmit/1.0.0/
@@ -164,7 +164,7 @@ Once you have reviewed and accepted the license, pass `accept=True` to skip the 
 in scripts:
 
 ```python
-ds = cb.dataset("bonn_eeg", accept=True)
+ds = cb.load_dataset("bonn_eeg", accept=True)
 ```
 
 ### Available remote datasets
@@ -177,6 +177,7 @@ ds = cb.dataset("bonn_eeg", accept=True)
 | `swiss_eeg_short` | BioCAS 2018 short-term scalp EEG — 18 subjects, ictal/interictal | ~11 GB |
 | `swiss_eeg_long` | SWEZ long-term iEEG — 18 subjects, hourly files | >1 TB |
 | `sleep_ieeg` | Sleep iEEG (OpenNeuro ds005398) — 185 subjects, interictal sleep ECoG/sEEG | ~13 GB |
+| `zurich_ieeg` | Zurich iEEG HFO (OpenNeuro ds003498) — 20 epilepsy patients, interictal ECoG, 2000 Hz, with HFO markings | ~60 GB |
 
 ### Downloading a subset
 
@@ -184,15 +185,39 @@ Most datasets are large. Use `subset` to download only the subjects you need:
 
 ```python
 # List form — all files for those subjects
-ds = cb.dataset("chb_mit", subset=["chb01", "chb02"], accept=True)
+ds = cb.load_dataset("chb_mit", subset=["chb01", "chb02"], accept=True)
 
 # Dict form — fine-grained file-level control
-ds = cb.dataset("swiss_eeg_long", subset={"ID01": 2}, accept=True)          # first 2 files
-ds = cb.dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]}, accept=True)  # specific file
-ds = cb.dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3}, accept=True)  # all of ID01, 3 of ID02
+ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": 2}, accept=True)          # first 2 files
+ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]}, accept=True)  # specific file
+ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3}, accept=True)  # all of ID01, 3 of ID02
 ```
 
 Call `cb.dataset_info()` to see the available subset keys for a dataset before downloading.
+
+## Configuring the Data Directory
+
+By default CobraBox stores downloaded files in a platform cache directory
+(`~/.cache/cobrabox` on Linux, `~/Library/Caches/cobrabox` on macOS,
+`%LOCALAPPDATA%\cobrabox` on Windows).
+
+You can override this at any time:
+
+```python
+# Redirect to a project folder or shared storage (persists across restarts)
+cb.set_dataset_dir("/mnt/data/cobrabox")
+
+# In-process only (not written to disk)
+cb.set_dataset_dir("/scratch/tmp", persist=False)
+
+# See where data currently lives
+print(cb.get_dataset_dir())
+```
+
+You can also set the `COBRABOX_DATA_DIR` environment variable before starting
+Python — it takes priority over every other setting.
+
+The directory is created automatically on the first download.
 
 ## Building a Custom Dataset
 
@@ -221,7 +246,7 @@ ds.describe()
 ## Batch Processing
 
 ```python
-ds = cb.dataset("dummy_chain")
+ds = cb.load_dataset("dummy_chain")
 
 pipeline = (
     cb.feature.SlidingWindow(window_size=20, step_size=10)

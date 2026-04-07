@@ -151,7 +151,7 @@ named dimensions and optional coordinate labels for each axis.
 ### Inspect dimensions
 
 ```python
-item = cb.dataset("dummy_chain")[0]
+item = cb.load_dataset("dummy_chain")[0]
 
 # Dimension names as a list
 dims = list(item.data.dims)          # e.g. ['space', 'time']
