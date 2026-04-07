@@ -10,7 +10,6 @@ from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
 from .downloader import (
     REMOTE_DATASETS,
-    DownloadCancelled,
     RemoteDatasetSpec,
     SubsetSpec,
     _filter_files_by_dict_subset,
@@ -20,8 +19,6 @@ from .downloader import (
     get_dataset_dir,
     get_remote_dataset_spec,
 )
-
-__all__ = ["DownloadCancelled"]  # re-export so it's reachable via datasets module
 
 # ---------------------------------------------------------------------------
 # Metadata for built-in local datasets (no subset concept)
