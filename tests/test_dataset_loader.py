@@ -281,6 +281,9 @@ class _NoOpBar:
     def update(self, n: int) -> None:
         pass
 
+    def close(self) -> None:
+        pass
+
 
 def test_ensure_remote_files_downloads_missing_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

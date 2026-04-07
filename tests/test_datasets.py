@@ -453,8 +453,13 @@ def test_delete_remote_files_subset_removes_only_matching_files(tmp_path: Path) 
 
 
 def test_delete_remote_files_confirm_cancel_raises(tmp_path: Path) -> None:
-    """Declining the delete prompt raises RuntimeError."""
-    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, delete_remote_files
+    """Declining the delete prompt raises DownloadCancelled."""
+    from cobrabox.downloader import (
+        DownloadCancelled,
+        RemoteDatasetSpec,
+        RemoteFile,
+        delete_remote_files,
+    )
 
     dataset_dir = tmp_path / "bonn_eeg"
     dataset_dir.mkdir()
@@ -469,7 +474,7 @@ def test_delete_remote_files_confirm_cancel_raises(tmp_path: Path) -> None:
 
     with pytest.MonkeyPatch().context() as mp, patch("builtins.input", return_value="n"):
         mp.setattr("cobrabox.downloader._data_dir", tmp_path)
-        with pytest.raises(RuntimeError, match="cancelled by user"):
+        with pytest.raises(DownloadCancelled):
             delete_remote_files(spec, confirm=True)
 
     assert (dataset_dir / "S.zip").exists()  # file must not have been deleted

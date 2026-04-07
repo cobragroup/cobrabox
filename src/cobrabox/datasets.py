@@ -10,13 +10,18 @@ from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
 from .downloader import (
     REMOTE_DATASETS,
+    DownloadCancelled,
+    RemoteDatasetSpec,
     SubsetSpec,
     _filter_files_by_dict_subset,
     _is_dataset_cached,
     delete_remote_files,
     ensure_remote_files,
+    get_dataset_dir,
     get_remote_dataset_spec,
 )
+
+__all__ = ["DownloadCancelled"]  # re-export so it's reachable via datasets module
 
 # ---------------------------------------------------------------------------
 # Metadata for built-in local datasets (no subset concept)
@@ -71,6 +76,7 @@ class DatasetInfo:
     info_url: str | None = None
     license: str | None = None
     auth_hint: str | None = None
+    local_path: Path | None = None
 
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
@@ -122,10 +128,39 @@ class DatasetInfo:
             lines.append(f"  info        : {self.info_url}")
         if self.auth_hint is not None:
             lines.append(f"  auth        : {self.auth_hint}")
+        if self.local_path is not None:
+            lines.append(f"  local path  : {self.local_path}")
         return "\n".join(lines)
 
     def __repr__(self) -> str:
         return self.__str__()
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _validate_subset(spec: RemoteDatasetSpec, subset: SubsetSpec) -> None:
+    """Raise ValueError if *subset* contains keys or values invalid for *spec*."""
+    keys_to_validate = list(subset.keys()) if isinstance(subset, dict) else list(subset)
+    known = spec.subset_keys()
+    if known is not None:
+        invalid = [s for s in keys_to_validate if s not in known]
+        if invalid:
+            raise ValueError(
+                f"Unknown subset keys for '{spec.identifier}': {invalid}.\n"
+                f"Valid {spec.subset_key_name or 'keys'}: {known}"
+            )
+    if isinstance(subset, dict):
+        for key, value in subset.items():
+            if isinstance(value, int) and value < 1:
+                raise ValueError(f"File count for subset key '{key}' must be >= 1, got {value!r}.")
+            if isinstance(value, list) and not value:
+                raise ValueError(
+                    f"File list for subset key '{key}' must be non-empty; "
+                    "use None to include all files."
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +209,7 @@ def load_dataset(
     Raises:
         ValueError: If ``identifier`` is unknown, or if ``subset`` contains
             keys not present in the dataset.
-        RuntimeError: If ``accept=False`` and the user declines the download.
+        DownloadCancelled: If ``accept=False`` and the user declines the download.
     """
     if identifier in {"dummy_chain", "dummy_random", "dummy_star"}:
         return load_structured_dummy(identifier)
@@ -187,27 +222,7 @@ def load_dataset(
     if spec is not None:
         # Validate subset keys early, before triggering any downloads.
         if subset is not None:
-            keys_to_validate = list(subset.keys()) if isinstance(subset, dict) else list(subset)
-            known = spec.subset_keys()
-            if known is not None:
-                invalid = [s for s in keys_to_validate if s not in known]
-                if invalid:
-                    raise ValueError(
-                        f"Unknown subset keys for '{identifier}': {invalid}.\n"
-                        f"Valid {spec.subset_key_name or 'keys'}: {known}"
-                    )
-            # Validate dict values before any download.
-            if isinstance(subset, dict):
-                for key, value in subset.items():
-                    if isinstance(value, int) and value < 1:
-                        raise ValueError(
-                            f"File count for subset key '{key}' must be >= 1, got {value!r}."
-                        )
-                    if isinstance(value, list) and not value:
-                        raise ValueError(
-                            f"File list for subset key '{key}' must be non-empty; "
-                            "use None to include all files."
-                        )
+            _validate_subset(spec, subset)
 
         dataset_dir = ensure_remote_files(spec, subset=subset, accept=accept, force=force)
 
@@ -252,7 +267,7 @@ def download_dataset(
     Raises:
         ValueError: If ``identifier`` is a local dataset (no download needed)
             or unknown, or if ``subset`` contains invalid keys.
-        RuntimeError: If ``accept=False`` and the user declines the download.
+        DownloadCancelled: If ``accept=False`` and the user declines the download.
     """
     if identifier in {*_LOCAL_DATASET_INFO}:
         raise ValueError(f"'{identifier}' is a local dataset — no download needed.")
@@ -260,26 +275,7 @@ def download_dataset(
     spec = get_remote_dataset_spec(identifier)
     if spec is not None:
         if subset is not None:
-            keys_to_validate = list(subset.keys()) if isinstance(subset, dict) else list(subset)
-            known = spec.subset_keys()
-            if known is not None:
-                invalid = [s for s in keys_to_validate if s not in known]
-                if invalid:
-                    raise ValueError(
-                        f"Unknown subset keys for '{identifier}': {invalid}.\n"
-                        f"Valid {spec.subset_key_name or 'keys'}: {known}"
-                    )
-            if isinstance(subset, dict):
-                for key, value in subset.items():
-                    if isinstance(value, int) and value < 1:
-                        raise ValueError(
-                            f"File count for subset key '{key}' must be >= 1, got {value!r}."
-                        )
-                    if isinstance(value, list) and not value:
-                        raise ValueError(
-                            f"File list for subset key '{key}' must be non-empty; "
-                            "use None to include all files."
-                        )
+            _validate_subset(spec, subset)
         return ensure_remote_files(spec, subset=subset, accept=accept, force=force)
 
     raise ValueError(
@@ -379,6 +375,7 @@ def show_datasets() -> list[dict[str, str | None]]:
             }
         )
 
+    print(f"\nData directory: {get_dataset_dir()}")
     return rows
 
 
@@ -414,6 +411,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
     spec = get_remote_dataset_spec(identifier)
     if spec is not None:
         keys = spec.subset_keys()
+        cached_path = get_dataset_dir() / spec.local_rel_dir
         return DatasetInfo(
             identifier=identifier,
             description=spec.description,
@@ -426,6 +424,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
             info_url=spec.info_url,
             license=spec.license,
             auth_hint=spec.auth_hint,
+            local_path=cached_path if _is_dataset_cached(spec) else None,
         )
 
     raise ValueError(
@@ -455,7 +454,7 @@ def delete_dataset(
     Raises:
         ValueError: If ``identifier`` is a local dataset (nothing to delete)
             or unknown.
-        RuntimeError: If ``confirm=True`` and the user declines the deletion.
+        DownloadCancelled: If ``confirm=True`` and the user declines the deletion.
 
     Example::
 

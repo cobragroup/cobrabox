@@ -23,6 +23,10 @@ from .data import SignalData
 from .dataset import Dataset
 
 
+class DownloadCancelled(Exception):
+    """Raised when the user declines a download or deletion at the confirmation prompt."""
+
+
 def _load_file_index() -> dict[str, list[RemoteFile]]:
     """Load the bundled file index from file_index.json."""
     ref = importlib.resources.files(__package__).joinpath("file_index.json")
@@ -67,7 +71,9 @@ def _in_jupyter() -> bool:
         return False
 
 
-def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFile] | None) -> bool:
+def _prompt_download_verify(
+    spec: RemoteDatasetSpec, to_download: list[RemoteFile] | None, dataset_dir: Path
+) -> bool:
     """Print dataset info, license, and download summary, then ask the user to confirm.
 
     ``to_download`` may be ``None`` when the file index has not been fetched yet
@@ -80,20 +86,45 @@ def _prompt_download_verify(spec: RemoteDatasetSpec, to_download: list[RemoteFil
         print(f"  {spec.description}")
 
     if spec.license is not None:
-        print(f"\n  License: {spec.license}")
+        print(f"\n  License : {spec.license}")
     if spec.info_url is not None:
         print(f"  More info: {spec.info_url}")
 
+    print(f"\n  Save to  : {dataset_dir}")
+
     if to_download is None:
         # File index not yet fetched — show static size hints only.
-        print(f"\n  Estimated download size: {spec.size_hint or 'unknown'}")
+        print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
     else:
-        n = len(to_download)
+        n_files = len(to_download)
         total_files = len(spec.files) if spec.files is not None else None
-        files_str = f"{n}" if total_files is None else f"{n} of {total_files}"
-        print(f"\n  Files to download: {files_str}")
-        if spec.subset_size_hint is not None and total_files is not None and n < total_files:
-            print(f"  Estimated download size: {spec.subset_size_hint} x {n} files")
+        files_str = f"{n_files}" if total_files is None else f"{n_files} of {total_files}"
+        n_subjects = len({f.subset_key for f in to_download if f.subset_key is not None})
+        is_subset = total_files is not None and n_files < total_files
+
+        if n_subjects > 0 and n_subjects < n_files:
+            print(
+                f"\n  Files to download: {files_str}"
+                f" ({n_subjects} subject{'s' if n_subjects != 1 else ''})"
+            )
+        else:
+            print(f"\n  Files to download: {files_str}")
+
+        if is_subset and spec.subset_size_bytes is not None and n_subjects > 0:
+            total_bytes = spec.subset_size_bytes * n_subjects
+            total_fmt = _format_bytes(total_bytes)
+            per_fmt = _format_bytes(spec.subset_size_bytes)
+            print(
+                f"  Estimated download size: {total_fmt}"
+                f"  ({per_fmt} x {n_subjects} subject{'s' if n_subjects != 1 else ''})"
+            )
+        elif is_subset and spec.subset_size_hint is not None:
+            count = n_subjects if n_subjects > 0 else n_files
+            label = "subject" if n_subjects > 0 else "file"
+            print(
+                f"  Estimated download size: {count} x {spec.subset_size_hint}"
+                f" ({count} {label}{'s' if count != 1 else ''})"
+            )
         else:
             print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
 
@@ -150,6 +181,7 @@ class RemoteDatasetSpec:
     known_subset_keys: tuple[str, ...] | None = None  # static list when known upfront
     size_hint: str | None = None  # Approximate total download size, e.g. "~10 MB"
     subset_size_hint: str | None = None  # Approximate size per subset, e.g. "~2 MB per set"
+    subset_size_bytes: int | None = None  # Per-subject byte count for computed size estimates
     seizures_per_subject: dict[str, int] | None = None  # Seizure count keyed by subset key
     seizure_info_url: str | None = None  # URL where seizure count information was sourced
     info_url: str | None = None  # Landing page / homepage for the dataset
@@ -230,7 +262,7 @@ def get_dataset_dir() -> Path:
 def set_dataset_dir(path: str | Path, *, persist: bool = True) -> None:
     """Override the directory where downloaded datasets are stored.
 
-    Call this before :func:`~cobrabox.dataset` to redirect all downloads to a
+    Call this before :func:`~cobrabox.datasets.load_dataset` to redirect all downloads to a
     custom location.  The directory is created automatically when needed.
 
     Args:
@@ -316,8 +348,8 @@ def delete_remote_files(
                 print("  Tip: pass confirm=False to cb.delete_dataset() to skip this prompt.")
             answer = input("\nDelete all local files? [y/N] ").strip().lower()
             if answer not in {"y", "yes"}:
-                raise RuntimeError(
-                    f"Deletion of '{spec.identifier}' cancelled by user. "
+                raise DownloadCancelled(
+                    f"Deletion of '{spec.identifier}' cancelled. "
                     "Pass confirm=False to skip this prompt."
                 )
 
@@ -346,9 +378,9 @@ def delete_remote_files(
                 print("  Tip: pass confirm=False to cb.delete_dataset() to skip this prompt.")
             answer = input("\nDelete these files? [y/N] ").strip().lower()
             if answer not in {"y", "yes"}:
-                raise RuntimeError(
+                raise DownloadCancelled(
                     f"Deletion of '{spec.identifier}' (subset: {sorted(subset_set)}) "
-                    "cancelled by user. Pass confirm=False to skip this prompt."
+                    "cancelled. Pass confirm=False to skip this prompt."
                 )
 
         manifest_path = dataset_dir / "_manifest.json"
@@ -575,15 +607,20 @@ def ensure_remote_files(
         _update_manifest(remote_file.filename, dest_path.stat().st_size)
         overall_bar.update(1)
 
-    def _has_valid_local_copy(remote_file: RemoteFile) -> bool:
+    def _has_valid_local_copy(
+        remote_file: RemoteFile, manifest: dict[str, int] | None = None
+    ) -> bool:
         path = dataset_dir / remote_file.filename
         if not path.exists():
             return False
-        # Fast path: check the manifest first.
-        with manifest_lock:
-            manifest = _load_manifest()
-        if remote_file.filename in manifest:
-            if manifest[remote_file.filename] == path.stat().st_size:
+        # Use the provided manifest snapshot, or load fresh under the lock.
+        if manifest is not None:
+            m = manifest
+        else:
+            with manifest_lock:
+                m = _load_manifest()
+        if remote_file.filename in m:
+            if m[remote_file.filename] == path.stat().st_size:
                 return True
         # Fallback: for zip files, validate the archive.
         if path.suffix.lower() != ".zip":
@@ -601,17 +638,18 @@ def ensure_remote_files(
             dest.unlink(missing_ok=True)
             dest.with_name(dest.name + ".part").unlink(missing_ok=True)
 
-    to_download = [f for f in files if not _has_valid_local_copy(f)]
+    # Load the manifest once for the pre-flight check (avoids one disk read per file).
+    preflight_manifest = _load_manifest()
+    to_download = [f for f in files if not _has_valid_local_copy(f, preflight_manifest)]
 
     if not to_download:
         return dataset_dir
 
     if not accept:
-        confirmed = _prompt_download_verify(spec, to_download)
+        confirmed = _prompt_download_verify(spec, to_download, dataset_dir)
         if not confirmed:
-            raise RuntimeError(
-                f"Download of '{spec.identifier}' cancelled by user. "
-                "Pass accept=True to skip this prompt."
+            raise DownloadCancelled(
+                f"Download of '{spec.identifier}' cancelled. Pass accept=True to skip this prompt."
             )
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))
@@ -764,6 +802,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         subset_key_name="subsets",
         size_hint="~10 MB",
         subset_size_hint="~2 MB per subset",
+        subset_size_bytes=2 * 1024 * 1024,  # ~2 MB per set
         # Set S contains 100 single-channel ictal recordings; Z/O/N/F are seizure-free.
         # Source: Andrzejak et al. 2001 (DOI: 10.34810/data490).
         seizures_per_subject={"Z": 0, "O": 0, "N": 0, "F": 0, "S": 100},
@@ -794,6 +833,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
         known_subset_keys=_CHB_MIT_SUBJECTS,
         size_hint="~30 GB",
         subset_size_hint="~1.5 GB per subject",
+        subset_size_bytes=int(1.5 * 1024**3),  # ~1.5 GB per subject
         # Counts sourced from per-subject summary files (chbXX/chbXX-summary.txt).
         # chb21 is a repeat recording from the same patient as chb01.
         seizures_per_subject={
@@ -863,6 +903,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
         known_subset_keys=_SIENA_SUBJECTS,
         size_hint="~15 GB",
         subset_size_hint="~1 GB per subject",
+        subset_size_bytes=1024**3,  # ~1 GB per subject
         # Sourced from subject_info.csv (Detti et al. 2020, 47 seizures total).
         # Note: subject IDs skip some numbers (no PN02, PN04, PN08, etc.).
         seizures_per_subject={
@@ -920,6 +961,7 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
         known_subset_keys=_OPEN_IEEG_SUBJECTS,
         size_hint="~13 GB",
         subset_size_hint="~70 MB per subject",
+        subset_size_bytes=70 * 1024 * 1024,  # ~70 MB per subject
         # Interictal-only dataset: recordings are sleep segments with no ictal events.
         seizures_per_subject=None,
         info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
@@ -956,6 +998,7 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
         known_subset_keys=_ZURICH_IEEG_SUBJECTS,
         size_hint="~60 GB",
         subset_size_hint="~3 GB per subject (varies by recording nights)",
+        subset_size_bytes=3 * 1024**3,  # ~3 GB per subject
         info_url="https://openneuro.org/datasets/ds003498/versions/1.1.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,

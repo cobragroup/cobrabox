@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cobrabox.downloader import (
+    DownloadCancelled,
     RemoteDatasetSpec,
     RemoteFile,
     _format_bytes,
@@ -60,7 +61,7 @@ def test_prompt_verify_returns_true_on_yes(tmp_path: Path) -> None:
     spec = _make_spec(tmp_path, files, size_hint="~1 MB")
 
     with patch("builtins.input", return_value="y"):
-        assert _prompt_download_verify(spec, files) is True
+        assert _prompt_download_verify(spec, files, tmp_path) is True
 
 
 def test_prompt_verify_returns_true_on_yes_uppercase(tmp_path: Path) -> None:
@@ -68,7 +69,7 @@ def test_prompt_verify_returns_true_on_yes_uppercase(tmp_path: Path) -> None:
     spec = _make_spec(tmp_path, files, size_hint="~512 B")
 
     with patch("builtins.input", return_value="YES"):
-        assert _prompt_download_verify(spec, files) is True
+        assert _prompt_download_verify(spec, files, tmp_path) is True
 
 
 def test_prompt_verify_returns_false_on_no(tmp_path: Path) -> None:
@@ -76,7 +77,7 @@ def test_prompt_verify_returns_false_on_no(tmp_path: Path) -> None:
     spec = _make_spec(tmp_path, files, size_hint="~1 MB")
 
     with patch("builtins.input", return_value="n"):
-        assert _prompt_download_verify(spec, files) is False
+        assert _prompt_download_verify(spec, files, tmp_path) is False
 
 
 def test_prompt_verify_returns_false_on_empty_input(tmp_path: Path) -> None:
@@ -84,7 +85,7 @@ def test_prompt_verify_returns_false_on_empty_input(tmp_path: Path) -> None:
     spec = _make_spec(tmp_path, files, size_hint="~1 MB")
 
     with patch("builtins.input", return_value=""):
-        assert _prompt_download_verify(spec, files) is False
+        assert _prompt_download_verify(spec, files, tmp_path) is False
 
 
 def test_prompt_verify_shows_unknown_size_when_no_size_hint(
@@ -94,7 +95,7 @@ def test_prompt_verify_shows_unknown_size_when_no_size_hint(
     spec = _make_spec(tmp_path, files, size_hint=None)
 
     with patch("builtins.input", return_value="n"):
-        _prompt_download_verify(spec, files)
+        _prompt_download_verify(spec, files, tmp_path)
 
     out = capsys.readouterr().out
     assert "unknown" in out
@@ -105,7 +106,7 @@ def test_prompt_verify_shows_size_hint(tmp_path: Path, capsys: pytest.CaptureFix
     spec = _make_spec(tmp_path, files, size_hint="~10 GB")
 
     with patch("builtins.input", return_value="n"):
-        _prompt_download_verify(spec, files)
+        _prompt_download_verify(spec, files, tmp_path)
 
     out = capsys.readouterr().out
     assert "~10 GB" in out
@@ -139,7 +140,7 @@ def test_ensure_remote_files_accept_true_skips_prompt(tmp_path: Path) -> None:
 
 
 def test_ensure_remote_files_accept_false_cancels_on_no(tmp_path: Path) -> None:
-    """User declining the prompt raises RuntimeError."""
+    """User declining the prompt raises DownloadCancelled."""
     remote = RemoteFile(url="http://example.com/a.zip", filename="a.zip")
     # Build a dataset dir that doesn't have the file yet
     dataset_dir = tmp_path / "test_dataset"
@@ -155,7 +156,7 @@ def test_ensure_remote_files_accept_false_cancels_on_no(tmp_path: Path) -> None:
         patch("cobrabox.downloader._prompt_download_verify", return_value=False),
         patch("cobrabox.downloader.get_dataset_dir", return_value=tmp_path),
     ):
-        with pytest.raises(RuntimeError, match="cancelled by user"):
+        with pytest.raises(DownloadCancelled):
             ensure_remote_files(spec, accept=False)
 
 

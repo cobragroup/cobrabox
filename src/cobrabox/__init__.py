@@ -11,7 +11,7 @@ from .datasets import (
     load_dataset,
     show_datasets,
 )
-from .downloader import get_dataset_dir, set_dataset_dir
+from .downloader import DownloadCancelled, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
 from .features.time_domain.line_length import LineLength
 from .features.time_domain.nonreversibility import Nonreversibility
@@ -33,6 +33,7 @@ __all__ = [
     "ConcatAggregate",
     "Data",
     "Dataset",
+    "DownloadCancelled",
     "LineLength",
     "MeanAggregate",
     "Nonreversibility",
