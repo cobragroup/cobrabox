@@ -219,22 +219,28 @@ def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
         mock_prompt.assert_not_called()
 
 
-class _NoOpBar:
-    """No-op tqdm progress bar for use in downloader tests."""
+class _NoOpProgress:
+    """No-op Rich Progress/Live for use in downloader tests."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         pass
 
-    def __enter__(self) -> _NoOpBar:
+    def __enter__(self) -> _NoOpProgress:
         return self
 
     def __exit__(self, *args: object) -> None:
         pass
 
-    def update(self, n: int) -> None:
+    def add_task(self, *args: object, **kwargs: object) -> int:
+        return 0
+
+    def remove_task(self, task_id: object) -> None:
         pass
 
-    def close(self) -> None:
+    def update(self, task_id: object, **kwargs: object) -> None:
+        pass
+
+    def advance(self, task_id: object, advance: float = 1) -> None:
         pass
 
 
@@ -321,7 +327,8 @@ def test_ensure_remote_files_redownloads_corrupt_zip(
         return _FakeResponse(buf.getvalue())
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     ensure_remote_files(spec, data_dir=tmp_path, accept=True)
     assert downloaded == ["http://example.com/a.zip"]
@@ -432,7 +439,8 @@ def test_keyboard_interrupt_during_download_raises_and_leaves_part_file(
             return b"x" * 65536
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse())
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     with pytest.raises(KeyboardInterrupt):
         ensure_remote_files(spec, data_dir=tmp_path, accept=True)
