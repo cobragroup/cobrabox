@@ -453,7 +453,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
             info_url=spec.info_url,
             license=spec.license,
             auth_hint=spec.auth_hint,
-            local_path=cached_path if _dataset_cache_status(spec) == "yes" else None,
+            local_path=cached_path if _dataset_cache_status(spec) != "no" else None,
         )
 
     raise ValueError(

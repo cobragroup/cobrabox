@@ -748,6 +748,7 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
         known_subset_keys=tuple(_SWISS_EEG_SHORT_IDS),
         size_hint="~11 GB",
         subset_size_hint="~100 MB - 1 GB per subject",
+        subset_size_bytes=(600 * 1024**2),  # ~600 MB average (~11 GB / 18 subjects)
         # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940)
         # but the paper PDF is not publicly accessible as plain text.
         seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
@@ -783,6 +784,7 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         known_subset_keys=_SWEZ_LONG_SUBJECTS,
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
+        subset_size_bytes=(150 * 1024**3),  # ~150 GB midpoint of 100-200 GB range
         # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
         # Per-subject breakdown is in the Laelaps paper, but the SWEZ website
         # (seizure_info_url) has TLS issues preventing automated access.
