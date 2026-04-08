@@ -7,6 +7,7 @@ import os
 import platform
 import shutil
 import socket
+import sys
 import threading
 import urllib.error
 import urllib.request
@@ -15,9 +16,21 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from queue import Queue
 
-from tqdm import tqdm
+from rich.console import Console, Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TaskID,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 from .data import SignalData
 from .dataset import Dataset
@@ -61,40 +74,25 @@ def _format_bytes(n: int) -> str:
     return f"{size:.1f} B"  # unreachable, satisfies type checker
 
 
-def _in_jupyter() -> bool:
-    """Return True if running inside a Jupyter notebook or IPython shell."""
-    try:
-        from IPython import get_ipython
-
-        return get_ipython() is not None
-    except ImportError:
-        return False
-
-
 def _prompt_download_verify(
     spec: RemoteDatasetSpec, to_download: list[RemoteFile] | None, dataset_dir: Path
 ) -> bool:
-    """Print dataset info, license, and download summary, then ask the user to confirm.
-
-    ``to_download`` may be ``None`` when the file index has not been fetched yet
-    (dynamic datasets).  In that case the prompt shows size hints only.
+    """Show a Rich panel with dataset info and ask the user to confirm the download.
 
     Returns ``True`` if the user confirmed, ``False`` otherwise.
     """
-    print(f"\nDataset: {spec.identifier}")
+    lines: list[str] = []
     if spec.description:
-        print(f"  {spec.description}")
-
+        lines.append(spec.description)
+        lines.append("")
     if spec.license is not None:
-        print(f"\n  License : {spec.license}")
+        lines.append(f"[dim]License :[/dim] {spec.license}")
     if spec.info_url is not None:
-        print(f"  More info: {spec.info_url}")
-
-    print(f"\n  Save to  : {dataset_dir}")
+        lines.append(f"[dim]More info:[/dim] {spec.info_url}")
+    lines.append(f"[dim]Save to :[/dim] {dataset_dir}")
 
     if to_download is None:
-        # File index not yet fetched — show static size hints only.
-        print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
+        lines.append(f"[dim]Size    :[/dim] {spec.size_hint or 'unknown'}")
     else:
         n_files = len(to_download)
         total_files = len(spec.files) if spec.files is not None else None
@@ -102,35 +100,35 @@ def _prompt_download_verify(
         n_subjects = len({f.subset_key for f in to_download if f.subset_key is not None})
         is_subset = total_files is not None and n_files < total_files
 
-        if n_subjects > 0 and n_subjects < n_files:
-            print(
-                f"\n  Files to download: {files_str}"
-                f" ({n_subjects} subject{'s' if n_subjects != 1 else ''})"
-            )
-        else:
-            print(f"\n  Files to download: {files_str}")
+        subj_str = (
+            f" ({n_subjects} subject{'s' if n_subjects != 1 else ''})"
+            if n_subjects > 0 and n_subjects < n_files
+            else ""
+        )
+        lines.append(f"[dim]Files   :[/dim] {files_str}{subj_str}")
 
         if is_subset and spec.subset_size_bytes is not None and n_subjects > 0:
-            total_bytes = spec.subset_size_bytes * n_subjects
-            total_fmt = _format_bytes(total_bytes)
+            total_fmt = _format_bytes(spec.subset_size_bytes * n_subjects)
             per_fmt = _format_bytes(spec.subset_size_bytes)
-            print(
-                f"  Estimated download size: {total_fmt}"
-                f"  ({per_fmt} x {n_subjects} subject{'s' if n_subjects != 1 else ''})"
+            lines.append(
+                f"[dim]Size    :[/dim] {total_fmt}"
+                f"  ({per_fmt} \u00d7 {n_subjects} subject{'s' if n_subjects != 1 else ''})"
             )
         elif is_subset and spec.subset_size_hint is not None:
             count = n_subjects if n_subjects > 0 else n_files
             label = "subject" if n_subjects > 0 else "file"
-            print(
-                f"  Estimated download size: {count} x {spec.subset_size_hint}"
-                f" ({count} {label}{'s' if count != 1 else ''})"
+            lines.append(
+                f"[dim]Size    :[/dim] {count} \u00d7 {spec.subset_size_hint}"
+                f"  ({count} {label}{'s' if count != 1 else ''})"
             )
         else:
-            print(f"  Estimated download size: {spec.size_hint or 'unknown'}")
+            lines.append(f"[dim]Size    :[/dim] {spec.size_hint or 'unknown'}")
 
-    if _in_jupyter():
-        print("  Tip: pass accept=True to skip this prompt.")
-    answer = input("\nProceed with download? [y/N] ").strip().lower()
+    lines.append("\n[dim]Tip: pass [bold]accept=True[/bold] to skip this prompt.[/dim]")
+    Console(file=sys.stdout, highlight=False).print(
+        Panel("\n".join(lines), title=f"[bold cyan]{spec.identifier}[/bold cyan]")
+    )
+    answer = input("Proceed with download? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
 
 
@@ -340,13 +338,17 @@ def delete_remote_files(
         total_size = sum(f.stat().st_size for f in dataset_dir.rglob("*") if f.is_file())
 
         if confirm:
-            print(f"\nDataset: {spec.identifier}")
-            print(f"  Local path : {dataset_dir}")
-            print(f"  Files      : {len(data_files)}")
-            print(f"  Disk space : {_format_bytes(total_size)}")
-            if _in_jupyter():
-                print("  Tip: pass confirm=False to cb.delete_dataset() to skip this prompt.")
-            answer = input("\nDelete all local files? [y/N] ").strip().lower()
+            lines = [
+                f"[dim]Local path:[/dim] {dataset_dir}",
+                f"[dim]Files     :[/dim] {len(data_files)}",
+                f"[dim]Disk space:[/dim] {_format_bytes(total_size)}",
+                "\n[dim]Tip: pass [bold]confirm=False[/bold] to"
+                " [bold]cb.delete_dataset()[/bold] to skip this prompt.[/dim]",
+            ]
+            Console(file=sys.stdout, highlight=False).print(
+                Panel("\n".join(lines), title=f"[bold red]{spec.identifier}[/bold red]")
+            )
+            answer = input("Delete all local files? [y/N] ").strip().lower()
             if answer not in {"y", "yes"}:
                 raise DownloadCancelled(
                     f"Deletion of '{spec.identifier}' cancelled. "
@@ -370,13 +372,17 @@ def delete_remote_files(
         total_size = sum((dataset_dir / f.filename).stat().st_size for f in existing)
 
         if confirm:
-            print(f"\nDataset: {spec.identifier}")
-            print(f"  Subjects   : {', '.join(sorted(subset_set))}")
-            print(f"  Files      : {len(existing)}")
-            print(f"  Disk space : {_format_bytes(total_size)}")
-            if _in_jupyter():
-                print("  Tip: pass confirm=False to cb.delete_dataset() to skip this prompt.")
-            answer = input("\nDelete these files? [y/N] ").strip().lower()
+            lines = [
+                f"[dim]Subjects  :[/dim] {', '.join(sorted(subset_set))}",
+                f"[dim]Files     :[/dim] {len(existing)}",
+                f"[dim]Disk space:[/dim] {_format_bytes(total_size)}",
+                "\n[dim]Tip: pass [bold]confirm=False[/bold] to"
+                " [bold]cb.delete_dataset()[/bold] to skip this prompt.[/dim]",
+            ]
+            Console(file=sys.stdout, highlight=False).print(
+                Panel("\n".join(lines), title=f"[bold red]{spec.identifier}[/bold red]")
+            )
+            answer = input("Delete these files? [y/N] ").strip().lower()
             if answer not in {"y", "yes"}:
                 raise DownloadCancelled(
                     f"Deletion of '{spec.identifier}' (subset: {sorted(subset_set)}) "
@@ -517,12 +523,13 @@ def ensure_remote_files(
 
     def _download_one(
         remote_file: RemoteFile,
-        position_pool: Queue[int],
-        overall_bar: tqdm,  # type: ignore[type-arg]
+        file_progress: Progress,
+        overall_progress: Progress,
+        overall_task: TaskID,
     ) -> None:
         dest_path = dataset_dir / remote_file.filename
         if _has_valid_local_copy(remote_file):
-            overall_bar.update(1)
+            overall_progress.advance(overall_task)
             return
 
         url = remote_file.url
@@ -531,7 +538,7 @@ def ensure_remote_files(
         # Resume from a partial download if one exists.
         resumed_bytes = tmp_path.stat().st_size if tmp_path.exists() else 0
 
-        position = position_pool.get()
+        file_task = file_progress.add_task(remote_file.filename, total=None)
         try:
             try:
                 request = urllib.request.Request(url)
@@ -541,24 +548,13 @@ def ensure_remote_files(
                     content_length = response.headers.get("Content-Length")
                     remaining = int(content_length) if content_length else None
                     total_size = (resumed_bytes + remaining) if remaining is not None else None
-                    with (
-                        open(tmp_path, "ab" if resumed_bytes else "wb") as f,
-                        tqdm(
-                            total=total_size,
-                            initial=resumed_bytes,
-                            unit="B",
-                            unit_scale=True,
-                            unit_divisor=1024,
-                            desc=remote_file.filename,
-                            position=position,
-                            leave=False,
-                        ) as bar,
-                    ):
+                    file_progress.update(file_task, total=total_size, completed=resumed_bytes)
+                    with open(tmp_path, "ab" if resumed_bytes else "wb") as f:
                         for chunk in iter(lambda: response.read(65536), b""):
                             if _cancel.is_set():
                                 return
                             f.write(chunk)
-                            bar.update(len(chunk))
+                            file_progress.update(file_task, advance=len(chunk))
             except urllib.error.HTTPError as e:
                 tmp_path.unlink(missing_ok=True)
                 if spec.auth_hint and e.code in {401, 403}:
@@ -601,11 +597,11 @@ def ensure_remote_files(
                     f"'{spec.identifier}' from {url!r}: {e!r}"
                 ) from e
         finally:
-            position_pool.put(position)
+            file_progress.remove_task(file_task)
 
         tmp_path.replace(dest_path)
         _update_manifest(remote_file.filename, dest_path.stat().st_size)
-        overall_bar.update(1)
+        overall_progress.advance(overall_task)
 
     def _has_valid_local_copy(
         remote_file: RemoteFile, manifest: dict[str, int] | None = None
@@ -653,33 +649,48 @@ def ensure_remote_files(
             )
 
     max_workers = min(spec.max_parallel_downloads, len(to_download))
-    position_pool: Queue[int] = Queue()
-    for i in range(1, max_workers + 1):
-        position_pool.put(i)
-    overall_bar = tqdm(
-        total=len(to_download),
-        unit="file",
-        desc=f"Downloading {spec.identifier}",
-        position=0,
-        leave=True,
+    _console = Console(file=sys.stdout)
+    overall_progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[bold]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeRemainingColumn(),
+        console=_console,
     )
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = [
-        executor.submit(_download_one, remote_file, position_pool, overall_bar)
-        for remote_file in to_download
-    ]
+    file_progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}", table_column=None),
+        BarColumn(),
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+        console=_console,
+    )
+    progress_group = Group(overall_progress, file_progress)
     try:
-        for fut in futures:
-            fut.result()
+        with Live(progress_group, console=_console, refresh_per_second=10):
+            overall_task = overall_progress.add_task(spec.identifier, total=len(to_download))
+            executor = ThreadPoolExecutor(max_workers=max_workers)
+            futures = [
+                executor.submit(_download_one, rf, file_progress, overall_progress, overall_task)
+                for rf in to_download
+            ]
+            try:
+                for fut in futures:
+                    fut.result()
+            except KeyboardInterrupt:
+                _cancel.set()
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise
+            else:
+                executor.shutdown(wait=False)
     except KeyboardInterrupt:
-        _cancel.set()
-        executor.shutdown(wait=False, cancel_futures=True)
-        overall_bar.close()
-        print("\nDownload interrupted — partial files will be resumed on next run.")
+        _console.print(
+            "\n[yellow]Download interrupted \u2014"
+            " partial files will be resumed on next run.[/yellow]"
+        )
         raise
-    else:
-        executor.shutdown(wait=False)
-        overall_bar.close()
 
     return dataset_dir
 
