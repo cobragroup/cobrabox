@@ -25,6 +25,8 @@ Example — served::
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import matplotlib
 import numpy as np
 import param
@@ -36,7 +38,10 @@ import panel as pn
 
 from cobrabox.data import Data
 
-hv.extension("bokeh")
+if TYPE_CHECKING:
+    import xarray
+
+hv.extension("bokeh")  # type: ignore
 
 # ---------------------------------------------------------------------------
 # x-range linker — shares horizontal axis between channel and average plots
@@ -63,7 +68,7 @@ class _XRangeLinker:
         """Forget the stored range so the next render re-adopts it."""
         self._x_range = None
 
-    def hook(self, plot: object, element: object) -> None:
+    def hook(self, plot: Any, element: Any) -> None:
         """Bokeh post-render hook: capture or reuse the shared x_range."""
         if self._x_range is None:
             self._x_range = plot.handles["x_range"]
@@ -161,8 +166,8 @@ class ExplorerState(param.Parameterized):
 
         # Set event_index bounds if point_positions given.
         pp = params.get("point_positions")
-        if pp is not None and len(pp) > 0:
-            self.param.event_index.bounds = (0, len(pp) - 1)
+        if pp is not None and len(pp) > 0:  # type: ignore
+            self.param.event_index.bounds = (0, len(pp) - 1)  # type: ignore
 
         # Compute global data range and use as colormap defaults.
         data_vals = xr_data.values
@@ -188,11 +193,11 @@ class ExplorerState(param.Parameterized):
         return self._data
 
     @property
-    def xr(self):
+    def xr(self) -> xarray.DataArray:
         """Shortcut to the underlying ``xr.DataArray``."""
         return self._xr
 
-    @param.depends("sweep_dim", watch=True)
+    @param.depends("sweep_dim", watch=True)  # type: ignore
     def _update_position_bounds(self) -> None:
         n = self._xr.sizes[self.sweep_dim]
         self.param.position.bounds = (0, n - 1)
@@ -208,7 +213,7 @@ class ExplorerState(param.Parameterized):
         else:
             self.param.event_index.bounds = (0, 0)
 
-    @param.depends("event_index", watch=True)
+    @param.depends("event_index", watch=True)  # type: ignore
     def _sync_event_position(self) -> None:
         """Keep ``position`` in sync with the selected event index."""
         pp = self.point_positions
@@ -225,7 +230,7 @@ class ExplorerState(param.Parameterized):
 
     def _extra_dims(self) -> list[str]:
         """Dims that are neither ``sweep_dim`` nor ``trace_dim``."""
-        return [d for d in self._xr.dims if d not in (self.sweep_dim, self.trace_dim)]
+        return [str(d) for d in self._xr.dims if d not in (self.sweep_dim, self.trace_dim)]
 
     def reduced_data(self) -> np.ndarray:
         """Mean over all non-sweep dims → 1-D array along ``sweep_dim``."""
@@ -236,13 +241,13 @@ class ExplorerState(param.Parameterized):
         """Coordinate values for the current ``sweep_dim``."""
         return self._xr.coords[self.sweep_dim].values
 
-    def windowed_2d(self, lo: int, hi: int):
-        """Return a 2-D DataArray (trace_dim × sweep_dim) for the window.
+    def windowed_2d(self, lo: int, hi: int) -> xarray.DataArray:
+        """Return a 2-D DataArray (trace_dim x sweep_dim) for the window.
 
         Extra dimensions beyond ``sweep_dim`` and ``trace_dim`` are
         averaged out so that detail plots always receive 2-D data.
         """
-        window = self._xr.isel(**{self.sweep_dim: slice(lo, hi)})
+        window = self._xr.isel(**{self.sweep_dim: slice(lo, hi)})  # type: ignore
         extra = self._extra_dims()
         if extra:
             window = window.mean(dim=extra)
@@ -274,18 +279,18 @@ class ChannelPlot(pn.viewable.Viewer):
         self._state = state
         self._linker = linker
         # Bokeh model references set inside the render hook.
-        self._bokeh_vline: object = None  # bokeh.models.Span
-        self._bokeh_vspan: object = None  # bokeh.models.BoxAnnotation
+        self._bokeh_vline: Any = None  # bokeh.models.Span
+        self._bokeh_vspan: Any = None  # bokeh.models.BoxAnnotation
         self._pane = pn.pane.HoloViews(
             self._plot, sizing_mode="stretch_width", min_height=300, linked_axes=linker is None
         )
 
-    def _make_hook(self, s: ExplorerState):
+    def _make_hook(self, s: ExplorerState) -> object:
         """Return a Bokeh post-render hook that adds span annotations and tap handler."""
         from bokeh.events import Tap as BokehTap
         from bokeh.models import BoxAnnotation, Span
 
-        def hook(plot: object, element: object) -> None:
+        def hook(plot: Any, element: Any) -> None:
             fig = plot.handles["plot"]
             coords = s.sweep_coords()
             pos_coord = float(coords[s.position]) if s.position < len(coords) else float(coords[-1])
@@ -321,7 +326,7 @@ class ChannelPlot(pn.viewable.Viewer):
             if not getattr(fig, "_cb_tap_registered", False):
                 fig._cb_tap_registered = True
 
-                def _on_tap(event: object) -> None:
+                def _on_tap(event: Any) -> None:
                     crds = s.sweep_coords()
                     idx = int(np.argmin(np.abs(crds - event.x)))
                     new_pos = max(0, min(idx, len(crds) - 1))
@@ -340,13 +345,13 @@ class ChannelPlot(pn.viewable.Viewer):
 
         return hook
 
-    @param.depends("_state.sweep_dim", "_state.trace_dim", "_state.position", "_state.window_size")
+    @param.depends("_state.sweep_dim", "_state.trace_dim", "_state.position", "_state.window_size")  # type: ignore
     def _plot(self) -> hv.NdOverlay:
         s = self._state
         coords = s.sweep_coords()
         xr_data = s.xr
 
-        # Reduce any extra dims so we always have 2-D (trace × sweep).
+        # Reduce any extra dims so we always have 2-D (trace x sweep).
         extra = s._extra_dims()
         data_2d = xr_data.mean(dim=extra) if extra else xr_data
 
@@ -361,7 +366,7 @@ class ChannelPlot(pn.viewable.Viewer):
         traces = {}
         trace_labels = data_2d.coords[s.trace_dim].values
         for i, label in enumerate(trace_labels):
-            vals = data_2d.isel(**{s.trace_dim: i}).values + i * spacing
+            vals = data_2d.isel(**{s.trace_dim: i}).values + i * spacing  # type: ignore
             traces[str(label)] = hv.Curve((coords, vals), kdims=[s.sweep_dim], vdims=["amplitude"])
 
         # Y-ticks: one per channel, placed at its baseline offset, labelled by
@@ -383,7 +388,7 @@ class ChannelPlot(pn.viewable.Viewer):
             ),
         )
 
-    def __panel__(self):
+    def __panel__(self) -> pn.viewable.Viewable:
         return self._pane
 
 
@@ -393,7 +398,7 @@ class ChannelPlot(pn.viewable.Viewer):
 
 
 class HeatmapPanel(pn.viewable.Viewer):
-    """Windowed 2-D heatmap showing ``trace_dim`` × ``sweep_dim``.
+    """Windowed 2-D heatmap showing ``trace_dim`` x ``sweep_dim``.
 
     Covers exactly the selected window extent so the data fills the
     full plot area.
@@ -419,7 +424,7 @@ class HeatmapPanel(pn.viewable.Viewer):
 
         state.param.watch(_on_zoom_toggle, ["zoom_window"])
 
-    @param.depends(
+    @param.depends(  # type: ignore
         "_state.position",
         "_state.window_size",
         "_state.zoom_window",
@@ -439,7 +444,7 @@ class HeatmapPanel(pn.viewable.Viewer):
 
         # 2-D array: (trace, sweep)
         matrix = np.stack(
-            [window.isel(**{s.trace_dim: i}).values for i in range(len(trace_labels))]
+            [window.isel(**{s.trace_dim: i}).values for i in range(len(trace_labels))]  # type: ignore
         )
 
         x0, x1 = float(coords[0]), float(coords[-1])
@@ -475,7 +480,7 @@ class HeatmapPanel(pn.viewable.Viewer):
             hooks=hooks,
         )
 
-    def __panel__(self):
+    def __panel__(self) -> pn.viewable.Viewable:
         return self._pane
 
 
@@ -500,18 +505,18 @@ class AveragePlot(pn.viewable.Viewer):
         super().__init__(**params)
         self._state = state
         self._linker = linker
-        self._bokeh_vline: object = None  # bokeh.models.Span
-        self._bokeh_vspan: object = None  # bokeh.models.BoxAnnotation
+        self._bokeh_vline: Any = None  # bokeh.models.Span
+        self._bokeh_vspan: Any = None  # bokeh.models.BoxAnnotation
         self._pane = pn.pane.HoloViews(
             self._plot, sizing_mode="stretch_width", min_height=180, linked_axes=linker is None
         )
 
-    def _make_hook(self, s: ExplorerState):
+    def _make_hook(self, s: ExplorerState) -> object:
         """Return a Bokeh post-render hook that adds span annotations and tap handler."""
         from bokeh.events import Tap as BokehTap
         from bokeh.models import BoxAnnotation, Span
 
-        def hook(plot: object, element: object) -> None:
+        def hook(plot: Any, element: Any) -> None:
             fig = plot.handles["plot"]
             coords = s.sweep_coords()
             pos_coord = float(coords[s.position]) if s.position < len(coords) else float(coords[-1])
@@ -535,7 +540,7 @@ class AveragePlot(pn.viewable.Viewer):
             if not getattr(fig, "_cb_tap_registered", False):
                 fig._cb_tap_registered = True
 
-                def _on_tap(event: object) -> None:
+                def _on_tap(event: Any) -> None:
                     crds = s.sweep_coords()
                     idx = int(np.argmin(np.abs(crds - event.x)))
                     new_pos = max(0, min(idx, len(crds) - 1))
@@ -554,7 +559,7 @@ class AveragePlot(pn.viewable.Viewer):
 
         return hook
 
-    @param.depends(
+    @param.depends(  # type: ignore
         "_state.sweep_dim",
         "_state.trace_dim",
         "_state.point_positions",
@@ -590,7 +595,7 @@ class AveragePlot(pn.viewable.Viewer):
 
         return overlay.opts(responsive=True, min_height=180)
 
-    def __panel__(self):
+    def __panel__(self) -> pn.viewable.Viewable:
         return self._pane
 
 
@@ -697,7 +702,7 @@ class ControlsPanel(pn.viewable.Viewer):
 
     # -- reactive content ----------------------------------------------------
 
-    @param.depends("_state.sweep_dim", "_state.trace_dim")
+    @param.depends("_state.sweep_dim", "_state.trace_dim")  # type: ignore
     def _metadata_text(self) -> str:
         d = self._state.data
         lines = [
@@ -710,7 +715,7 @@ class ControlsPanel(pn.viewable.Viewer):
             lines.append(f"**History:** {', '.join(d.history)}")
         return "\n\n".join(lines)
 
-    @param.depends("_state.event_index", "_state.point_positions")
+    @param.depends("_state.event_index", "_state.point_positions")  # type: ignore
     def _event_info_text(self) -> str:
         pp = self._state.point_positions
         if pp is None or len(pp) == 0:
@@ -731,7 +736,7 @@ class ControlsPanel(pn.viewable.Viewer):
         if pp is not None and s.event_index < len(pp) - 1:
             s.event_index += 1
 
-    def __panel__(self):
+    def __panel__(self) -> pn.viewable.Viewable:
         return self._panel
 
 
@@ -806,7 +811,7 @@ class SeizureExplorer(pn.viewable.Viewer):
                 sizing_mode="stretch_both",
             )
 
-    def __panel__(self):
+    def __panel__(self) -> pn.viewable.Viewable:
         return self._layout
 
     @classmethod

@@ -31,11 +31,18 @@ from .interactive import InteractiveExplorer
 __all__ = ["ConnectivityPlotter", "InteractiveExplorer", "plot_connectivity"]
 
 
-def __getattr__(name: str):
-    """Lazily import SeizureExplorer to avoid requiring viz extras at import time."""
+def __getattr__(name: str) -> type:
+    """Lazily import SeizureExplorer or SpaceExplorer.
+
+    Avoids requiring viz extras at import time.
+    """
     if name == "SeizureExplorer":
         from .seizure_explorer import SeizureExplorer
 
         return SeizureExplorer
+    if name == "SpaceExplorer":
+        from .space_explorer import SpaceExplorer
+
+        return SpaceExplorer
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)

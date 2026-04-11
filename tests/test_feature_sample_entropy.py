@@ -27,7 +27,7 @@ def _naive_sampen(ts: np.ndarray, m: int, r: float, log_base: float = 2) -> floa
     return -np.log(a / b) / np.log(log_base)
 
 
-def test_sampen_known_value():
+def test_sampen_known_value() -> None:
     """Validate SampEn against a manually computed reference (log_base 2 default)."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     m = 2
@@ -41,7 +41,7 @@ def test_sampen_known_value():
     assert np.allclose(result.item(), expected, atol=1e-12)
 
 
-def test_sampen_natural_log():
+def test_sampen_natural_log() -> None:
     """Validate SampEn with natural logarithm (log_base=e)."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     m = 2
@@ -55,8 +55,8 @@ def test_sampen_natural_log():
     assert np.allclose(result.item(), expected, atol=1e-12)
 
 
-def test_sampen_base_10():
-    """Validate SampEn with base‑10 logarithm."""
+def test_sampen_base_10() -> None:
+    """Validate SampEn with base-10 logarithm."""
     ts = np.array([0, 1, 0, 1, 0, 1], dtype=float)
     m = 2
     r = 0.5
@@ -69,7 +69,7 @@ def test_sampen_base_10():
     assert np.allclose(result.item(), expected, atol=1e-12)
 
 
-def test_sampen_raises_on_short_series():
+def test_sampen_raises_on_short_series() -> None:
     """SampEn requires a series longer than the embedding dimension."""
     ts = np.arange(2, dtype=float)  # length == 2
     data = SignalData.from_numpy(ts, dims=["time"], sampling_rate=1.0)
@@ -78,7 +78,7 @@ def test_sampen_raises_on_short_series():
         SampEn(m=2)(data)
 
 
-def test_sampen_raises_on_invalid_log_base():
+def test_sampen_raises_on_invalid_log_base() -> None:
     """SampEn should reject invalid logarithm bases."""
     with pytest.raises(ValueError, match="Logarithm base"):
         SampEn(m=2, log_base=0)
@@ -90,8 +90,8 @@ def test_sampen_raises_on_invalid_log_base():
         SampEn(m=2, log_base=-2)
 
 
-def test_sampen_multi_dim_preserves_other_dims():
-    """Sample entropy should be computed per non‑time dimension and time collapsed."""
+def test_sampen_multi_dim_preserves_other_dims() -> None:
+    """Sample entropy should be computed per non-time dimension and time collapsed."""
     # Two channels: one constant, one alternating pattern.
     const = np.zeros(12)
     alt = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1], dtype=float)

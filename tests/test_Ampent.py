@@ -19,7 +19,6 @@ import xarray as xr
 #  Imports from the _actual_ cobrabox distribution
 # -------------------------------------------------
 import cobrabox as cb  # the real cobrabox package
-from cobrabox.function_wrapper import feature  # the real decorator
 
 
 # ----------------------------------------------------------------------
@@ -47,7 +46,7 @@ def test_uniform_distribution() -> None:
     assert isinstance(result, xr.DataArray)
     assert result.shape == (1, 1)  # (time, space) = (1,1)
 
-    expected = np.log2(4)  # entropy of a uniform 4‑bin histogram
+    expected = np.log2(4)  # entropy of a uniform 4-bin histogram
     np.testing.assert_allclose(result.item(), expected, rtol=1e-12)
 
 

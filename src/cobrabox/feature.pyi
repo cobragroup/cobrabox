@@ -27,14 +27,15 @@ from .features import PartialDirectedCoherence as PartialDirectedCoherence
 from .features import PhaseLockingValue as PhaseLockingValue
 from .features import PhaseLockingValueMatrix as PhaseLockingValueMatrix
 from .features import ReciprocalConnectivity as ReciprocalConnectivity
+from .features import SampEn as SampEn
 from .features import SlidingWindow as SlidingWindow
 from .features import SlidingWindowReduce as SlidingWindowReduce
 from .features import Spectrogram as Spectrogram
 from .features import SpikesCalc as SpikesCalc
 
 __all__ = [
-    "Ampent",
     "AmpVar",
+    "Ampent",
     "Autocorr",
     "BandFilter",
     "Bandpower",
@@ -60,6 +61,7 @@ __all__ = [
     "PhaseLockingValue",
     "PhaseLockingValueMatrix",
     "ReciprocalConnectivity",
+    "SampEn",
     "SlidingWindow",
     "SlidingWindowReduce",
     "Spectrogram",

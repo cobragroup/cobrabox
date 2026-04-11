@@ -82,6 +82,17 @@ Feature discovery is automatic: `feature.py` scans all modules in `features/` an
 
 ## Visualization code requirements
 
+### SpaceExplorer architecture reference
+
+Before modifying any file in `src/cobrabox/visualization/space_explorer.py`, `_state.py`, or `_controls.py`:
+
+1. **Read** `docs/agent-reviews/space_explorer_architecture.md` first — it contains the full architecture, all class/param descriptions, data-flow, and design rationale.
+2. **Update** that file after every change.
+
+This avoids re-analysing the codebase from scratch on each request.
+
+---
+
 When developing visualization code (`src/cobrabox/visualization/`):
 
 - **Use established neuroscience notation and standards**: Follow standard conventions in neurophysiology and neuroimaging (e.g., time in milliseconds or seconds, frequency in Hz, amplitude in µV or mV for EEG).
@@ -89,6 +100,11 @@ When developing visualization code (`src/cobrabox/visualization/`):
 - **Document neuroimaging context**: Include docstrings that explain what each visualization component represents in neuroscience terms (e.g., "Upper plot shows global field power; lower plot shows individual electrode traces").
 - **Preserve data integrity**: Ensure visualizations do not distort or misrepresent the underlying neurophysiological data (e.g., proper axis scaling, no misleading interpolation).
 - **Support standard analysis workflows**: Design interactive features and exports that align with typical neuroscience data exploration and analysis pipelines.
+- **Testing**: When running tests for visualization code, run only the dedicated visualization tests:
+  ```bash
+  uv run pytest test_visualization*.py test_space_explorer*.py -q
+  ```
+  Do not run the full test suite (`uv run pytest`) when iterating on visualization changes — it is slow and unrelated to the work at hand.
 
 ## Build & CI
 

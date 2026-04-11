@@ -13,6 +13,8 @@ dependencies = [
     "statsmodels>=0.14",
     "xarray>=2026.2.0",
     "matplotlib>=3.8.0",
+    "seaborn>=0.13.2",
+    "nilearn>=0.13.1",
 ]
 
 [project.optional-dependencies]

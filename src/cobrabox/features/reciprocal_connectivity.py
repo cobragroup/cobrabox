@@ -100,7 +100,7 @@ class ReciprocalConnectivity(BaseFeature[Data]):
             pdc_feat = PartialDirectedCoherence(var_order=self.var_order, n_freqs=self.n_freqs)
             # Call __call__ directly to get the raw DataArray;
             # data must have sampling_rate set (checked inside PDC)
-            mat = pdc_feat(data)  # type: ignore[arg-type]
+            mat = pdc_feat(data)  # type: ignore
 
         # ------------------------------------------------------------------ #
         # PATH B — pre-computed connectivity matrix
