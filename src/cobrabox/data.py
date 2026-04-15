@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Hashable
 from typing import TYPE_CHECKING, Any, Literal, overload
 
@@ -310,6 +311,39 @@ class Data:
                 f"Create a new Data instance instead."
             )
         super().__setattr__(name, value)
+
+    def __copy__(self) -> Data:
+        """Shallow copy — produces a new instance with the same underlying data."""
+        return self._copy_slots(copy.copy)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Data:
+        """Deep copy — produces a new instance with independent copies of all data."""
+        new = self._copy_slots(lambda v: copy.deepcopy(v, memo))
+        memo[id(self)] = new
+        return new
+
+    def _copy_slots(self, copy_fn: Any) -> Data:
+        """Create a new instance by copying all slots (and __dict__) via *copy_fn*.
+
+        Sets ``_frozen`` last so the immutability guard does not fire during
+        reconstruction.  Works for ``Data`` and all subclasses.
+        """
+        cls = type(self)
+        new = object.__new__(cls)
+        # Subclasses that don't define __slots__ get a __dict__; copy it first.
+        if hasattr(self, "__dict__"):
+            new.__dict__.update({k: copy_fn(v) for k, v in self.__dict__.items()})
+        # Copy every slot from the full MRO, skipping _frozen until the end.
+        for klass in cls.__mro__:
+            for slot in getattr(klass, "__slots__", ()):
+                if slot == "_frozen":
+                    continue
+                try:
+                    object.__setattr__(new, slot, copy_fn(getattr(self, slot)))
+                except AttributeError:
+                    pass  # slot exists in class but not yet set on this instance
+        object.__setattr__(new, "_frozen", True)
+        return new
 
     def __repr__(self) -> str:
         cls = type(self).__name__
