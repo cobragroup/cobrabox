@@ -269,19 +269,28 @@ def test_load_realistic_swiss_default_repo_root() -> None:
     assert all(isinstance(d, Data) for d in out)
 
 
-class _NoOpBar:
-    """Silent stand-in for tqdm progress bars used in remote-download tests."""
+class _NoOpProgress:
+    """Silent stand-in for Rich Progress/Live used in remote-download tests."""
 
-    def __enter__(self) -> _NoOpBar:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        pass
+
+    def __enter__(self) -> _NoOpProgress:
         return self
 
     def __exit__(self, *exc_info: object) -> None:
         pass
 
-    def update(self, n: int) -> None:
+    def add_task(self, *args: object, **kwargs: object) -> int:
+        return 0
+
+    def remove_task(self, task_id: object) -> None:
         pass
 
-    def close(self) -> None:
+    def update(self, task_id: object, **kwargs: object) -> None:
+        pass
+
+    def advance(self, task_id: object, advance: float = 1) -> None:
         pass
 
 
@@ -326,7 +335,8 @@ def test_ensure_remote_files_downloads_missing_files(
     import cobrabox.downloader as downloader
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     # Act
     dataset_dir = ensure_remote_files(spec, data_dir=tmp_path, accept=True)
@@ -569,7 +579,8 @@ def test_ensure_remote_files_subset_filters_downloads(
     import cobrabox.downloader as downloader
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     dataset_dir = ensure_remote_files(spec, subset=["ID1", "ID5"], data_dir=tmp_path, accept=True)
 
@@ -699,7 +710,8 @@ def test_ensure_remote_files_dict_subset_int_downloads_first_n(
     import cobrabox.downloader as downloader
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     ensure_remote_files(spec, subset={"ID01": 2}, data_dir=tmp_path, accept=True)
 
@@ -745,7 +757,8 @@ def test_ensure_remote_files_dict_subset_list_downloads_named_files(
     import cobrabox.downloader as downloader
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     ensure_remote_files(
         spec, subset={"ID01": ["ID01_1h.mat", "ID01_3h.mat"]}, data_dir=tmp_path, accept=True

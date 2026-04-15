@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Hashable
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
+
+if TYPE_CHECKING:
+    from rich.console import Console, ConsoleOptions, RenderResult
 
 import numpy as np
 import pandas as pd
@@ -365,6 +368,26 @@ class Data:
             lines.append(f"  sr        : {self.sampling_rate} Hz")
         lines.append(f"  history   : {self.history}")
         return "\n".join(lines)
+
+    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+        from rich.panel import Panel
+        from rich.table import Table
+
+        cls = type(self).__name__
+        shape = tuple(self._data.shape)
+        dims = list(self._data.dims)
+
+        table = Table(box=None, show_header=False, padding=(0, 1))
+        table.add_column(style="dim", no_wrap=True)
+        table.add_column()
+        table.add_row("subjectID", str(self.subjectID))
+        table.add_row("groupID", str(self.groupID))
+        table.add_row("condition", str(self.condition))
+        if self.sampling_rate is not None:
+            table.add_row("sr", f"{self.sampling_rate} Hz")
+        table.add_row("history", str(self.history))
+
+        yield Panel(table, title=f"[bold]{cls}[/bold]  shape={shape}  dims={dims}")
 
     @overload
     def to_numpy(self) -> np.ndarray: ...

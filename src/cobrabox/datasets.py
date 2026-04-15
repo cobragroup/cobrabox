@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-import textwrap
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rich.console import Console, ConsoleOptions, RenderResult
 
 from .data import SignalData
 from .dataset import Dataset
@@ -60,6 +64,14 @@ class DatasetInfo:
             if not available.
         auth_hint: Optional hint shown when a download fails with 401/403,
             e.g. how to obtain credentials.  ``None`` if not applicable.
+        ilae_per_subject: ILAE surgical outcome score per subject (1=seizure-free,
+            6=no improvement), or ``None`` if not available.
+        resected_zone_per_subject: Bipolar channel pairs in the resected zone per
+            subject, or ``None`` if not available.
+        excluded_channels_per_subject: Bipolar channel pairs excluded due to eloquent
+            cortex stimulation per subject, or ``None`` if not available.
+        all_channels_per_subject: All implanted bipolar channel pairs per subject,
+            or ``None`` if not available.
     """
 
     identifier: str
@@ -74,37 +86,39 @@ class DatasetInfo:
     license: str | None = None
     auth_hint: str | None = None
     local_path: Path | None = None
+    ilae_per_subject: dict[str, int] | None = None
+    resected_zone_per_subject: dict[str, list[str]] | None = None
+    excluded_channels_per_subject: dict[str, list[str]] | None = None
+    all_channels_per_subject: dict[str, list[str]] | None = None
 
-    def __str__(self) -> str:
-        lines = [f"DatasetInfo: {self.identifier}"]
-        lines.append(f"  description : {self.description}")
+    def _rich_renderable(self) -> RenderResult:
+
+        from rich.panel import Panel
+        from rich.table import Table
+
+        lines: list[str] = [self.description]
         if self.info_url is not None:
-            lines.append(f"  source      : {self.info_url}")
+            lines.append(f"\n[dim]Source  :[/dim] {self.info_url}")
         if self.size_hint is not None or self.subset_size_hint is not None:
             parts = []
             if self.size_hint is not None:
                 parts.append(f"total {self.size_hint}")
             if self.subset_size_hint is not None:
                 parts.append(self.subset_size_hint)
-            lines.append(f"  size        : {', '.join(parts)} (approximate)")
+            lines.append(f"[dim]Size    :[/dim] {', '.join(parts)} (approximate)")
         if self.subset_key_name is None or self.subsets is None:
             lines.append(
-                f"  subsets     : none — call cb.load_dataset({self.identifier!r}) to load all."
+                f"[dim]Subsets :[/dim] none \u2014"
+                f" call cb.load_dataset({self.identifier!r}) to load all."
             )
         else:
             n = len(self.subsets)
-            keys_str = ", ".join(self.subsets)
-            wrapped = textwrap.fill(
-                keys_str,
-                width=72,
-                initial_indent=f"  {self.subset_key_name} ({n}): ",
-                subsequent_indent=" " * (len(self.subset_key_name) + 7),
-                break_on_hyphens=False,
-            )
-            lines.append(wrapped)
+            lines.append(f"[dim]{self.subset_key_name} ({n})[/dim]: {', '.join(self.subsets)}")
             second = self.subsets[1] if len(self.subsets) > 1 else self.subsets[0]
             example = f'["{self.subsets[0]}", "{second}"]'
-            lines.append(f'  usage       : cb.load_dataset("{self.identifier}", subset={example})')
+            lines.append(
+                f'[dim]Usage   :[/dim] cb.load_dataset("{self.identifier}", subset={example})'
+            )
         if self.seizures_per_subject is not None:
             counts = self.seizures_per_subject
             total = sum(counts.values())
@@ -117,20 +131,55 @@ class DatasetInfo:
                 chunk = pairs[i : i + n_cols]
                 row = "    " + "   ".join(f"{k:<{max_key}} {v:>{max_val}}" for k, v in chunk)
                 lines.append(row)
+        if self.ilae_per_subject is not None:
+            ilae = self.ilae_per_subject
+            max_key = max(len(k) for k in ilae)
+            n_cols = 5
+            pairs = list(ilae.items())
+            lines.append("  ILAE outcome/subject (1=seizure-free, 6=no improvement):")
+            for i in range(0, len(pairs), n_cols):
+                chunk = pairs[i : i + n_cols]
+                row = "    " + "   ".join(f"{k:<{max_key}} {v}" for k, v in chunk)
+                lines.append(row)
         if self.license is not None:
-            lines.append(f"  license     : {self.license}")
-            if self.info_url is not None:
-                lines.append(f"  license url : {self.info_url}")
-        elif self.info_url is not None:
-            lines.append(f"  info        : {self.info_url}")
+            lines.append(f"[dim]License :[/dim] {self.license}")
         if self.auth_hint is not None:
-            lines.append(f"  auth        : {self.auth_hint}")
+            lines.append(f"[dim]Auth    :[/dim] {self.auth_hint}")
         if self.local_path is not None:
-            lines.append(f"  local path  : {self.local_path}")
-        return "\n".join(lines)
+            lines.append(f"[dim]Cached  :[/dim] {self.local_path}")
+
+        content: object = "\n".join(lines)
+
+        if self.seizures_per_subject is not None:
+            from rich.console import Group
+
+            counts = self.seizures_per_subject
+            total = sum(counts.values())
+            seiz_table = Table(box=None, padding=(0, 2, 0, 0), show_header=False)
+            seiz_table.add_column(style="dim", no_wrap=True)
+            seiz_table.add_column(justify="right")
+            for k, v in counts.items():
+                seiz_table.add_row(k, str(v))
+            content = Group(content, f"\n[dim]seizures/subject ({total} total):[/dim]", seiz_table)
+
+        yield Panel(content, title=f"[bold]{self.identifier}[/bold]")
+
+    def __str__(self) -> str:
+        from io import StringIO
+
+        from rich.console import Console
+
+        sio = StringIO()
+        console = Console(file=sio, highlight=False, no_color=True, width=88)
+        for renderable in self._rich_renderable():
+            console.print(renderable)
+        return sio.getvalue().rstrip("\n")
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+        yield from self._rich_renderable()
 
 
 # ---------------------------------------------------------------------------
@@ -300,16 +349,11 @@ def list_datasets() -> dict[str, list[str]]:
 
 
 def show_datasets() -> list[dict[str, str | None]]:
-    """Print a compact summary table of all available datasets and return the data.
+    """Print a summary table of all available datasets and return the data.
 
     Example::
 
         cb.show_datasets()
-        # Dataset               Type    Cached  Size           Subsets       License
-        # --------------------  ------  ------  -------------  ------------  ----------
-        # bonn_eeg              remote  yes     ~10 MB         5 sets        CC BY ...
-        # dummy_chain           local   —       —              —             —
-        # ...
 
     Returns:
         List of dicts with keys ``"identifier"``, ``"type"``, ``"cached"``,
@@ -317,62 +361,61 @@ def show_datasets() -> list[dict[str, str | None]]:
         programmatic use in notebooks or scripts.  ``"cached"`` is
         ``"yes"``/``"no"`` for remote datasets and ``None`` for local ones.
     """
-    col_id = 22
-    col_type = 8
-    col_cached = 8
-    col_size = 15
-    col_subsets = 14
-    header = (
-        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Cached':<{col_cached}}"
-        f"{'Size':<{col_size}}{'Subsets':<{col_subsets}}License"
-    )
-    sep = (
-        f"{'-' * col_id}{'-' * col_type}{'-' * col_cached}"
-        f"{'-' * col_size}{'-' * col_subsets}{'-' * 20}"
-    )
-    print(header)
-    print(sep)
+    from rich.console import Console
+    from rich.table import Table
+
+    table = Table(title="Available Datasets", show_lines=False)
+    table.add_column("Dataset", style="bold", no_wrap=True)
+    table.add_column("Type", style="dim")
+    table.add_column("Cached")
+    table.add_column("Size")
+    table.add_column("Subsets")
+    table.add_column("License")
 
     rows: list[dict[str, str | None]] = []
-    all_ids = sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS)
-    for ident in all_ids:
+    for ident in sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS):
         if ident in _LOCAL_DATASET_INFO:
-            row_type = "local"
-            cached_str = "—"
-            cached_val: str | None = None
-            size = "—"
-            subsets = "—"
-            license_str = "—"
+            table.add_row(ident, "local", "\u2014", "\u2014", "\u2014", "\u2014")
+            rows.append(
+                {
+                    "identifier": ident,
+                    "type": "local",
+                    "cached": None,
+                    "size": None,
+                    "subsets": None,
+                    "license": None,
+                }
+            )
         else:
             spec = get_remote_dataset_spec(ident)
             if spec is None:
                 continue
-            row_type = "remote"
             cached_val = "yes" if _is_dataset_cached(spec) else "no"
-            cached_str = cached_val
-            raw_size = spec.size_hint or "—"
-            size = raw_size[:14] + "…" if len(raw_size) > 15 else raw_size
-            n = len(spec.subset_keys() or []) if spec.subset_keys() else None
-            subsets = f"{n} {spec.subset_key_name or 'subsets'}" if n else "—"
-            lic = spec.license or "—"
-            license_str = lic[:30] + "…" if len(lic) > 31 else lic
+            cached_cell = (
+                f"[green]{cached_val}[/green]"
+                if cached_val == "yes"
+                else f"[dim]{cached_val}[/dim]"
+            )
+            size = spec.size_hint or "\u2014"
+            subset_keys = spec.subset_keys()
+            n_keys = len(subset_keys) if subset_keys else None
+            subsets = f"{n_keys} {spec.subset_key_name or 'subsets'}" if n_keys else "\u2014"
+            lic = spec.license or "\u2014"
+            table.add_row(ident, "remote", cached_cell, size, subsets, lic)
+            rows.append(
+                {
+                    "identifier": ident,
+                    "type": "remote",
+                    "cached": cached_val,
+                    "size": None if size == "\u2014" else size,
+                    "subsets": None if subsets == "\u2014" else subsets,
+                    "license": None if lic == "\u2014" else lic,
+                }
+            )
 
-        print(
-            f"{ident:<{col_id}}{row_type:<{col_type}}{cached_str:<{col_cached}}"
-            f"{size:<{col_size}}{subsets:<{col_subsets}}{license_str}"
-        )
-        rows.append(
-            {
-                "identifier": ident,
-                "type": row_type,
-                "cached": cached_val,
-                "size": None if size == "—" else size,
-                "subsets": None if subsets == "—" else subsets,
-                "license": None if license_str == "—" else license_str,
-            }
-        )
-
-    print(f"\nData directory: {get_dataset_dir()}")
+    console = Console(file=sys.stdout)
+    console.print(table)
+    console.print(f"[dim]Data directory:[/dim] {get_dataset_dir()}")
     return rows
 
 
@@ -422,6 +465,10 @@ def dataset_info(identifier: str) -> DatasetInfo:
             license=spec.license,
             auth_hint=spec.auth_hint,
             local_path=cached_path if _is_dataset_cached(spec) else None,
+            ilae_per_subject=spec.ilae_per_subject,
+            resected_zone_per_subject=spec.resected_zone_per_subject,
+            excluded_channels_per_subject=spec.excluded_channels_per_subject,
+            all_channels_per_subject=spec.all_channels_per_subject,
         )
 
     raise ValueError(
