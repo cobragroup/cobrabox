@@ -266,7 +266,12 @@ def load_dataset(
 
 
 def download_dataset(
-    identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False, force: bool = False
+    identifier: str,
+    *,
+    subset: SubsetSpec | None = None,
+    accept: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
 ) -> Path:
     """Download a remote dataset without loading it into memory.
 
@@ -279,9 +284,13 @@ def download_dataset(
             :func:`dataset`.
         accept: Skip the confirmation prompt.
         force: Delete existing local files and re-download from scratch.
+        dry_run: If ``True``, print a summary of what would be downloaded and
+            return immediately without downloading anything.  Useful for
+            checking file counts and size before committing to a large download.
 
     Returns:
-        Path to the local dataset directory.
+        Path to the local dataset directory (may not exist if ``dry_run=True``
+        and nothing has been downloaded yet).
 
     Raises:
         ValueError: If ``identifier`` is a local dataset (no download needed)
@@ -295,7 +304,7 @@ def download_dataset(
     if spec is not None:
         if subset is not None:
             _validate_subset(spec, subset)
-        return ensure_remote_files(spec, subset=subset, accept=accept, force=force)
+        return ensure_remote_files(spec, subset=subset, accept=accept, force=force, dry_run=dry_run)
 
     raise ValueError(
         f"Unknown dataset identifier: {identifier!r}. "
