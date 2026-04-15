@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from typing import Generic, Literal, TypeVar, final, overload
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, final, overload
+
+if TYPE_CHECKING:
+    from rich.console import Console, ConsoleOptions, RenderResult
 
 from .data import Data
 
@@ -100,9 +103,40 @@ class Dataset(Generic[T]):
 
         return "\n".join(lines)
 
+    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+        from rich.panel import Panel
+        from rich.table import Table
+
+        n = len(self._items)
+        type_name = self._item_type_name()
+
+        table = Table(box=None, show_header=False, padding=(0, 1))
+        table.add_column(style="dim", no_wrap=True)
+        table.add_column()
+
+        def _fmt(values: list) -> str:
+            return ", ".join(str(v) for v in values)
+
+        table.add_row("subjectIDs", _fmt([item.subjectID for item in self._items]))
+        table.add_row("groupIDs", _fmt([item.groupID for item in self._items]))
+        table.add_row("conditions", _fmt([item.condition for item in self._items]))
+
+        shapes = [tuple(item.data.shape) for item in self._items]
+        shape_counts: dict[tuple, int] = {}
+        for s in shapes:
+            shape_counts[s] = shape_counts.get(s, 0) + 1
+        shape_str = ", ".join(
+            f"{s} \u00d7 {c}" if c > 1 else str(s) for s, c in shape_counts.items()
+        )
+        table.add_row("shapes", shape_str)
+
+        yield Panel(table, title=f"[bold]Dataset[/bold]  {n} \u00d7 {type_name}")
+
     def describe(self) -> None:
         """Print a human-readable summary of this Dataset."""
-        print(str(self))
+        from rich.console import Console
+
+        Console().print(self)
 
     # ------------------------------------------------------------------
     # Filtering and grouping
