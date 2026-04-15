@@ -1,13 +1,61 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
+import numba
 import numpy as np
 import xarray as xr
 
+# numba.prange is identical to range at the Python level but signals numba to
+# parallelise the loop.  Type checkers don't know prange is iterable, so we
+# expose range to them and the real prange to the runtime.
+if TYPE_CHECKING:
+    from builtins import range as prange
+else:
+    from numba import prange
+
 from ...base_feature import BaseFeature
 from ...data import Data, SignalData
+
+
+@numba.njit(parallel=True, cache=True)
+def _sampen_count_jit(ts: np.ndarray, m: int, r: float) -> tuple[int, int]:
+    """Count template matches for length m and m+1 in a single O(n²) pass.
+
+    Uses one entry per outer index (``i``) to accumulate counts safely under
+    ``prange`` parallelism, then sums at the end.  Early termination on the
+    inner dimension loop keeps the constant factor small when ``r`` is tight.
+    """
+    n = len(ts)
+    mm_arr = np.zeros(n - m, dtype=np.int64)
+    mm1_arr = np.zeros(n - m, dtype=np.int64)
+    for i in prange(n - m):  # outer loop is parallel
+        mm = np.int64(0)
+        mm1 = np.int64(0)
+        for j in range(i + 1, n - m + 1):
+            # Chebyshev distance for the m-length window; bail as soon as r is exceeded.
+            cheb = 0.0
+            for k in range(m):
+                d = ts[i + k] - ts[j + k]
+                if d < 0.0:
+                    d = -d
+                if d > cheb:
+                    cheb = d
+                if cheb >= r:
+                    break
+            if cheb < r:
+                mm += 1
+                # matches_m1 requires j <= n-m-1 (so ts[j+m] is in bounds).
+                if j < n - m:
+                    d_extra = ts[i + m] - ts[j + m]
+                    if d_extra < 0.0:
+                        d_extra = -d_extra
+                    if d_extra < r:
+                        mm1 += 1
+        mm_arr[i] = mm
+        mm1_arr[i] = mm1
+    return mm_arr.sum(), mm1_arr.sum()
 
 
 @dataclass
@@ -81,18 +129,9 @@ class SampleEntropy(BaseFeature[SignalData]):
             # Tolerance: use provided r or default 0.2 * std of this slice.
             r_local = 0.2 * np.std(ts, ddof=0) if self.r is None else self.r
 
-            def _count(seq_len: int) -> int:
-                cnt = 0
-                max_start = n - seq_len
-                for i in range(max_start):
-                    template = ts[i : i + seq_len]
-                    for j in range(i + 1, max_start + 1):
-                        if np.max(np.abs(template - ts[j : j + seq_len])) < r_local:
-                            cnt += 1
-                return cnt
-
-            matches_m = _count(self.m)
-            matches_m1 = _count(self.m + 1)
+            matches_m, matches_m1 = _sampen_count_jit(
+                ts.astype(np.float64, copy=False), self.m, r_local
+            )
             if matches_m == 0 or matches_m1 == 0:
                 return np.nan
             # Change-of-base: log_b(x) = ln(x) / ln(b)
