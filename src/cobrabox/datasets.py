@@ -60,6 +60,14 @@ class DatasetInfo:
             if not available.
         auth_hint: Optional hint shown when a download fails with 401/403,
             e.g. how to obtain credentials.  ``None`` if not applicable.
+        ilae_per_subject: ILAE surgical outcome score per subject (1=seizure-free,
+            6=no improvement), or ``None`` if not available.
+        resected_zone_per_subject: Bipolar channel pairs in the resected zone per
+            subject, or ``None`` if not available.
+        excluded_channels_per_subject: Bipolar channel pairs excluded due to eloquent
+            cortex stimulation per subject, or ``None`` if not available.
+        all_channels_per_subject: All implanted bipolar channel pairs per subject,
+            or ``None`` if not available.
     """
 
     identifier: str
@@ -74,6 +82,10 @@ class DatasetInfo:
     license: str | None = None
     auth_hint: str | None = None
     local_path: Path | None = None
+    ilae_per_subject: dict[str, int] | None = None
+    resected_zone_per_subject: dict[str, list[str]] | None = None
+    excluded_channels_per_subject: dict[str, list[str]] | None = None
+    all_channels_per_subject: dict[str, list[str]] | None = None
 
     def __str__(self) -> str:
         lines = [f"DatasetInfo: {self.identifier}"]
@@ -116,6 +128,16 @@ class DatasetInfo:
             for i in range(0, len(pairs), n_cols):
                 chunk = pairs[i : i + n_cols]
                 row = "    " + "   ".join(f"{k:<{max_key}} {v:>{max_val}}" for k, v in chunk)
+                lines.append(row)
+        if self.ilae_per_subject is not None:
+            ilae = self.ilae_per_subject
+            max_key = max(len(k) for k in ilae)
+            n_cols = 5
+            pairs = list(ilae.items())
+            lines.append("  ILAE outcome/subject (1=seizure-free, 6=no improvement):")
+            for i in range(0, len(pairs), n_cols):
+                chunk = pairs[i : i + n_cols]
+                row = "    " + "   ".join(f"{k:<{max_key}} {v}" for k, v in chunk)
                 lines.append(row)
         if self.license is not None:
             lines.append(f"  license     : {self.license}")
@@ -422,6 +444,10 @@ def dataset_info(identifier: str) -> DatasetInfo:
             license=spec.license,
             auth_hint=spec.auth_hint,
             local_path=cached_path if _is_dataset_cached(spec) else None,
+            ilae_per_subject=spec.ilae_per_subject,
+            resected_zone_per_subject=spec.resected_zone_per_subject,
+            excluded_channels_per_subject=spec.excluded_channels_per_subject,
+            all_channels_per_subject=spec.all_channels_per_subject,
         )
 
     raise ValueError(
