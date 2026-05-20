@@ -113,6 +113,7 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
+- `SVD` - Truncated SVD over one dimension with optional centering/z-scoring
 - `AmplitudeVariation` - Amplitude variation (standard deviation) over time
 - `Bandpower` - Power in frequency bands using Welch's method
 - `BandFilter` - Butterworth bandpass filter into frequency bands
@@ -127,7 +128,6 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
 - `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
 - `Nonreversibility` - Normalised deviation from causal normality (time-irreversibility)
-- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Connectivity Features
 
@@ -136,14 +136,11 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 - `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
 - `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
 - `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
-- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
+- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC) between all channel pairs
 - `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
 - `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
 - `RecurrenceMatrix` - Pairwise recurrence (self-similarity) matrix across time-points or windows
-
-### Specialized Features
-
-- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
+- `MutualInformation` - Pairwise mutual information matrix between channels
 
 ### Windowing & Aggregation
 
@@ -166,13 +163,10 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 - `EMD` - Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs)
 
-### Specialized Features
-
-- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
-
 ### qEEG Measures
 
-- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower
+- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower (Leuchter et al., 1994)
+- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
 
 ## Serialization
 
@@ -250,9 +244,9 @@ The alignment grid categorizes features by their "moral character":
 | Alignment | Features |
 |-----------|----------|
 | Lawful Good | SlidingWindow, BandFilter, Bandpower |
-| Lawful Neutral | SlidingWindowReduce, MeanAggregate, Mean, ConcatAggregate, Cordance, FractalDimKatz, FourierTransformSurrogates, EpileptogenicityIndex |
+| Lawful Neutral | SlidingWindowReduce, MeanAggregate, Mean, ConcatAggregate, Cordance, FractalDimKatz, FourierTransformSurrogates, EpileptogenicityIndex, SVD |
 | Lawful Evil | SpikeCount, Max, Min |
-| Neutral Good | AmplitudeEntropy, AmplitudeVariation, LineLength, DiscreteWaveletTransform, Nonreversibility, RecurrenceMatrix, ContinuousWaveletTransform, Hilbert, Coherence, Autocorr, Spectrogram, EnvelopeCorrelation, FractalDimHiguchi, GrangerCausality, GrangerCausalityMatrix, PartialCorrelation, PartialCorrelationMatrix, PhaseLockingValue, PhaseLockingValueMatrix, PartialDirectedCoherence, ReciprocalConnectivity |
+| Neutral Good | AmplitudeEntropy, AmplitudeVariation, LineLength, DiscreteWaveletTransform, Nonreversibility, RecurrenceMatrix, ContinuousWaveletTransform, Hilbert, Coherence, Autocorr, Spectrogram, EnvelopeCorrelation, FractalDimHiguchi, GrangerCausality, GrangerCausalityMatrix, PartialCorrelation, PartialCorrelationMatrix, PhaseLockingValue, PhaseLockingValueMatrix, PartialDirectedCoherence, ReciprocalConnectivity, Correlation, Covariance, EMD |
 | True Neutral | LempelZiv, MutualInformation, SampleEntropy |
 | Chaotic Neutral | Dummy |
 

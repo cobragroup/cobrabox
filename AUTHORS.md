@@ -37,7 +37,7 @@
 <kubek@cs.cas.cz>
 
 **Rajeshkumar Kumar** Institute of Computer Science, Czech Academy of Sciences  
-<kumarr@cs.cas.cz> · [@IBArbitrary](https://github.com/IBArbitrary)
+<rajeshkumar@cs.cas.cz> · [@IBArbitrary](https://github.com/IBArbitrary)
 
 **Saket Kumar** Institute of Computer Science, Czech Academy of Sciences  
 <kumar@cs.cas.cz>

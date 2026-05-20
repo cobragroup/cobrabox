@@ -1,90 +1,65 @@
-# Feature Review: fourier_transform_surrogates
+# Feature Review: FourierTransformSurrogates
 
-**File**: `src/cobrabox/features/fourier_transform_surrogates.py`
-**Date**: 2026-03-06
-**Verdict**: NEEDS WORK
+**File**: `src/cobrabox/features/decomposition/fourier_transform_surrogates.py`
+**Date**: 2026-03-24
+**Verdict**: PASS
 
 ## Summary
 
-Well-structured SplitterFeature implementing Fourier transform surrogates for time-series
-null hypothesis testing. Clean implementation with proper validation and immutability
-preservation. Missing required docstring sections (Returns, Raises, References) prevent
-PASS status.
+This feature is well-implemented and passes all quality criteria. It correctly implements the `SplitterFeature[SignalData]` pattern for generating Fourier transform surrogates, with complete docstring documentation, proper type annotations, input validation in `__post_init__`, and clean ruff formatting. The feature follows the cobrabox conventions precisely.
 
 ## Ruff
 
 ### `uvx ruff check`
 
-Clean — no issues found.
+All checks passed!
 
 ### `uvx ruff format --check`
 
-Clean — no formatting issues.
+1 file already formatted
 
 ## Signature & Structure
 
-Clean structure throughout:
+- **Line 1**: `from __future__ import annotations` is correctly placed as the first import.
+- **Line 14**: Class correctly decorated with `@dataclass` and inherits `SplitterFeature[SignalData]` — appropriate for a feature that yields multiple `SignalData` windows.
+- **Lines 60-63**: All dataclass fields are properly typed (`n_surrogates: int`, `multivariate: bool`, `return_data: bool`, `random_state: np.random.Generator | int | None`).
+- **Line 64**: The `_rng` field uses `field(init=False, repr=False)` correctly for runtime-generated state.
+- **Lines 66-71**: `__post_init__` validates `n_surrogates` is a non-negative integer as required.
+- **Lines 89-94**: `__call__` correctly yields `Iterator[SignalData]` — first optionally returns original data, then surrogates.
 
-- Line 1: `from __future__ import annotations` present
-- Line 13-14: Correct `@dataclass` + `SplitterFeature[SignalData]` inheritance
-- Line 75: Correct `__call__` signature with `Iterator[SignalData]` return type
-- No `apply()` override (correct for SplitterFeature)
-- Class name matches filename (PascalCase conversion)
-
-The `_rng` field (line 50) is properly marked as `field(init=False, repr=False)`.
+No issues found.
 
 ## Docstring
 
-**Incomplete — missing required sections.**
+The docstring is comprehensive and follows Google style:
 
-Present sections:
+- **Line 15**: One-line summary clearly describes the feature's purpose.
+- **Lines 16-26**: Extended description explains the algorithm (phase randomization preserving power spectrum) and its use for null-hypothesis testing.
+- **Lines 27-35**: `Args:` section documents all four dataclass fields with types and descriptions.
+- **Lines 37-40**: `Raises:` section correctly documents the validation errors.
+- **Lines 41-46**: `References:` includes the full citation to Theiler et al. (1992).
+- **Lines 47-58**: `Example:` shows practical usage via `.apply()` with the feature name `cb.feature.FourierTransformSurrogates`.
 
-- One-line summary (line 15-16)
-- Args section with all 4 fields documented (lines 18-28)
-- Yields section (line 30-31) — should be "Returns:" per criteria
-- Example section (lines 33-44)
-
-Missing sections:
-
-- **Returns** — SplitterFeature docstrings should use "Returns:" per criteria,
-  describing the iterator of surrogate SignalData objects
-- **Raises** — Feature raises `ValueError` in `__post_init__` (lines 53-56) for
-  invalid `n_surrogates` values
-- **References** — FT surrogate method is published (Theiler et al.); citation required
-
-Suggested reference:
-
-```text
-Theiler, J., Eubank, S., Longtin, A., Galdrikian, B., & Doyne Farmer, J. (1992).
-Testing for nonlinearity in time series: the method of surrogate data.
-Physica D: Nonlinear Phenomena, 58(1-4), 77-94.
-```
+All required sections are present and complete.
 
 ## Typing
 
-Excellent typing throughout:
+- All dataclass fields have explicit type annotations.
+- `__call__` return type `Iterator[SignalData]` matches the `SplitterFeature[SignalData]` contract.
+- No bare `Any` types are used.
+- `random_state` correctly uses union type `np.random.Generator | int | None`.
 
-- Line 46-50: All 4 dataclass fields have explicit type annotations
-- Line 75: `__call__` correctly returns `Iterator[SignalData]`
-- Line 52, 59: Methods properly typed with `-> None` and parameter types
-- No bare `Any` types
+No issues found.
 
 ## Safety & Style
 
-Clean implementation:
+- No `print()` statements.
+- Input validation for `n_surrogates` is properly implemented in `__post_init__`.
+- Input `data` is not mutated — `_surrogate()` creates new `SignalData` via `_copy_with_new_data`.
+- Line lengths comply with the 100-character limit.
 
-- No print statements
-- Lines 53-56: Proper validation in `__post_init__` with descriptive error messages
-- Line 73: Correctly uses `data._copy_with_new_data()` preserving immutability
-- Line 61-62, 65-68: NumPy operations work on copies, no input mutation
+No issues found.
 
 ## Action List
 
-1. [Severity: MEDIUM] Add `Returns:` section to docstring describing the iterator
-   of SignalData objects (line 30, change "Yields:" to "Returns:").
-
-2. [Severity: MEDIUM] Add `Raises:` section documenting the two ValueError
-   conditions in `__post_init__` (after line 28).
-
-3. [Severity: MEDIUM] Add `References:` section citing Theiler et al. (1992)
-   or other appropriate FT surrogate literature (after Yields/Returns section).
+None.

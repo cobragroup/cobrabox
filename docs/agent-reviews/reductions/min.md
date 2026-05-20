@@ -1,7 +1,7 @@
 # Feature Review: min
 
-**File**: `src/cobrabox/features/min.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/reductions/min.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
@@ -24,7 +24,7 @@ All checks passed!
 
 Line 11: Correct `@dataclass` decorator applied.
 
-Line 12: Properly inherits `BaseFeature[Data]` — appropriate choice since this is a dimension-agnostic reduction feature (works on any dimension, not just time). The generic `BaseFeature[Data]` is correct; `SignalData` would be inappropriate since the feature doesn't require a time dimension.
+Line 12: Properly inherits `BaseFeature[Data]` — appropriate choice since this is a dimension-agnostic reduction feature (works on any dimension, not just time). The generic `BaseFeature[Data]` is correct; `SignalData` would be inappropriate since the feature does not require a time dimension.
 
 Line 12: Class name `Min` matches filename `min.py` in PascalCase.
 

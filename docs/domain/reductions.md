@@ -13,6 +13,9 @@ Compute minimum over any dimension.
 ### Max
 Compute maximum over any dimension.
 
+### SVD
+Compute truncated SVD over one dimension with optional centering and z-scoring.
+
 ## Usage
 
 ```python

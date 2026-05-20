@@ -1,12 +1,12 @@
 # Feature Review: partial_correlation
 
-**File**: `src/cobrabox/features/partial_correlation.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/connectivity/partial_correlation.py`
+**Date**: 2025-03-24
 **Verdict**: NEEDS WORK
 
 ## Summary
 
-Well-structured feature with two related classes for partial correlation computation. Clean implementation with good validation and clear docstrings. However, `PartialCorrelation` returns fake singleton dimensions instead of a proper 0-dimensional scalar, violating the no-fake-dimensions guideline. `PartialCorrelationMatrix` correctly returns a 2D matrix with appropriate dimensions.
+The `PartialCorrelation` and `PartialCorrelationMatrix` features implement partial correlation correctly using the precision matrix method. Both classes properly inherit from `BaseFeature[SignalData]` and set `output_type = Data` since they remove the time dimension. Ruff passes cleanly. The previous issue with fake singleton dimensions has been fixed — `PartialCorrelation` now correctly returns a 0-dimensional DataArray. However, there are structural issues: a module-level helper function violates the "no loose helpers" rule, `__post_init__` validation is missing for constructor parameters, and the docstrings lack a `References` section for this established statistical method.
 
 ## Ruff
 
@@ -20,59 +20,68 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Both classes properly inherit from `BaseFeature[SignalData]` and use `@dataclass`. They correctly set `output_type: ClassVar[type[Data]] = Data` since they remove the time dimension.
+Both classes correctly use the dataclass pattern:
 
-- Line 54: `PartialCorrelation` — correct base class
-- Line 133: `PartialCorrelationMatrix` — correct base class
-- Line 78, 157: Correct `output_type` declarations
-
-Helper function `_compute_partial_correlation` is well-structured with proper docstring.
+- ✅ `from __future__ import annotations` present (line 1)
+- ✅ `@dataclass` decorator on both classes (lines 53, 125)
+- ✅ `BaseFeature[SignalData]` inheritance appropriate for time-series analysis
+- ✅ `output_type: ClassVar[type[Data]] = Data` correctly set (lines 78, 155) — these features return correlation coefficients without time dimension
+- ✅ `__call__` signatures correct: `(self, data: SignalData) -> xr.DataArray`
+- ✅ Class names match filename (`partial_correlation.py` → `PartialCorrelation`, `PartialCorrelationMatrix`)
+- ❌ **Loose helper function** (lines 13–50): `_compute_partial_correlation` is a module-level private function only used by these classes. Per criteria, helpers should be `@staticmethod` methods inside the class they serve.
 
 ## Docstring
 
-Both classes have complete Google-style docstrings:
+Both classes have comprehensive Google-style docstrings with:
 
-- One-line summaries present (lines 55, 134)
-- Extended descriptions explain algorithm context
-- Args sections document all dataclass fields
-- Returns sections describe output shape
-- Raises sections list expected exceptions
-- Example sections show `.apply()` usage (lines 73-76, 152-155)
+- ✅ One-line summary
+- ✅ Extended description explaining behavior
+- ✅ `Args:` section with all fields documented
+- ✅ `Returns:` section describing output shape
+- ✅ `Raises:` section listing exceptions
+- ✅ `Example:` section showing `.apply()` usage
+- ❌ **Missing `References:` section**: Partial correlation is an established statistical method (originally developed by Yule, 1907). The docstring should cite the mathematical foundation.
+
+Suggested reference:
+
+```python
+References:
+    Yule, G. U. (1907). On the Theory of Correlation for any Number of
+    Variables, Treated by a New System of Notation. *Proceedings of the
+    Royal Society A*, 79(529), 182-193.
+```
 
 ## Typing
 
-All fields properly typed:
-
-- Line 80-82: `coord_x: str | int`, `coord_y: str | int`, `control_vars: list[str] | list[int]`
-- Line 159-160: `coords: list[str] | list[int]`, `control_vars: list[str] | list[int]`
-
-`__call__` return types correctly annotated as `xr.DataArray` (lines 84, 162).
+- ✅ All fields typed: `coord_x: str | int`, `control_vars: list[str] | list[int]`, etc.
+- ✅ `__call__` return type: `xr.DataArray`
+- ✅ `ClassVar` used correctly for `output_type`
+- ✅ No bare `Any` types
 
 ## Safety & Style
 
-No `print()` statements. Input validation is thorough:
+- ✅ No `print()` statements
+- ✅ Input validation present in `__call__` for dimension existence and coordinate presence
+- ✅ `Data` immutability respected — works on `data.data` and returns new arrays
+- ✅ **Previous issue FIXED**: `PartialCorrelation` now correctly returns a 0-dimensional DataArray (line 122: `return xr.DataArray(result)`)
+- ❌ **Missing `__post_init__` validation**: Parameters like `control_vars` (must have at least one element) are only validated in `__call__`. Per criteria, dataclass fields with constraints should be validated in `__post_init__`:
 
-- Lines 88-93: Checks for required dimensions
-- Lines 97-113: Validates coordinates exist in space dimension
-- Lines 106-107, 173-177: Ensures non-empty coordinate lists
-- Lines 39-46: Handles singular matrix error with clear message
+```python
+def __post_init__(self) -> None:
+    if not self.control_vars:
+        raise ValueError("control_vars must have at least one coordinate")
+    if len(set(self.control_vars)) != len(self.control_vars):
+        raise ValueError("control_vars contains duplicates")
+```
 
-No mutation of input data — works on `data.data` and returns new arrays.
+- ⚠️ **Potential issue**: `PartialCorrelationMatrix` allows `coords` to include elements from `control_vars` — should document or validate this edge case.
 
 ## Action List
 
-1. [Severity: MEDIUM] `PartialCorrelation.__call__` creates fake singleton dimensions (lines 123-129). The result is expanded to have `time` and `space` dimensions with single values, which violates the guideline that scalar outputs should be 0-dimensional. Return a proper 0-d DataArray instead:
+1. **[Severity: HIGH]** Move `_compute_partial_correlation` function (lines 13–50) inside `PartialCorrelation` class as a `@staticmethod` method, and update the call sites.
 
-```python
-# Current (incorrect)
-return (
-    xr.DataArray(result, dims=[])
-    .expand_dims(time_dim, axis=0)
-    .assign_coords({time_dim: [time_coord[0]]})
-    .expand_dims(space_dim, axis=0)
-    .assign_coords({space_dim: [self.coord_x]})
-)
+2. **[Severity: HIGH]** Add `__post_init__` validation to both classes to validate `control_vars` is non-empty at construction time (currently only validated in `__call__`).
 
-# Should be
-return xr.DataArray(result)
-```
+3. **[Severity: MEDIUM]** Add `References:` section to both class docstrings citing Yule (1907) or a modern partial correlation reference.
+
+4. **[Severity: LOW]** Consider adding validation to `PartialCorrelationMatrix` to warn when `coords` and `control_vars` overlap (currently silently computes but result may be unexpected).

@@ -7,8 +7,11 @@ Time-frequency features provide joint time and frequency analysis of signals.
 ### Hilbert
 Compute analytic signal, envelope, phase, or instantaneous frequency.
 
-### WaveletTransform
-Multi-level discrete wavelet decomposition (DWT) or continuous wavelet transform.
+### DiscreteWaveletTransform
+Multi-level discrete wavelet decomposition (DWT) using PyWavelets.
+
+### ContinuousWaveletTransform
+Continuous wavelet transform for time-frequency analysis with various wavelets.
 
 ### AmplitudeEntropy
 Amplitude entropy from histogram-based distribution.

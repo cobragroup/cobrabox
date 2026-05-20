@@ -216,3 +216,78 @@ def test_eeg_ref_channel_immutable() -> None:
     eeg = cb.EEG(ar)
     with pytest.raises(AttributeError, match="Cannot modify attribute"):
         eeg.ref_channel = "average"
+
+
+# ---------------------------------------------------------------------------
+# copy.copy / copy.deepcopy
+# ---------------------------------------------------------------------------
+
+
+def test_copy_data() -> None:
+    """copy.copy() on a Data instance produces a distinct but equal object."""
+    import copy
+
+    arr = RNG.standard_normal((3, 4))
+    d = cb.Data.from_numpy(arr, ["x", "y"], subjectID="S1", condition="rest")
+
+    d2 = copy.copy(d)
+    assert d2 is not d
+    assert d2.subjectID == d.subjectID
+    assert d2.condition == d.condition
+    assert d2.history == d.history
+    np.testing.assert_array_equal(d2.data.values, d.data.values)
+
+
+def test_copy_signal_data() -> None:
+    """copy.copy() on a SignalData instance works and preserves metadata."""
+    import copy
+
+    arr = RNG.standard_normal((10, 3))
+    s = cb.SignalData.from_numpy(arr, ["time", "space"], sampling_rate=256.0, subjectID="S2")
+
+    s2 = copy.copy(s)
+    assert s2 is not s
+    assert isinstance(s2, cb.SignalData)
+    assert s2.subjectID == s.subjectID
+    assert s2.sampling_rate == s.sampling_rate
+    np.testing.assert_array_equal(s2.data.values, s.data.values)
+
+
+def test_copy_eeg() -> None:
+    """copy.copy() on an EEG instance preserves ref_channel and all metadata."""
+    import copy
+
+    arr = RNG.standard_normal((50, 2))
+    ar = xr.DataArray(arr, dims=["time", "space"])
+    eeg = cb.EEG(ar, ref_channel="average")
+
+    eeg2 = copy.copy(eeg)
+    assert eeg2 is not eeg
+    assert isinstance(eeg2, cb.EEG)
+    assert eeg2.ref_channel == eeg.ref_channel
+
+
+def test_deepcopy_signal_data() -> None:
+    """copy.deepcopy() on a SignalData produces an independent copy."""
+    import copy
+
+    arr = RNG.standard_normal((10, 3))
+    s = cb.SignalData.from_numpy(arr, ["time", "space"], sampling_rate=128.0)
+
+    s2 = copy.deepcopy(s)
+    assert s2 is not s
+    assert isinstance(s2, cb.SignalData)
+    assert s2.sampling_rate == s.sampling_rate
+    np.testing.assert_array_equal(s2.data.values, s.data.values)
+
+
+def test_copy_preserves_immutability() -> None:
+    """A copied Data instance is still immutable."""
+    import copy
+
+    arr = RNG.standard_normal((3, 4))
+    d = cb.Data.from_numpy(arr, ["x", "y"])
+    d2 = copy.copy(d)
+
+    with pytest.raises(AttributeError, match="Cannot modify attribute"):
+        d2.subjectID = "hacked"  # type: ignore[misc]

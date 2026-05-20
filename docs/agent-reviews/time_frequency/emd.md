@@ -1,12 +1,12 @@
-# Feature Review: emd
+# Feature Review: EMD
 
-**File**: `src/cobrabox/features/emd.py`
-**Date**: 2026-03-06
-**Verdict**: PASS
+**File**: `src/cobrabox/features/time_frequency/emd.py`
+**Date**: 2025-03-24
+**Verdict**: NEEDS WORK
 
 ## Summary
 
-High-quality implementation of Empirical Mode Decomposition (EMD) with excellent documentation and thoughtful handling of multi-channel data with varying IMF counts. The feature correctly uses `BaseFeature[SignalData]`, validates parameters in `__post_init__`, and includes comprehensive docstrings. Only minor issue: missing `References` section for this published algorithm.
+The EMD feature is well-structured overall with good typing, comprehensive docstring sections, and clean implementation. However, it is missing a required `References:` section for this published algorithm. The ruff checks pass cleanly and the code follows most conventions, but the literature citation is a significant omission for a feature implementing a well-established method like Empirical Mode Decomposition.
 
 ## Ruff
 
@@ -20,54 +20,65 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Correct structure throughout:
+**Line 1**: `from __future__ import annotations` present — correct.
 
-- `from __future__ import annotations` present at line 1
-- `@dataclass` decorator with `BaseFeature[SignalData]` inheritance (line 16-17)
-- No unnecessary `output_type` declaration — correctly preserves container type
-- Class name `EMD` matches filename `emd.py`
-- No redundant `_is_cobrabox_feature` marker
-- `__call__` signature correct: `def __call__(self, data: SignalData) -> xr.DataArray:` (line 80)
-- Does not implement `apply()` — uses inherited implementation
-- Imports in correct order: stdlib, third-party, internal
+**Lines 16-17**: `@dataclass` decorator with `BaseFeature[SignalData]` inheritance — correct for a time-series feature that requires the `time` dimension.
+
+**Lines 66-68**: All dataclass fields properly typed:
+
+- `max_imfs: int | None = None`
+- `method: Literal["sift", "mask_sift", "iterated_mask_sift"] = "sift"`
+- `keep_orig: bool = False`
+
+**Line 80**: `__call__` signature is correct: `def __call__(self, data: SignalData) -> xr.DataArray:`
+
+**No `output_type` declared**: Correct — the feature adds an `imf` dimension but preserves the time dimension, so the default behavior (preserve input container type) is appropriate.
+
+**Helper organization**: The nested `_apply_emd` function inside `__call__` (lines 86-114) is acceptable since it is only used within that method and keeps the module-level namespace clean.
+
+**No `_is_cobrabox_feature` marker**: Correctly omitted (inherited from `BaseFeature`).
 
 ## Docstring
 
-Excellent Google-style docstring with one minor omission:
+The docstring is comprehensive with most required sections present:
 
-- **One-line summary**: Clear and descriptive (line 18)
-- **Extended description**: Comprehensive explanation of IMF handling and NaN padding rationale (lines 20-29)
-- **Args**: All three fields documented with types and defaults (lines 31-42)
-- **Returns**: Detailed description including shape, dimensions, and the `n_imfs` metadata dict (lines 48-58)
-- **Raises**: Two `ValueError` conditions documented (lines 44-46)
-- **References**: **MISSING** — EMD is a published algorithm (Huang et al., 1998) and should include a citation
-- **Example**: Three usage examples showing typical patterns (lines 60-63)
+- One-line summary (line 18)
+- Extended description (lines 20-29)
+- `Args:` section with all fields documented (lines 31-42)
+- `Raises:` section documenting ValueError conditions (lines 44-46)
+- `Returns:` section with detailed output description (lines 48-58)
+- `Example:` section with working snippets (lines 60-63)
+
+**Missing**: `References:` section. EMD is a published algorithm (Huang et al., 1998) and should include a proper citation. This is required per the criteria for features implementing published algorithms.
 
 ## Typing
 
-Fully typed:
+All typing is excellent:
 
-- All fields have type annotations:
-  - `max_imfs: int | None = None` (line 66)
-  - `method: Literal["sift", "mask_sift", "iterated_mask_sift"] = "sift"` (line 67)
-  - `keep_orig: bool = False` (line 68)
-- `__call__` return type: `-> xr.DataArray` (line 80)
-- `__post_init__` return type: `-> None` (line 70)
-- Internal helper `_apply_emd` return type: `-> tuple[xr.DataArray, int]` (line 86)
-- No bare `Any` types
+- All fields have explicit type annotations
+- `__call__` has correct return type `xr.DataArray`
+- Uses `Literal` for the `method` parameter with proper validation via `_SIFT_METHODS` tuple
+- Uses `int | None` union syntax (Python 3.10+)
 
 ## Safety & Style
 
-Clean implementation:
-
 - No `print()` statements
-- Input validation in `__post_init__`:
-  - Validates `method` is in `_SIFT_METHODS` (lines 72-76)
-  - Validates `max_imfs` is positive if not `None` (lines 77-78)
+- Input validation in `__post_init__` (lines 70-78) validates `method` and `max_imfs`
 - No mutation of input `data` — works on `data.data` and returns new arrays
-- Line length compliant (100 chars max)
-- Handles multi-channel data correctly with NaN padding for varying IMF counts (well-commented at lines 149-151)
+- Line length within 100 characters (ruff verified)
+
+**Minor note**: The validation uses a separate `_SIFT_METHODS` tuple (line 13) rather than `typing.get_args()` on the `Literal` type. While this works, using `get_args()` would make the `Literal` the single source of truth.
 
 ## Action List
 
-1. [Severity: LOW] Add `References` section citing Huang et al. (1998) "The empirical mode decomposition and the Hilbert spectrum for nonlinear and non-stationary time series analysis" and any other relevant EMD literature.
+1. [Severity: HIGH] Add a `References:` section to the docstring citing the original EMD paper:
+
+   ```python
+   References:
+       Huang, N. E., et al. (1998). The empirical mode decomposition and the Hilbert
+       spectrum for nonlinear and non-stationary time series analysis.
+       *Proceedings of the Royal Society of London. Series A: Mathematical,
+       Physical and Engineering Sciences*, 454(1971), 903-995.
+   ```
+
+2. [Severity: LOW] Consider using `typing.get_args()` to extract allowed values from the `Literal` type for validation instead of maintaining a separate `_SIFT_METHODS` tuple, making the type annotation the single source of truth.

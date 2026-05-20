@@ -56,6 +56,11 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.features.time_frequency.wavelet_transform.ContinuousWaveletTransform
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.features.time_frequency.wavelet_transform.DiscreteWaveletTransform
     options:
         show_root_heading: true
@@ -82,6 +87,11 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_source: true
 
 ::: cobrabox.features.time_domain.fractal_dimension.FractalDimHiguchi
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.time_domain.fractal_dimension.FractalDimKatz
     options:
         show_root_heading: true
         show_source: true
@@ -162,6 +172,11 @@ Features are discovered automatically from the `cobrabox/features/` directory.
         show_source: true
 
 ::: cobrabox.features.time_domain.sample_entropy.SampleEntropy
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.features.reductions.svd.SVD
     options:
         show_root_heading: true
         show_source: true

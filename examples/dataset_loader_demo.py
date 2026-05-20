@@ -6,9 +6,9 @@ import cobrabox as cb
 def main() -> None:
     # Load a dataset that has "fs" in the JSON sidecar (realistic_swiss or dummy_noise)
     try:
-        datasets = cb.dataset("realistic_swiss")
+        datasets = cb.load_dataset("realistic_swiss")
     except FileNotFoundError:
-        datasets = cb.dataset("dummy_noise")
+        datasets = cb.load_dataset("dummy_noise")
     print(datasets)
     print(f"Loaded parts: {len(datasets)}")
     print(f"First part shape: {datasets[0].data.shape}")

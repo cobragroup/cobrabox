@@ -4,7 +4,7 @@ import cobrabox as cb
 
 # cb.gorkastyle()
 
-data = cb.dataset("dummy_chain")[0]
+data = cb.load_dataset("dummy_chain")[0]
 
 # Simple pipeline using | syntax
 pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")

@@ -1,8 +1,8 @@
 # Test Review: partial_directed_coherence
 
-**Feature**: `src/cobrabox/features/partial_directed_coherence.py`
-**Test file**: `tests/test_feature_partial_directed_coherence.py`
-**Date**: 2026-03-06
+**Feature**: `src/cobrabox/features/connectivity/partial_directed_coherence.py`
+**Test file**: `tests/features/connectivity/test_feature_partial_directed_coherence.py`
+**Date**: 2026-03-24
 **Verdict**: PASS
 
 ## Coverage

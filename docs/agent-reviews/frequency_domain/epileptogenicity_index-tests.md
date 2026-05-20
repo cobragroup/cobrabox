@@ -1,14 +1,14 @@
 # Test Review: epileptogenicity_index
 
-**Feature**: `src/cobrabox/features/epileptogenicity_index.py`
-**Test file**: `tests/test_feature_epileptogenicity_index.py`
-**Date**: 2026-03-06
+**Feature**: `src/cobrabox/features/frequency_domain/epileptogenicity_index.py`
+**Test file**: `tests/features/frequency_domain/test_feature_epileptogenicity_index.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Coverage
 
 ```text
-epileptogenicity_index.py: 100% (79 statements, 0 missing)
+EpileptogenicityIndex: 100% (79 statements, 0 missing)
 ```
 
 Per-file coverage requirement met.

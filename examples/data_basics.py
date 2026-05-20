@@ -16,7 +16,7 @@ import cobrabox as cb
 # 1. Load a built-in dataset
 # ---------------------------------------------------------------------------
 
-ds = cb.dataset("dummy_chain")
+ds = cb.load_dataset("dummy_chain")
 
 print("--- Dataset overview ---")
 ds.describe()

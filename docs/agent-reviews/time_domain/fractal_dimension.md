@@ -1,7 +1,7 @@
 # Feature Review: fractal_dimension
 
-**File**: `src/cobrabox/features/fractal_dimension.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_domain/fractal_dimension.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
@@ -19,7 +19,7 @@ Clean — no issues found.
 
 ### `uvx ruff format --check`
 
-Clean — already formatted.
+Clean — no formatting issues.
 
 ## Signature & Structure
 
@@ -36,13 +36,16 @@ is never a field in either class.
 **Convention note (LOW)**: CLAUDE.md specifies one class per file. This file contains
 two. This was an intentional user-directed deviation; no code change needed.
 
+Algorithm helper methods (`_higuchi_1d` at lines 73-96, `_katz_1d` at lines 135-152)
+are correctly implemented as `@staticmethod` inside the classes.
+
 ## Docstring
 
-`FractalDimHiguchi` (lines 28–55): one-liner ✅, extended description ✅, `Args:`
+`FractalDimHiguchi` (lines 28-55): one-liner ✅, extended description ✅, `Args:`
 with `k_max` description and constraint ✅, `Returns:` with shape and value range
 ✅, `References:` ✅, two `Example:` snippets ✅.
 
-`FractalDimKatz` (lines 101–128): one-liner ✅, extended description with formula
+`FractalDimKatz` (lines 101-128): one-liner ✅, extended description with formula
 ✅, `Args: None` ✅, `Returns:` with shape and note on value range ✅, `References:`
 ✅, `Example:` ✅. All sections present and complete.
 

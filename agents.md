@@ -13,11 +13,14 @@ make setup
 # Install/sync dependencies
 uv sync
 
-# Run tests (coverage reported automatically)
+# Run tests (coverage reported automatically; slow disk-I/O tests skipped by default)
 uv run pytest
 
 # Run a single test
 uv run pytest tests/test_from_constructors.py::test_from_numpy_basic
+
+# Include slow integration tests (reads real data files from disk)
+uv run pytest -m slow
 
 # Enforce 95% coverage threshold
 uv run pytest --cov-fail-under=95

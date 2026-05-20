@@ -49,6 +49,21 @@ def test_partial_correlation_matrix_returns_square_matrix() -> None:
     assert matrix_values.shape == (3, 3)
 
 
+def test_partial_correlation_matrix_default_coords() -> None:
+    """PartialCorrelationMatrix uses all coords (excl. control_vars) when coords is None."""
+    data = cb.SignalData.from_numpy(
+        rng.normal(size=(100, 5)), dims=["time", "space"], sampling_rate=100.0
+    )
+
+    result = cb.feature.PartialCorrelationMatrix(control_vars=[4]).apply(data)
+
+    assert isinstance(result, cb.Data)
+    assert result.data.dims == ("coord_i", "coord_j")
+    assert result.data.shape == (4, 4)
+    assert list(result.data.coords["coord_i"].values) == [0, 1, 2, 3]
+    assert list(result.data.coords["coord_j"].values) == [0, 1, 2, 3]
+
+
 def test_partial_correlation_diagonal_is_one() -> None:
     """Partial correlation of coordinate with itself equals 1.0."""
     data = cb.SignalData.from_numpy(

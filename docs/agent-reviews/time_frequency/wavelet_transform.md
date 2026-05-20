@@ -1,12 +1,12 @@
 # Feature Review: wavelet_transform
 
-**File**: `src/cobrabox/features/wavelet_transform.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_frequency/wavelet_transform.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-Both `DiscreteWaveletTransform` and `ContinuousWaveletTransform` are well-implemented features with excellent documentation, comprehensive validation, and proper typing. The implementation follows all cobrabox conventions including correct use of `output_type` (DWT removes time dimension, CWT preserves it), thorough input validation in `__post_init__`, and clear docstrings with Args/Returns/Raises/Example sections.
+Both `DiscreteWaveletTransform` and `ContinuousWaveletTransform` are well-implemented, production-ready features. The code follows all cobrabox conventions: proper dataclass structure, comprehensive docstrings with all required sections, thorough input validation, and clean separation of concerns. The use of Literal types for wavelet names and modes is exemplary.
 
 ## Ruff
 
@@ -20,60 +20,78 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 1: `from __future__ import annotations` present.
+**Line 1**: `from __future__ import annotations` — present.
 
-Line 65-181: `DiscreteWaveletTransform` is a `@dataclass` inheriting `BaseFeature[SignalData]` — correct for a time-series feature.
+**Lines 65-66, 183-184**: Both classes correctly decorated with `@dataclass` and inherit `BaseFeature[SignalData]`. The type parameter is correct since both features operate on the time axis.
 
-Line 183-324: `ContinuousWaveletTransform` is a `@dataclass` inheriting `BaseFeature[SignalData]` — correct for a time-series feature.
+**Line 123, 243**: `output_type` correctly declared:
 
-Line 123: `output_type: ClassVar[type[Data] | None] = Data` — correctly set to `Data` since DWT removes the time dimension.
+- `DiscreteWaveletTransform`: `output_type = Data` (removes time dimension, produces wavelet coefficients)
+- `ContinuousWaveletTransform`: `output_type = None` (preserves SignalData since time dimension is retained)
 
-Line 243: `output_type: ClassVar[type[Data] | None] = None` — correctly set to `None` since CWT preserves the time dimension.
+**Class names**: Both `DiscreteWaveletTransform` and `ContinuousWaveletTransform` are descriptive and follow PascalCase convention.
 
-Both classes use descriptive PascalCase names that clearly indicate functionality. No `apply()` method — correctly inherited from `BaseFeature`.
+**Lines 136, 265**: `__call__` signatures are correct:
 
-Imports are well-organized: stdlib, third-party (pywt, numpy, xarray), then internal modules.
+```python
+def __call__(self, data: SignalData) -> xr.DataArray:
+```
+
+No loose helper functions — all computation logic lives inside class methods.
+
+Import order is correct: future annotations → stdlib → third-party → internal.
 
 ## Docstring
 
-Both features have comprehensive Google-style docstrings:
+Both classes have excellent Google-style docstrings with all required sections:
 
-- **One-line summary**: Present and descriptive (lines 67, 185)
-- **Extended description**: Detailed algorithm explanations with behavior notes
-- **Args**: All dataclass fields documented with types and constraints
-- **Returns**: Shape, dimensions, and coordinate details clearly specified
-- **Raises**: Lists all ValueError conditions (lines 95-98, 223-227)
-- **Example**: Working code snippets using `.apply()` syntax (lines 100-106, 229-235)
+### DiscreteWaveletTransform (lines 67-107)
 
-Excellent use of reStructuredText-style inline code markers (`` `code` ``) for parameter names and code references.
+- **One-line summary**: Clear verb phrase describing the feature
+- **Extended description**: Explains the padding strategy (NaN-padding for rectangular output)
+- **Args**: All three fields documented (`wavelet`, `level`, `mode`)
+- **Returns**: Detailed dimension and coordinate description
+- **Raises**: Three ValueError conditions documented
+- **Example**: Working doctest-style example showing `.apply()` usage
+
+### ContinuousWaveletTransform (lines 185-236)
+
+- **One-line summary**: Clear description
+- **Extended description**: Explains time-scale representation and composition
+- **Args**: All five fields documented with detailed explanations for wavelet choices and scaling modes
+- **Returns**: Comprehensive dimension/coordinate description including the `frequency` non-index coordinate
+- **Raises**: Four validation conditions documented
+- **Example**: Working example with attribute checks
 
 ## Typing
 
-All fields have explicit type annotations:
+All fields are fully typed:
 
-- `_DwtWavelet` and `_CwtWavelet` type aliases for wavelet names (lines 15-62)
-- Literal types for constrained string parameters (`mode`, `scaling`)
-- `ClassVar` properly used for `output_type`
+- **Lines 109-121**: `DiscreteWaveletTransform` fields use `Literal` types for wavelet names and mode options
+- **Lines 238-241**: `ContinuousWaveletTransform` fields similarly well-typed
 
-`__call__` signatures are correctly typed:
+**Type aliases** (lines 15-62): Excellent use of `TypeAlias` for wavelet name Literals — `_DwtWavelet` and `_CwtWavelet` are comprehensive and make the code self-documenting.
 
-- `def __call__(self, data: SignalData) -> xr.DataArray:` (lines 136, 265)
+**Return types**: Both `__call__` methods have explicit `xr.DataArray` return type annotations.
 
-Return types match the base class contract. No bare `Any` usage.
+No bare `Any` types used.
 
 ## Safety & Style
 
-No `print()` statements found.
+**No print statements**: Clean — uses no output statements.
 
-Input validation is comprehensive:
+**Input validation**: Excellent validation in `__post_init__`:
 
-- `DiscreteWaveletTransform.__post_init__` (lines 125-134): Validates level >= 1, checks wavelet exists
-- `ContinuousWaveletTransform.__post_init__` (lines 245-263): Validates scales not empty/positive, n_scales >= 1, scaling valid, wavelet exists
-- Runtime validation in `DiscreteWaveletTransform.__call__` (lines 147-151): Checks level doesn't exceed max possible
+- **Lines 126-134**: `DiscreteWaveletTransform` validates level >= 1 and wavelet name via pywt.Wavelet()
+- **Lines 246-263**: `ContinuousWaveletTransform` validates scales, n_scales, scaling mode, and wavelet name
 
-No mutation of input `data` — both features work on `data.data` and return new DataArrays.
+Additional validation in `__call__`:
 
-Code style is clean with appropriate line lengths.
+- **Lines 147-151**: Checks level doesn't exceed max possible for signal length
+
+**No mutation**: Both features correctly work on `data.data` and return new DataArray instances without modifying input.
+
+**Line length**: All lines within 100 character limit.
 
 ## Action List
 

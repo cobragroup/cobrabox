@@ -1,12 +1,12 @@
-# Feature Review: amplitude_variation
+# Feature Review: AmplitudeVariation
 
-**File**: `src/cobrabox/features/amplitude_variation.py`
-**Date**: 2026-03-06
+**File**: `src/cobrabox/features/time_domain/amplitude_variation.py`
+**Date**: 2025-03-24
 **Verdict**: PASS
 
 ## Summary
 
-A clean, minimal feature that computes the standard deviation along the time dimension. Follows all conventions: proper `@dataclass` + `BaseFeature[SignalData]` inheritance, correct `output_type` declaration (returns `Data` since time dimension is removed), complete Google-style docstring with all required sections, and proper typing throughout. The implementation is simple but correct, leveraging xarray's `std()` method directly.
+The `AmplitudeVariation` feature is a clean, well-structured implementation that correctly computes the standard deviation of the signal over the time dimension. It follows all cobrabox conventions including proper base class inheritance, complete docstring coverage, correct typing, and appropriate use of `output_type` to indicate the time dimension is removed. No issues found.
 
 ## Ruff
 
@@ -20,41 +20,48 @@ Clean — no formatting issues.
 
 ## Signature & Structure
 
-Line 12-13: Correct `@dataclass` decorator and `BaseFeature[SignalData]` inheritance. The type parameter is appropriate since this feature operates on the time axis.
+The feature correctly inherits from `BaseFeature[SignalData]` (line 13), which is appropriate since it operates on the time dimension. The `@dataclass` decorator is present.
 
-Line 32: Proper `output_type: ClassVar[type[Data]] = Data` declaration. This is correctly set because the feature removes the time dimension, returning a non-time-series container.
+The `output_type: ClassVar[type[Data]] = Data` declaration (line 32) is correctly set since this feature removes the `time` dimension, returning a result that should be wrapped as a plain `Data` object rather than preserving the input `SignalData` type.
 
-Line 34: Correct `__call__` signature with `data: SignalData` parameter and `-> xr.DataArray` return type.
+The `__call__` signature (line 34) accepts `data: SignalData` and returns `xr.DataArray`, matching the base class contract.
 
-Imports are clean and follow the standard order.
+No `apply()` method is implemented (correctly inherited from `BaseFeature`).
+
+No loose helper functions — the implementation is a single line using xarray's built-in `std()` method.
+
+Imports follow the correct order: `__future__`, stdlib, third-party, internal.
 
 ## Docstring
 
-Complete Google-style docstring with all required sections:
+All required sections are present:
 
-- **One-line summary** (line 14): Clear verb phrase describing the computation.
-- **Extended description** (lines 16-17): Explains what amplitude variation measures.
-- **Args** (lines 19-20): Correctly states "None" since there are no dataclass fields.
-- **Returns** (lines 22-27): Detailed description of output shape and units. Correctly notes the time dimension is removed and explains how extra dimensions are handled.
-- **Example** (lines 29-30): Working snippet showing `.apply()` usage.
-
-No `Raises` or `References` sections needed — this is a straightforward statistical operation with no exceptional conditions or literature basis.
+- **One-line summary**: Clear verb phrase describing the computation (line 14)
+- **Extended description**: Explains what amplitude variation represents (lines 16-17)
+- **Args**: Correctly documents `None` since there are no dataclass fields (lines 19-20)
+- **Returns**: Detailed description of output shape and units (lines 22-26)
+- **Example**: Working snippet using `.apply()` syntax (lines 28-29)
 
 ## Typing
 
-All types are explicit:
+All type annotations are correct:
 
-- Class-level `output_type: ClassVar[type[Data]]`
-- `__call__` parameter `data: SignalData`
-- `__call__` return type `-> xr.DataArray`
+- Class properly parameterized as `BaseFeature[SignalData]`
+- `output_type` declared as `ClassVar[type[Data]]`
+- `__call__` parameter `data: SignalData` matches the base class type parameter
+- Return type `xr.DataArray` is explicit
 
-No bare `Any` types present.
+No bare `Any` types. No `Literal` types needed (no string option fields).
 
 ## Safety & Style
 
-- **No print statements**: Clean.
-- **No mutation**: Returns new xarray result without modifying input.
-- **Input validation**: Not required here — `BaseFeature[SignalData]` ensures the time dimension exists at construction time, and `std()` will raise appropriate xarray errors for edge cases.
+No `print()` statements found.
+
+No input validation required in `__call__` — since this is a `BaseFeature[SignalData]`, the `SignalData` type already enforces the presence of a `time` dimension at construction time. No additional feature-specific constraints need validation.
+
+No mutation of input `data` — the implementation returns a new xarray DataArray computed via `data.data.std(dim="time")` (line 35).
+
+Line length is within the 100 character limit.
 
 ## Action List
 

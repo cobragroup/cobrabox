@@ -4,7 +4,7 @@ import cobrabox as cb
 
 
 def main() -> None:
-    datasets = cb.dataset("realistic_swiss")
+    datasets = cb.load_dataset("realistic_swiss")
     print(f"Loaded parts: {len(datasets)}")
 
     first = datasets[0]
