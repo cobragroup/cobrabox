@@ -1,6 +1,17 @@
-# Make feature module accessible as cb.feature
-from . import feature, serialization  # noqa: F401
-from .base_feature import AggregatorFeature, Chord, Pipeline, SplitterFeature
+# Domain subpackages, plus the flat `feature` convenience namespace
+from . import (
+    connectivity,
+    decompositions,
+    feature,
+    infometrics,
+    serialization,
+    signalstats,
+    spectral,
+    surrogates,
+    transforms,
+    windowing,
+)
+from .base_feature import AggregatorFeature, BaseFeature, Chord, Pipeline, SplitterFeature
 from .data import EEG, FMRI, Data, SignalData
 from .dataset import Dataset
 from .datasets import (
@@ -13,13 +24,16 @@ from .datasets import (
 )
 from .downloader import DownloadCancelled, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
-from .features.time_domain.line_length import LineLength
-from .features.time_domain.nonreversibility import Nonreversibility
-from .features.time_domain.recurrence_matrix import RecurrenceMatrix
-from .features.windowing.concat_aggregate import ConcatAggregate
-from .features.windowing.mean_aggregate import MeanAggregate
-from .features.windowing.sliding_window import SlidingWindow
+
+# Hardcoded re-exports of key feature classes — must come before `feature` import
+# so the domain modules can be imported via normal Python machinery first.
+from .infometrics.nonreversibility import Nonreversibility
+from .infometrics.recurrence_matrix import RecurrenceMatrix
 from .serialization import deserialize, load, save, serialize
+from .signalstats.line_length import LineLength
+from .windowing.concat_aggregate import ConcatAggregate
+from .windowing.mean_aggregate import MeanAggregate
+from .windowing.sliding_window import SlidingWindow
 
 # Package-level aliases for class methods
 from_numpy = Data.from_numpy
@@ -29,6 +43,7 @@ __all__ = [
     "EEG",
     "FMRI",
     "AggregatorFeature",
+    "BaseFeature",
     "Chord",
     "ConcatAggregate",
     "Data",
@@ -42,14 +57,18 @@ __all__ = [
     "SignalData",
     "SlidingWindow",
     "SplitterFeature",
+    "connectivity",
     "dataset_info",
+    "decompositions",
     "delete_dataset",
     "deserialize",
     "download_dataset",
+    "feature",
     "from_numpy",
     "from_xarray",
     "get_dataset_dir",
     "gorkastyle",
+    "infometrics",
     "list_datasets",
     "load",
     "load_dataset",
@@ -58,4 +77,9 @@ __all__ = [
     "serialize",
     "set_dataset_dir",
     "show_datasets",
+    "signalstats",
+    "spectral",
+    "surrogates",
+    "transforms",
+    "windowing",
 ]
