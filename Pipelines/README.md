@@ -17,6 +17,7 @@ This folder is the entry point to start using *[CobraBox]() – a python toolbox
 #### Tutorial notebooks
 
 1. *[Fetching and exploring online datasets](01_data_exploration.ipynb)* : First example of the functionalities in CobraBox to access (i)EEG datasets from public repositories and setting up for their analysis using CobraBox.
+2. *[SlidingWindow.ipynb]()* : Analysis of multivariate signals over temporal windows.
 2. *[Tutorial Notebook #2]()* : Short description of the notebook.
 3. *[Tutorial Notebook #3]()* : Short description of the notebook.
 
