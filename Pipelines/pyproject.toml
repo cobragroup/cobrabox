@@ -1,0 +1,24 @@
+[project]
+name = "cobrabox-pipeline-resected-zone"
+version = "0.1.0"
+description = "RC-from-PDC pipeline for identifying resected iEEG channels in epilepsy"
+requires-python = ">=3.11"
+dependencies = [
+    "cobrabox",
+    "ipykernel>=6.0",
+    "jupyter>=1.0",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "tqdm>=4.0",
+]
+
+[tool.uv.sources]
+cobrabox = { path = "../cobrabox", editable = true }
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
