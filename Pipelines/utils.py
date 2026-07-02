@@ -1,16 +1,16 @@
 """Shared utilities for the RC-from-connectivity pipeline."""
-
 from __future__ import annotations
 
+# Standard library imports
 import csv
-import re
+import re   # Is this import really needed? Only used once.
 from pathlib import Path
-
-import cobrabox as cb
-import numpy as np
-import xarray as xr
+# Third-party imports
 from scipy.signal import filtfilt, iirnotch
 from tqdm import tqdm
+import xarray as xr
+import numpy as np
+import cobrabox as cb
 
 # ---------------------------------------------------------------------------
 # Paths
