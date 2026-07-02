@@ -4,6 +4,16 @@ Newest entries on top.
 
 ---
 
+## 2026-07-02
+
+* The project was moved to a new branch of *cobrabox*: "Pipeline_dev". A new folder was created to gather all the tutorial and example notebooks [https://github.com/cobragroup/cobrabox/tree/Pipelines_dev/Pipelines](https://github.com/cobragroup/cobrabox/tree/Pipelines_dev/Pipelines).
+* A clean-up of the folder was done to conserve only the needed files.
+* A README.md file was added, to summarise the notebooks we will offer.
+* Decoration of the notebooks started.
+* Reshaping of the content and flows of the three original notebooks was discussed (Christos & Gorka). The new organization was defined in a new file of the shared google drive, see “*COBRABOX_Coordination > WorkFlows > PipelineLayout.docx*”   
+
+
+
 ## 2026-05-18
 
 ### Resolved: notch filter order (before vs. after bipolar montage)
