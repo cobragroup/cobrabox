@@ -47,7 +47,7 @@ from .surrogates.fourier_transform_surrogates import (
 from .transforms.analytic_signal import AnalyticSignal as AnalyticSignal
 from .transforms.bandpass_filter import BandpassFilter as BandpassFilter
 from .transforms.fourier_transform import FourierTransform as FourierTransform
-from .transforms.fourier_transform import InverseFourierTransform as InverseFourierTransform
+from .transforms.inverse_fourier_transform import InverseFourierTransform as InverseFourierTransform
 from .windowing.concat_aggregate import ConcatAggregate as ConcatAggregate
 from .windowing.mean_aggregate import MeanAggregate as MeanAggregate
 from .windowing.sliding_window import SlidingWindow as SlidingWindow
