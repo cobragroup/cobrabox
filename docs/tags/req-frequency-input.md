@@ -1,0 +1,7 @@
+# Tag: `req:frequency-input`
+
+Category: **Requirement**
+
+1 feature(s) carry this tag:
+
+- **InverseFourierTransform** — [`cobrabox.transforms`](../domain/transforms.md)

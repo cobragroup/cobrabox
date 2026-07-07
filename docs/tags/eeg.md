@@ -1,0 +1,38 @@
+# Tag: `eeg`
+
+Category: **Descriptor**
+
+32 feature(s) carry this tag:
+
+- **AmplitudeEntropy** — [`cobrabox.infometrics`](../domain/infometrics.md)
+- **AmplitudeVariation** — [`cobrabox.signalstats`](../domain/signalstats.md)
+- **AnalyticSignal** — [`cobrabox.transforms`](../domain/transforms.md)
+- **Autocorrelation** — [`cobrabox.signalstats`](../domain/signalstats.md)
+- **BandPower** — [`cobrabox.spectral`](../domain/spectral.md)
+- **BandpassFilter** — [`cobrabox.transforms`](../domain/transforms.md)
+- **Coherence** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **ContinuousWaveletTransform** — [`cobrabox.spectral`](../domain/spectral.md)
+- **Cordance** — [`cobrabox.spectral`](../domain/spectral.md)
+- **Correlation** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **Covariance** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **DirectedTransferFunction** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **DiscreteWaveletTransform** — [`cobrabox.spectral`](../domain/spectral.md)
+- **EMD** — [`cobrabox.decompositions`](../domain/decompositions.md)
+- **EnvelopeCorrelation** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **EpileptogenicityIndex** — [`cobrabox.signalstats`](../domain/signalstats.md)
+- **FourierTransform** — [`cobrabox.transforms`](../domain/transforms.md)
+- **FractalDimension** — [`cobrabox.infometrics`](../domain/infometrics.md)
+- **GrangerCausality** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **LempelZiv** — [`cobrabox.infometrics`](../domain/infometrics.md)
+- **LineLength** — [`cobrabox.signalstats`](../domain/signalstats.md)
+- **MutualInformation** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **Nonreversibility** — [`cobrabox.infometrics`](../domain/infometrics.md)
+- **PartialCorrelation** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **PartialDirectedCoherence** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **PhaseLockingValue** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **ReciprocalConnectivity** — [`cobrabox.connectivity`](../domain/connectivity.md)
+- **RecurrenceMatrix** — [`cobrabox.infometrics`](../domain/infometrics.md)
+- **SVD** — [`cobrabox.decompositions`](../domain/decompositions.md)
+- **SampleEntropy** — [`cobrabox.infometrics`](../domain/infometrics.md)
+- **Spectrogram** — [`cobrabox.spectral`](../domain/spectral.md)
+- **SpikeCount** — [`cobrabox.signalstats`](../domain/signalstats.md)

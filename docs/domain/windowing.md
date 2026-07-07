@@ -1,47 +1,25 @@
-# Windowing & Aggregation Features
+# Windowing & Aggregation
 
-Windowing features split signals into overlapping windows, and aggregation features combine windowed results.
+*How do I analyze temporal dynamics?*
 
-## Features
-
-### SlidingWindow
-Split data into overlapping windows (splitter).
-
-### SlidingWindowReduce
-Single-step windowing + aggregation (simpler alternative to Chord).
-
-### MeanAggregate
-Average windowed results (aggregator).
+Features in the `cobrabox.windowing` domain. Access them as `cb.windowing.<Feature>` or `cb.feature.<Feature>`.
 
 ### ConcatAggregate
-Stack windowed results along new dimension (aggregator).
+Aggregate a stream of per-window Data by stacking along a new 'window' dimension.
 
-## Usage
+**Tags:** [`aggregation`](../tags/aggregation.md), [`io:preserves-time`](../tags/io-preserves-time.md)
 
-```python
-import cobrabox as cb
-import numpy as np
+### MeanAggregate
+Aggregate a stream of per-window Data by averaging across windows.
 
-data = cb.from_numpy(np.random.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0)
+**Tags:** [`aggregation`](../tags/aggregation.md), [`io:scalar-per-channel`](../tags/io-scalar-per-channel.md)
 
-# Using Chord (fan-out → map → fan-in)
-result = cb.Chord(
-    split=cb.feature.SlidingWindow(window_size=20, step_size=10),
-    pipeline=cb.feature.LineLength(),
-    aggregate=cb.feature.MeanAggregate(),
-).apply(data)
+### SlidingWindow
+Yield one Data per sliding window over the time dimension.
 
-# Using SlidingWindowReduce (simpler)
-result = cb.feature.SlidingWindowReduce(
-    feature=cb.feature.LineLength(),
-    window_size=20,
-    step_size=10,
-    aggregate=cb.feature.MeanAggregate(),
-).apply(data)
-```
+**Tags:** [`temporal-dynamics`](../tags/temporal-dynamics.md), [`segmentation`](../tags/segmentation.md), [`nonstationarity`](../tags/nonstationarity.md), [`io:iterator`](../tags/io-iterator.md)
 
-## See Also
+### SlidingWindowReduce
+Sliding window with automatic per-window reduction.
 
-- [Time Domain](time_domain.md) for features applied within windows
-- [Pipelines](../guide/pipelines.md) for working with Chord and pipelines
-
+**Tags:** [`temporal-dynamics`](../tags/temporal-dynamics.md), [`segmentation`](../tags/segmentation.md), [`reduction`](../tags/reduction.md), [`nonstationarity`](../tags/nonstationarity.md), [`io:preserves-time`](../tags/io-preserves-time.md)
