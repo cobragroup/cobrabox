@@ -1,4 +1,4 @@
-"""Minimal example demonstrating partial correlation features."""
+"""Minimal example demonstrating the partial correlation feature."""
 
 import numpy as np
 
@@ -17,48 +17,45 @@ print()
 print("=" * 60)
 print("Example 1: Single partial correlation")
 print("=" * 60)
-r = cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2]).apply(data)
-print(f"Partial correlation (electrode 0 vs 1, controlling for 2): {r.data.values.item():.4f}")
+# PartialCorrelation always returns a (space_to, space_from) matrix; restrict the
+# output to the pair with coords= and condition on channel 2 via control_vars=.
+r = cb.feature.PartialCorrelation(coords=[0, 1], control_vars=[2]).apply(data)
+pair = r.data.sel(space_to=0, space_from=1)
+print(f"Partial correlation (electrode 0 vs 1, controlling for 2): {pair.values.item():.4f}")
 print(f"History: {r.history}")
 print()
 
 print("=" * 60)
 print("Example 2: Partial correlation matrix")
 print("=" * 60)
-m = cb.feature.PartialCorrelationMatrix(coords=[0, 1, 2], control_vars=[3]).apply(data)
+m = cb.feature.PartialCorrelation(coords=[0, 1, 2], control_vars=[3]).apply(data)
 print("Pairwise partial correlations (controlling for electrode 3):")
 print(m.data.values)
 print()
 
 print("=" * 60)
-print("Example 3: Default coordinates (all coordinates excluding control_vars)")
+print("Example 3: Default coordinates (full matrix over all channels)")
 print("=" * 60)
-m_all = cb.feature.PartialCorrelationMatrix(control_vars=[3]).apply(data)
-print("Pairwise partial correlations (all coordinates except 3, controlling for 3):")
+m_all = cb.feature.PartialCorrelation().apply(data)
+print("Pairwise partial correlations (all coordinates condition on each other):")
 print(m_all.data.values)
 print(f"Shape: {m_all.data.shape}")
-print(f"Coordinates used: {list(m_all.data.coords['coord_i'].values)}")
+print(f"Coordinates used: {list(m_all.data.coords['space_to'].values)}")
 print()
 
 print("=" * 60)
 print("Example 4: Validation errors")
 print("=" * 60)
 
-print("Empty control_vars:")
-try:
-    cb.feature.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[]).apply(data)
-except ValueError as e:
-    print(f"  Error: {e}")
-
 print("\nInvalid coordinate:")
 try:
-    cb.feature.PartialCorrelation(coord_x=99, coord_y=1, control_vars=[2]).apply(data)
+    cb.feature.PartialCorrelation(coords=[99, 1], control_vars=[2]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 
-print("\nEmpty coords in matrix:")
+print("\nEmpty coords:")
 try:
-    cb.feature.PartialCorrelationMatrix(coords=[], control_vars=[3]).apply(data)
+    cb.feature.PartialCorrelation(coords=[], control_vars=[3]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 

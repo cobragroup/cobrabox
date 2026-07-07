@@ -1,4 +1,4 @@
-"""Minimal example demonstrating phase locking value feature."""
+"""Minimal example demonstrating the phase locking value feature."""
 
 import numpy as np
 
@@ -17,15 +17,18 @@ print()
 print("=" * 60)
 print("Example 1: Single phase locking value")
 print("=" * 60)
-r = cb.feature.PhaseLockingValue(coord_x=0, coord_y=1).apply(data)
-print(f"Phase locking value (electrode 0 vs 1): {r.data.values.item():.4f}")
+# PhaseLockingValue always returns a (space_to, space_from) matrix; restrict it
+# to the pair of interest with coords=, then select the single value.
+r = cb.feature.PhaseLockingValue(coords=[0, 1]).apply(data)
+pair = r.data.sel(space_to=0, space_from=1)
+print(f"Phase locking value (electrode 0 vs 1): {pair.values.item():.4f}")
 print(f"History: {r.history}")
 print()
 
 print("=" * 60)
 print("Example 2: Phase locking value matrix")
 print("=" * 60)
-m = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+m = cb.feature.PhaseLockingValue(coords=[0, 1, 2]).apply(data)
 print("Pairwise phase locking value:")
 print(m.data.values)
 print()
@@ -33,27 +36,26 @@ print()
 print("=" * 60)
 print("Example 3: Default coordinates (all space coordinates)")
 print("=" * 60)
-m_all = cb.feature.PhaseLockingValueMatrix().apply(data)
+m_all = cb.feature.PhaseLockingValue().apply(data)
 print("Pairwise phase locking value (all coordinates):")
 print(m_all.data.values)
 print(f"Shape: {m_all.data.shape}")
-print(f"Coordinates used: {list(m_all.data.coords['coord_i'].values)}")
+print(f"Coordinates used: {list(m_all.data.coords['space_to'].values)}")
 print()
 
 print("=" * 60)
 print("Example 4: Validation errors")
 print("=" * 60)
 
-
 print("\nInvalid coordinate:")
 try:
-    cb.feature.PhaseLockingValue(coord_x=99, coord_y=1).apply(data)
+    cb.feature.PhaseLockingValue(coords=[99, 1]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 
-print("\nEmpty coords in matrix:")
+print("\nEmpty coords:")
 try:
-    cb.feature.PhaseLockingValueMatrix(coords=[]).apply(data)
+    cb.feature.PhaseLockingValue(coords=[]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 
