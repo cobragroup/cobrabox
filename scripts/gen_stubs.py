@@ -77,9 +77,10 @@ def _all_block(names: list[str]) -> str:
 
 
 def _split_import_line(import_path: str, cls: str) -> str:
-    line = f"from {import_path} import {cls} as {cls}\n"
+    line = f"from {import_path} import {cls} as {cls}"
+    # Match ruff's line-length check, which measures the line without its newline.
     if len(line.encode("utf-8")) <= 100:
-        return line
+        return line + "\n"
     return f"from {import_path} import (\n    {cls} as {cls},\n)\n"
 
 
