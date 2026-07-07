@@ -44,7 +44,7 @@ def _load_file_index() -> dict[str, list[RemoteFile]]:
     """Load the bundled file index from file_index.json."""
     ref = importlib.resources.files(__package__).joinpath("file_index.json")
     with importlib.resources.as_file(ref) as path:
-        raw: dict[str, list[dict[str, str | None]]] = json.loads(path.read_text(encoding="utf-8"))
+        raw: dict[str, list[dict[str, str]]] = json.loads(path.read_text(encoding="utf-8"))
     return {
         dataset_id: [
             RemoteFile(url=e["url"], filename=e["filename"], subset_key=e.get("subset_key"))
