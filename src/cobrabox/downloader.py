@@ -9,6 +9,7 @@ import shutil
 import socket
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -185,6 +186,7 @@ class RemoteDatasetSpec:
     info_url: str | None = None  # Landing page / homepage for the dataset
     license: str | None = None  # License name / terms, e.g. "CC BY 4.0"
     max_parallel_downloads: int = 4  # Max concurrent file downloads
+    data_type: str | None = None  # Short data-type label, e.g. "ictal/interictal"
     ilae_per_subject: dict[str, int] | None = None  # ILAE surgical outcome per subject
     resected_zone_per_subject: dict[str, list[str]] | None = None  # Resected channels per subject
     excluded_channels_per_subject: dict[str, list[str]] | None = (
@@ -293,18 +295,39 @@ def set_dataset_dir(path: str | Path, *, persist: bool = True) -> None:
             existing = {}
         existing["data_dir"] = str(_data_dir)
         _COBRABOX_CONFIG_PATH.write_text(json.dumps(existing), encoding="utf-8")
+    print(f"Dataset directory set to: {_data_dir}")
 
 
-def _is_dataset_cached(spec: RemoteDatasetSpec) -> bool:
-    """Return True if the dataset has any locally cached data files."""
+def _dataset_cache_status(spec: RemoteDatasetSpec) -> str:
+    """Return 'yes', 'no', or 'N/M' for partial cache (N subset keys cached out of M total)."""
     dataset_dir = get_dataset_dir() / spec.local_rel_dir
     if not dataset_dir.is_dir():
-        return False
-    return any(
-        f
+        return "no"
+
+    existing_names = {
+        f.name
         for f in dataset_dir.iterdir()
         if f.is_file() and f.name != "_manifest.json" and not f.name.endswith(".part")
-    )
+    }
+    if not existing_names:
+        return "no"
+
+    keys = spec.subset_keys()
+    if keys is not None and spec.files is not None:
+        cached_keys = {
+            f.subset_key
+            for f in spec.files
+            if f.subset_key is not None and f.filename in existing_names
+        }
+        n = len(cached_keys)
+        total = len(keys)
+        if n == 0:
+            return "no"
+        if n == total:
+            return "yes"
+        return f"{n}/{total}"
+
+    return "yes"
 
 
 def delete_remote_files(
@@ -458,6 +481,38 @@ def _filter_files_by_dict_subset(
     return result
 
 
+# Seconds to wait before each successive retry: attempt 2 waits 2 s, attempt 3 waits 4 s, etc.
+_RETRY_DELAYS: tuple[int, ...] = (2, 4, 8)
+
+
+def _print_dry_run_summary(
+    spec: RemoteDatasetSpec, to_download: list[RemoteFile], n_cached: int, subset: SubsetSpec | None
+) -> None:
+    """Print a human-readable summary of what *would* be downloaded."""
+    print(f"\nDry run: {spec.identifier}")
+    if to_download:
+        cached_str = f", {n_cached} already cached" if n_cached else ""
+        print(f"  Would download: {len(to_download)} file(s){cached_str}")
+        by_key: dict[str, int] = {}
+        for f in to_download:
+            if f.subset_key is not None:
+                by_key[f.subset_key] = by_key.get(f.subset_key, 0) + 1
+        if by_key:
+            max_len = max(len(k) for k in by_key)
+            for key in sorted(by_key):
+                n = by_key[key]
+                print(f"    {key:<{max_len}}  {n} file{'s' if n != 1 else ''}")
+        if spec.size_hint:
+            print(f"  Estimated size: {spec.size_hint}")
+    else:
+        print(f"  All {n_cached} file(s) already cached — nothing to download.")
+    cmd = f'cb.download_dataset("{spec.identifier}"'
+    if subset is not None:
+        cmd += f", subset={subset!r}"
+    cmd += ", accept=True)"
+    print(f"  To download: {cmd}")
+
+
 def ensure_remote_files(
     spec: RemoteDatasetSpec,
     *,
@@ -465,13 +520,15 @@ def ensure_remote_files(
     data_dir: Path | None = None,
     accept: bool = False,
     force: bool = False,
+    dry_run: bool = False,
 ) -> Path:
     """Ensure all files for a remote dataset are present locally.
 
     Files are stored under ``data_dir / spec.local_rel_dir``. Existing files
     are left untouched; missing files are streamed down in parallel and written
     atomically via a ``.part`` temp file.  Interrupted downloads are resumed
-    automatically using HTTP range requests.
+    automatically using HTTP range requests.  Transient network failures are
+    retried up to ``len(_RETRY_DELAYS)`` times with exponential back-off.
 
     Args:
         spec: The remote dataset specification.
@@ -489,6 +546,9 @@ def ensure_remote_files(
         force: If ``True``, delete any existing local files for the selected
             subset and re-download from scratch.  Useful when a previous
             download is suspected to be corrupt.
+        dry_run: If ``True``, print a summary of what *would* be downloaded
+            and return immediately without downloading anything or creating
+            any directories.
 
     Returns the resolved local dataset directory.
 
@@ -499,7 +559,8 @@ def ensure_remote_files(
         data_dir = get_dataset_dir()
 
     dataset_dir = data_dir / spec.local_rel_dir
-    dataset_dir.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        dataset_dir.mkdir(parents=True, exist_ok=True)
 
     all_files: Sequence[RemoteFile] = spec.files if spec.files is not None else []
 
@@ -543,67 +604,81 @@ def ensure_remote_files(
         url = remote_file.url
         tmp_path = dest_path.with_name(dest_path.name + ".part")
 
-        # Resume from a partial download if one exists.
-        resumed_bytes = tmp_path.stat().st_size if tmp_path.exists() else 0
-
         file_task = file_progress.add_task(remote_file.filename, total=None)
         try:
-            try:
-                request = urllib.request.Request(url)
-                if resumed_bytes:
-                    request.add_header("Range", f"bytes={resumed_bytes}-")
-                with urllib.request.urlopen(request, timeout=120) as response:
-                    content_length = response.headers.get("Content-Length")
-                    remaining = int(content_length) if content_length else None
-                    total_size = (resumed_bytes + remaining) if remaining is not None else None
-                    file_progress.update(file_task, total=total_size, completed=resumed_bytes)
-                    with open(tmp_path, "ab" if resumed_bytes else "wb") as f:
-                        for chunk in iter(lambda: response.read(65536), b""):
-                            if _cancel.is_set():
-                                return
-                            f.write(chunk)
-                            file_progress.update(file_task, advance=len(chunk))
-            except urllib.error.HTTPError as e:
-                tmp_path.unlink(missing_ok=True)
-                if spec.auth_hint and e.code in {401, 403}:
+            for attempt, retry_delay in enumerate((*_RETRY_DELAYS, None), start=1):
+                if _cancel.is_set():
+                    return
+
+                # Recalculate on each attempt — the .part file may have grown.
+                resumed_bytes = tmp_path.stat().st_size if tmp_path.exists() else 0
+                if attempt > 1:
+                    file_progress.console.print(
+                        f"  Retrying {remote_file.filename} "
+                        f"(attempt {attempt}/{len(_RETRY_DELAYS) + 1})..."
+                    )
+
+                try:
+                    request = urllib.request.Request(url)
+                    if resumed_bytes:
+                        request.add_header("Range", f"bytes={resumed_bytes}-")
+                    with urllib.request.urlopen(request, timeout=120) as response:
+                        content_length = response.headers.get("Content-Length")
+                        remaining = int(content_length) if content_length else None
+                        total_size = (resumed_bytes + remaining) if remaining is not None else None
+                        file_progress.update(file_task, total=total_size, completed=resumed_bytes)
+                        with open(tmp_path, "ab" if resumed_bytes else "wb") as f:
+                            for chunk in iter(lambda: response.read(65536), b""):
+                                if _cancel.is_set():
+                                    return
+                                f.write(chunk)
+                                file_progress.update(file_task, advance=len(chunk))
+                    break  # download succeeded
+                except urllib.error.HTTPError as e:
+                    tmp_path.unlink(missing_ok=True)
+                    if spec.auth_hint and e.code in {401, 403}:
+                        raise RuntimeError(
+                            f"{spec.auth_hint}\nExpected file location: {dest_path}"
+                        ) from e
                     raise RuntimeError(
-                        f"{spec.auth_hint}\nExpected file location: {dest_path}"
+                        f"Failed to download remote dataset file for '{spec.identifier}' "
+                        f"from {url!r}: HTTP {e.code}"
                     ) from e
-                raise RuntimeError(
-                    f"Failed to download remote dataset file for '{spec.identifier}' "
-                    f"from {url!r}: HTTP {e.code}"
-                ) from e
-            except (TimeoutError, urllib.error.URLError) as e:
-                tmp_path.unlink(missing_ok=True)
-                reason = getattr(e, "reason", str(e))
-                if isinstance(e, socket.timeout) or isinstance(reason, socket.timeout):
+                except (TimeoutError, urllib.error.URLError) as e:
+                    # Keep the .part file — it can be resumed on the next attempt.
+                    reason = getattr(e, "reason", str(e))
+                    is_timeout = isinstance(e, socket.timeout) or isinstance(reason, socket.timeout)
+                    if retry_delay is None:
+                        # All attempts exhausted — raise a clear error.
+                        if is_timeout:
+                            raise RuntimeError(
+                                f"Download timed out for '{remote_file.filename}' "
+                                f"(no data received for 120 s). "
+                                f"Check your connection and retry."
+                            ) from e
+                        raise RuntimeError(
+                            f"Network error while downloading remote dataset file for "
+                            f"'{spec.identifier}' from {url!r}: {reason!r}"
+                        ) from e
+                    time.sleep(retry_delay)
+                except OSError as e:
+                    tmp_path.unlink(missing_ok=True)
+                    if e.errno == errno.ENOSPC:
+                        raise RuntimeError(
+                            f"No space left on device while downloading '{remote_file.filename}' "
+                            f"for dataset '{spec.identifier}'. "
+                            f"Free up disk space and retry, or use subset= to download fewer files."
+                        ) from e
                     raise RuntimeError(
-                        f"Download timed out for '{remote_file.filename}' "
-                        f"(no data received for 120 s). "
-                        f"Check your connection and retry."
+                        f"Unexpected OS error while downloading remote dataset file for "
+                        f"'{spec.identifier}' from {url!r}: {e!r}"
                     ) from e
-                raise RuntimeError(
-                    f"Network error while downloading remote dataset file for "
-                    f"'{spec.identifier}' from {url!r}: {reason!r}"
-                ) from e
-            except OSError as e:
-                tmp_path.unlink(missing_ok=True)
-                if e.errno == errno.ENOSPC:
+                except Exception as e:  # pragma: no cover - defensive catch-all
+                    tmp_path.unlink(missing_ok=True)
                     raise RuntimeError(
-                        f"No space left on device while downloading '{remote_file.filename}' "
-                        f"for dataset '{spec.identifier}'. "
-                        f"Free up disk space and retry, or use subset= to download fewer files."
+                        f"Unexpected error while downloading remote dataset file for "
+                        f"'{spec.identifier}' from {url!r}: {e!r}"
                     ) from e
-                raise RuntimeError(
-                    f"Unexpected OS error while downloading remote dataset file for "
-                    f"'{spec.identifier}' from {url!r}: {e!r}"
-                ) from e
-            except Exception as e:  # pragma: no cover - defensive catch-all
-                tmp_path.unlink(missing_ok=True)
-                raise RuntimeError(
-                    f"Unexpected error while downloading remote dataset file for "
-                    f"'{spec.identifier}' from {url!r}: {e!r}"
-                ) from e
         finally:
             file_progress.remove_task(file_task)
 
@@ -636,7 +711,7 @@ def ensure_remote_files(
         except Exception:
             return False
 
-    if force:
+    if force and not dry_run:
         for f in files:
             dest = dataset_dir / f.filename
             dest.unlink(missing_ok=True)
@@ -645,6 +720,10 @@ def ensure_remote_files(
     # Load the manifest once for the pre-flight check (avoids one disk read per file).
     preflight_manifest = _load_manifest()
     to_download = [f for f in files if not _has_valid_local_copy(f, preflight_manifest)]
+
+    if dry_run:
+        _print_dry_run_summary(spec, to_download, len(files) - len(to_download), subset)
+        return dataset_dir
 
     if not to_download:
         return dataset_dir
@@ -745,11 +824,13 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
         known_subset_keys=tuple(_SWISS_EEG_SHORT_IDS),
         size_hint="~11 GB",
         subset_size_hint="~100 MB - 1 GB per subject",
+        subset_size_bytes=(600 * 1024**2),  # ~600 MB average (~11 GB / 18 subjects)
         # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940)
         # but the paper PDF is not publicly accessible as plain text.
         seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         license="Free for research and education only; commercial and military use prohibited.",
+        data_type="ictal/interictal",
     )
 
 
@@ -779,12 +860,14 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         known_subset_keys=_SWEZ_LONG_SUBJECTS,
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
+        subset_size_bytes=(150 * 1024**3),  # ~150 GB midpoint of 100-200 GB range
         # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
         # Per-subject breakdown is in the Laelaps paper, but the SWEZ website
         # (seizure_info_url) has TLS issues preventing automated access.
         seizure_info_url="http://ieeg-swez.ethz.ch/",
         info_url="http://ieeg-swez.ethz.ch/",
         license="Free for research and education only; commercial and military use prohibited.",
+        data_type="ictal/interictal",
     )
 
 
@@ -829,6 +912,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         info_url="https://repositori.upf.edu/handle/10230/42894",
         license="Free for research and education only; commercial and military use prohibited.",
         max_parallel_downloads=8,
+        data_type="ictal/interictal",
     )
 
 
@@ -884,6 +968,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
         seizure_info_url="https://physionet.org/content/chbmit/1.0.0/",
         info_url="https://physionet.org/content/chbmit/1.0.0/",
         license="Open Data Commons Attribution License v1.0 (ODC-By-1.0)",
+        data_type="ictal/interictal",
     )
 
 
@@ -944,6 +1029,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
         seizure_info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/subject_info.csv",
         info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/",
         license="Creative Commons Attribution 4.0 International (CC-BY-4.0)",
+        data_type="ictal/interictal",
     )
 
 
@@ -986,6 +1072,7 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
         info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,
+        data_type="interictal",
     )
 
 
@@ -2261,6 +2348,7 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
         info_url="https://openneuro.org/datasets/ds003498/versions/1.1.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,
+        data_type="interictal + HFO",
         ilae_per_subject=_ZURICH_ILAE_PER_SUBJECT,
         resected_zone_per_subject=_ZURICH_RESECTED_ZONE_PER_SUBJECT,
         excluded_channels_per_subject=_ZURICH_EXCLUDED_CHANNELS_PER_SUBJECT,
