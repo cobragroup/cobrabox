@@ -95,7 +95,7 @@ def gen_domain_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
             if summary:
                 lines.append(summary)
             if tags:
-                tag_links = ", ".join(f"[`{t}`](../tags/{_tag_slug(t)}.md)" for t in tags)
+                tag_links = ", ".join(f"[`{t}`](../tags.md#tag-{_tag_slug(t)})" for t in tags)
                 lines.append("")
                 lines.append(f"**Tags:** {tag_links}")
             lines.append("")
@@ -108,30 +108,22 @@ def _tag_slug(tag: str) -> str:
     return tag.replace(":", "-")
 
 
-def gen_tag_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
-    # tag -> list of (feature_name, domain)
+def gen_tags_page(by_domain: dict[str, list[tuple[str, type]]]) -> int:
+    """Write a single docs/tags.md: every tag, grouped by category, linking to
+    the features that carry it. One page instead of one file per tag.
+
+    Each tag gets an explicit HTML anchor (``tag-<slug>``) so the per-feature
+    tag links on the domain pages resolve to the right spot.
+    """
+    # tag -> sorted list of (feature_name, domain)
     by_tag: dict[str, list[tuple[str, str]]] = {}
     for domain, features in by_domain.items():
         for name, cls in features:
             for tag in getattr(cls, "_tags", []):
                 by_tag.setdefault(tag, []).append((name, domain))
-
     for entries in by_tag.values():
         entries.sort()
 
-    # Per-tag pages
-    for tag, entries in by_tag.items():
-        lines = [f"# Tag: `{tag}`", ""]
-        lines.append(f"Category: **{_tag_category(tag)}**")
-        lines.append("")
-        lines.append(f"{len(entries)} feature(s) carry this tag:")
-        lines.append("")
-        for name, domain in entries:
-            lines.append(f"- **{name}** — [`cobrabox.{domain}`](../domain/{domain}.md)")
-        lines.append("")
-        _write(DOCS / "tags" / f"{_tag_slug(tag)}.md", "\n".join(lines).rstrip() + "\n")
-
-    # Index page grouped by category
     categories: dict[str, list[str]] = {}
     for tag in by_tag:
         categories.setdefault(_tag_category(tag), []).append(tag)
@@ -140,19 +132,21 @@ def gen_tag_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
         "# Tags",
         "",
         "Cross-cutting discovery across domain boundaries. Every feature is tagged "
-        "by method, modality, application, IO shape and requirements; each tag below "
-        "links to the features that carry it.",
+        "by method, modality, application, IO shape and requirements. Each tag below "
+        "lists the features that carry it.",
         "",
     ]
     for category in sorted(categories):
         lines.append(f"## {category}")
         lines.append("")
         for tag in sorted(categories[category]):
-            count = len(by_tag[tag])
-            lines.append(f"- [`{tag}`]({_tag_slug(tag)}.md) ({count})")
-        lines.append("")
-    _write(DOCS / "tags" / "index.md", "\n".join(lines).rstrip() + "\n")
-    return sorted(by_tag)
+            entries = by_tag[tag]
+            feats = ", ".join(f"[{name}](domain/{domain}.md)" for name, domain in entries)
+            lines.append(f'<a id="tag-{_tag_slug(tag)}"></a>')
+            lines.append(f"`{tag}` ({len(entries)}) — {feats}")
+            lines.append("")
+    _write(DOCS / "tags.md", "\n".join(lines).rstrip() + "\n")
+    return len(by_tag)
 
 
 def gen_api_features_page(by_domain: dict[str, list[tuple[str, type]]]) -> int:
@@ -187,10 +181,10 @@ def gen_api_features_page(by_domain: dict[str, list[tuple[str, type]]]) -> int:
 def main() -> None:
     by_domain = _collect()
     domains = gen_domain_pages(by_domain)
-    tags = gen_tag_pages(by_domain)
+    n_tags = gen_tags_page(by_domain)
     n_api = gen_api_features_page(by_domain)
     print(
-        f"Wrote {len(domains)} domain pages, {len(tags)} tag pages + index, "
+        f"Wrote {len(domains)} domain pages, tags.md ({n_tags} tags), "
         f"and api/features.md ({n_api} features)."
     )
 

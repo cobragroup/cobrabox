@@ -7,19 +7,19 @@ Features in the `cobrabox.transforms` domain. Access them as `cb.transforms.<Fea
 ### AnalyticSignal
 Extract analytic-signal representations along the time axis.
 
-**Tags:** [`hilbert`](../tags/hilbert.md), [`instantaneous-phase`](../tags/instantaneous-phase.md), [`envelope`](../tags/envelope.md), [`instantaneous-frequency`](../tags/instantaneous-frequency.md), [`time-frequency`](../tags/time-frequency.md), [`eeg`](../tags/eeg.md), [`fmri`](../tags/fmri.md), [`io:preserves-time`](../tags/io-preserves-time.md)
+**Tags:** [`hilbert`](../tags.md#tag-hilbert), [`instantaneous-phase`](../tags.md#tag-instantaneous-phase), [`envelope`](../tags.md#tag-envelope), [`instantaneous-frequency`](../tags.md#tag-instantaneous-frequency), [`time-frequency`](../tags.md#tag-time-frequency), [`eeg`](../tags.md#tag-eeg), [`fmri`](../tags.md#tag-fmri), [`io:preserves-time`](../tags.md#tag-io-preserves-time)
 
 ### BandpassFilter
 Filter a signal into frequency bands.
 
-**Tags:** [`filtering`](../tags/filtering.md), [`butterworth`](../tags/butterworth.md), [`frequency-band`](../tags/frequency-band.md), [`preprocessing`](../tags/preprocessing.md), [`eeg`](../tags/eeg.md), [`io:preserves-time`](../tags/io-preserves-time.md), [`io:adds-dimension`](../tags/io-adds-dimension.md)
+**Tags:** [`filtering`](../tags.md#tag-filtering), [`butterworth`](../tags.md#tag-butterworth), [`frequency-band`](../tags.md#tag-frequency-band), [`preprocessing`](../tags.md#tag-preprocessing), [`eeg`](../tags.md#tag-eeg), [`io:preserves-time`](../tags.md#tag-io-preserves-time), [`io:adds-dimension`](../tags.md#tag-io-adds-dimension)
 
 ### FourierTransform
 Real-valued FFT along the time axis.
 
-**Tags:** [`fft`](../tags/fft.md), [`frequency-domain`](../tags/frequency-domain.md), [`eeg`](../tags/eeg.md), [`fmri`](../tags/fmri.md), [`io:frequency-output`](../tags/io-frequency-output.md)
+**Tags:** [`fft`](../tags.md#tag-fft), [`frequency-domain`](../tags.md#tag-frequency-domain), [`eeg`](../tags.md#tag-eeg), [`fmri`](../tags.md#tag-fmri), [`io:frequency-output`](../tags.md#tag-io-frequency-output)
 
 ### InverseFourierTransform
 Inverse of :class:`~cobrabox.transforms.fourier_transform.FourierTransform`.
 
-**Tags:** [`ifft`](../tags/ifft.md), [`time-domain`](../tags/time-domain.md), [`io:time-output`](../tags/io-time-output.md), [`req:frequency-input`](../tags/req-frequency-input.md)
+**Tags:** [`ifft`](../tags.md#tag-ifft), [`time-domain`](../tags.md#tag-time-domain), [`io:time-output`](../tags.md#tag-io-time-output), [`req:frequency-input`](../tags.md#tag-req-frequency-input)

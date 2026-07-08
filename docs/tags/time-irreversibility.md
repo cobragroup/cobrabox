@@ -1,7 +1,0 @@
-# Tag: `time-irreversibility`
-
-Category: **Descriptor**
-
-1 feature(s) carry this tag:
-
-- **Nonreversibility** — [`cobrabox.infometrics`](../domain/infometrics.md)

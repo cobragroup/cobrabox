@@ -7,4 +7,4 @@ Features in the `cobrabox.surrogates` domain. Access them as `cb.surrogates.<Fea
 ### FourierTransformSurrogates
 Generate Fourier transform surrogates (preserving autocorrelation) of SignalData.
 
-**Tags:** [`null-hypothesis`](../tags/null-hypothesis.md), [`nonlinearity-test`](../tags/nonlinearity-test.md), [`phase-randomization`](../tags/phase-randomization.md), [`autocorrelation-preserving`](../tags/autocorrelation-preserving.md), [`surrogate-significance`](../tags/surrogate-significance.md), [`epilepsy`](../tags/epilepsy.md), [`io:iterator`](../tags/io-iterator.md)
+**Tags:** [`null-hypothesis`](../tags.md#tag-null-hypothesis), [`nonlinearity-test`](../tags.md#tag-nonlinearity-test), [`phase-randomization`](../tags.md#tag-phase-randomization), [`autocorrelation-preserving`](../tags.md#tag-autocorrelation-preserving), [`surrogate-significance`](../tags.md#tag-surrogate-significance), [`epilepsy`](../tags.md#tag-epilepsy), [`io:iterator`](../tags.md#tag-io-iterator)

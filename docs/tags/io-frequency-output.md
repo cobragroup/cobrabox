@@ -1,7 +1,0 @@
-# Tag: `io:frequency-output`
-
-Category: **IO shape**
-
-1 feature(s) carry this tag:
-
-- **FourierTransform** — [`cobrabox.transforms`](../domain/transforms.md)

@@ -91,7 +91,7 @@ nav:
       - Spectral: domain/spectral.md
       - Connectivity: domain/connectivity.md
       - Decompositions: domain/decompositions.md
-  - Features by Tag: tags/index.md
+  - Features by Tag: tags.md
   - Contributing:
       - Setup Guide: contributing/setup.md
       - Feature Guide: contributing/features.md
