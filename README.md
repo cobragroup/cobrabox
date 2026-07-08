@@ -110,64 +110,61 @@ See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough,
 
 ## Built-in Features
 
-### Standard Features
+The full catalog is browsable and **filterable by tag** in the
+[docs](https://cobragroup.github.io/cobrabox/). Highlights by domain:
+
+### Signal statistics & information
 
 - `LineLength` - Sum of absolute differences per channel
 - `Min` / `Max` / `Mean` - Reduce over any dimension
-- `SVD` - Truncated SVD over one dimension with optional centering/z-scoring
 - `AmplitudeVariation` - Amplitude variation (standard deviation) over time
-- `Bandpower` - Power in frequency bands using Welch's method
-- `BandFilter` - Butterworth bandpass filter into frequency bands
-- `Coherence` - Magnitude-squared coherence between channel pairs
-- `Spectrogram` - Time-frequency power spectrogram
-- `Hilbert` - Analytic signal, envelope, phase, or instantaneous frequency
-- `SpikeCount` - Outlier detection using IQR method
-- `Autocorr` - Normalized autocorrelation at a single lag
+- `Autocorrelation` - Normalized autocorrelation at a single lag
+- `SpikeCount` - Outlier detection using the IQR method
+- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
+- `SampleEntropy` - Sample entropy (signal regularity/complexity)
 - `LempelZiv` - Lempel-Ziv complexity per channel
-- `FractalDimHiguchi` - Higuchi Fractal Dimension (signal roughness/complexity)
-- `FractalDimKatz` - Katz Fractal Dimension (fast, parameter-free complexity)
-- `SampleEntropy` - Sample Entropy (signal regularity/complexity measure)
-- `AmplitudeEntropy` - Amplitude entropy from histogram-based distribution
-- `Nonreversibility` - Normalised deviation from causal normality (time-irreversibility)
+- `FractalDimension` - Higuchi or Katz fractal dimension (select with `method=`)
+- `AmplitudeEntropy` - Amplitude entropy from a histogram-based distribution
+- `Nonreversibility` - Time-irreversibility (deviation from causal normality)
+- `RecurrenceMatrix` - Pairwise recurrence (self-similarity) matrix
 
-### Connectivity Features
+### Spectral & transforms
 
-- `Correlation` - Pairwise Pearson or Spearman correlation matrix between channels
-- `Covariance` - Pairwise sample covariance matrix between channels
-- `PartialCorrelation` / `PartialCorrelationMatrix` - Partial correlation controlling for other variables
-- `PartialDirectedCoherence` - Partial Directed Coherence via VAR model (directional frequency-domain connectivity)
-- `ReciprocalConnectivity` - Net directional role per channel (source/sink detection from PDC)
-- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC) between all channel pairs
-- `PhaseLockingValue` / `PhaseLockingValueMatrix` - Phase locking value between channels
-- `GrangerCausality` / `GrangerCausalityMatrix` - Granger causality testing
-- `RecurrenceMatrix` - Pairwise recurrence (self-similarity) matrix across time-points or windows
-- `MutualInformation` - Pairwise mutual information matrix between channels
+- `BandPower` - Power in frequency bands using Welch's method
+- `Spectrogram` - Time-frequency power spectrogram
+- `Cordance` - Quantitative EEG cordance (Leuchter et al., 1994)
+- `ContinuousWaveletTransform` / `DiscreteWaveletTransform` - Wavelet time-frequency / sub-band analysis
+- `AnalyticSignal` - Analytic signal: envelope, phase, or instantaneous frequency
+- `BandpassFilter` - Butterworth bandpass filter into frequency bands
+- `FourierTransform` / `InverseFourierTransform` - FFT to and from the frequency domain
 
-### Windowing & Aggregation
+### Connectivity
+
+- `Correlation` / `Covariance` - Pairwise correlation / covariance matrix
+- `PartialCorrelation` - Partial correlation controlling for other channels
+- `Coherence` - Magnitude-squared coherence between channel pairs
+- `PhaseLockingValue` - Phase locking value between channels
+- `EnvelopeCorrelation` - Amplitude envelope correlation (AEC)
+- `MutualInformation` - Pairwise mutual information matrix
+- `GrangerCausality` - Granger causality (directed)
+- `PartialDirectedCoherence` / `DirectedTransferFunction` - Directed frequency-domain connectivity via MVAR
+- `ReciprocalConnectivity` - Net directional role per channel (source/sink) from a directed matrix
+
+### Decomposition
+
+- `SVD` - Truncated SVD over one dimension with optional centering/z-scoring
+- `EMD` - Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs)
+
+### Windowing & aggregation
 
 - `SlidingWindow` - Split data into overlapping windows (splitter)
 - `SlidingWindowReduce` - Single-step windowing + aggregation (simpler alternative to Chord)
-- `MeanAggregate` - Average windowed results (aggregator)
-- `ConcatAggregate` - Stack windowed results along new dimension (aggregator)
+- `MeanAggregate` / `ConcatAggregate` - Fold windowed results back into one `Data` (aggregators)
 - `Chord` - Combine splitter + feature + aggregator
 
-### Surrogate Generation
+### Surrogates
 
-- `FourierTransformSurrogates` - Generate Fourier transform surrogates preserving power spectrum
-
-### Wavelet Transforms
-
-- `DiscreteWaveletTransform` - Multi-level discrete wavelet decomposition (DWT)
-- `ContinuousWaveletTransform` - Continuous wavelet transform for time-frequency analysis
-
-### Signal Decomposition
-
-- `EMD` - Empirical Mode Decomposition into Intrinsic Mode Functions (IMFs)
-
-### qEEG Measures
-
-- `Cordance` - Quantitative EEG cordance combining absolute and relative bandpower (Leuchter et al., 1994)
-- `EpileptogenicityIndex` - Quantify epileptogenicity from SEEG (Bartolomei et al., 2008)
+- `FourierTransformSurrogates` - Fourier surrogates preserving the power spectrum
 
 ## Serialization
 
@@ -227,31 +224,21 @@ Every feature in CobraBox has a D&D alignment that captures its "moral character
 
 ```bash
 # See the full roster
-uv run python -m cobrabox.dnd_alignment --roster
+uv run python -m cobrabox.egg.dnd_alignment --roster
 
 # Check a pipeline's aggregate alignment
-uv run python -m cobrabox.dnd_alignment SlidingWindow LineLength MeanAggregate
+uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
 
 # Check a chord pipeline (splitter + map + aggregator)
-uv run python -m cobrabox.dnd_alignment --chord SlidingWindow LineLength MeanAggregate
+uv run python -m cobrabox.egg.dnd_alignment --chord SlidingWindow LineLength MeanAggregate
 ```
 
 The alignment grid categorizes features by their "moral character":
 - **Law axis**: Lawful (+1) imposes structure (windowing, categorization); Neutral (0) passively describes; Chaotic (-1) is disruptive
 - **Good axis**: Good (+1) preserves meaning; Neutral (0) is indifferent; Evil (-1) discards/distorts
 
-**Current roster:**
-
-| Alignment | Features |
-|-----------|----------|
-| Lawful Good | SlidingWindow, BandFilter, Bandpower |
-| Lawful Neutral | SlidingWindowReduce, MeanAggregate, Mean, ConcatAggregate, Cordance, FractalDimKatz, FourierTransformSurrogates, EpileptogenicityIndex, SVD |
-| Lawful Evil | SpikeCount, Max, Min |
-| Neutral Good | AmplitudeEntropy, AmplitudeVariation, LineLength, DiscreteWaveletTransform, Nonreversibility, RecurrenceMatrix, ContinuousWaveletTransform, Hilbert, Coherence, Autocorr, Spectrogram, EnvelopeCorrelation, FractalDimHiguchi, GrangerCausality, GrangerCausalityMatrix, PartialCorrelation, PartialCorrelationMatrix, PhaseLockingValue, PhaseLockingValueMatrix, PartialDirectedCoherence, ReciprocalConnectivity, Correlation, Covariance, EMD |
-| True Neutral | LempelZiv, MutualInformation, SampleEntropy |
-| Chaotic Neutral | Dummy |
-
-Run the command above to see the full grid!
+Run `uv run python -m cobrabox.egg.dnd_alignment --roster` to print the current grid
+for every feature.
 
 ## Documentation
 
