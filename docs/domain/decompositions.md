@@ -12,4 +12,4 @@ Decompose a signal into Intrinsic Mode Functions (IMFs) using Empirical Mode Dec
 ### SVD
 Compute truncated SVD over one dimension.
 
-**Tags:** [`dimensionality-reduction`](../tags.md#tag-dimensionality-reduction), [`patterns`](../tags.md#tag-patterns), [`eeg`](../tags.md#tag-eeg), [`io:matrix`](../tags.md#tag-io-matrix)
+**Tags:** [`dimensionality-reduction`](../tags.md#tag-dimensionality-reduction), [`patterns`](../tags.md#tag-patterns), [`source-localization`](../tags.md#tag-source-localization), [`eeg`](../tags.md#tag-eeg), [`io:matrix`](../tags.md#tag-io-matrix)
