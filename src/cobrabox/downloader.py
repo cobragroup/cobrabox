@@ -186,6 +186,7 @@ class RemoteDatasetSpec:
     info_url: str | None = None  # Landing page / homepage for the dataset
     license: str | None = None  # License name / terms, e.g. "CC BY 4.0"
     max_parallel_downloads: int = 4  # Max concurrent file downloads
+    data_type: str | None = None  # Short data-type label, e.g. "ictal/interictal"
     ilae_per_subject: dict[str, int] | None = None  # ILAE surgical outcome per subject
     resected_zone_per_subject: dict[str, list[str]] | None = None  # Resected channels per subject
     excluded_channels_per_subject: dict[str, list[str]] | None = (
@@ -294,18 +295,39 @@ def set_dataset_dir(path: str | Path, *, persist: bool = True) -> None:
             existing = {}
         existing["data_dir"] = str(_data_dir)
         _COBRABOX_CONFIG_PATH.write_text(json.dumps(existing), encoding="utf-8")
+    print(f"Dataset directory set to: {_data_dir}")
 
 
-def _is_dataset_cached(spec: RemoteDatasetSpec) -> bool:
-    """Return True if the dataset has any locally cached data files."""
+def _dataset_cache_status(spec: RemoteDatasetSpec) -> str:
+    """Return 'yes', 'no', or 'N/M' for partial cache (N subset keys cached out of M total)."""
     dataset_dir = get_dataset_dir() / spec.local_rel_dir
     if not dataset_dir.is_dir():
-        return False
-    return any(
-        f
+        return "no"
+
+    existing_names = {
+        f.name
         for f in dataset_dir.iterdir()
         if f.is_file() and f.name != "_manifest.json" and not f.name.endswith(".part")
-    )
+    }
+    if not existing_names:
+        return "no"
+
+    keys = spec.subset_keys()
+    if keys is not None and spec.files is not None:
+        cached_keys = {
+            f.subset_key
+            for f in spec.files
+            if f.subset_key is not None and f.filename in existing_names
+        }
+        n = len(cached_keys)
+        total = len(keys)
+        if n == 0:
+            return "no"
+        if n == total:
+            return "yes"
+        return f"{n}/{total}"
+
+    return "yes"
 
 
 def delete_remote_files(
@@ -802,11 +824,13 @@ def _swiss_eeg_short_spec() -> RemoteDatasetSpec:
         known_subset_keys=tuple(_SWISS_EEG_SHORT_IDS),
         size_hint="~11 GB",
         subset_size_hint="~100 MB - 1 GB per subject",
+        subset_size_bytes=(600 * 1024**2),  # ~600 MB average (~11 GB / 18 subjects)
         # Per-subject counts are in Burrello et al. TBME 2019 (doi:10.1109/TBME.2019.2921940)
         # but the paper PDF is not publicly accessible as plain text.
         seizure_info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         info_url="https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/",
         license="Free for research and education only; commercial and military use prohibited.",
+        data_type="ictal/interictal",
     )
 
 
@@ -836,12 +860,14 @@ def _swiss_eeg_long_spec() -> RemoteDatasetSpec:
         known_subset_keys=_SWEZ_LONG_SUBJECTS,
         size_hint=">1 TB (hundreds of hourly files per subject)",
         subset_size_hint="~100-200 GB per subject (~619 MB per hourly file)",
+        subset_size_bytes=(150 * 1024**3),  # ~150 GB midpoint of 100-200 GB range
         # 116 seizures total across 18 subjects (Burrello et al., DATE 2019).
         # Per-subject breakdown is in the Laelaps paper, but the SWEZ website
         # (seizure_info_url) has TLS issues preventing automated access.
         seizure_info_url="http://ieeg-swez.ethz.ch/",
         info_url="http://ieeg-swez.ethz.ch/",
         license="Free for research and education only; commercial and military use prohibited.",
+        data_type="ictal/interictal",
     )
 
 
@@ -886,6 +912,7 @@ def _bonn_eeg_spec() -> RemoteDatasetSpec:
         info_url="https://repositori.upf.edu/handle/10230/42894",
         license="Free for research and education only; commercial and military use prohibited.",
         max_parallel_downloads=8,
+        data_type="ictal/interictal",
     )
 
 
@@ -941,6 +968,7 @@ def _chb_mit_spec() -> RemoteDatasetSpec:
         seizure_info_url="https://physionet.org/content/chbmit/1.0.0/",
         info_url="https://physionet.org/content/chbmit/1.0.0/",
         license="Open Data Commons Attribution License v1.0 (ODC-By-1.0)",
+        data_type="ictal/interictal",
     )
 
 
@@ -1001,6 +1029,7 @@ def _siena_eeg_spec() -> RemoteDatasetSpec:
         seizure_info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/subject_info.csv",
         info_url="https://physionet.org/content/siena-scalp-eeg/1.0.0/",
         license="Creative Commons Attribution 4.0 International (CC-BY-4.0)",
+        data_type="ictal/interictal",
     )
 
 
@@ -1043,6 +1072,7 @@ def _sleep_ieeg_spec() -> RemoteDatasetSpec:
         info_url="https://openneuro.org/datasets/ds005398/versions/1.0.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,
+        data_type="interictal",
     )
 
 
@@ -2318,6 +2348,7 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
         info_url="https://openneuro.org/datasets/ds003498/versions/1.1.1",
         license="CC0 1.0 Universal (public domain)",
         max_parallel_downloads=8,
+        data_type="interictal + HFO",
         ilae_per_subject=_ZURICH_ILAE_PER_SUBJECT,
         resected_zone_per_subject=_ZURICH_RESECTED_ZONE_PER_SUBJECT,
         excluded_channels_per_subject=_ZURICH_EXCLUDED_CHANNELS_PER_SUBJECT,
