@@ -219,30 +219,39 @@ def test_ensure_remote_files_no_prompt_when_all_cached(tmp_path: Path) -> None:
         mock_prompt.assert_not_called()
 
 
-class _NoOpBar:
-    """No-op tqdm progress bar for use in downloader tests.
+class _NoOpProgress:
+    """No-op Rich Progress/Live for use in downloader tests.
 
-    Can be used as a drop-in patch for the ``tqdm`` class itself (not just
-    instances), because it also exposes ``tqdm.write`` as a no-op staticmethod.
+    Also stands in for the ``Progress.console`` used to print retry notices:
+    ``console`` returns the instance itself and ``print`` is a no-op.
     """
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         pass
 
-    def __enter__(self) -> _NoOpBar:
+    def __enter__(self) -> _NoOpProgress:
         return self
 
     def __exit__(self, *args: object) -> None:
         pass
 
-    def update(self, n: int) -> None:
+    def add_task(self, *args: object, **kwargs: object) -> int:
+        return 0
+
+    def remove_task(self, task_id: object) -> None:
         pass
 
-    def close(self) -> None:
+    def update(self, task_id: object, **kwargs: object) -> None:
         pass
 
-    @staticmethod
-    def write(msg: str, *args: object, **kwargs: object) -> None:
+    def advance(self, task_id: object, advance: float = 1) -> None:
+        pass
+
+    @property
+    def console(self) -> _NoOpProgress:
+        return self
+
+    def print(self, *args: object, **kwargs: object) -> None:
         pass
 
 
@@ -329,7 +338,8 @@ def test_ensure_remote_files_redownloads_corrupt_zip(
         return _FakeResponse(buf.getvalue())
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _fake_urlopen)
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     ensure_remote_files(spec, data_dir=tmp_path, accept=True)
     assert downloaded == ["http://example.com/a.zip"]
@@ -358,6 +368,7 @@ def test_ensure_remote_files_raises_on_timeout(
         raise downloader.urllib.error.URLError(TimeoutError("timed out"))
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _timeout)
+    monkeypatch.setattr(downloader.time, "sleep", lambda _: None)  # skip retry back-off
 
     with pytest.raises(RuntimeError, match="timed out"):
         ensure_remote_files(spec, data_dir=tmp_path, accept=True)
@@ -440,7 +451,8 @@ def test_keyboard_interrupt_during_download_raises_and_leaves_part_file(
             return b"x" * 65536
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", lambda url, *a, **kw: _FakeResponse())
-    monkeypatch.setattr(downloader, "tqdm", lambda *a, **kw: _NoOpBar())
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
 
     with pytest.raises(KeyboardInterrupt):
         ensure_remote_files(spec, data_dir=tmp_path, accept=True)
@@ -492,7 +504,8 @@ def test_download_retries_on_network_error_and_succeeds(
         return _GoodResponse()
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _urlopen)
-    monkeypatch.setattr(downloader, "tqdm", _NoOpBar)
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
     monkeypatch.setattr(downloader.time, "sleep", lambda _: None)  # instant retries
 
     ensure_remote_files(spec, data_dir=tmp_path, accept=True)
@@ -580,7 +593,8 @@ def test_download_retry_preserves_part_file(
         return _GoodResponse()
 
     monkeypatch.setattr(downloader.urllib.request, "urlopen", _urlopen)
-    monkeypatch.setattr(downloader, "tqdm", _NoOpBar)
+    monkeypatch.setattr(downloader, "Progress", _NoOpProgress)
+    monkeypatch.setattr(downloader, "Live", _NoOpProgress)
     monkeypatch.setattr(downloader.time, "sleep", lambda _: None)
 
     ensure_remote_files(spec, data_dir=tmp_path, accept=True)
