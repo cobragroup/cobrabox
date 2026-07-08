@@ -255,10 +255,16 @@ def test_describe_all_includes_header(
     assert "License" in output
 
 
-def test_describe_all_includes_cached_header(capsys: pytest.CaptureFixture[str]) -> None:
+def test_describe_all_includes_cached_header(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """show_datasets() prints a Cached column header."""
     import cobrabox as cb
 
+    # The eight-column rich table collapses its header row at narrow widths
+    # (e.g. rich's 80-col fallback on the Windows CI runner); widen it so the
+    # "Cached" header is always rendered.
+    monkeypatch.setenv("COLUMNS", "200")
     cb.show_datasets()
     output = capsys.readouterr().out
     assert "Cached" in output
