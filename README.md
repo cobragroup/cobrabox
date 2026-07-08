@@ -218,28 +218,6 @@ uv run pytest --cov-fail-under=95   # enforce 95% coverage threshold
 uv run pytest --cov-report=html     # generate HTML report in htmlcov/
 ```
 
-## Feature Alignments (D&D Style)
-
-Every feature in CobraBox has a D&D alignment that captures its "moral character" — how it treats your data:
-
-```bash
-# See the full roster
-uv run python -m cobrabox.egg.dnd_alignment --roster
-
-# Check a pipeline's aggregate alignment
-uv run python -m cobrabox.egg.dnd_alignment SlidingWindow LineLength MeanAggregate
-
-# Check a chord pipeline (splitter + map + aggregator)
-uv run python -m cobrabox.egg.dnd_alignment --chord SlidingWindow LineLength MeanAggregate
-```
-
-The alignment grid categorizes features by their "moral character":
-- **Law axis**: Lawful (+1) imposes structure (windowing, categorization); Neutral (0) passively describes; Chaotic (-1) is disruptive
-- **Good axis**: Good (+1) preserves meaning; Neutral (0) is indifferent; Evil (-1) discards/distorts
-
-Run `uv run python -m cobrabox.egg.dnd_alignment --roster` to print the current grid
-for every feature.
-
 ## Documentation
 
 - Setup repo: [`docs/setup_repo.md`](docs/setup_repo.md)
