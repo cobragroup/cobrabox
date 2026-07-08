@@ -70,10 +70,9 @@ markers = [
 [tool.coverage.run]
 source = ["src/cobrabox"]
 omit = [
-    "src/cobrabox/features/dummy.py",
+    "src/cobrabox/_dummy.py",
     "src/cobrabox/egg/*",
-    "src/cobrabox/features/*/__init__.py",
-    "src/cobrabox/features/*/*/__init__.py"
+    "src/cobrabox/*/__init__.py",
 ]
 relative_files = true
 

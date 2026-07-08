@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import cobrabox as cb
-from cobrabox.features._dummy import Dummy
+from cobrabox._dummy import Dummy
 
 
 def _make_data() -> cb.SignalData:

@@ -7,7 +7,7 @@ import pytest
 import xarray as xr
 
 import cobrabox as cb
-from cobrabox.features import MutualInformation
+from cobrabox.feature import MutualInformation
 
 r = 0.6
 D = 6

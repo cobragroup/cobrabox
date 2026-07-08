@@ -3,5 +3,5 @@ schema_version: "1.0.0"
 
 pipeline:
   - class: "NonExistentFeature"
-    module: "cobrabox.features.line_length"
+    module: "cobrabox.signalstats.line_length"
     params: {}

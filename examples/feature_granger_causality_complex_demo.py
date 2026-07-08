@@ -72,7 +72,7 @@ print()
 print("=" * 60, "Granger Causality Analysis", "=" * 60)
 data = cb.data.SignalData.from_numpy(time_series, dims=["time", "space"], sampling_rate=100.0)
 
-gc_matrix = cb.feature.GrangerCausalityMatrix(lag=2).apply(data)
+gc_matrix = cb.feature.GrangerCausality(lag=2).apply(data)
 print("Granger causality matrix (lag=2):")
 for i in range(5):
     row_str = " ".join([f"{gc_matrix.data.values[i, j]:.4f}" for j in range(5)])
