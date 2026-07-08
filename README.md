@@ -3,12 +3,13 @@
 CobraBox is a lightweight toolbox for feature extraction from EEG and fMRI
 time-series data.
 
+## Documentation
+
+📖 **Full docs: <https://cobragroup.github.io/cobrabox/>** — browse and **filter the
+entire feature catalog by tag** right on the home page, plus the feature-by-domain
+guides and the auto-generated API reference.
+
 ## Quick Start
-
-For setup, use the onboarding:
-[`docs`](docs)
-
-Short version:
 
 1. Install `git-lfs` on your system (`brew install git-lfs` / `apt-get install git-lfs`)
 2. Run:
