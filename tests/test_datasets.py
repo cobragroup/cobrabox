@@ -236,14 +236,21 @@ def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) ->
         assert ident in output
 
 
-def test_describe_all_includes_header(capsys: pytest.CaptureFixture[str]) -> None:
+def test_describe_all_includes_header(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """show_datasets() prints column headers."""
     import cobrabox as cb
 
+    # The rich table now has eight columns; give it enough width so the last
+    # header ("License") is not squeezed away by rich's auto-layout.
+    monkeypatch.setenv("COLUMNS", "200")
     cb.show_datasets()
     output = capsys.readouterr().out
     assert "Dataset" in output
     assert "Type" in output
+    assert "Data type" in output
+    assert "Seizures" in output
     assert "Size" in output
     assert "License" in output
 

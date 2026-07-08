@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-import textwrap
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rich.console import Console, ConsoleOptions, RenderResult
 
 from .data import SignalData
 from .dataset import Dataset
@@ -60,6 +64,14 @@ class DatasetInfo:
             if not available.
         auth_hint: Optional hint shown when a download fails with 401/403,
             e.g. how to obtain credentials.  ``None`` if not applicable.
+        ilae_per_subject: ILAE surgical outcome score per subject (1=seizure-free,
+            6=no improvement), or ``None`` if not available.
+        resected_zone_per_subject: Bipolar channel pairs in the resected zone per
+            subject, or ``None`` if not available.
+        excluded_channels_per_subject: Bipolar channel pairs excluded due to eloquent
+            cortex stimulation per subject, or ``None`` if not available.
+        all_channels_per_subject: All implanted bipolar channel pairs per subject,
+            or ``None`` if not available.
     """
 
     identifier: str
@@ -75,39 +87,41 @@ class DatasetInfo:
     license: str | None = None
     auth_hint: str | None = None
     local_path: Path | None = None
+    ilae_per_subject: dict[str, int] | None = None
+    resected_zone_per_subject: dict[str, list[str]] | None = None
+    excluded_channels_per_subject: dict[str, list[str]] | None = None
+    all_channels_per_subject: dict[str, list[str]] | None = None
 
-    def __str__(self) -> str:
-        lines = [f"DatasetInfo: {self.identifier}"]
-        lines.append(f"  description : {self.description}")
+    def _rich_renderable(self) -> RenderResult:
+
+        from rich.panel import Panel
+        from rich.table import Table
+
+        lines: list[str] = [self.description]
         if self.data_type is not None:
-            lines.append(f"  data type   : {self.data_type}")
+            lines.append(f"\n[dim]Data type:[/dim] {self.data_type}")
         if self.info_url is not None:
-            lines.append(f"  source      : {self.info_url}")
+            lines.append(f"\n[dim]Source  :[/dim] {self.info_url}")
         if self.size_hint is not None or self.subset_size_hint is not None:
             parts = []
             if self.size_hint is not None:
                 parts.append(f"total {self.size_hint}")
             if self.subset_size_hint is not None:
                 parts.append(self.subset_size_hint)
-            lines.append(f"  size        : {', '.join(parts)} (approximate)")
+            lines.append(f"[dim]Size    :[/dim] {', '.join(parts)} (approximate)")
         if self.subset_key_name is None or self.subsets is None:
             lines.append(
-                f"  subsets     : none — call cb.load_dataset({self.identifier!r}) to load all."
+                f"[dim]Subsets :[/dim] none \u2014"
+                f" call cb.load_dataset({self.identifier!r}) to load all."
             )
         else:
             n = len(self.subsets)
-            keys_str = ", ".join(self.subsets)
-            wrapped = textwrap.fill(
-                keys_str,
-                width=72,
-                initial_indent=f"  {self.subset_key_name} ({n}): ",
-                subsequent_indent=" " * (len(self.subset_key_name) + 7),
-                break_on_hyphens=False,
-            )
-            lines.append(wrapped)
+            lines.append(f"[dim]{self.subset_key_name} ({n})[/dim]: {', '.join(self.subsets)}")
             second = self.subsets[1] if len(self.subsets) > 1 else self.subsets[0]
             example = f'["{self.subsets[0]}", "{second}"]'
-            lines.append(f'  usage       : cb.load_dataset("{self.identifier}", subset={example})')
+            lines.append(
+                f'[dim]Usage   :[/dim] cb.load_dataset("{self.identifier}", subset={example})'
+            )
         if self.seizures_per_subject is not None:
             counts = self.seizures_per_subject
             total = sum(counts.values())
@@ -120,16 +134,55 @@ class DatasetInfo:
                 chunk = pairs[i : i + n_cols]
                 row = "    " + "   ".join(f"{k:<{max_key}} {v:>{max_val}}" for k, v in chunk)
                 lines.append(row)
+        if self.ilae_per_subject is not None:
+            ilae = self.ilae_per_subject
+            max_key = max(len(k) for k in ilae)
+            n_cols = 5
+            pairs = list(ilae.items())
+            lines.append("  ILAE outcome/subject (1=seizure-free, 6=no improvement):")
+            for i in range(0, len(pairs), n_cols):
+                chunk = pairs[i : i + n_cols]
+                row = "    " + "   ".join(f"{k:<{max_key}} {v}" for k, v in chunk)
+                lines.append(row)
         if self.license is not None:
-            lines.append(f"  license     : {self.license}")
+            lines.append(f"[dim]License :[/dim] {self.license}")
         if self.auth_hint is not None:
-            lines.append(f"  auth        : {self.auth_hint}")
+            lines.append(f"[dim]Auth    :[/dim] {self.auth_hint}")
         if self.local_path is not None:
-            lines.append(f"  local path  : {self.local_path}")
-        return "\n".join(lines)
+            lines.append(f"[dim]Cached  :[/dim] {self.local_path}")
+
+        content: object = "\n".join(lines)
+
+        if self.seizures_per_subject is not None:
+            from rich.console import Group
+
+            counts = self.seizures_per_subject
+            total = sum(counts.values())
+            seiz_table = Table(box=None, padding=(0, 2, 0, 0), show_header=False)
+            seiz_table.add_column(style="dim", no_wrap=True)
+            seiz_table.add_column(justify="right")
+            for k, v in counts.items():
+                seiz_table.add_row(k, str(v))
+            content = Group(content, f"\n[dim]seizures/subject ({total} total):[/dim]", seiz_table)
+
+        yield Panel(content, title=f"[bold]{self.identifier}[/bold]")
+
+    def __str__(self) -> str:
+        from io import StringIO
+
+        from rich.console import Console
+
+        sio = StringIO()
+        console = Console(file=sio, highlight=False, no_color=True, width=88)
+        for renderable in self._rich_renderable():
+            console.print(renderable)
+        return sio.getvalue().rstrip("\n")
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+        yield from self._rich_renderable()
 
 
 # ---------------------------------------------------------------------------
@@ -315,7 +368,7 @@ def list_datasets() -> dict[str, list[str]]:
 
 
 def show_datasets() -> list[dict[str, str | None]]:
-    """Print a compact summary table of all available datasets and return the data.
+    """Print a summary table of all available datasets and return the data.
 
     Example::
 
@@ -332,78 +385,76 @@ def show_datasets() -> list[dict[str, str | None]]:
         ``"cached"`` is ``"yes"``/``"no"``/``"N/M"`` for remote datasets and
         ``None`` for local ones.
     """
-    col_id = 22
-    col_type = 8
-    col_data_type = 18
-    col_cached = 9
-    col_seizures = 10
-    col_size = 15
-    col_subsets = 12
-    header = (
-        f"{'Dataset':<{col_id}}{'Type':<{col_type}}{'Data type':<{col_data_type}}"
-        f"{'Cached':<{col_cached}}{'Seizures':<{col_seizures}}"
-        f"{'Size':<{col_size}}{'Subsets':<{col_subsets}}License"
-    )
-    sep = (
-        f"{'-' * col_id}{'-' * col_type}{'-' * col_data_type}"
-        f"{'-' * col_cached}{'-' * col_seizures}"
-        f"{'-' * col_size}{'-' * col_subsets}{'-' * 20}"
-    )
-    print(header)
-    print(sep)
+    from rich.console import Console
+    from rich.table import Table
+
+    table = Table(title="Available Datasets", show_lines=False)
+    table.add_column("Dataset", style="bold", no_wrap=True)
+    table.add_column("Type", style="dim")
+    table.add_column("Data type")
+    table.add_column("Cached")
+    table.add_column("Seizures", justify="right")
+    table.add_column("Size")
+    table.add_column("Subsets")
+    table.add_column("License")
 
     rows: list[dict[str, str | None]] = []
-    all_ids = sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS)
-    for ident in all_ids:
+    for ident in sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS):
         if ident in _LOCAL_DATASET_INFO:
-            row_type = "local"
-            data_type_str = "—"
-            cached_str = "—"
-            cached_val: str | None = None
-            seizures_str = "—"
-            size = "—"
-            subsets = "—"
-            license_str = "—"
+            table.add_row(
+                ident, "local", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014"
+            )
+            rows.append(
+                {
+                    "identifier": ident,
+                    "type": "local",
+                    "data_type": None,
+                    "cached": None,
+                    "seizures": None,
+                    "size": None,
+                    "subsets": None,
+                    "license": None,
+                }
+            )
         else:
             spec = get_remote_dataset_spec(ident)
             if spec is None:
                 continue
-            row_type = "remote"
-            raw_dt = spec.data_type or "—"
-            data_type_str = raw_dt[:17] + "…" if len(raw_dt) > 18 else raw_dt
+            data_type_str = spec.data_type or "—"
             cached_val = _dataset_cache_status(spec)
-            cached_str = cached_val
+            cached_cell = (
+                f"[green]{cached_val}[/green]"
+                if cached_val == "yes"
+                else f"[dim]{cached_val}[/dim]"
+            )
             if spec.seizures_per_subject is not None:
-                total_sz = sum(spec.seizures_per_subject.values())
-                seizures_str = str(total_sz)
+                seizures_str = str(sum(spec.seizures_per_subject.values()))
             else:
-                seizures_str = "—"
-            raw_size = spec.size_hint or "—"
-            size = raw_size[:14] + "…" if len(raw_size) > 15 else raw_size
-            n = len(spec.subset_keys() or []) if spec.subset_keys() else None
-            subsets = f"{n} {spec.subset_key_name or 'subsets'}" if n else "—"
-            lic = spec.license or "—"
-            license_str = lic[:30] + "…" if len(lic) > 31 else lic
+                seizures_str = "\u2014"
+            size = spec.size_hint or "\u2014"
+            subset_keys = spec.subset_keys()
+            n_keys = len(subset_keys) if subset_keys else None
+            subsets = f"{n_keys} {spec.subset_key_name or 'subsets'}" if n_keys else "\u2014"
+            lic = spec.license or "\u2014"
+            table.add_row(
+                ident, "remote", data_type_str, cached_cell, seizures_str, size, subsets, lic
+            )
+            rows.append(
+                {
+                    "identifier": ident,
+                    "type": "remote",
+                    "data_type": None if data_type_str == "\u2014" else data_type_str,
+                    "cached": cached_val,
+                    "seizures": None if seizures_str == "\u2014" else seizures_str,
+                    "size": None if size == "\u2014" else size,
+                    "subsets": None if subsets == "\u2014" else subsets,
+                    "license": None if lic == "\u2014" else lic,
+                }
+            )
 
-        print(
-            f"{ident:<{col_id}}{row_type:<{col_type}}{data_type_str:<{col_data_type}}"
-            f"{cached_str:<{col_cached}}{seizures_str:<{col_seizures}}"
-            f"{size:<{col_size}}{subsets:<{col_subsets}}{license_str}"
-        )
-        rows.append(
-            {
-                "identifier": ident,
-                "type": row_type,
-                "data_type": None if data_type_str == "—" else data_type_str,
-                "cached": cached_val,
-                "seizures": None if seizures_str == "—" else seizures_str,
-                "size": None if size == "—" else size,
-                "subsets": None if subsets == "—" else subsets,
-                "license": None if license_str == "—" else license_str,
-            }
-        )
-
-    print(f"\nData directory: {get_dataset_dir()}")
+    console = Console(file=sys.stdout)
+    console.print(table)
+    console.print(f"[dim]Data directory:[/dim] {get_dataset_dir()}")
     return rows
 
 
@@ -454,6 +505,10 @@ def dataset_info(identifier: str) -> DatasetInfo:
             license=spec.license,
             auth_hint=spec.auth_hint,
             local_path=cached_path if _dataset_cache_status(spec) != "no" else None,
+            ilae_per_subject=spec.ilae_per_subject,
+            resected_zone_per_subject=spec.resected_zone_per_subject,
+            excluded_channels_per_subject=spec.excluded_channels_per_subject,
+            all_channels_per_subject=spec.all_channels_per_subject,
         )
 
     raise ValueError(

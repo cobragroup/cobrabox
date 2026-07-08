@@ -525,6 +525,13 @@ def _load_zurich_ieeg(
         subset: If given, only load files whose subject ID (e.g. ``"sub-01"``)
             is in this list.
     """
+    from .downloader import (
+        _ZURICH_ALL_CHANNELS_PER_SUBJECT,
+        _ZURICH_EXCLUDED_CHANNELS_PER_SUBJECT,
+        _ZURICH_ILAE_PER_SUBJECT,
+        _ZURICH_RESECTED_ZONE_PER_SUBJECT,
+    )
+
     try:
         import mne
     except ImportError as e:
@@ -559,7 +566,15 @@ def _load_zurich_ieeg(
             coords={"time": time, "space": list(raw.ch_names)},
             attrs={"identifier": "zurich_ieeg", "source_file": path.name},
         )
-        items.append(SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id))
+        extra: dict[str, object] = {
+            "ilae": _ZURICH_ILAE_PER_SUBJECT.get(subject_id),
+            "resected_zone": _ZURICH_RESECTED_ZONE_PER_SUBJECT.get(subject_id, []),
+            "excluded_channels": _ZURICH_EXCLUDED_CHANNELS_PER_SUBJECT.get(subject_id, []),
+            "all_channels": _ZURICH_ALL_CHANNELS_PER_SUBJECT.get(subject_id, []),
+        }
+        items.append(
+            SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id, extra=extra)
+        )
 
     if not items:
         raise ValueError("All 'zurich_ieeg' files were empty or unparsable.")
