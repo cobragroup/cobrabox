@@ -80,7 +80,13 @@ class SVD(BaseFeature[Data]):
         Numerical Analysis*, 2(2), 205-224.
     """
 
-    _tags: ClassVar[list[str]] = ["dimensionality-reduction", "patterns", "eeg", "io:matrix"]
+    _tags: ClassVar[list[str]] = [
+        "dimensionality-reduction",
+        "patterns",
+        "source-localization",
+        "eeg",
+        "io:matrix",
+    ]
 
     dim: str
     n_components: int = 10
