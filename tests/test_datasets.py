@@ -236,22 +236,35 @@ def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) ->
         assert ident in output
 
 
-def test_describe_all_includes_header(capsys: pytest.CaptureFixture[str]) -> None:
+def test_describe_all_includes_header(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """show_datasets() prints column headers."""
     import cobrabox as cb
 
+    # The rich table now has eight columns; give it enough width so the last
+    # header ("License") is not squeezed away by rich's auto-layout.
+    monkeypatch.setenv("COLUMNS", "200")
     cb.show_datasets()
     output = capsys.readouterr().out
     assert "Dataset" in output
     assert "Type" in output
+    assert "Data type" in output
+    assert "Seizures" in output
     assert "Size" in output
     assert "License" in output
 
 
-def test_describe_all_includes_cached_header(capsys: pytest.CaptureFixture[str]) -> None:
+def test_describe_all_includes_cached_header(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """show_datasets() prints a Cached column header."""
     import cobrabox as cb
 
+    # The eight-column rich table collapses its header row at narrow widths
+    # (e.g. rich's 80-col fallback on the Windows CI runner); widen it so the
+    # "Cached" header is always rendered.
+    monkeypatch.setenv("COLUMNS", "200")
     cb.show_datasets()
     output = capsys.readouterr().out
     assert "Cached" in output
@@ -291,7 +304,9 @@ def test_describe_all_local_datasets_have_null_cached(capsys: pytest.CaptureFixt
 def test_describe_all_remote_datasets_have_string_cached(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Remote datasets have cached='yes' or 'no' in the returned rows."""
+    """Remote datasets have a non-None cached value ('yes', 'no', or 'N/M') in rows."""
+    import re
+
     import cobrabox as cb
 
     rows = cb.show_datasets()
@@ -300,17 +315,21 @@ def test_describe_all_remote_datasets_have_string_cached(
     remote_rows = [r for r in rows if r["type"] == "remote"]
     assert remote_rows, "expected at least one remote dataset"
     for row in remote_rows:
-        assert row["cached"] in ("yes", "no")
+        cached = row["cached"]
+        assert cached is not None
+        assert cached in ("yes", "no") or re.fullmatch(r"\d+/\d+", cached), (
+            f"unexpected cached value: {cached!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
-# _is_dataset_cached
+# _dataset_cache_status
 # ---------------------------------------------------------------------------
 
 
-def test_is_dataset_cached_false_when_dir_missing(tmp_path: Path) -> None:
-    """_is_dataset_cached returns False when the dataset directory does not exist."""
-    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _is_dataset_cached
+def test_dataset_cache_status_no_when_dir_missing(tmp_path: Path) -> None:
+    """_dataset_cache_status returns 'no' when the dataset directory does not exist."""
+    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _dataset_cache_status
 
     spec = RemoteDatasetSpec(
         identifier="bonn_eeg",
@@ -320,12 +339,12 @@ def test_is_dataset_cached_false_when_dir_missing(tmp_path: Path) -> None:
     )
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("cobrabox.downloader._data_dir", tmp_path)
-        assert _is_dataset_cached(spec) is False
+        assert _dataset_cache_status(spec) == "no"
 
 
-def test_is_dataset_cached_false_when_dir_empty(tmp_path: Path) -> None:
-    """_is_dataset_cached returns False when the directory exists but has no data files."""
-    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _is_dataset_cached
+def test_dataset_cache_status_no_when_dir_empty(tmp_path: Path) -> None:
+    """_dataset_cache_status returns 'no' when the directory exists but has no data files."""
+    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _dataset_cache_status
 
     dataset_dir = tmp_path / "bonn_eeg"
     dataset_dir.mkdir()
@@ -338,12 +357,12 @@ def test_is_dataset_cached_false_when_dir_empty(tmp_path: Path) -> None:
     )
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("cobrabox.downloader._data_dir", tmp_path)
-        assert _is_dataset_cached(spec) is False
+        assert _dataset_cache_status(spec) == "no"
 
 
-def test_is_dataset_cached_false_manifest_only(tmp_path: Path) -> None:
-    """_is_dataset_cached returns False when only _manifest.json is present."""
-    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _is_dataset_cached
+def test_dataset_cache_status_no_manifest_only(tmp_path: Path) -> None:
+    """_dataset_cache_status returns 'no' when only _manifest.json is present."""
+    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _dataset_cache_status
 
     dataset_dir = tmp_path / "bonn_eeg"
     dataset_dir.mkdir()
@@ -357,12 +376,12 @@ def test_is_dataset_cached_false_manifest_only(tmp_path: Path) -> None:
     )
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("cobrabox.downloader._data_dir", tmp_path)
-        assert _is_dataset_cached(spec) is False
+        assert _dataset_cache_status(spec) == "no"
 
 
-def test_is_dataset_cached_true_when_file_present(tmp_path: Path) -> None:
-    """_is_dataset_cached returns True when a data file exists in the directory."""
-    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _is_dataset_cached
+def test_dataset_cache_status_yes_when_all_present(tmp_path: Path) -> None:
+    """_dataset_cache_status returns 'yes' when all subset-keyed files are present."""
+    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _dataset_cache_status
 
     dataset_dir = tmp_path / "bonn_eeg"
     dataset_dir.mkdir()
@@ -371,12 +390,38 @@ def test_is_dataset_cached_true_when_file_present(tmp_path: Path) -> None:
     spec = RemoteDatasetSpec(
         identifier="bonn_eeg",
         local_rel_dir=Path("bonn_eeg"),
-        files=[RemoteFile(url="http://example.com/S.zip", filename="S.zip")],
+        files=[RemoteFile(url="http://example.com/S.zip", filename="S.zip", subset_key="S")],
         loader=lambda d, s: [],  # type: ignore[arg-type]
+        subset_key_name="sets",
+        known_subset_keys=("S",),
     )
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("cobrabox.downloader._data_dir", tmp_path)
-        assert _is_dataset_cached(spec) is True
+        assert _dataset_cache_status(spec) == "yes"
+
+
+def test_dataset_cache_status_partial(tmp_path: Path) -> None:
+    """_dataset_cache_status returns 'N/M' when only some subset keys are cached."""
+    from cobrabox.downloader import RemoteDatasetSpec, RemoteFile, _dataset_cache_status
+
+    dataset_dir = tmp_path / "bonn_eeg"
+    dataset_dir.mkdir()
+    (dataset_dir / "S.zip").write_bytes(b"data")  # only 1 of 2 keys
+
+    spec = RemoteDatasetSpec(
+        identifier="bonn_eeg",
+        local_rel_dir=Path("bonn_eeg"),
+        files=[
+            RemoteFile(url="http://example.com/S.zip", filename="S.zip", subset_key="S"),
+            RemoteFile(url="http://example.com/F.zip", filename="F.zip", subset_key="F"),
+        ],
+        loader=lambda d, s: [],  # type: ignore[arg-type]
+        subset_key_name="sets",
+        known_subset_keys=("S", "F"),
+    )
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        assert _dataset_cache_status(spec) == "1/2"
 
 
 # ---------------------------------------------------------------------------

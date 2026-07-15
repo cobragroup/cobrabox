@@ -16,8 +16,8 @@ from .downloader import (
     REMOTE_DATASETS,
     RemoteDatasetSpec,
     SubsetSpec,
+    _dataset_cache_status,
     _filter_files_by_dict_subset,
-    _is_dataset_cached,
     delete_remote_files,
     ensure_remote_files,
     get_dataset_dir,
@@ -80,6 +80,7 @@ class DatasetInfo:
     subsets: tuple[str, ...] | None
     size_hint: str | None = None
     subset_size_hint: str | None = None
+    data_type: str | None = None
     seizures_per_subject: dict[str, int] | None = None
     seizure_info_url: str | None = None
     info_url: str | None = None
@@ -97,6 +98,8 @@ class DatasetInfo:
         from rich.table import Table
 
         lines: list[str] = [self.description]
+        if self.data_type is not None:
+            lines.append(f"\n[dim]Data type:[/dim] {self.data_type}")
         if self.info_url is not None:
             lines.append(f"\n[dim]Source  :[/dim] {self.info_url}")
         if self.size_hint is not None or self.subset_size_hint is not None:
@@ -293,7 +296,12 @@ def load_dataset(
 
 
 def download_dataset(
-    identifier: str, *, subset: SubsetSpec | None = None, accept: bool = False, force: bool = False
+    identifier: str,
+    *,
+    subset: SubsetSpec | None = None,
+    accept: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
 ) -> Path:
     """Download a remote dataset without loading it into memory.
 
@@ -302,13 +310,33 @@ def download_dataset(
 
     Args:
         identifier: Remote dataset name, e.g. ``"chb_mit"``.
-        subset: Restrict which files are downloaded — same syntax as
-            :func:`dataset`.
+        subset: Restrict which files are downloaded.  Two forms:
+
+            - ``list[str]``: subject / set keys to download in full, e.g.
+              ``["chb01", "chb02"]``.  Call :func:`dataset_info` to see
+              available keys.
+            - ``dict[str, int | list[str] | None]``: per-key file-level
+              control.  Map each key to:
+
+              - ``int N``     — first *N* files (in file-index order)
+              - ``list[str]`` — specific filenames
+              - ``None``      — all files for that key
+
+              Example::
+
+                  cb.download_dataset("swiss_eeg_long", subset={"ID01": 2})
+                  cb.download_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3})
+
+            ``None`` downloads everything.
         accept: Skip the confirmation prompt.
         force: Delete existing local files and re-download from scratch.
+        dry_run: If ``True``, print a summary of what would be downloaded and
+            return immediately without downloading anything.  Useful for
+            checking file counts and size before committing to a large download.
 
     Returns:
-        Path to the local dataset directory.
+        Path to the local dataset directory (may not exist if ``dry_run=True``
+        and nothing has been downloaded yet).
 
     Raises:
         ValueError: If ``identifier`` is a local dataset (no download needed)
@@ -322,7 +350,7 @@ def download_dataset(
     if spec is not None:
         if subset is not None:
             _validate_subset(spec, subset)
-        return ensure_remote_files(spec, subset=subset, accept=accept, force=force)
+        return ensure_remote_files(spec, subset=subset, accept=accept, force=force, dry_run=dry_run)
 
     raise ValueError(
         f"Unknown dataset identifier: {identifier!r}. "
@@ -354,12 +382,17 @@ def show_datasets() -> list[dict[str, str | None]]:
     Example::
 
         cb.show_datasets()
+        # Dataset        Type    Data type         Cached  Seizures  Size     Subsets  License
+        # bonn_eeg       remote  ictal/interictal  yes     100       ~10 MB   5 sets   ...
+        # chb_mit        remote  ictal/interictal  3/24    200       ~30 GB   24 subj  ...
+        # dummy_chain    local   —                 —       —         —        —        —
 
     Returns:
-        List of dicts with keys ``"identifier"``, ``"type"``, ``"cached"``,
-        ``"size"``, ``"subsets"``, and ``"license"``.  Suitable for
-        programmatic use in notebooks or scripts.  ``"cached"`` is
-        ``"yes"``/``"no"`` for remote datasets and ``None`` for local ones.
+        List of dicts with keys ``"identifier"``, ``"type"``, ``"data_type"``,
+        ``"cached"``, ``"seizures"``, ``"size"``, ``"subsets"``, and
+        ``"license"``.  Suitable for programmatic use in notebooks or scripts.
+        ``"cached"`` is ``"yes"``/``"no"``/``"N/M"`` for remote datasets and
+        ``None`` for local ones.
     """
     from rich.console import Console
     from rich.table import Table
@@ -367,7 +400,9 @@ def show_datasets() -> list[dict[str, str | None]]:
     table = Table(title="Available Datasets", show_lines=False)
     table.add_column("Dataset", style="bold", no_wrap=True)
     table.add_column("Type", style="dim")
+    table.add_column("Data type")
     table.add_column("Cached")
+    table.add_column("Seizures", justify="right")
     table.add_column("Size")
     table.add_column("Subsets")
     table.add_column("License")
@@ -375,12 +410,16 @@ def show_datasets() -> list[dict[str, str | None]]:
     rows: list[dict[str, str | None]] = []
     for ident in sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS):
         if ident in _LOCAL_DATASET_INFO:
-            table.add_row(ident, "local", "\u2014", "\u2014", "\u2014", "\u2014")
+            table.add_row(
+                ident, "local", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014"
+            )
             rows.append(
                 {
                     "identifier": ident,
                     "type": "local",
+                    "data_type": None,
                     "cached": None,
+                    "seizures": None,
                     "size": None,
                     "subsets": None,
                     "license": None,
@@ -390,23 +429,32 @@ def show_datasets() -> list[dict[str, str | None]]:
             spec = get_remote_dataset_spec(ident)
             if spec is None:
                 continue
-            cached_val = "yes" if _is_dataset_cached(spec) else "no"
+            data_type_str = spec.data_type or "—"
+            cached_val = _dataset_cache_status(spec)
             cached_cell = (
                 f"[green]{cached_val}[/green]"
                 if cached_val == "yes"
                 else f"[dim]{cached_val}[/dim]"
             )
+            if spec.seizures_per_subject is not None:
+                seizures_str = str(sum(spec.seizures_per_subject.values()))
+            else:
+                seizures_str = "\u2014"
             size = spec.size_hint or "\u2014"
             subset_keys = spec.subset_keys()
             n_keys = len(subset_keys) if subset_keys else None
             subsets = f"{n_keys} {spec.subset_key_name or 'subsets'}" if n_keys else "\u2014"
             lic = spec.license or "\u2014"
-            table.add_row(ident, "remote", cached_cell, size, subsets, lic)
+            table.add_row(
+                ident, "remote", data_type_str, cached_cell, seizures_str, size, subsets, lic
+            )
             rows.append(
                 {
                     "identifier": ident,
                     "type": "remote",
+                    "data_type": None if data_type_str == "\u2014" else data_type_str,
                     "cached": cached_val,
+                    "seizures": None if seizures_str == "\u2014" else seizures_str,
                     "size": None if size == "\u2014" else size,
                     "subsets": None if subsets == "\u2014" else subsets,
                     "license": None if lic == "\u2014" else lic,
@@ -459,12 +507,13 @@ def dataset_info(identifier: str) -> DatasetInfo:
             subsets=tuple(keys) if keys is not None else None,
             size_hint=spec.size_hint,
             subset_size_hint=spec.subset_size_hint,
+            data_type=spec.data_type,
             seizures_per_subject=spec.seizures_per_subject,
             seizure_info_url=spec.seizure_info_url,
             info_url=spec.info_url,
             license=spec.license,
             auth_hint=spec.auth_hint,
-            local_path=cached_path if _is_dataset_cached(spec) else None,
+            local_path=cached_path if _dataset_cache_status(spec) != "no" else None,
             ilae_per_subject=spec.ilae_per_subject,
             resected_zone_per_subject=spec.resected_zone_per_subject,
             excluded_channels_per_subject=spec.excluded_channels_per_subject,
