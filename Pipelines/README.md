@@ -2,6 +2,7 @@
 > * where to get basic infos and documentation
 > * A list of the tutorial and example notebooks to be found here.
 > * Requirements to run the notebooks.
+> * Also, let's rename the folder Pipelines/ –> Notebooks/
 
 
 # Cobrabox – Tutorials & Example Pipelines
@@ -16,7 +17,7 @@ This folder is the entry point to start using *[Cobrabox]() – a python toolbox
 
 #### Tutorial notebooks
 
-1. *[Fetching and exploring online datasets](01_data_exploration.ipynb)* : First example of the functionalities in Cobrabox to access (i)EEG datasets from public repositories and setting up for their analysis using Cobrabox.
+1. *[Fetching and exploring online datasets](01_data_exploration.ipynb)* : First example of the functionalities in Cobrabox to access selected datasets from public repositories and setting up for their analysis.
 2. *[SlidingWindow.ipynb]()* : Analysis of multivariate signals over temporal windows.
 2. *[Tutorial Notebook #2]()* : Short description of the notebook.
 3. *[Tutorial Notebook #3]()* : Short description of the notebook.
@@ -24,9 +25,9 @@ This folder is the entry point to start using *[Cobrabox]() – a python toolbox
 
 #### Use-cases, in-depth topics and examples
 
-- *[ReciprocalConnectivity_1_DataPreparation.ipynb](02_preprocessing_and_computation.ipynb)* : Use-Case. Illustration of how renormalization of connectivity allows for network comparison under *SRNA*, without the need of generating surrogates.
-- *[ReciprocalConnectivity_2_Analysis.ipynb](03_analysis.ipynb)* : In-Depth. Generalization of the (geodesic) graph distance between nodes as *response times*. Validity for weighted networks.
-- *[Notebook topic]()* : Short description of the notebook.
+- *[ReciprocalConnectivity – #1 DataPreparation](02_preprocessing_and_computation.ipynb)* : Use-Case. Illustration of how renormalization of connectivity allows for network comparison under *SRNA*, without the need of generating surrogates.
+- *[ReciprocalConnectivity – #2 Analysis.ipynb](03_analysis.ipynb)* : In-Depth. Generalization of the (geodesic) graph distance between nodes as *response times*. Validity for weighted networks.
+- *[Seizure Detection](seizure_detection_minimal.ipynb)* : Short description of the notebook.
 - *[Notebook topic]()* : Short description of the notebook.
 
 
