@@ -50,6 +50,7 @@ site/
 .claude/**/.DS_Store
 .claude/.DS_Store
 .claude/settings.local.json
+.claude/worktrees/
 
 # Local data outputs (keep README placeholders)
 data/raw/*
