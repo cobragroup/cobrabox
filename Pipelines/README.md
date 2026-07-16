@@ -17,10 +17,11 @@ This folder is the entry point to start using *[Cobrabox]() – a python toolbox
 
 #### Tutorial notebooks
 
-1. *[Fetching and exploring online datasets](01_data_exploration.ipynb)* : First example of the functionalities in Cobrabox to access selected datasets from public repositories and setting up for their analysis.
+1. *[Loading your Dataset](#)* : Write short description.
+1. *[Exploring and Fetching Remote Datasets](01_data_exploration.ipynb)* : First example of the functionalities in Cobrabox to access selected datasets from public repositories and setting up for their analysis.
 2. *[SlidingWindow.ipynb]()* : Analysis of multivariate signals over temporal windows.
-2. *[Tutorial Notebook #2]()* : Short description of the notebook.
-3. *[Tutorial Notebook #3]()* : Short description of the notebook.
+3. *[Tutorial Notebook #2]()* : Short description of the notebook.
+4. *[Tutorial Notebook #3]()* : Short description of the notebook.
 
 
 #### Use-cases, in-depth topics and examples
