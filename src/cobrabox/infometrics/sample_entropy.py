@@ -158,7 +158,6 @@ class SampleEntropy(BaseFeature[SignalData]):
             input_core_dims=[["time"]],
             output_core_dims=[[]],
             vectorize=True,
-            dask="parallelized",
             output_dtypes=[float],
         )
         # Preserve original attributes (excluding the time coordinate which is gone).
