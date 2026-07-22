@@ -90,8 +90,8 @@ data = cb.SignalData.from_numpy(
 )
 
 # Time dimension is automatically moved to last position
-print(data.data.dims)  # ('space', 'time')
-print(data.data.shape)  # (64, 1000)
+print(data.dims)  # ('space', 'time')
+print(data.shape)  # (64, 1000)
 ```
 
 **Requirements:**
@@ -137,11 +137,42 @@ data.extra          # Custom metadata dict
 
 ### Data Access
 
+A `Data` object is a thin wrapper. These accessors let you reach what's inside it — and ask the
+usual questions about its shape — without reaching through `.data` yourself.
+
 ```python
+# Get at the wrapped object
 data.data           # Underlying xarray.DataArray
-data.to_numpy()     # Convert to numpy array
-data.to_pandas()    # Convert to pandas DataFrame
+data.xarr           # The same DataArray, under a name that can't be misread
+data.numpy          # Underlying numpy array, no copy
+
+# Shape metadata, straight off the container
+data.shape          # (64, 1000)                  axis lengths
+data.size           # 64000                       total element count
+data.dims           # ('space', 'time')           axis names
+data.sizes          # {'space': 64, 'time': 1000} axis names → lengths
+
+# Convert (these build a new object, unlike the accessors above)
+data.to_numpy()     # numpy array
+data.to_pandas()    # pandas DataFrame
 ```
+
+Two distinctions are worth internalising, because both have bitten people:
+
+| You want | Use | Not | Because |
+|---|---|---|---|
+| The numpy array | `.numpy` | `.data.data` | `.data.data` reads like a typo. `.xarr.data` says it out loud. |
+| The axis lengths | `.shape` or `.sizes` | `.size` | `.size` is the element *count*, exactly as in numpy. |
+
+`.numpy` and `.xarr` hand back the *live* underlying objects rather than copies, so they're free —
+but `Data` is immutable, and writing into what they return breaks that guarantee. Use `.to_numpy()`
+when you intend to modify the result. `.sizes` is the one exception: it returns a fresh `dict`, so
+you can do what you like with it.
+
+!!! tip "Which name should I reach for?"
+    `.shape`, `.size` and `.numpy` mean exactly what they mean in numpy. `.dims` and `.sizes` mean
+    exactly what they mean in xarray. Nothing here invents a third convention — if you know either
+    library, the name you already expect is the right one.
 
 ## Dimensions and Coordinates
 
@@ -161,16 +192,16 @@ The usual pattern: check `dims` to confirm an axis exists, then read `coords` to
 
 ### Inspect dimensions
 
+Dimension names and lengths come straight off the container — see
+[Data Access](#data-access) above for the full set:
+
 ```python
 item = cb.load_dataset("dummy_chain")[0]
 
-# Dimension names as a list
-dims = list(item.data.dims)          # e.g. ['space', 'time']
+item.dims                            # e.g. ('space', 'time')
+item.sizes                           # e.g. {'space': 4, 'time': 200}
 
-# Shape keyed by dimension name
-sizes = dict(item.data.sizes)        # e.g. {'space': 4, 'time': 200}
-
-# Which coordinates have labels attached?
+# Which coordinates have labels attached? (still via the DataArray)
 coords = list(item.data.coords)      # e.g. ['time'] or ['time', 'space']
 ```
 
