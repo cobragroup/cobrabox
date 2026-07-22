@@ -354,6 +354,8 @@ class Data:
             parts.append(f"sr={self.sampling_rate}")
         if self.subjectID is not None:
             parts.append(f"subject={self.subjectID!r}")
+        if self._extra:
+            parts.append(f"extra={list(self._extra.keys())!r}")
         return f"{cls}({', '.join(parts)})"
 
     def __str__(self) -> str:
@@ -367,6 +369,7 @@ class Data:
         if self.sampling_rate is not None:
             lines.append(f"  sr        : {self.sampling_rate} Hz")
         lines.append(f"  history   : {self.history}")
+        lines.append(f"  extra     : {self.extra}")
         return "\n".join(lines)
 
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
@@ -386,6 +389,7 @@ class Data:
         if self.sampling_rate is not None:
             table.add_row("sr", f"{self.sampling_rate} Hz")
         table.add_row("history", str(self.history))
+        table.add_row("extra", str(self.extra))
 
         yield Panel(table, title=f"[bold]{cls}[/bold]  shape={shape}  dims={dims}")
 

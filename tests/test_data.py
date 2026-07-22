@@ -152,6 +152,21 @@ def test_data_repr_no_sampling_rate() -> None:
     assert "sr=" not in r
 
 
+def test_data_repr_omits_extra_when_empty() -> None:
+    """Data.__repr__ omits the extra field entirely when extra is empty."""
+    ds = cb.Data.from_numpy(np.ones((5, 3)), dims=["x", "y"])
+    assert "extra=" not in repr(ds)
+
+
+def test_data_repr_shows_extra_keys() -> None:
+    """Data.__repr__ lists extra dict keys when extra is non-empty."""
+    ds = cb.Data.from_numpy(
+        np.ones((5, 3)), dims=["x", "y"], extra={"notes": "calibration info", "gain": 2.5}
+    )
+    r = repr(ds)
+    assert "extra=['notes', 'gain']" in r
+
+
 def test_data_str() -> None:
     """Data.__str__ returns multi-line format with all metadata."""
     ds = cb.Data.from_numpy(
@@ -168,6 +183,14 @@ def test_data_str() -> None:
     assert "condition : rest" in s
     assert "sr        : 100.0 Hz" in s
     assert "history   : []" in s
+    assert "extra     : {}" in s
+
+
+def test_data_str_shows_extra_contents() -> None:
+    """Data.__str__ shows the full extra dict, not just its keys."""
+    ds = cb.Data.from_numpy(np.ones((5, 3)), dims=["x", "y"], extra={"notes": "calibration info"})
+    s = str(ds)
+    assert "extra     : {'notes': 'calibration info'}" in s
 
 
 def test_infer_sampling_rate_no_time_dim() -> None:
