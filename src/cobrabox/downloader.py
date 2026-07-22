@@ -137,6 +137,29 @@ def _prompt_download_verify(
     return answer in {"y", "yes"}
 
 
+def _prompt_large_load_verify(spec: RemoteDatasetSpec, n: int, total_bytes: int) -> bool:
+    """Show a Rich panel warning about the estimated memory footprint of a load.
+
+    Returns ``True`` if the user confirmed, ``False`` otherwise.
+    """
+    lines = [
+        f"[dim]Subjects :[/dim] {n}",
+        f"[dim]Est. size:[/dim] ~{_format_bytes(total_bytes)} "
+        "(on-disk estimate; actual memory use after decoding may be higher)",
+        "",
+        "[dim]This will be loaded into memory all at once. Pass "
+        "[bold]subset=[/bold]... to load only part of the dataset, or use "
+        "[bold]download_dataset()[/bold] instead to fetch the files without "
+        "loading them into memory.[/dim]",
+        "\n[dim]Tip: pass [bold]accept=True[/bold] to skip this prompt.[/dim]",
+    ]
+    Console(file=sys.stdout, highlight=False).print(
+        Panel("\n".join(lines), title=f"[bold yellow]{spec.identifier}: large load[/bold yellow]")
+    )
+    answer = input("Load into memory now? [y/N] ").strip().lower()
+    return answer in {"y", "yes"}
+
+
 @dataclass(slots=True)
 class RemoteFile:
     """Description of a single remote file belonging to a dataset."""
