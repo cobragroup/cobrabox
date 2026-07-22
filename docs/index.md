@@ -134,6 +134,30 @@ apply();})();
 </script>
 <!-- feature-explorer:end -->
 
+## Browse Datasets
+
+CobraBox ships small synthetic datasets for testing, plus downloaders for public
+real EEG/iEEG datasets. See the [Working with Datasets](guide/datasets.md) guide
+for loading, filtering, and subset-download examples.
+
+<!-- dataset-table:start -->
+| Identifier | Type | Summary | Size |
+| ---------- | ---- | ------- | ---- |
+| `dummy_chain` | local | Synthetic chain-topology VAR time-series (3 subjects). | — |
+| `dummy_noise` | local | Synthetic uncorrelated noise time-series (10 subjects). | — |
+| `dummy_random` | local | Synthetic random-topology VAR time-series (3 subjects). | — |
+| `dummy_star` | local | Synthetic star-topology VAR time-series (3 subjects). | — |
+| `realistic_swiss` | local | Simulated realistic Swiss VAR time-series (1 subject). | — |
+| `bonn_eeg` | remote | Bonn University EEG dataset (Andrzejak et al. 2001): 5 sets of 100 single-channel recordings. Sets: Z = healthy eyes open, O = healthy eyes… | ~10 MB |
+| `chb_mit` | remote | CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures (24 subjects, 256 Hz, 23 channels, ictal/interictal). Children's… | ~30 GB |
+| `siena_eeg` | remote | Siena Scalp EEG Database: adult epilepsy patients with annotated seizures (14 subjects, 512 Hz, 21+ channels, ictal/interictal). University… | ~15 GB |
+| `sleep_ieeg` | remote | Sleep iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz).… | ~13 GB |
+| `swiss_eeg_long` | remote | Long-term intracranial EEG recordings from the SWEZ dataset (ETH Zurich, 18 subjects, ictal/interictal). | >1 TB (hundreds of hourly files per subject) |
+| `swiss_eeg_short` | remote | Short-term scalp EEG recordings from the BioCAS 2018 challenge (18 subjects, ictal/interictal). | ~11 GB |
+| `zurich_ieeg` | remote | Zurich iEEG HFO Dataset: interictal ECoG during slow-wave sleep from 20 epilepsy patients (TLE and extra-temporal), with HFO event… | ~60 GB |
+| `zurich_ieeg_clean` | remote | Zurich iEEG HFO Dataset, cleaned: identical to 'zurich_ieeg' but with per-subject electrodes removed — channels lacking metadata and… | ~60 GB |
+<!-- dataset-table:end -->
+
 ## Why CobraBox?
 
 Traditional neuroimaging workflows often lose track of preprocessing steps and metadata. CobraBox solves this by:
