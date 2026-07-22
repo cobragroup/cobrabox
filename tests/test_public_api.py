@@ -172,7 +172,9 @@ def test_domain_namespace_exposes_no_modules(domain: str) -> None:
 
 @pytest.mark.parametrize("name", FEATURE_NAMES)
 def test_feature_lives_in_a_private_module(name: str) -> None:
-    module_name = getattr(cb, name).__module__.rsplit(".", 1)[-1]
+    # Read from the registry, not from `cb`, so a missing root re-export fails
+    # test_feature_is_on_root_namespace rather than surfacing here as an AttributeError.
+    module_name = getattr(cb.feature, name).__module__.rsplit(".", 1)[-1]
     assert module_name.startswith("_"), (
         f"{name} lives in public module {module_name!r}; implementation modules must "
         f"be private so the lower-case name stays free."

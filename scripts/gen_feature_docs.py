@@ -298,6 +298,23 @@ def gen_domain_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
     return written
 
 
+def _call_cell(name: str, fn: str) -> str:
+    """How to call the feature, rendered under its name in the explorer table.
+
+    Folded into the Feature cell rather than given its own column: a fifth column
+    pushed Tags and Summary out of view, and browsing those matters more.
+
+    Aggregators have no functional form — they fold a splitter's stream — so they
+    show only the class.
+    """
+    if not fn:
+        return f'<span class="cbfx-call">cb.{html.escape(name)}()</span>'
+    return (
+        f'<span class="cbfx-call">cb.{html.escape(fn)}(data)</span>'
+        f'<span class="cbfx-call cbfx-alt">cb.{html.escape(name)}().apply(data)</span>'
+    )
+
+
 def _tag_slug(tag: str) -> str:
     return tag.replace(":", "-")
 
@@ -439,6 +456,9 @@ position:sticky;top:0;background:var(--fx-bg);font-weight:600}
 #cb-fx tbody td{padding:.45rem .6rem;border-bottom:1px solid var(--fx-border);vertical-align:top}
 #cb-fx tbody tr:last-child td{border-bottom:0}
 #cb-fx .cbfx-name{font-weight:600;white-space:nowrap}
+#cb-fx .cbfx-call{display:block;font-family:var(--md-code-font-family,monospace);
+ font-size:.78em;font-weight:400;color:var(--fx-muted);margin-top:.15rem;white-space:nowrap}
+#cb-fx .cbfx-call.cbfx-alt{opacity:.6}
 #cb-fx .cbfx-dom{color:var(--fx-muted);white-space:nowrap}
 #cb-fx .cbfx-rowtags{display:flex;flex-wrap:wrap;gap:.25rem;max-width:24rem}
 #cb-fx .cbfx-sum{color:var(--fx-muted);min-width:12rem}
@@ -519,14 +539,18 @@ def build_explorer_html(by_domain: dict[str, list[tuple[str, type]]]) -> str:
     for name, cls, domain in features:
         tags = list(getattr(cls, "_tags", []))
         summary = _summary(cls)
-        search = " ".join([name, domain, *tags, summary]).lower()
+        # The one-shot call is the form most people want; show it in the table and
+        # make it searchable, so looking up "line_length" finds LineLength (GH #116).
+        fn = function_name(cls) if has_functional_form(cls) else ""
+        search = " ".join([name, fn, domain, *tags, summary]).lower()
         rowtags = "".join(
             f'<button type="button" data-tag="{html.escape(t)}">{html.escape(t)}</button>'
             for t in tags
         )
         rows.append(
             f'<tr data-tags="{html.escape(" ".join(tags))}" data-search="{html.escape(search)}">'
-            f'<td class="cbfx-name">{html.escape(name)}</td>'
+            f'<td class="cbfx-name">{html.escape(name)}'
+            f"{_call_cell(name, fn)}</td>"
             f'<td class="cbfx-dom">{html.escape(domain)}</td>'
             f'<td><div class="cbfx-rowtags">{rowtags}</div></td>'
             f'<td class="cbfx-sum">{html.escape(summary)}</td></tr>'
