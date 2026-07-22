@@ -2,7 +2,7 @@
 
 *How do I analyze temporal dynamics?*
 
-Features in the `cobrabox.windowing` domain. Access them as `cb.windowing.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.windowing` domain. Access them as `cb.<Feature>` (canonical), or as `cb.windowing.<Feature>` / `cb.feature.<Feature>`.
 
 ### ConcatAggregate
 Aggregate a stream of per-window Data by stacking along a new 'window' dimension.

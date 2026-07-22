@@ -8,7 +8,7 @@ import xarray as xr
 
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
-from .band_power import BandPower
+from ._band_power import BandPower
 
 
 @dataclass

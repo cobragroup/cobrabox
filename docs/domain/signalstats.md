@@ -2,7 +2,7 @@
 
 *What are the basic properties of my signal?*
 
-Features in the `cobrabox.signalstats` domain. Access them as `cb.signalstats.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.signalstats` domain. Access them as `cb.<Feature>` (canonical), or as `cb.signalstats.<Feature>` / `cb.feature.<Feature>`.
 
 ### AmplitudeVariation
 Compute amplitude variation over the time dimension.

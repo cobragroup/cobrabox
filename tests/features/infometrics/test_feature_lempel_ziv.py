@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 import cobrabox as cb
-from cobrabox.infometrics.lempel_ziv import LempelZiv
+from cobrabox.infometrics import LempelZiv
 
 
 def test_feature_lempel_ziv_output_type_and_history() -> None:

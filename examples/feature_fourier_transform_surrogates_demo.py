@@ -14,7 +14,7 @@ rng = np.random.default_rng(42)
 # Create sample time-series data
 # Shape: (timepoints, channels)
 arr = rng.normal(size=(200, 4))
-data = cb.data.SignalData.from_numpy(
+data = cb.SignalData.from_numpy(
     arr, dims=["time", "space"], sampling_rate=100.0, subjectID="sub-01"
 )
 
@@ -61,7 +61,7 @@ correlated_arr = np.column_stack(
         rng.normal(size=n_samples) * 0.3 + rng.normal(size=n_samples) * 0.7,
     ]
 )
-correlated_data = cb.data.SignalData.from_numpy(
+correlated_data = cb.SignalData.from_numpy(
     correlated_arr, dims=["time", "space"], sampling_rate=100.0
 )
 

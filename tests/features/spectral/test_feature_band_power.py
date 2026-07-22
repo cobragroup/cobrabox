@@ -189,7 +189,7 @@ def test_bandpower_raises_when_sampling_rate_missing() -> None:
     """ValueError raised when sampling_rate is not set."""
     import xarray as xr
 
-    from cobrabox.spectral.band_power import BandPower
+    from cobrabox.spectral import BandPower
 
     class _FakeData:
         @property
@@ -229,7 +229,7 @@ def test_bandpower_transposes_when_time_not_last() -> None:
     """When time is not the last dim, Bandpower transposes before computing."""
     import xarray as xr
 
-    from cobrabox.spectral.band_power import BandPower
+    from cobrabox.spectral import BandPower
 
     class _FakeData:
         @property

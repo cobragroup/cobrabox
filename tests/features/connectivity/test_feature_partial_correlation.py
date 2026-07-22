@@ -9,7 +9,7 @@ import cobrabox as cb
 
 
 def _data(arr: np.ndarray) -> cb.SignalData:
-    return cb.data.SignalData.from_numpy(arr, dims=["time", "space"])
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"])
 
 
 def test_returns_full_matrix_by_default() -> None:
@@ -91,7 +91,7 @@ def test_history_appended() -> None:
 
 def test_metadata_preserved() -> None:
     rng = np.random.default_rng(0)
-    data = cb.data.SignalData.from_numpy(
+    data = cb.SignalData.from_numpy(
         rng.standard_normal((200, 3)), dims=["time", "space"], subjectID="sub-01"
     )
     result = cb.feature.PartialCorrelation().apply(data)

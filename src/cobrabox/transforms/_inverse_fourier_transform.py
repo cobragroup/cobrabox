@@ -8,7 +8,7 @@ import xarray as xr
 
 from ..base_feature import BaseFeature
 from ..data import Data
-from .fourier_transform import _irfft_1d
+from ._fourier_transform import _irfft_1d
 
 
 @dataclass

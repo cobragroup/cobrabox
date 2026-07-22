@@ -1,12 +1,20 @@
 """Feature module with automatic discovery across cobrabox domain packages.
 
 Every subdirectory of ``src/cobrabox/`` except ``egg/`` and ``_*`` is treated as
-a feature domain. Each ``.py`` file (excluding ``__init__.py`` and ``_*.py``)
-is imported, and any callable with ``_is_cobrabox_feature = True`` is collected.
+a feature domain. Each ``.py`` file except ``__init__.py`` is imported, and any
+callable with ``_is_cobrabox_feature = True`` is collected.
 
-Two access paths:
+Implementation modules are private (``_autocorrelation.py``), following the
+convention used by scipy and scikit-learn, so that the public lower-case name is
+free for the functional API. Discovery therefore *includes* ``_*.py`` rather than
+skipping it — private helpers such as ``connectivity/_mvar.py`` are imported
+harmlessly and contribute nothing, since the filter is on
+``_is_cobrabox_feature``, not on the filename.
+
+Access paths:
+    cb.LineLength                  # canonical
+    cb.signalstats.LineLength      # domain-specific
     cb.feature.LineLength          # flat convenience namespace
-    cb.signalstats.LineLength      # domain-specific access
 """
 
 from __future__ import annotations
@@ -34,7 +42,7 @@ def _discover() -> dict[str, object]:
         if domain_dir.name in _DOMAIN_BLOCKLIST or domain_dir.name.startswith("_"):
             continue
         for module_path in domain_dir.rglob("*.py"):
-            if module_path.name == "__init__.py" or module_path.name.startswith("_"):
+            if module_path.name == "__init__.py":
                 continue
             rel_path = module_path.relative_to(_PACKAGE_ROOT)
             module_name = ".".join(rel_path.with_suffix("").parts)

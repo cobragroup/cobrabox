@@ -6,7 +6,7 @@ import cobrabox as cb
 
 rng = np.random.default_rng(42)
 
-data = cb.data.SignalData.from_numpy(
+data = cb.SignalData.from_numpy(
     rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
 )
 

@@ -18,7 +18,7 @@ def _causal_signal(n: int = 200, seed: int = 0) -> np.ndarray:
 
 
 def _data(arr: np.ndarray) -> cb.SignalData:
-    return cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
 
 
 def test_output_dims_and_shape() -> None:
@@ -53,9 +53,9 @@ def test_matrix_is_asymmetric() -> None:
 
 def test_requires_sampling_rate() -> None:
     arr = _causal_signal(n=100)
-    data = cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
     data.data.attrs["sampling_rate"] = None
-    no_sr = cb.data.SignalData.from_numpy(arr, dims=["time", "space"])
+    no_sr = cb.SignalData.from_numpy(arr, dims=["time", "space"])
     no_sr.data.attrs.pop("sampling_rate", None)
     with pytest.raises(ValueError, match="sampling_rate"):
         cb.feature.DirectedTransferFunction().apply(no_sr)

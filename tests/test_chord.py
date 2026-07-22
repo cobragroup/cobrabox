@@ -125,7 +125,7 @@ def test_chord_composes_downstream_with_pipe() -> None:
 
 def test_mean_aggregate_values_match_manual_mean() -> None:
     arr = np.arange(20, dtype=float).reshape(10, 2)
-    data = cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     windows = list(cb.feature.SlidingWindow(window_size=4, step_size=2)(data))
     expected = np.mean([cb.feature.LineLength().apply(w).to_numpy() for w in windows], axis=0)

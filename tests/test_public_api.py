@@ -16,6 +16,7 @@ import ast
 import importlib
 import pathlib
 import re
+import types
 
 import pytest
 
@@ -130,3 +131,55 @@ def test_docstring_reference_resolves(source_file: str, dotted: str) -> None:
             f"rename leaves these behind silently (GH #116)."
         )
         target = getattr(target, part)
+
+
+# --- namespace cleanliness (GH #116) ---------------------------------------
+
+# Implementation modules are private (`_line_length.py`), and the top-level
+# implementation modules are dropped from `cobrabox/__init__.py`, so no module
+# object should be reachable as a public attribute. These are the namespaces we
+# publish on purpose.
+PUBLIC_MODULE_ATTRS = {"feature", "serialization", *DOMAINS}
+
+
+def _public_module_attrs(namespace: object) -> list[str]:
+    return [
+        name
+        for name in dir(namespace)
+        if not name.startswith("_") and isinstance(getattr(namespace, name), types.ModuleType)
+    ]
+
+
+def test_root_namespace_exposes_only_intended_modules() -> None:
+    assert sorted(_public_module_attrs(cb)) == sorted(PUBLIC_MODULE_ATTRS)
+
+
+@pytest.mark.parametrize("domain", DOMAINS)
+def test_domain_namespace_exposes_no_modules(domain: str) -> None:
+    """A feature file must not squat on the lower-case name (GH #116).
+
+    `Autocorrelation` lives in `_autocorrelation.py`, so `cb.signalstats` exposes
+    the class and leaves `autocorrelation` free for the functional API. A new
+    feature added as `autocorrelation.py` would fail here.
+    """
+    module = importlib.import_module(f"cobrabox.{domain}")
+    assert _public_module_attrs(module) == []
+
+
+@pytest.mark.parametrize("name", FEATURE_NAMES)
+def test_feature_lives_in_a_private_module(name: str) -> None:
+    module_name = getattr(cb, name).__module__.rsplit(".", 1)[-1]
+    assert module_name.startswith("_"), (
+        f"{name} lives in public module {module_name!r}; implementation modules must "
+        f"be private so the lower-case name stays free."
+    )
+
+
+def test_dataset_is_not_a_module() -> None:
+    """`cb.dataset` was a module, making `cb.dataset(...)` fail as 'not callable'.
+
+    The loader is `cb.load_dataset`. `cb.dataset` must be absent so the mistake
+    surfaces as a plain AttributeError.
+    """
+    assert not hasattr(cb, "dataset")
+    assert callable(cb.load_dataset)

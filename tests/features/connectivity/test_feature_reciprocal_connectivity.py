@@ -48,7 +48,7 @@ def test_matrix_input_with_frequency_band_averages() -> None:
 
 def test_rejects_time_series_input() -> None:
     rng = np.random.default_rng(0)
-    sig = cb.data.SignalData.from_numpy(
+    sig = cb.SignalData.from_numpy(
         rng.standard_normal((200, 4)), dims=["time", "space"], sampling_rate=200.0
     )
     with pytest.raises(ValueError, match="matrix-only"):
@@ -102,7 +102,7 @@ def test_history_appended() -> None:
 def test_pipes_after_directed_connectivity() -> None:
     """Smoke test: PartialDirectedCoherence | ReciprocalConnectivity end-to-end."""
     rng = np.random.default_rng(0)
-    sig = cb.data.SignalData.from_numpy(
+    sig = cb.SignalData.from_numpy(
         rng.standard_normal((200, 3)), dims=["time", "space"], sampling_rate=128.0
     )
     pipeline = cb.feature.PartialDirectedCoherence() | cb.feature.ReciprocalConnectivity(

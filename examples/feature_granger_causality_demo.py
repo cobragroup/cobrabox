@@ -25,7 +25,7 @@ def _create_neuronal_signal(n_samples: int = 200) -> np.ndarray:
     return np.column_stack([neuron_a, neuron_b])
 
 
-data = cb.data.SignalData.from_numpy(
+data = cb.SignalData.from_numpy(
     _create_neuronal_signal(n_samples=200), dims=["time", "space"], sampling_rate=100.0
 )
 

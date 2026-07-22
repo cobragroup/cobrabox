@@ -25,7 +25,7 @@ def _create_causal_signal(
 
 
 def _signal_data(arr: np.ndarray) -> cb.SignalData:
-    return cb.data.SignalData.from_numpy(arr, dims=["time", "space"])
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"])
 
 
 def test_returns_full_matrix_with_default_coords() -> None:
@@ -103,7 +103,7 @@ def test_history_appended() -> None:
 
 def test_metadata_preserved() -> None:
     arr = _create_causal_signal(n_samples=200)
-    data = cb.data.SignalData.from_numpy(
+    data = cb.SignalData.from_numpy(
         arr, dims=["time", "space"], subjectID="sub-01", groupID="g1", condition="rest"
     )
     result = cb.feature.GrangerCausality(lag=2).apply(data)

@@ -15,7 +15,7 @@ import xarray as xr
 
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
-from ..transforms.fourier_transform import _rfft_1d, _rfftfreq
+from ..transforms._fourier_transform import _rfft_1d, _rfftfreq
 
 # Frequency band boundaries (Hz) — Table 2, Bartolomei et al. (2008)
 _THETA = (3.5, 7.4)

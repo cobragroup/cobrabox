@@ -2,7 +2,7 @@
 
 *Which regions are synchronized/interacting?*
 
-Features in the `cobrabox.connectivity` domain. Access them as `cb.connectivity.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.connectivity` domain. Access them as `cb.<Feature>` (canonical), or as `cb.connectivity.<Feature>` / `cb.feature.<Feature>`.
 
 ### Coherence
 Compute magnitude-squared coherence for all pairwise channel combinations.

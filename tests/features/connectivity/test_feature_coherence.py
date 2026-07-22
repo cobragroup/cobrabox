@@ -43,7 +43,7 @@ def test_coherence_space_coords_are_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(300, dtype=float) / 100.0},
     )
-    data = cb.data.SignalData.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr)
 
     out = cb.feature.Coherence().apply(data)
 

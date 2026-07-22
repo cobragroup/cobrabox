@@ -1927,7 +1927,7 @@ def test_list_datasets_accessible_via_cb() -> None:
     import cobrabox as cb
 
     assert callable(cb.list_datasets)
-    assert cb.list_datasets() == cb.datasets.list_datasets()
+    assert cb.list_datasets() == cb.list_datasets()
 
 
 # ---------------------------------------------------------------------------

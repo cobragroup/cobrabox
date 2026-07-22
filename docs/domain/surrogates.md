@@ -2,7 +2,7 @@
 
 *How do I test statistical significance?*
 
-Features in the `cobrabox.surrogates` domain. Access them as `cb.surrogates.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.surrogates` domain. Access them as `cb.<Feature>` (canonical), or as `cb.surrogates.<Feature>` / `cb.feature.<Feature>`.
 
 ### FourierTransformSurrogates
 Generate Fourier transform surrogates (preserving autocorrelation) of SignalData.

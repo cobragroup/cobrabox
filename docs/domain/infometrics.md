@@ -2,7 +2,7 @@
 
 *How complex/irregular is my signal?*
 
-Features in the `cobrabox.infometrics` domain. Access them as `cb.infometrics.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.infometrics` domain. Access them as `cb.<Feature>` (canonical), or as `cb.infometrics.<Feature>` / `cb.feature.<Feature>`.
 
 ### AmplitudeEntropy
 Compute amplitude entropy from time-series data using histogram-based probability estimation.

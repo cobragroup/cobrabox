@@ -9,7 +9,7 @@ import cobrabox as cb
 
 
 def _signal(arr: np.ndarray, sampling_rate: float | None = 200.0) -> cb.SignalData:
-    return cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=sampling_rate)
 
 
 def test_forward_transform_default_magnitude() -> None:

@@ -41,7 +41,7 @@ def test_spectrogram_space_dim_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz", "Oz"], "time": np.arange(512) / 256.0},
     )
-    data = cb.data.SignalData.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr)
 
     out = cb.feature.Spectrogram().apply(data)
 
@@ -244,7 +244,7 @@ def test_spectrogram_preserves_extra_dim() -> None:
             "space": [f"ch{k}" for k in range(n_space)],
         },
     )
-    data = cb.data.SignalData.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr)
 
     out = cb.feature.Spectrogram(nperseg=32).apply(data)
 

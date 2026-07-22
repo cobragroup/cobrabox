@@ -263,7 +263,8 @@ def gen_domain_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
             lines += [f"*{question}*", ""]
         lines += [
             f"Features in the `cobrabox.{domain}` domain. "
-            f"Access them as `cb.{domain}.<Feature>` or `cb.feature.<Feature>`.",
+            f"Access them as `cb.<Feature>` (canonical), or as "
+            f"`cb.{domain}.<Feature>` / `cb.feature.<Feature>`.",
             "",
         ]
         for name, cls in features:
@@ -349,7 +350,11 @@ def gen_api_features_page(by_domain: dict[str, list[tuple[str, type]]]) -> int:
         "",
     ]
     for name, cls in features:
-        lines.append(f"::: {cls.__module__}.{name}")
+        # Address the feature by its public re-export (`cobrabox.signalstats.LineLength`)
+        # rather than its implementation module (`..._line_length`), which is private
+        # since #116. mkdocstrings resolves re-exported names, and this keeps the
+        # private path out of the published docs.
+        lines.append(f"::: cobrabox.{_domain_of(cls)}.{name}")
         lines.append("    options:")
         lines.append("        show_root_heading: true")
         lines.append("        show_source: true")

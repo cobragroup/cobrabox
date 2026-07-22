@@ -9,7 +9,7 @@ import cobrabox as cb
 
 
 def _data(arr: np.ndarray, **kwargs: object) -> cb.SignalData:
-    return cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0, **kwargs)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0, **kwargs)
 
 
 def test_returns_full_matrix_by_default() -> None:

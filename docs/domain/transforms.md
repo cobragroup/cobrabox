@@ -2,7 +2,7 @@
 
 *How do I transform my signal into another representation?*
 
-Features in the `cobrabox.transforms` domain. Access them as `cb.transforms.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.transforms` domain. Access them as `cb.<Feature>` (canonical), or as `cb.transforms.<Feature>` / `cb.feature.<Feature>`.
 
 ### AnalyticSignal
 Extract analytic-signal representations along the time axis.

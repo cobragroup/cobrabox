@@ -9,7 +9,7 @@ import xarray as xr
 
 from ..base_feature import SplitterFeature
 from ..data import SignalData
-from ..transforms.fourier_transform import _irfft_1d, _rfft_1d
+from ..transforms._fourier_transform import _irfft_1d, _rfft_1d
 
 
 @dataclass

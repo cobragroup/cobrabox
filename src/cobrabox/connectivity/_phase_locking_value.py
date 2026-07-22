@@ -8,7 +8,7 @@ import xarray as xr
 
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
-from ..transforms.analytic_signal import _analytic_signal_1d
+from ..transforms._analytic_signal import _analytic_signal_1d
 
 
 def _plv_from_phases(phase_i: np.ndarray, phase_j: np.ndarray) -> float:

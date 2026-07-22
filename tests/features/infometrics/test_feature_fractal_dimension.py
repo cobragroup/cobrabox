@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import cobrabox as cb
-from cobrabox.infometrics.fractal_dimension import _higuchi_1d, _katz_1d
+from cobrabox.infometrics._fractal_dimension import _higuchi_1d, _katz_1d
 
 # ---------------------------------------------------------------------------
 # FractalDimHiguchi

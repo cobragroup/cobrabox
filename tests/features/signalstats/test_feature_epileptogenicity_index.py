@@ -82,7 +82,7 @@ def test_epileptogenicity_index_space_coords_preserved() -> None:
         dims=["time", "space"],
         coords={"time": np.arange(arr.shape[0]) / _FS, "space": space_vals},
     )
-    data = cb.data.SignalData.from_xarray(xr_da)
+    data = cb.SignalData.from_xarray(xr_da)
     out = cb.feature.EpileptogenicityIndex().apply(data)
     np.testing.assert_array_equal(out.data.coords["space"].values, space_vals)
 
@@ -207,7 +207,7 @@ def test_epileptogenicity_index_very_high_threshold_suppresses_detection() -> No
 
 def test_epileptogenicity_index_raises_without_time_dim() -> None:
     """ValueError raised when data lacks the 'time' dimension."""
-    from cobrabox.signalstats.epileptogenicity_index import EpileptogenicityIndex
+    from cobrabox.signalstats import EpileptogenicityIndex
 
     class _FakeData:
         @property
@@ -224,7 +224,7 @@ def test_epileptogenicity_index_raises_without_time_dim() -> None:
 
 def test_epileptogenicity_index_raises_without_sampling_rate() -> None:
     """ValueError raised when sampling_rate is not set."""
-    from cobrabox.signalstats.epileptogenicity_index import EpileptogenicityIndex
+    from cobrabox.signalstats import EpileptogenicityIndex
 
     class _FakeData:
         @property
@@ -241,7 +241,7 @@ def test_epileptogenicity_index_raises_without_sampling_rate() -> None:
 
 def test_epileptogenicity_index_raises_with_extra_dims() -> None:
     """ValueError raised when data has dimensions beyond 'time' and 'space'."""
-    from cobrabox.signalstats.epileptogenicity_index import EpileptogenicityIndex
+    from cobrabox.signalstats import EpileptogenicityIndex
 
     class _FakeData:
         @property

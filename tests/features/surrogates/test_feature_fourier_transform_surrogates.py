@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 import cobrabox as cb
-from cobrabox.surrogates.fourier_transform_surrogates import FourierTransformSurrogates
+from cobrabox.surrogates import FourierTransformSurrogates
 
 
 def test_surrogate_shape_and_dims_preserved_2D(rng: np.random.Generator) -> None:

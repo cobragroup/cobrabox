@@ -2,7 +2,7 @@
 
 *How do I decompose my signal into components?*
 
-Features in the `cobrabox.decompositions` domain. Access them as `cb.decompositions.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.decompositions` domain. Access them as `cb.<Feature>` (canonical), or as `cb.decompositions.<Feature>` / `cb.feature.<Feature>`.
 
 ### EMD
 Decompose a signal into Intrinsic Mode Functions (IMFs) using Empirical Mode Decomposition.

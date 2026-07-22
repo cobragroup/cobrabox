@@ -7,7 +7,7 @@ import pytest
 import xarray as xr
 
 import cobrabox as cb
-from cobrabox.infometrics.nonreversibility import Nonreversibility
+from cobrabox.infometrics import Nonreversibility
 
 
 def test_nonreversibility_output_shape_dims_and_metadata() -> None:

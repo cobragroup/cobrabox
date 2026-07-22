@@ -15,7 +15,7 @@ def _make_data(
     """Create a simple SignalData object with noise for testing."""
     rng = np.random.default_rng(42)
     arr = rng.standard_normal((n_time, n_space))
-    return cb.data.SignalData.from_numpy(
+    return cb.SignalData.from_numpy(
         arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subject
     )
 
@@ -28,7 +28,7 @@ def _make_sine_data(
     sig = np.zeros_like(t)
     for f in freqs_hz:
         sig += np.sin(2 * np.pi * f * t)
-    return cb.data.SignalData.from_numpy(
+    return cb.SignalData.from_numpy(
         sig[:, None], dims=["time", "space"], sampling_rate=sampling_rate
     )
 
@@ -159,7 +159,7 @@ def test_emd_preserves_space_coords() -> None:
         dims=["time", "space"],
         coords={"time": np.arange(200) / 100.0, "space": ["Fp1", "Fp2", "C3", "C4"]},
     )
-    data = cb.data.SignalData.from_xarray(xr_da, subjectID="s1")
+    data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3).apply(data)
     assert list(result.data.coords["space"].values) == ["Fp1", "Fp2", "C3", "C4"]
 
@@ -224,7 +224,7 @@ def test_emd_3d_data() -> None:
     rng = np.random.default_rng(42)
     arr = rng.standard_normal((100, 3, 2))
     xr_da = xr.DataArray(arr, dims=["time", "space", "channel"])
-    data = cb.data.SignalData.from_xarray(xr_da, subjectID="s1")
+    data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3).apply(data)
 
     assert "imf" in result.data.dims
@@ -236,7 +236,7 @@ def test_emd_1d_data() -> None:
     """EMD handles 1D time-only data."""
     rng = np.random.default_rng(42)
     arr = rng.standard_normal(200)
-    data = cb.data.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
+    data = cb.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3).apply(data)
 
     assert "imf" in result.data.dims
@@ -252,7 +252,7 @@ def test_emd_1d_data_n_imfs_in_attrs() -> None:
     """For 1D data, n_imfs is stored in attrs as a dict with 'signal' key."""
     rng = np.random.default_rng(42)
     arr = rng.standard_normal(200)
-    data = cb.data.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
+    data = cb.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3).apply(data)
 
     # n_imfs should be in attrs as a dict
@@ -272,7 +272,7 @@ def test_emd_1d_data_n_imfs_correct_with_keep_orig() -> None:
     """n_imfs count is correct even when keep_orig=True."""
     rng = np.random.default_rng(42)
     arr = rng.standard_normal(200)
-    data = cb.data.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
+    data = cb.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
 
     n_imfs = result.data.attrs["n_imfs"]["signal"]
@@ -306,7 +306,7 @@ def test_emd_multidim_n_imfs_keys_match_coords() -> None:
         dims=["time", "space"],
         coords={"time": np.arange(200) / 100.0, "space": ["Fp1", "Fp2", "C3", "C4"]},
     )
-    data = cb.data.SignalData.from_xarray(xr_da, subjectID="s1")
+    data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3).apply(data)
 
     n_imfs = result.data.attrs["n_imfs"]
@@ -321,7 +321,7 @@ def test_emd_3d_data_n_imfs_dict() -> None:
     xr_da = xr.DataArray(
         arr, dims=["time", "space", "channel"], coords={"space": ["A", "B"], "channel": ["X", "Y"]}
     )
-    data = cb.data.SignalData.from_xarray(xr_da, subjectID="s1")
+    data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
     result = cb.feature.EMD(max_imfs=3).apply(data)
 
     # n_imfs should be in attrs as a dict

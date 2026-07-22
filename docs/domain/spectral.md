@@ -2,7 +2,7 @@
 
 *What's happening in frequency space?*
 
-Features in the `cobrabox.spectral` domain. Access them as `cb.spectral.<Feature>` or `cb.feature.<Feature>`.
+Features in the `cobrabox.spectral` domain. Access them as `cb.<Feature>` (canonical), or as `cb.spectral.<Feature>` / `cb.feature.<Feature>`.
 
 ### BandPower
 Compute band power for specified frequency bands using Welch's method.

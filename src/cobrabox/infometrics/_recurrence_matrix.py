@@ -13,9 +13,9 @@ from scipy.stats import spearmanr
 from sklearn.metrics import mutual_info_score
 
 from ..base_feature import BaseFeature
-from ..connectivity.envelope_correlation import EnvelopeCorrelation
+from ..connectivity._envelope_correlation import EnvelopeCorrelation
 from ..data import Data, SignalData
-from ..transforms.analytic_signal import _analytic_signal_1d
+from ..transforms._analytic_signal import _analytic_signal_1d
 
 RecMetric = Literal["cosine", "correlation", "euclidean"]
 FcMetric = Literal["pearson", "spearman", "MI", "PLV", "AEC"]

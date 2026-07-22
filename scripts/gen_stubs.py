@@ -61,7 +61,10 @@ def _collect_classes() -> dict[str, list[str]]:
         if domain_dir.name in DOMAIN_BLOCKLIST or domain_dir.name.startswith("_"):
             continue
         for module_path in sorted(domain_dir.rglob("*.py")):
-            if module_path.name == "__init__.py" or module_path.name.startswith("_"):
+            # Implementation modules are private (`_autocorrelation.py`), so `_*.py`
+            # is scanned rather than skipped. Files with no feature class — e.g.
+            # `connectivity/_mvar.py` — simply contribute nothing.
+            if module_path.name == "__init__.py":
                 continue
             rel_path = module_path.relative_to(PACKAGE_ROOT)
             module_key = "/".join(rel_path.with_suffix("").parts)

@@ -55,7 +55,7 @@ def test_envelope_correlation_space_coords_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(512) / 256.0},
     )
-    data = cb.data.SignalData.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr)
     out = cb.feature.EnvelopeCorrelation().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
@@ -192,7 +192,7 @@ def test_envelope_correlation_raises_for_extra_dims() -> None:
             "space": [f"ch{k}" for k in range(4)],
         },
     )
-    data = cb.data.SignalData.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr)
 
     with pytest.raises(ValueError, match="extra dims"):
         cb.feature.EnvelopeCorrelation().apply(data)

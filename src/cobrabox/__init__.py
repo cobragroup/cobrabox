@@ -76,6 +76,28 @@ from .windowing import ConcatAggregate, MeanAggregate, SlidingWindow, SlidingWin
 from_numpy = Data.from_numpy
 from_xarray = Data.from_xarray
 
+# Importing a name out of a submodule also binds that submodule here, so `cb.data`,
+# `cb.dataset` and friends leak implementation modules into the public namespace.
+# Feature modules solve this by being private (`_line_length.py`); these top-level
+# modules cannot be renamed as freely, so drop the attributes explicitly. The
+# modules stay in `sys.modules`, so `from cobrabox.data import Data` and
+# `importlib.import_module` are unaffected — only the `cb.<module>` shortcut goes.
+#
+# `cb.dataset` is the one with teeth: it made `cb.dataset("dummy_chain")` fail with
+# "'module' object is not callable", which reads like a broken function rather than
+# a name that never existed. The loader is `cb.load_dataset`.
+for _leaked in (
+    "base_feature",
+    "data",
+    "dataset",
+    "dataset_loader",
+    "datasets",
+    "downloader",
+    "egg",
+):
+    globals().pop(_leaked, None)
+del _leaked
+
 __all__ = [
     "EEG",
     "EMD",

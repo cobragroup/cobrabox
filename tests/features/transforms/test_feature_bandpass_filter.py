@@ -11,11 +11,11 @@ import cobrabox as cb
 
 def _make_data(
     n_time: int = 1000, n_space: int = 3, sampling_rate: float = 250.0, subject: str = "sub-01"
-) -> cb.data.SignalData:
+) -> cb.SignalData:
     """Create a simple Data object with white noise for testing."""
     rng = np.random.default_rng(42)
     arr = rng.standard_normal((n_time, n_space))
-    return cb.data.SignalData.from_numpy(
+    return cb.SignalData.from_numpy(
         arr, dims=["time", "space"], sampling_rate=sampling_rate, subjectID=subject
     )
 
@@ -90,7 +90,7 @@ def test_bandfilter_missing_sampling_rate_raises() -> None:
     rng = np.random.default_rng(42)
     arr = rng.standard_normal((100, 3))
     xr_da = xr.DataArray(arr, dims=["time", "space"])
-    data = cb.data.SignalData.from_xarray(xr_da, subjectID="s1")
+    data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
     assert data.sampling_rate is None
     with pytest.raises(ValueError, match="sampling_rate"):
         cb.feature.BandpassFilter().apply(data)
