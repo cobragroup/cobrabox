@@ -218,6 +218,26 @@ class Data:
         return self._data
 
     @property
+    def xarr(self) -> xr.DataArray:
+        """Access underlying xarray DataArray (alias for `.data`).
+
+        Prefer this over `.data` when the reader may not know whether they're
+        holding a `Data` object or an `xarray.DataArray` — `.data.data` for the
+        underlying numpy array reads as a typo, while `.xarr.data` (or `.numpy`)
+        makes the intent explicit. See GH #112.
+        """
+        return self._data
+
+    @property
+    def numpy(self) -> np.ndarray:
+        """Access underlying numpy array directly, without copying.
+
+        Equivalent to `.xarr.data` / `.data.data`, provided as a transparent
+        shortcut. See GH #112.
+        """
+        return self._data.data
+
+    @property
     def shape(self) -> tuple[int, ...]:
         """Length of each dimension, in dimension order, as numpy has it.
 
