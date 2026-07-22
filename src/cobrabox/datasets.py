@@ -14,10 +14,12 @@ from .dataset import Dataset
 from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
 from .downloader import (
     REMOTE_DATASETS,
+    LargeLoadError,
     RemoteDatasetSpec,
     SubsetSpec,
     _dataset_cache_status,
     _filter_files_by_dict_subset,
+    _format_bytes,
     delete_remote_files,
     ensure_remote_files,
     get_dataset_dir,
@@ -212,6 +214,38 @@ def _validate_subset(spec: RemoteDatasetSpec, subset: SubsetSpec) -> None:
                 )
 
 
+_LARGE_LOAD_WARN_BYTES = 4 * 1024**3  # 4 GB
+
+
+def _check_large_load(spec: RemoteDatasetSpec, subset: SubsetSpec | None, accept: bool) -> None:
+    """Raise LargeLoadError if loading *subset* would pull too much into memory at once.
+
+    Uses spec.subset_size_bytes (on-disk, per-subject estimate) as a proxy; the
+    in-memory footprint after decoding can be larger. Skipped when accept=True,
+    or when the dataset has no per-subject size estimate to check against.
+    """
+    if accept or spec.subset_size_bytes is None:
+        return
+    if subset is None:
+        keys = spec.subset_keys()
+        n = len(keys) if keys else 0
+    elif isinstance(subset, dict):
+        n = len(subset)
+    else:
+        n = len(set(subset))
+    if n == 0:
+        return
+    total_bytes = spec.subset_size_bytes * n
+    if total_bytes <= _LARGE_LOAD_WARN_BYTES:
+        return
+    raise LargeLoadError(
+        f"Loading {n} subject{'s' if n != 1 else ''} of '{spec.identifier}' will pull "
+        f"~{_format_bytes(total_bytes)} into memory at once (on-disk estimate; actual "
+        "memory use after decoding may be higher). Pass subset=... to load fewer subjects, "
+        "or accept=True to proceed anyway."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -248,7 +282,7 @@ def load_dataset(
             the dataset license, estimated download size, and ask for
             confirmation before proceeding.  Set to ``True`` to skip the
             prompt (e.g. in scripts where you have already accepted the
-            license).
+            license).  Also bypasses the large-load check below.
         force: If ``True``, delete any existing local files for the selected
             subset and re-download from scratch.
 
@@ -259,6 +293,9 @@ def load_dataset(
         ValueError: If ``identifier`` is unknown, or if ``subset`` contains
             keys not present in the dataset.
         DownloadCancelled: If ``accept=False`` and the user declines the download.
+        LargeLoadError: If ``accept=False`` and the resolved subset is
+            estimated to pull more than 4 GB into memory at once. Pass a
+            smaller ``subset`` or ``accept=True`` to proceed anyway.
     """
     if identifier in {"dummy_chain", "dummy_random", "dummy_star"}:
         return load_structured_dummy(identifier)
@@ -272,6 +309,7 @@ def load_dataset(
         # Validate subset keys early, before triggering any downloads.
         if subset is not None:
             _validate_subset(spec, subset)
+        _check_large_load(spec, subset, accept)
 
         dataset_dir = ensure_remote_files(spec, subset=subset, accept=accept, force=force)
 

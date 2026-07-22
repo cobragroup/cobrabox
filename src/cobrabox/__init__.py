@@ -52,7 +52,7 @@ from .datasets import (
     show_datasets,
 )
 from .decompositions import EMD, SVD, emd, svd
-from .downloader import DownloadCancelled, get_dataset_dir, set_dataset_dir
+from .downloader import DownloadCancelled, LargeLoadError, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
 from .infometrics import (
     AmplitudeEntropy,
@@ -177,6 +177,7 @@ __all__ = [
     "FractalDimension",
     "GrangerCausality",
     "InverseFourierTransform",
+    "LargeLoadError",
     "LempelZiv",
     "LineLength",
     "Max",

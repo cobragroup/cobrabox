@@ -141,6 +141,91 @@ def test_dataset_remote_verify_true_passed_through(
 
 
 # ---------------------------------------------------------------------------
+# large-load guard
+# ---------------------------------------------------------------------------
+
+
+def _large_load_spec(downloader_module: object, **overrides: object) -> object:
+    defaults: dict = {
+        "identifier": "zurich_ieeg",
+        "local_rel_dir": Path("zurich_ieeg"),
+        "files": [],
+        "loader": lambda dataset_dir, subset: [object()],
+        "description": "test",
+        "known_subset_keys": tuple(f"sub-{i:02d}" for i in range(1, 21)),
+        "subset_size_bytes": 3 * 1024**3,  # ~3 GB per subject
+    }
+    defaults.update(overrides)
+    return downloader_module.RemoteDatasetSpec(**defaults)
+
+
+def test_check_large_load_raises_when_no_subset_exceeds_threshold() -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    with pytest.raises(downloader.LargeLoadError, match="20 subjects"):
+        datasets._check_large_load(spec, None, False)
+
+
+def test_check_large_load_accept_true_bypasses() -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    datasets._check_large_load(spec, None, True)  # should not raise
+
+
+def test_check_large_load_small_explicit_subset_ok() -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    datasets._check_large_load(spec, ["sub-01"], False)  # ~3 GB, under threshold
+
+
+def test_check_large_load_explicit_subset_covering_everything_still_raises() -> None:
+    """Resolved size matters, not whether `subset` was literally omitted."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    all_subjects = list(spec.known_subset_keys)
+    with pytest.raises(downloader.LargeLoadError):
+        datasets._check_large_load(spec, all_subjects, False)
+
+
+def test_check_large_load_dict_subset_counted_by_key() -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    # 2 subjects x ~3 GB = ~6 GB > 4 GB threshold
+    with pytest.raises(downloader.LargeLoadError, match="2 subjects"):
+        datasets._check_large_load(spec, {"sub-01": None, "sub-02": 2}, False)
+
+
+def test_check_large_load_skipped_when_no_size_estimate() -> None:
+    """Datasets without subset_size_bytes (only a string hint) are not checked."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader, subset_size_bytes=None)
+    datasets._check_large_load(spec, None, False)  # should not raise
+
+
+def test_load_dataset_raises_before_downloading_when_too_large(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The guard fires before ensure_remote_files, so nothing downloads first."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    ensure_calls: list = []
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: ensure_calls.append(1))
+
+    with pytest.raises(downloader.LargeLoadError):
+        datasets.load_dataset("zurich_ieeg", accept=False)
+
+    assert ensure_calls == []
+
+
+# ---------------------------------------------------------------------------
 # download()
 # ---------------------------------------------------------------------------
 
@@ -160,6 +245,20 @@ def test_download_returns_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: tmp_path)
 
     result = datasets.download_dataset("bonn_eeg", accept=True)
+    assert result == tmp_path
+
+
+def test_download_dataset_is_not_subject_to_large_load_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """download_dataset() never loads into memory, so the large-load guard must not apply."""
+    from cobrabox import downloader
+
+    fake_spec = _large_load_spec(downloader, local_rel_dir=tmp_path)
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: tmp_path)
+
+    result = datasets.download_dataset("zurich_ieeg", accept=False)
     assert result == tmp_path
 
 

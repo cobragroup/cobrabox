@@ -27,11 +27,21 @@ class SlidingWindow(SplitterFeature[SignalData]):
         to ``history`` on each yielded window. All other metadata is
         preserved.
 
+        Each window also carries its position on the original time axis in
+        ``extra``: ``window_start`` (time of the window's first sample) and
+        ``window_end`` (time of its last sample), taken from the input's
+        ``time`` coordinate — in seconds when a sampling rate is known, in
+        sample indices otherwise. These survive per-window features that
+        consume the time dimension, which is how ``ConcatAggregate`` can
+        label the stacked ``window`` axis with real times.
+
     Example:
         >>> windows = list(cb.SlidingWindow(window_size=100, step_size=50)(data))
         >>> len(windows)  # number of windows depends on data length
         >>> windows[0].data.sizes["time"]
         100
+        >>> windows[1].extra["window_start"]  # 100 Hz data, step of 50 samples
+        0.5
     """
 
     _tags: ClassVar[list[str]] = [
@@ -59,7 +69,21 @@ class SlidingWindow(SplitterFeature[SignalData]):
 
         window_starts = np.arange(0, n_time - self.window_size + 1, self.step_size)
 
+        # Position of each window on the original time axis. Recorded in `extra` so it
+        # survives per-window features that reduce time away (e.g. connectivity matrices).
+        if "time" in xr_data.coords:
+            time_coord = np.asarray(xr_data.coords["time"].values)
+        else:
+            time_coord = np.arange(n_time, dtype=float)
+
         for start in window_starts:
             end = start + self.window_size
             window_data = xr_data.isel(time=slice(start, end))
-            yield data._copy_with_new_data(new_data=window_data, operation_name="SlidingWindow")
+            yield data._copy_with_new_data(
+                new_data=window_data,
+                operation_name="SlidingWindow",
+                extra={
+                    "window_start": float(time_coord[start]),
+                    "window_end": float(time_coord[end - 1]),
+                },
+            )

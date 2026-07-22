@@ -38,6 +38,56 @@ result = chord.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
 
+### Why the aggregator is mandatory
+
+A splitter alone does not produce a result — it produces a *stream* of results, one per window. Something has to decide what a stream of 19 line-length values means, and there is no safe default:
+
+| Aggregator         | Question it answers                                     | Result                     |
+| ------------------ | ------------------------------------------------------- | -------------------------- |
+| `MeanAggregate`    | "What is the typical value over the recording?"         | one value per channel      |
+| `ConcatAggregate`  | "How does the value evolve over the recording?"         | one value per **window**   |
+
+These are genuinely different analyses — a collapsed summary versus a time course — so the chord makes you say which one you want. That is also why `SlidingWindow(...) | LineLength()` on its own is an incomplete expression (a `_ChordBuilder`) rather than something you can `.apply()`.
+
+If you want a time course, you want `ConcatAggregate`.
+
+### The window axis
+
+`ConcatAggregate` labels the resulting `window` dimension with each window's **start time** on the original time axis — not a bare 0, 1, 2… index. A second coordinate, `window_end`, carries the matching end times.
+
+```python
+chord = (
+    cb.feature.SlidingWindow(window_size=100, step_size=50)
+    | cb.feature.LineLength()
+    | cb.feature.ConcatAggregate()
+)
+result = chord.apply(data)  # 1000 samples @ 100 Hz
+
+result.data.window.values[:4]      # array([0. , 0.5, 1. , 1.5])  — seconds
+result.data.window_end.values[:4]  # array([0.99, 1.49, 1.99, 2.49])
+```
+
+This means you can plot against real time rather than window index:
+
+```python
+result.data.sel(space=0).plot()  # x-axis is seconds
+```
+
+and you can locate an event from the original recording on the window axis:
+
+```python
+import numpy as np
+
+onset = 4.2  # seizure onset, seconds
+starts = result.data.window.values
+index = int(np.searchsorted(starts, onset, side="right") - 1)
+
+result.data.isel(window=index)   # the window containing the onset
+result.data.sel(window=4.0)      # or select by start time directly
+```
+
+Times are in seconds when the data has a sampling rate, and in sample indices otherwise. Selection by *position* still works with `.isel()`; `.sel()` now takes a time. Splitters that do not report window positions fall back to an integer index.
+
 ## Simple Windowed Aggregation
 
 For basic windowed statistics without per-window features, use `SlidingWindowReduce` — it's simpler than a full Chord:
@@ -51,6 +101,8 @@ print(result.history)  # ['SlidingWindowReduce']
 ```
 
 This computes the mean of each 100-sample window (stepping by 50) and returns a `Data` with a `window` dimension. Supports `mean`, `std`, `sum`, `min`, `max`.
+
+Its `window` axis uses the same convention as `ConcatAggregate` — labelled by window start, with `window_end` alongside — so the two routes to a windowed time course are interchangeable.
 
 The `|` operator builds the chord automatically:
 

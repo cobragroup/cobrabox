@@ -41,6 +41,10 @@ class DownloadCancelled(Exception):
     """Raised when the user declines a download or deletion at the confirmation prompt."""
 
 
+class LargeLoadError(Exception):
+    """Raised when loading a dataset would pull an unexpectedly large amount into memory."""
+
+
 def _load_file_index() -> dict[str, list[RemoteFile]]:
     """Load the bundled file index from file_index.json."""
     ref = importlib.resources.files(__package__).joinpath("file_index.json")
