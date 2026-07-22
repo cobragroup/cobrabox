@@ -394,8 +394,13 @@ def test_unknown_feature_class_raises() -> None:
         deserialize(yaml_str)
 
 
-def test_unknown_module_raises() -> None:
-    """An unimportable module raises FeatureNotFoundError."""
+def test_stale_module_resolves_by_name() -> None:
+    """A moved feature still loads: the module path is a hint, the name is the key.
+
+    Module paths move (#107 relocated every feature, #116 made the implementation
+    modules private). Files written before a move must keep working, so resolution
+    falls back to the discovery registry and warns rather than failing.
+    """
     yaml_str = textwrap.dedent("""\
         cobrabox_version: "0.3.1"
         schema_version: "1.0.0"
@@ -404,7 +409,52 @@ def test_unknown_module_raises() -> None:
             module: cobrabox.features.nonexistent_does_not_exist
             params: {}
     """)
-    with pytest.raises(FeatureNotFoundError, match="Cannot import module"):
+    with pytest.warns(DeprecationWarning, match="LineLength"):
+        pipeline = deserialize(yaml_str)
+    assert type(pipeline[0]).__name__ == "LineLength"
+
+
+def test_pre_107_module_path_still_loads() -> None:
+    """The real regression #107 shipped: files saved before the catalog restructure."""
+    yaml_str = textwrap.dedent("""\
+        cobrabox_version: "0.3.1"
+        schema_version: "1.0.0"
+        pipeline:
+          - class: LineLength
+            module: cobrabox.features.time_domain.line_length
+            params: {}
+    """)
+    with pytest.warns(DeprecationWarning, match="time_domain"):
+        pipeline = deserialize(yaml_str)
+    assert type(pipeline[0]) is cb.LineLength
+
+
+def test_class_missing_from_existing_module_resolves_by_name() -> None:
+    """Importable module, but the class has moved out of it — still resolves."""
+    yaml_str = textwrap.dedent("""\
+        cobrabox_version: "0.3.1"
+        schema_version: "1.0.0"
+        pipeline:
+          - class: Correlation
+            module: cobrabox.signalstats.line_length
+            params: {}
+    """)
+    with pytest.warns(DeprecationWarning, match="Correlation"):
+        pipeline = deserialize(yaml_str)
+    assert type(pipeline[0]) is cb.Correlation
+
+
+def test_unknown_name_and_unknown_module_still_raises() -> None:
+    """Fallback is by name — a bogus name with a bogus module has nothing to find."""
+    yaml_str = textwrap.dedent("""\
+        cobrabox_version: "0.3.1"
+        schema_version: "1.0.0"
+        pipeline:
+          - class: NoSuchFeature
+            module: cobrabox.features.nonexistent_does_not_exist
+            params: {}
+    """)
+    with pytest.raises(FeatureNotFoundError, match="Available features"):
         deserialize(yaml_str)
 
 
