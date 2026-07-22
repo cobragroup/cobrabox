@@ -148,6 +148,17 @@ data.to_pandas()    # Convert to pandas DataFrame
 Every `Data` object wraps an `xarray.DataArray` accessible as `data.data`. The DataArray carries
 named dimensions and optional coordinate labels for each axis.
 
+**`dims` vs `coords`** — these answer different questions:
+
+- **`dims`** is just a tuple of axis *names* (e.g. `("time", "space")`) — which axes exist, and in
+  what order. No values are attached.
+- **`coords`** maps a dimension name to the actual *label array* for that axis (e.g.
+  `time: [0.0, 0.01, ...]`, `space: ["E1", "E2", ...]`) — the real tick values you'd use to select
+  or display data. A dimension can exist without a coordinate (see the note below), so don't assume
+  `dims` implies `coords`.
+
+The usual pattern: check `dims` to confirm an axis exists, then read `coords` to get what's on it.
+
 ### Inspect dimensions
 
 ```python
