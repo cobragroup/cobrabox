@@ -14,6 +14,7 @@ from cobrabox.downloader import (
     RemoteFile,
     _format_bytes,
     _prompt_download_verify,
+    _prompt_large_load_verify,
     ensure_remote_files,
 )
 
@@ -110,6 +111,58 @@ def test_prompt_verify_shows_size_hint(tmp_path: Path, capsys: pytest.CaptureFix
 
     out = capsys.readouterr().out
     assert "~10 GB" in out
+
+
+# ---------------------------------------------------------------------------
+# _prompt_large_load_verify
+# ---------------------------------------------------------------------------
+
+
+def test_prompt_large_load_verify_returns_true_on_yes(tmp_path: Path) -> None:
+    spec = _make_spec(tmp_path, [])
+
+    with patch("builtins.input", return_value="y"):
+        assert _prompt_large_load_verify(spec, 20, 60 * 1024**3) is True
+
+
+def test_prompt_large_load_verify_returns_false_on_no(tmp_path: Path) -> None:
+    spec = _make_spec(tmp_path, [])
+
+    with patch("builtins.input", return_value="n"):
+        assert _prompt_large_load_verify(spec, 20, 60 * 1024**3) is False
+
+
+def test_prompt_large_load_verify_returns_false_on_empty_input(tmp_path: Path) -> None:
+    spec = _make_spec(tmp_path, [])
+
+    with patch("builtins.input", return_value=""):
+        assert _prompt_large_load_verify(spec, 20, 60 * 1024**3) is False
+
+
+def test_prompt_large_load_verify_shows_size_and_subject_count(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    spec = _make_spec(tmp_path, [])
+
+    with patch("builtins.input", return_value="n"):
+        _prompt_large_load_verify(spec, 20, 60 * 1024**3)
+
+    out = capsys.readouterr().out
+    assert "20" in out
+    assert "60.0 GB" in out
+
+
+def test_prompt_large_load_verify_mentions_download_dataset(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    """The prompt should point users at download_dataset() as an alternative."""
+    spec = _make_spec(tmp_path, [])
+
+    with patch("builtins.input", return_value="n"):
+        _prompt_large_load_verify(spec, 20, 60 * 1024**3)
+
+    out = capsys.readouterr().out
+    assert "download_dataset" in out
 
 
 # ---------------------------------------------------------------------------

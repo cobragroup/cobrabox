@@ -159,56 +159,100 @@ def _large_load_spec(downloader_module: object, **overrides: object) -> object:
     return downloader_module.RemoteDatasetSpec(**defaults)
 
 
-def test_check_large_load_raises_when_no_subset_exceeds_threshold() -> None:
+def test_check_large_load_raises_when_prompt_declined(monkeypatch: pytest.MonkeyPatch) -> None:
     from cobrabox import downloader
 
     spec = _large_load_spec(downloader)
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
     with pytest.raises(downloader.LargeLoadError, match="20 subjects"):
         datasets._check_large_load(spec, None, False)
 
 
-def test_check_large_load_accept_true_bypasses() -> None:
+def test_check_large_load_passes_when_prompt_confirmed(monkeypatch: pytest.MonkeyPatch) -> None:
     from cobrabox import downloader
 
     spec = _large_load_spec(downloader)
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: True)
+    datasets._check_large_load(spec, None, False)  # should not raise
+
+
+def test_check_large_load_prompt_called_with_resolved_size(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    calls: list = []
+
+    def _fake_prompt(spec_arg: object, n: int, total_bytes: int) -> bool:
+        calls.append((n, total_bytes))
+        return True
+
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", _fake_prompt)
+    datasets._check_large_load(spec, None, False)
+
+    assert calls == [(20, spec.subset_size_bytes * 20)]
+
+
+def test_check_large_load_accept_true_skips_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """accept=True bypasses the check entirely, without even prompting."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    calls: list = []
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: calls.append(1))
     datasets._check_large_load(spec, None, True)  # should not raise
 
+    assert calls == []
 
-def test_check_large_load_small_explicit_subset_ok() -> None:
+
+def test_check_large_load_small_explicit_subset_skips_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from cobrabox import downloader
 
     spec = _large_load_spec(downloader)
+    calls: list = []
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: calls.append(1))
     datasets._check_large_load(spec, ["sub-01"], False)  # ~3 GB, under threshold
 
+    assert calls == []
 
-def test_check_large_load_explicit_subset_covering_everything_still_raises() -> None:
+
+def test_check_large_load_explicit_subset_covering_everything_still_prompts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Resolved size matters, not whether `subset` was literally omitted."""
     from cobrabox import downloader
 
     spec = _large_load_spec(downloader)
     all_subjects = list(spec.known_subset_keys)
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
     with pytest.raises(downloader.LargeLoadError):
         datasets._check_large_load(spec, all_subjects, False)
 
 
-def test_check_large_load_dict_subset_counted_by_key() -> None:
+def test_check_large_load_dict_subset_counted_by_key(monkeypatch: pytest.MonkeyPatch) -> None:
     from cobrabox import downloader
 
     spec = _large_load_spec(downloader)
     # 2 subjects x ~3 GB = ~6 GB > 4 GB threshold
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
     with pytest.raises(downloader.LargeLoadError, match="2 subjects"):
         datasets._check_large_load(spec, {"sub-01": None, "sub-02": 2}, False)
 
 
-def test_check_large_load_skipped_when_no_size_estimate() -> None:
+def test_check_large_load_skipped_when_no_size_estimate(monkeypatch: pytest.MonkeyPatch) -> None:
     """Datasets without subset_size_bytes (only a string hint) are not checked."""
     from cobrabox import downloader
 
     spec = _large_load_spec(downloader, subset_size_bytes=None)
+    calls: list = []
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: calls.append(1))
     datasets._check_large_load(spec, None, False)  # should not raise
 
+    assert calls == []
 
-def test_load_dataset_raises_before_downloading_when_too_large(
+
+def test_load_dataset_raises_before_downloading_when_prompt_declined(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The guard fires before ensure_remote_files, so nothing downloads first."""
@@ -218,11 +262,25 @@ def test_load_dataset_raises_before_downloading_when_too_large(
     ensure_calls: list = []
     monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: spec)
     monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: ensure_calls.append(1))
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
 
     with pytest.raises(downloader.LargeLoadError):
         datasets.load_dataset("zurich_ieeg", accept=False)
 
     assert ensure_calls == []
+
+
+def test_load_dataset_proceeds_when_prompt_confirmed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Confirming the large-load prompt lets load_dataset proceed as normal."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: Path("zurich_ieeg"))
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: True)
+
+    result = datasets.load_dataset("zurich_ieeg", accept=False)
+    assert len(result) == 1
 
 
 # ---------------------------------------------------------------------------
