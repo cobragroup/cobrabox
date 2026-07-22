@@ -237,6 +237,92 @@ class Data:
         return self._data
 
     @property
+    def xarr(self) -> xr.DataArray:
+        """Access underlying xarray DataArray (alias for `.data`).
+
+        Prefer this over `.data` when the reader may not know whether they're
+        holding a `Data` object or an `xarray.DataArray` — `.data.data` for the
+        underlying numpy array reads as a typo, while `.xarr.data` (or `.numpy`)
+        makes the intent explicit. See GH #112.
+        """
+        return self._data
+
+    @property
+    def numpy(self) -> np.ndarray:
+        """Access underlying numpy array directly, without copying.
+
+        Equivalent to `.xarr.data` / `.data.data`, provided as a transparent
+        shortcut. See GH #112.
+        """
+        return self._data.data
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Length of each dimension, in dimension order, as numpy has it.
+
+        Shortcut for `.data.shape`, so you don't need to reach into xarray for
+        the most common question asked of a container. Pair with `.dims` to
+        learn which name goes with which length, or use `.sizes` to get both
+        at once. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.shape
+            (4, 200)
+        """
+        return self._data.shape
+
+    @property
+    def size(self) -> int:
+        """Total number of elements, as numpy has it.
+
+        Shortcut for `.data.size`. Note this is the element *count* — for the
+        per-dimension lengths use `.shape` or `.sizes`. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.size
+            800
+        """
+        return self._data.size
+
+    @property
+    def dims(self) -> tuple[Hashable, ...]:
+        """Dimension names, in the order they appear in `.shape`.
+
+        Shortcut for `.data.dims`. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.dims
+            ('space', 'time')
+        """
+        return self._data.dims
+
+    @property
+    def sizes(self) -> dict[Hashable, int]:
+        """Mapping of dimension name to its length.
+
+        Shortcut for `dict(.data.sizes)` — the xarray view of the shape, where
+        each length is labelled. Returns a plain dict, so mutating it has no
+        effect on this (immutable) container. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.sizes
+            {'space': 4, 'time': 200}
+        """
+        return dict(self._data.sizes)
+
+    @property
     def subjectID(self) -> str | None:
         """Subject identifier."""
         return self._data.attrs.get("subjectID")
@@ -373,6 +459,8 @@ class Data:
             parts.append(f"sr={self.sampling_rate}")
         if self.subjectID is not None:
             parts.append(f"subject={self.subjectID!r}")
+        if self._extra:
+            parts.append(f"extra={list(self._extra.keys())!r}")
         return f"{cls}({', '.join(parts)})"
 
     def __str__(self) -> str:
@@ -386,6 +474,7 @@ class Data:
         if self.sampling_rate is not None:
             lines.append(f"  sr        : {self.sampling_rate} Hz")
         lines.append(f"  history   : {self.history}")
+        lines.append(f"  extra     : {self.extra}")
         return "\n".join(lines)
 
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
@@ -405,6 +494,7 @@ class Data:
         if self.sampling_rate is not None:
             table.add_row("sr", f"{self.sampling_rate} Hz")
         table.add_row("history", str(self.history))
+        table.add_row("extra", str(self.extra))
 
         yield Panel(table, title=f"[bold]{cls}[/bold]  shape={shape}  dims={dims}")
 
