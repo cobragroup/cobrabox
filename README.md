@@ -71,7 +71,7 @@ Every `Data` object wraps an `xarray.DataArray` at `data.data`. You don't need t
 CobraBox, but these one-liners cover the most common needs:
 
 ```python
-item = cb.dataset("dummy_chain")[0]
+item = cb.load_dataset("dummy_chain")[0]
 
 # Shape metadata — straight off the Data object
 item.dims                                        # ('space', 'time')
@@ -192,10 +192,10 @@ See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a ful
 
 ## Built-in Dummy Datasets
 
-`cb.dataset(name)` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
+`cb.load_dataset(name)` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
 
 ```python
-ds = cb.dataset("dummy_chain")
+ds = cb.load_dataset("dummy_chain")
 
 ds.describe()                        # print summary: shapes, metadata
 ds.filter(groupID="control")         # Dataset[SignalData] with matching items
