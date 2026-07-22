@@ -47,7 +47,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: test-results-*
-          merge-multiple: true
 
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
