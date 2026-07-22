@@ -142,26 +142,30 @@ def _drop_factory_sentinels(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 def make_functional(cls: type) -> Callable[..., Any]:
     """Build the one-shot wrapper for a feature class."""
-    is_splitter = issubclass(cls, SplitterFeature)
-
-    if is_splitter:
+    if issubclass(cls, SplitterFeature):
 
         def wrapper(data: Data, *args: Any, **kwargs: Any) -> Iterator[Data]:
             # Splitters have no .apply(); calling the instance yields the stream.
-            return cls(*args, **_drop_factory_sentinels(kwargs))(data)
+            # `data` is typed `Data` here because the wrapper is uniform across
+            # features; the splitter's own validation enforces what it needs.
+            splitter: Any = cls(*args, **_drop_factory_sentinels(kwargs))
+            return splitter(data)
     else:
 
         def wrapper(data: Data, *args: Any, **kwargs: Any) -> Data:
             return cls(*args, **_drop_factory_sentinels(kwargs)).apply(data)
 
     name = function_name(cls)
-    wrapper.__name__ = name
-    wrapper.__qualname__ = name
-    wrapper.__module__ = cls.__module__.rsplit(".", 1)[0]
-    wrapper.__doc__ = _docstring(cls)
-    wrapper.__signature__ = _signature(cls)  # type: ignore[attr-defined]
-    wrapper.__wrapped_feature__ = cls  # type: ignore[attr-defined]
-    return wrapper
+    # Rebound as Any: the dunders below are set dynamically, which is precisely
+    # what a typed function object does not allow.
+    fn: Any = wrapper
+    fn.__name__ = name
+    fn.__qualname__ = name
+    fn.__module__ = cls.__module__.rsplit(".", 1)[0]
+    fn.__doc__ = _docstring(cls)
+    fn.__signature__ = _signature(cls)
+    fn.__wrapped_feature__ = cls
+    return fn
 
 
 def install(package_name: str) -> list[str]:
@@ -169,7 +173,7 @@ def install(package_name: str) -> list[str]:
 
     Called at the end of each domain's ``__init__.py``. Returns the names added.
     """
-    package = sys.modules[package_name]
+    package: Any = sys.modules[package_name]
     added: list[str] = []
     for cls_name in list(getattr(package, "__all__", ())):
         cls = getattr(package, cls_name, None)
@@ -177,13 +181,13 @@ def install(package_name: str) -> list[str]:
             continue
         if not has_functional_form(cls):
             continue
-        fn = make_functional(cls)
-        if hasattr(package, fn.__name__):
+        name = function_name(cls)
+        if hasattr(package, name):
             raise RuntimeError(
-                f"Cannot install functional wrapper {fn.__name__!r} in {package_name!r}: "
-                f"the name is already taken by {getattr(package, fn.__name__)!r}."
+                f"Cannot install functional wrapper {name!r} in {package_name!r}: "
+                f"the name is already taken by {getattr(package, name)!r}."
             )
-        setattr(package, fn.__name__, fn)
-        added.append(fn.__name__)
-    package.__all__ = sorted([*package.__all__, *added])  # type: ignore[attr-defined]
+        setattr(package, name, make_functional(cls))
+        added.append(name)
+    package.__all__ = sorted([*package.__all__, *added])
     return added
