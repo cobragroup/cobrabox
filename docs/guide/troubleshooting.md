@@ -102,6 +102,47 @@ print(result.sampling_rate)  # None - time dim removed
 
 ---
 
+### ValueError: no real time axis left
+
+**Problem:** You applied a time-domain feature to the output of a chord whose per-window feature already consumed the time dimension:
+
+```python
+chord = (
+    cb.feature.SlidingWindow(window_size=100, step_size=50)
+    | cb.feature.LineLength()
+    | cb.feature.ConcatAggregate()
+)
+result = chord.apply(data)
+
+cb.feature.LineLength().apply(result)  # ValueError: no real time axis left
+```
+
+**Why:** `LineLength` reduced each window to a single number, so no time axis survives. A `Chord` returns the same container type it was given, and `SignalData` requires a `time` dimension — so a length-1 placeholder is inserted to keep that contract. It is not time you can compute over. Without this error, time-domain features would silently return zeros.
+
+**Solution:** decide which axis you actually meant.
+
+To reduce over windows, use a feature that takes a `dim` argument:
+
+```python
+cb.feature.Mean(dim="window").apply(result)   # average the time course
+cb.feature.Max(dim="window").apply(result)    # peak across windows
+```
+
+To apply a second time-domain feature *per window*, put it inside the chord rather than after it:
+
+```python
+chord = (
+    cb.feature.SlidingWindow(window_size=100, step_size=50)
+    | cb.feature.BandpassFilter(bands={"alpha": [8.0, 12.0]})
+    | cb.feature.LineLength()
+    | cb.feature.ConcatAggregate()
+)
+```
+
+Note that a feature keeping a real, multi-sample time axis per window (a filter, say) leaves the chord output with genuine time — the error only appears once time has actually been reduced away.
+
+---
+
 ### ValueError: coords cannot be an empty list
 
 **Problem:** Matrix features (e.g., `PhaseLockingValueMatrix`) receive empty coords  

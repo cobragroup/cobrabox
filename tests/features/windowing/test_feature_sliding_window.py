@@ -110,3 +110,34 @@ def test_sliding_window_does_not_mutate_input() -> None:
     assert data.groupID == "patient"
     assert data.condition == "rest"
     assert data.sampling_rate == 100.0
+
+
+def test_sliding_window_records_window_times_in_extra() -> None:
+    """Each window carries its start/end time on the original axis (issue #118)."""
+    arr = np.arange(20, dtype=float).reshape(10, 2)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    windows = _windows(data, window_size=4, step_size=2)
+
+    # 100 Hz → sample i is at i/100 s; window k starts at sample 2k, ends at sample 2k+3
+    assert [w.extra["window_start"] for w in windows] == pytest.approx([0.0, 0.02, 0.04, 0.06])
+    assert [w.extra["window_end"] for w in windows] == pytest.approx([0.03, 0.05, 0.07, 0.09])
+
+
+def test_sliding_window_times_survive_a_time_reducing_feature() -> None:
+    """Window times outlive features that consume the time dimension."""
+    arr = np.arange(20, dtype=float).reshape(10, 2)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+
+    reduced = [cb.feature.LineLength().apply(w) for w in _windows(data)]
+
+    assert [r.extra["window_start"] for r in reduced] == pytest.approx([0.0, 0.02, 0.04, 0.06])
+
+
+def test_sliding_window_times_fall_back_to_indices_without_sampling_rate() -> None:
+    """Without a sampling rate the time coord is sample indices, and so are window times."""
+    arr = np.arange(20, dtype=float).reshape(10, 2)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"])
+    windows = _windows(data, window_size=4, step_size=2)
+
+    assert [w.extra["window_start"] for w in windows] == pytest.approx([0.0, 2.0, 4.0, 6.0])
+    assert [w.extra["window_end"] for w in windows] == pytest.approx([3.0, 5.0, 7.0, 9.0])

@@ -1,16 +1,35 @@
 from __future__ import annotations
 
+import functools
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, ClassVar, Generic, Self, TypeVar, overload
+from typing import Any, ClassVar, Generic, Self, TypeVar, get_args, get_origin, overload
 
 import xarray as xr
 
-from .data import Data
+from .data import Data, SignalData, has_placeholder_time
 
 # Type variable for generic features - allows subclasses to specify Data or SignalData
 DataT = TypeVar("DataT", bound=Data)
+
+
+@functools.cache
+def _requires_real_time(feature_cls: type) -> bool:
+    """True if ``feature_cls`` is declared ``BaseFeature[SignalData]`` (or a SignalData subclass).
+
+    Per the project convention, that parameterisation means the feature *inherently*
+    needs time-series structure. Features declared ``BaseFeature[Data]`` take the axis
+    as a parameter and are free to work on 'window', 'freq', etc.
+    """
+    for klass in feature_cls.__mro__:
+        for base in getattr(klass, "__orig_bases__", ()):
+            if get_origin(base) is not BaseFeature:
+                continue
+            for arg in get_args(base):
+                if isinstance(arg, type) and issubclass(arg, SignalData):
+                    return True
+    return False
 
 
 @dataclass
@@ -85,7 +104,23 @@ class BaseFeature(ABC, Generic[DataT]):
         Returns:
             Data: The output container. If output_type is set, returns that type.
                 If output_type is None, returns the same type as input.
+
+        Raises:
+            ValueError: If this is a time-domain feature and the input's time axis is a
+                placeholder left by an earlier feature that consumed the real one.
         """
+        if _requires_real_time(type(self)) and has_placeholder_time(data):
+            raise ValueError(
+                f"Feature '{self.__class__.__name__}' operates on the time dimension, but "
+                f"the input has no real time axis left: an earlier feature reduced it away "
+                f"and a length-1 placeholder was inserted to keep the SignalData contract.\n"
+                f"  history: {data.history}\n"
+                f"Applying a time-domain feature here would silently return a degenerate "
+                f"result (typically zeros) rather than a meaningful one. If you meant to "
+                f"operate on another axis — e.g. the 'window' axis from ConcatAggregate — "
+                f"use a feature that takes a dim argument, such as "
+                f'cb.feature.Mean(dim="window").'
+            )
         result = self(data)
         if not isinstance(result, (xr.DataArray, Data)):
             raise TypeError(
