@@ -73,9 +73,11 @@ CobraBox, but these one-liners cover the most common needs:
 ```python
 item = cb.dataset("dummy_chain")[0]
 
-# Dimension names and sizes
-list(item.data.dims)                             # ['space', 'time']
-dict(item.data.sizes)                            # {'space': 4, 'time': 200}
+# Dimension names and sizes — available on the Data object itself
+item.dims                                        # ('space', 'time')
+item.shape                                       # (4, 200)      as numpy has it
+item.size                                        # 800           total elements
+item.sizes                                       # {'space': 4, 'time': 200}
 
 # Coordinate values as a Python list
 item.data.coords["space"].values.tolist()        # [0, 1, 2, 3]

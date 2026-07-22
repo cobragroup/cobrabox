@@ -90,8 +90,8 @@ data = cb.SignalData.from_numpy(
 )
 
 # Time dimension is automatically moved to last position
-print(data.data.dims)  # ('space', 'time')
-print(data.data.shape)  # (64, 1000)
+print(data.dims)  # ('space', 'time')
+print(data.shape)  # (64, 1000)
 ```
 
 **Requirements:**
@@ -150,18 +150,31 @@ named dimensions and optional coordinate labels for each axis.
 
 ### Inspect dimensions
 
+Shape metadata sits directly on the `Data` object, so you don't have to reach through `.data`:
+
 ```python
 item = cb.load_dataset("dummy_chain")[0]
 
-# Dimension names as a list
-dims = list(item.data.dims)          # e.g. ['space', 'time']
+# Dimension names, in the order they appear in .shape
+item.dims                            # e.g. ('space', 'time')
 
-# Shape keyed by dimension name
-sizes = dict(item.data.sizes)        # e.g. {'space': 4, 'time': 200}
+# Axis lengths — same meaning as numpy
+item.shape                           # e.g. (4, 200)
 
-# Which coordinates have labels attached?
+# Total element count — same meaning as numpy
+item.size                            # e.g. 800
+
+# Axis lengths keyed by dimension name
+item.sizes                           # e.g. {'space': 4, 'time': 200}
+
+# Which coordinates have labels attached? (still via the DataArray)
 coords = list(item.data.coords)      # e.g. ['time'] or ['time', 'space']
 ```
+
+!!! note "`size` vs `sizes`"
+    `size` is a single integer — the number of elements, exactly as `numpy` defines it. `sizes`
+    is the per-dimension breakdown, as `xarray` defines it. If you want the axis lengths, you
+    want `shape` or `sizes`, not `size`.
 
 ### Get coordinate values as a list
 

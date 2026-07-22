@@ -218,6 +218,72 @@ class Data:
         return self._data
 
     @property
+    def shape(self) -> tuple[int, ...]:
+        """Length of each dimension, in dimension order, as numpy has it.
+
+        Shortcut for `.data.shape`, so you don't need to reach into xarray for
+        the most common question asked of a container. Pair with `.dims` to
+        learn which name goes with which length, or use `.sizes` to get both
+        at once. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.shape
+            (4, 200)
+        """
+        return self._data.shape
+
+    @property
+    def size(self) -> int:
+        """Total number of elements, as numpy has it.
+
+        Shortcut for `.data.size`. Note this is the element *count* — for the
+        per-dimension lengths use `.shape` or `.sizes`. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.size
+            800
+        """
+        return self._data.size
+
+    @property
+    def dims(self) -> tuple[Hashable, ...]:
+        """Dimension names, in the order they appear in `.shape`.
+
+        Shortcut for `.data.dims`. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.dims
+            ('space', 'time')
+        """
+        return self._data.dims
+
+    @property
+    def sizes(self) -> dict[Hashable, int]:
+        """Mapping of dimension name to its length.
+
+        Shortcut for `dict(.data.sizes)` — the xarray view of the shape, where
+        each length is labelled. Returns a plain dict, so mutating it has no
+        effect on this (immutable) container. See GH #119.
+
+        Example:
+            >>> import numpy as np
+            >>> import cobrabox as cb
+            >>> d = cb.Data.from_numpy(np.zeros((4, 200)), dims=["space", "time"])
+            >>> d.sizes
+            {'space': 4, 'time': 200}
+        """
+        return dict(self._data.sizes)
+
+    @property
     def subjectID(self) -> str | None:
         """Subject identifier."""
         return self._data.attrs.get("subjectID")
