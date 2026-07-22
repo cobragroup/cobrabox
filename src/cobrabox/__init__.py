@@ -22,7 +22,7 @@ from .datasets import (
     load_dataset,
     show_datasets,
 )
-from .downloader import DownloadCancelled, get_dataset_dir, set_dataset_dir
+from .downloader import DownloadCancelled, LargeLoadError, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
 
 # Hardcoded re-exports of key feature classes — must come before `feature` import
@@ -49,6 +49,7 @@ __all__ = [
     "Data",
     "Dataset",
     "DownloadCancelled",
+    "LargeLoadError",
     "LineLength",
     "MeanAggregate",
     "Nonreversibility",
