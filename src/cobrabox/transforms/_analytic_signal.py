@@ -85,10 +85,10 @@ class AnalyticSignal(BaseFeature[SignalData]):
             ``None``.
 
     Example:
-        >>> analytic = cb.feature.AnalyticSignal().apply(data)
-        >>> env = cb.feature.AnalyticSignal(feature="envelope").apply(data)
-        >>> phase = cb.feature.AnalyticSignal(feature="phase").apply(data)
-        >>> freq = cb.feature.AnalyticSignal(feature="frequency").apply(data)
+        >>> analytic = cb.AnalyticSignal().apply(data)
+        >>> env = cb.AnalyticSignal(feature="envelope").apply(data)
+        >>> phase = cb.AnalyticSignal(feature="phase").apply(data)
+        >>> freq = cb.AnalyticSignal(feature="frequency").apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

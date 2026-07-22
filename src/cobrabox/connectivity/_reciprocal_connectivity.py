@@ -51,8 +51,8 @@ class ReciprocalConnectivity(BaseFeature[Data]):
             are violated, or if ``freq_band`` is incompatible with the input.
 
     Example:
-        >>> rc = cb.feature.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(pdc_matrix)
-        >>> rc = (cb.feature.PartialDirectedCoherence() | rc).apply(signal_data)
+        >>> rc = cb.ReciprocalConnectivity(freq_band=(30.0, 80.0)).apply(pdc_matrix)
+        >>> rc = (cb.PartialDirectedCoherence() | rc).apply(signal_data)
     """
 
     _tags: ClassVar[list[str]] = [

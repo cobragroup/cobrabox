@@ -85,7 +85,7 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
 
     Example:
         >>> data = cb.load_dataset("dummy_random")[0]
-        >>> cwt = cb.feature.ContinuousWaveletTransform(n_scales=32).apply(data)
+        >>> cwt = cb.ContinuousWaveletTransform(n_scales=32).apply(data)
         >>> cwt.data.dims
         ('space', 'scale', 'time')
         >>> "frequency" in cwt.data.coords

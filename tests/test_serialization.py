@@ -51,19 +51,19 @@ def _outputs_match(original: object, deserialized: object, data: cb.SignalData) 
 
 def test_roundtrip_single_feature_yaml() -> None:
     """LineLength serializes and deserializes correctly via YAML."""
-    feature = cb.feature.LineLength()
+    feature = cb.LineLength()
     yaml_str = serialize(feature)
     pipeline = deserialize(yaml_str)
 
     assert isinstance(pipeline, cb.Pipeline)
     assert len(pipeline.features) == 1
-    assert isinstance(pipeline.features[0], cb.feature.LineLength)
+    assert isinstance(pipeline.features[0], cb.LineLength)
     assert _outputs_match(feature, pipeline, _make_signal())
 
 
 def test_roundtrip_single_feature_json() -> None:
     """LineLength serializes and deserializes correctly via JSON."""
-    feature = cb.feature.LineLength()
+    feature = cb.LineLength()
     json_str = serialize(feature, fmt="json")
     pipeline = deserialize(json_str, fmt="json")
 
@@ -73,12 +73,12 @@ def test_roundtrip_single_feature_json() -> None:
 
 def test_roundtrip_sliding_window_params() -> None:
     """SlidingWindow int params survive round-trip."""
-    feature = cb.feature.SlidingWindow(window_size=8, step_size=3)
+    feature = cb.SlidingWindow(window_size=8, step_size=3)
     yaml_str = serialize(feature)
     pipeline = deserialize(yaml_str)
 
     restored = pipeline.features[0]
-    assert isinstance(restored, cb.feature.SlidingWindow)
+    assert isinstance(restored, cb.SlidingWindow)
     assert restored.window_size == 8
     assert restored.step_size == 3
 
@@ -88,9 +88,9 @@ def test_roundtrip_sliding_window_params() -> None:
 
 def test_roundtrip_pipeline_yaml() -> None:
     """Two-step Pipeline round-trips through YAML."""
-    sw = cb.feature.SlidingWindow(window_size=5, step_size=2)
+    sw = cb.SlidingWindow(window_size=5, step_size=2)
     # Build via pipe to get a Pipeline
-    pipeline = cb.feature.LineLength() | cb.feature.LineLength()
+    pipeline = cb.LineLength() | cb.LineLength()
     yaml_str = serialize(pipeline)
     restored = deserialize(yaml_str)
 
@@ -103,7 +103,7 @@ def test_roundtrip_pipeline_output_matches() -> None:
     """Pipeline output is numerically identical after round-trip (single-step pipeline)."""
     # LineLength | LineLength would be invalid (time dim removed after first step).
     # Use a one-element pipeline — structure serialization is tested separately.
-    pipeline = cb.Pipeline(cb.feature.LineLength())
+    pipeline = cb.Pipeline(cb.LineLength())
     yaml_str = serialize(pipeline)
     restored = deserialize(yaml_str)
     assert _outputs_match(pipeline, restored, _make_signal())
@@ -114,11 +114,7 @@ def test_roundtrip_pipeline_output_matches() -> None:
 
 def test_roundtrip_chord_yaml() -> None:
     """Chord (SlidingWindow | LineLength | MeanAggregate) round-trips through YAML."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
     yaml_str = serialize(chord)
     pipeline = deserialize(yaml_str)
 
@@ -126,18 +122,14 @@ def test_roundtrip_chord_yaml() -> None:
     assert len(pipeline.features) == 1
     restored_chord = pipeline.features[0]
     assert isinstance(restored_chord, cb.Chord)
-    assert isinstance(restored_chord.split, cb.feature.SlidingWindow)
+    assert isinstance(restored_chord.split, cb.SlidingWindow)
     assert restored_chord.split.window_size == 5
     assert restored_chord.split.step_size == 2
 
 
 def test_roundtrip_chord_output_matches() -> None:
     """Chord output is numerically identical after round-trip."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
     yaml_str = serialize(chord)
     pipeline = deserialize(yaml_str)
     restored_chord = pipeline.features[0]
@@ -146,19 +138,15 @@ def test_roundtrip_chord_output_matches() -> None:
 
 def test_roundtrip_nested_chord_in_pipeline() -> None:
     """Chord nested inside a Pipeline round-trips correctly."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
     # Pipeline: LineLength → Chord
-    pipeline = cb.feature.LineLength() | chord
+    pipeline = cb.LineLength() | chord
     yaml_str = serialize(pipeline)
     restored = deserialize(yaml_str)
 
     assert isinstance(restored, cb.Pipeline)
     assert len(restored.features) == 2
-    assert isinstance(restored.features[0], cb.feature.LineLength)
+    assert isinstance(restored.features[0], cb.LineLength)
     assert isinstance(restored.features[1], cb.Chord)
 
 
@@ -167,22 +155,18 @@ def test_roundtrip_nested_chord_in_pipeline() -> None:
 
 def test_feature_to_yaml_from_yaml() -> None:
     """BaseFeature.to_yaml() / from_yaml() round-trip."""
-    feature = cb.feature.LineLength()
+    feature = cb.LineLength()
     yaml_str = feature.to_yaml()
-    restored = cb.feature.LineLength.from_yaml(yaml_str)
+    restored = cb.LineLength.from_yaml(yaml_str)
 
-    assert isinstance(restored, cb.feature.LineLength)
+    assert isinstance(restored, cb.LineLength)
     assert _outputs_match(feature, restored, _make_signal())
 
 
 def test_pipeline_to_yaml_from_yaml() -> None:
     """Pipeline.to_yaml() / from_yaml() round-trip."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
-    pipeline = cb.Pipeline(cb.feature.LineLength(), chord)
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
+    pipeline = cb.Pipeline(cb.LineLength(), chord)
     yaml_str = pipeline.to_yaml()
     restored = cb.Pipeline.from_yaml(yaml_str)
 
@@ -192,22 +176,18 @@ def test_pipeline_to_yaml_from_yaml() -> None:
 
 def test_feature_to_dict_from_dict() -> None:
     """BaseFeature.to_dict() / from_dict() round-trip."""
-    feature = cb.feature.LineLength()
+    feature = cb.LineLength()
     d = feature.to_dict()
-    restored = cb.feature.LineLength.from_dict(d)
+    restored = cb.LineLength.from_dict(d)
 
-    assert isinstance(restored, cb.feature.LineLength)
+    assert isinstance(restored, cb.LineLength)
     assert _outputs_match(feature, restored, _make_signal())
 
 
 def test_pipeline_to_dict_from_dict() -> None:
     """Pipeline.to_dict() / from_dict() round-trip."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
-    pipeline = cb.Pipeline(cb.feature.LineLength(), chord)
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
+    pipeline = cb.Pipeline(cb.LineLength(), chord)
     d = pipeline.to_dict()
     restored = cb.Pipeline.from_dict(d)
 
@@ -232,7 +212,7 @@ def test_cb_namespace_functions_exist() -> None:
 
 def test_save_load_yaml(tmp_path: Path) -> None:
     """save() / load() round-trip for YAML files."""
-    pipeline = cb.Pipeline(cb.feature.LineLength())
+    pipeline = cb.Pipeline(cb.LineLength())
     path = tmp_path / "pipeline.yaml"
     save(pipeline, path)
 
@@ -244,7 +224,7 @@ def test_save_load_yaml(tmp_path: Path) -> None:
 
 def test_save_load_yml_extension(tmp_path: Path) -> None:
     """.yml extension is treated as YAML."""
-    feature = cb.feature.LineLength()
+    feature = cb.LineLength()
     path = tmp_path / "pipeline.yml"
     save(feature, path)
     restored = load(path)
@@ -253,7 +233,7 @@ def test_save_load_yml_extension(tmp_path: Path) -> None:
 
 def test_save_load_json(tmp_path: Path) -> None:
     """save() / load() round-trip for JSON files."""
-    pipeline = cb.Pipeline(cb.feature.LineLength())
+    pipeline = cb.Pipeline(cb.LineLength())
     path = tmp_path / "pipeline.json"
     save(pipeline, path)
 
@@ -268,7 +248,7 @@ def test_save_load_json(tmp_path: Path) -> None:
 
 def test_save_explicit_fmt(tmp_path: Path) -> None:
     """save() respects explicit fmt parameter regardless of extension."""
-    feature = cb.feature.LineLength()
+    feature = cb.LineLength()
     path = tmp_path / "pipeline.txt"
     save(feature, path, fmt="yaml")
 
@@ -292,7 +272,7 @@ def test_save_unknown_extension_raises(tmp_path: Path) -> None:
 
     path = tmp_path / "pipeline.bin"
     with pytest.raises(SerializationError, match="Cannot infer format"):
-        save(cb.feature.LineLength(), path)
+        save(cb.LineLength(), path)
 
 
 # ─── Fixture Files ───────────────────────────────────────────────────────────
@@ -303,7 +283,7 @@ def test_load_fixture_pipeline_v1() -> None:
     pipeline = load(FIXTURES / "pipeline_v1.yaml")
     assert isinstance(pipeline, cb.Pipeline)
     assert len(pipeline.features) == 1
-    assert isinstance(pipeline.features[0], cb.feature.LineLength)
+    assert isinstance(pipeline.features[0], cb.LineLength)
 
 
 def test_load_fixture_chord_v1() -> None:
@@ -323,7 +303,7 @@ def test_serialized_yaml_has_version_fields() -> None:
     """Serialized YAML includes cobrabox_version and schema_version."""
     import yaml
 
-    yaml_str = serialize(cb.feature.LineLength())
+    yaml_str = serialize(cb.LineLength())
     doc = yaml.safe_load(yaml_str)
     assert "cobrabox_version" in doc
     assert "schema_version" in doc
@@ -334,7 +314,7 @@ def test_serialized_yaml_pipeline_key() -> None:
     """Serialized YAML uses 'pipeline' as the only top-level content key."""
     import yaml
 
-    yaml_str = serialize(cb.feature.LineLength())
+    yaml_str = serialize(cb.LineLength())
     doc = yaml.safe_load(yaml_str)
     assert "pipeline" in doc
     assert "single" not in doc
@@ -345,7 +325,7 @@ def test_single_feature_is_one_element_pipeline() -> None:
     """A single feature serializes as a one-element pipeline list."""
     import yaml
 
-    yaml_str = serialize(cb.feature.LineLength())
+    yaml_str = serialize(cb.LineLength())
     doc = yaml.safe_load(yaml_str)
     assert isinstance(doc["pipeline"], list)
     assert len(doc["pipeline"]) == 1
@@ -611,9 +591,9 @@ def test_chord_with_multi_step_inner_pipeline() -> None:
     # but this test is structural: it verifies that a Chord whose .pipeline is a
     # Pipeline object (not a single feature) round-trips with the correct inner step count.
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=5, step_size=2),
-        pipeline=cb.feature.LineLength() | cb.feature.LineLength(),
-        aggregate=cb.feature.MeanAggregate(),
+        split=cb.SlidingWindow(window_size=5, step_size=2),
+        pipeline=cb.LineLength() | cb.LineLength(),
+        aggregate=cb.MeanAggregate(),
     )
     yaml_str = serialize(chord)
     pipeline = deserialize(yaml_str)
@@ -629,11 +609,7 @@ def test_chord_with_multi_step_inner_pipeline() -> None:
 
 def test_double_roundtrip_is_idempotent() -> None:
     """Serializing twice produces the same YAML string."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
     yaml1 = serialize(chord)
     yaml2 = serialize(deserialize(yaml1))
     assert yaml1 == yaml2
@@ -641,11 +617,7 @@ def test_double_roundtrip_is_idempotent() -> None:
 
 def test_json_roundtrip_is_idempotent() -> None:
     """Serializing twice via JSON produces the same string."""
-    chord = (
-        cb.feature.SlidingWindow(window_size=5, step_size=2)
-        | cb.feature.LineLength()
-        | cb.feature.MeanAggregate()
-    )
+    chord = cb.SlidingWindow(window_size=5, step_size=2) | cb.LineLength() | cb.MeanAggregate()
     json1 = serialize(chord, fmt="json")
     json2 = serialize(deserialize(json1, fmt="json"), fmt="json")
     assert json1 == json2

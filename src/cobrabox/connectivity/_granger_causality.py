@@ -42,11 +42,11 @@ class GrangerCausality(BaseFeature[SignalData]):
 
     Example:
         >>> # Full matrix at lag 2
-        >>> result = cb.feature.GrangerCausality(lag=2).apply(data)
+        >>> result = cb.GrangerCausality(lag=2).apply(data)
         >>> # Restricted to two channels at the default lag
-        >>> result = cb.feature.GrangerCausality(coords=["F3", "F4"]).apply(data)
+        >>> result = cb.GrangerCausality(coords=["F3", "F4"]).apply(data)
         >>> # Range of lags
-        >>> result = cb.feature.GrangerCausality(maxlag=4).apply(data)
+        >>> result = cb.GrangerCausality(maxlag=4).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

@@ -38,7 +38,7 @@ class AmplitudeEntropy(BaseFeature[Data]):
         >>> import cobrabox as cb
         >>> import numpy as np
         >>> data = cb.Data.from_numpy(np.random.randn(50, 10), dims=["time", "space"])
-        >>> result = cb.feature.AmplitudeEntropy(band_width=0.5).apply(data)
+        >>> result = cb.AmplitudeEntropy(band_width=0.5).apply(data)
         >>> float(result.to_numpy())  # Scalar entropy value
 
     """

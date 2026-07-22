@@ -42,7 +42,7 @@ class Nonreversibility(BaseFeature[SignalData]):
         ValueError: If 'space' dimension has fewer than 2 channels.
 
     Example:
-        >>> result = cb.feature.Nonreversibility().apply(data)
+        >>> result = cb.Nonreversibility().apply(data)
 
     References:
         TODO: Add citation for the dc_norm / time-irreversibility VAR(1) measure.

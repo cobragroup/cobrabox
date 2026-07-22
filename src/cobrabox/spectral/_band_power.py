@@ -45,9 +45,9 @@ class BandPower(BaseFeature[SignalData]):
             ``min(n_time, 256)`` as chosen by :func:`scipy.signal.welch`.
 
     Example:
-        >>> bp = cb.feature.BandPower().apply(data)
-        >>> bp_custom = cb.feature.BandPower(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
-        >>> bp_fine = cb.feature.BandPower(nperseg=512).apply(data)
+        >>> bp = cb.BandPower().apply(data)
+        >>> bp_custom = cb.BandPower(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
+        >>> bp_fine = cb.BandPower(nperseg=512).apply(data)
 
     Returns:
         xarray DataArray with dims ``(band_index, space)`` (plus a singleton

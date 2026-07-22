@@ -33,7 +33,7 @@ class Autocorrelation(BaseFeature[Data]):
         computed lag for that position in the remaining dimensions.
 
     Example:
-        >>> result = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
+        >>> result = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

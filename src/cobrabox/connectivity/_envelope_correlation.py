@@ -48,9 +48,9 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
         https://doi.org/10.1038/nn.3101
 
     Example:
-        >>> aec = cb.feature.EnvelopeCorrelation().apply(data)
-        >>> aec_signed = cb.feature.EnvelopeCorrelation(absolute=False).apply(data)
-        >>> aec_no_orth = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
+        >>> aec = cb.EnvelopeCorrelation().apply(data)
+        >>> aec_signed = cb.EnvelopeCorrelation(absolute=False).apply(data)
+        >>> aec_no_orth = cb.EnvelopeCorrelation(orthogonalize=False).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

@@ -377,15 +377,15 @@ from cobrabox import Data, SignalData, EEG, FMRI
 
 def process_general(data: Data) -> Data:
     """Works with any Data container."""
-    return cb.feature.Mean(dim="time").apply(data)
+    return cb.Mean(dim="time").apply(data)
 
 def process_timeseries(data: SignalData) -> Data:
     """Requires time-series data."""
-    return cb.feature.LineLength().apply(data)
+    return cb.LineLength().apply(data)
 
 def process_eeg(data: EEG) -> EEG:
     """EEG-specific processing."""
-    return cb.feature.LineLength().apply(data)
+    return cb.LineLength().apply(data)
 ```
 
 ## When to Use Each Container

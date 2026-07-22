@@ -32,7 +32,7 @@ data = cb.from_numpy(
 )
 
 # Apply features
-feat = cb.feature.LineLength().apply(data)
+feat = cb.LineLength().apply(data)
 
 print(f"Shape: {feat.data.shape}")
 print(f"History: {feat.history}")

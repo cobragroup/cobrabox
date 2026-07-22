@@ -58,9 +58,9 @@ class EMD(BaseFeature[SignalData]):
             different numbers of IMFs and missing IMFs are filled with NaN.
 
     Example:
-        >>> result = cb.feature.EMD().apply(data)
-        >>> result = cb.feature.EMD(max_imfs=5, method="mask_sift").apply(data)
-        >>> result = cb.feature.EMD(keep_orig=True).apply(data)
+        >>> result = cb.EMD().apply(data)
+        >>> result = cb.EMD(max_imfs=5, method="mask_sift").apply(data)
+        >>> result = cb.EMD(keep_orig=True).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

@@ -53,7 +53,7 @@ class FourierTransformSurrogates(SplitterFeature[SignalData]):
         ...     dims=["time", "space"],
         ...     sampling_rate=100.0
         ... )
-        >>> feature = cb.feature.FourierTransformSurrogates(
+        >>> feature = cb.FourierTransformSurrogates(
         ...     n_surrogates=5, random_state=42
         ... )
         >>> surrogates = list(feature(data))

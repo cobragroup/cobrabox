@@ -40,7 +40,7 @@ def _make_sine_data(
 def test_bandfilter_history_updated() -> None:
     """BandFilter appends 'BandFilter' to history."""
     data = _make_data()
-    result = cb.feature.BandpassFilter().apply(data)
+    result = cb.BandpassFilter().apply(data)
     assert result.history[-1] == "BandpassFilter"
 
 
@@ -55,7 +55,7 @@ def test_bandfilter_metadata_preserved() -> None:
         groupID="control",
         condition="task",
     )
-    result = cb.feature.BandpassFilter().apply(data)
+    result = cb.BandpassFilter().apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"
@@ -65,7 +65,7 @@ def test_bandfilter_metadata_preserved() -> None:
 def test_bandfilter_returns_data_instance() -> None:
     """BandFilter.apply() always returns a Data instance."""
     data = _make_data()
-    result = cb.feature.BandpassFilter().apply(data)
+    result = cb.BandpassFilter().apply(data)
     assert isinstance(result, cb.Data)
 
 
@@ -76,7 +76,7 @@ def test_bandfilter_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.BandpassFilter().apply(data)
+    _ = cb.BandpassFilter().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -93,13 +93,13 @@ def test_bandfilter_missing_sampling_rate_raises() -> None:
     data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
     assert data.sampling_rate is None
     with pytest.raises(ValueError, match="sampling_rate"):
-        cb.feature.BandpassFilter().apply(data)
+        cb.BandpassFilter().apply(data)
 
 
 def test_bandfilter_default_band_coords() -> None:
     """Default bands have the standard EEG band names as coordinates."""
     data = _make_data()
-    out = cb.feature.BandpassFilter().apply(data)
+    out = cb.BandpassFilter().apply(data)
 
     expected_names = ["delta", "theta", "alpha", "beta", "gamma"]
     assert list(out.data.coords["band"].values) == expected_names
@@ -108,7 +108,7 @@ def test_bandfilter_default_band_coords() -> None:
 def test_bandfilter_default_band_coords_keep_orig() -> None:
     """Default bands have the standard EEG band names as coordinates."""
     data = _make_data()
-    out = cb.feature.BandpassFilter(keep_orig=True).apply(data)
+    out = cb.BandpassFilter(keep_orig=True).apply(data)
 
     expected_names = ["original", "delta", "theta", "alpha", "beta", "gamma"]
     assert list(out.data.coords["band"].values) == expected_names
@@ -117,7 +117,7 @@ def test_bandfilter_default_band_coords_keep_orig() -> None:
 def test_bandfilter_custom_bands() -> None:
     """Custom bands dict is respected in shape and coordinate labels."""
     data = _make_data()
-    out = cb.feature.BandpassFilter(bands={"low": [1, 10], "high": [30, 60]}).apply(data)
+    out = cb.BandpassFilter(bands={"low": [1, 10], "high": [30, 60]}).apply(data)
 
     assert out.data.sizes["band"] == 2
     assert list(out.data.coords["band"].values) == ["low", "high"]
@@ -126,7 +126,7 @@ def test_bandfilter_custom_bands() -> None:
 def test_bandfilter_single_band() -> None:
     """A single-band dict still produces a band dimension of size 1."""
     data = _make_data()
-    out = cb.feature.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+    out = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
 
     assert out.data.sizes["band"] == 1
     assert list(out.data.coords["band"].values) == ["alpha"]
@@ -140,7 +140,7 @@ def test_bandfilter_single_band() -> None:
 def test_bandfilter_preserves_time_coords() -> None:
     """Time coordinates survive the round-trip through filtering."""
     data = _make_data(sampling_rate=100.0)
-    out = cb.feature.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+    out = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
 
     np.testing.assert_array_equal(out.data.coords["time"].values, data.data.coords["time"].values)
 
@@ -156,7 +156,7 @@ def test_bandfilter_preserves_space_coords_when_present() -> None:
         coords={"time": np.arange(200) / 100.0, "space": ["Fp1", "Fp2", "C3", "C4"]},
     )
     data = cb.from_xarray(xr_da, subjectID="s1")
-    out = cb.feature.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+    out = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
 
     assert list(out.data.coords["space"].values) == ["Fp1", "Fp2", "C3", "C4"]
 
@@ -170,7 +170,7 @@ def test_bandfilter_matches_manual_scipy_filter() -> None:
     """Each band slice matches a manual scipy butter+lfilter call."""
     data = _make_data(n_time=500, n_space=2, sampling_rate=250.0)
     bands = {"alpha": [8, 12], "beta": [12, 30]}
-    out = cb.feature.BandpassFilter(bands=bands).apply(data)
+    out = cb.BandpassFilter(bands=bands).apply(data)
 
     # data.to_numpy() returns (time, space); lfilter along axis=0 (time).
     # out.data.sel(band=name) has dims (space, time) so transpose for comparison.
@@ -185,7 +185,7 @@ def test_bandfilter_matches_manual_scipy_filter() -> None:
 def test_bandfilter_output_is_not_all_zeros() -> None:
     """Filtered output should contain non-zero values for broadband input."""
     data = _make_data()
-    out = cb.feature.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+    out = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
 
     assert not np.allclose(out.to_numpy(), 0.0)
 
@@ -212,14 +212,14 @@ def test_bandfilter_sine_concentrated_in_correct_band(
     mixed = _make_sine_data(
         freqs_hz=[pass_freq_hz, *reject_freqs_hz], sampling_rate=sr, duration=duration, n_space=1
     )
-    out_mixed = cb.feature.BandpassFilter(bands=bands).apply(mixed)
+    out_mixed = cb.BandpassFilter(bands=bands).apply(mixed)
     rms_mixed = float(np.sqrt(np.mean(out_mixed.data.sel(band=pass_band).values[..., trim:] ** 2)))
 
     # Filter a signal built from *only* the out-of-band sines through the same band
     out_of_band = _make_sine_data(
         freqs_hz=reject_freqs_hz, sampling_rate=sr, duration=duration, n_space=1
     )
-    out_reject = cb.feature.BandpassFilter(bands=bands).apply(out_of_band)
+    out_reject = cb.BandpassFilter(bands=bands).apply(out_of_band)
     rms_reject = float(
         np.sqrt(np.mean(out_reject.data.sel(band=pass_band).values[..., trim:] ** 2))
     )
@@ -238,10 +238,10 @@ def test_bandfilter_sine_concentrated_in_correct_band(
 def test_bandfilter_output_is_valid_data_for_further_features() -> None:
     """The output can be fed into another feature (e.g. Mean)."""
     data = _make_data(n_time=200, n_space=2)
-    out = cb.feature.BandpassFilter(bands={"alpha": [8, 12], "beta": [12, 30]}).apply(data)
+    out = cb.BandpassFilter(bands={"alpha": [8, 12], "beta": [12, 30]}).apply(data)
 
     # Mean over band dimension should collapse it
-    reduced = cb.feature.Mean(dim="band").apply(out)
+    reduced = cb.Mean(dim="band").apply(out)
     assert "band" not in reduced.data.dims
     assert "BandpassFilter" in reduced.history
     assert "Mean" in reduced.history
@@ -255,37 +255,37 @@ def test_bandfilter_output_is_valid_data_for_further_features() -> None:
 def test_bandfilter_zero_order_raises() -> None:
     """BandFilter raises ValueError for ord of 0."""
     with pytest.raises(ValueError, match="ord"):
-        cb.feature.BandpassFilter(ord=0)
+        cb.BandpassFilter(ord=0)
 
 
 def test_bandfilter_negative_order_raises() -> None:
     """BandFilter raises ValueError for negative ord."""
     with pytest.raises(ValueError, match="ord"):
-        cb.feature.BandpassFilter(ord=-1)
+        cb.BandpassFilter(ord=-1)
 
 
 def test_bandfilter_empty_bands_raises() -> None:
     """BandFilter raises ValueError when bands dict is empty."""
     with pytest.raises(ValueError, match="bands"):
-        cb.feature.BandpassFilter(bands={})
+        cb.BandpassFilter(bands={})
 
 
 def test_bandfilter_invalid_band_range_raises() -> None:
     """BandFilter raises ValueError when band low >= high frequency."""
     data = _make_data()
     with pytest.raises(ValueError, match="Band"):
-        cb.feature.BandpassFilter(bands={"bad": [20, 10]}).apply(data)
+        cb.BandpassFilter(bands={"bad": [20, 10]}).apply(data)
 
 
 def test_bandfilter_negative_frequency_raises() -> None:
     """BandFilter raises ValueError for negative frequencies."""
     data = _make_data()
     with pytest.raises(ValueError, match="frequencies must be non-negative"):
-        cb.feature.BandpassFilter(bands={"bad": [-5, 10]}).apply(data)
+        cb.BandpassFilter(bands={"bad": [-5, 10]}).apply(data)
 
 
 def test_bandfilter_band_wrong_number_of_frequencies_raises() -> None:
     """BandFilter raises ValueError when band doesn't have exactly 2 frequencies."""
     data = _make_data()
     with pytest.raises(ValueError, match="exactly 2"):
-        cb.feature.BandpassFilter(bands={"bad": [1, 10, 20]}).apply(data)
+        cb.BandpassFilter(bands={"bad": [1, 10, 20]}).apply(data)

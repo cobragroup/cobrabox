@@ -18,7 +18,7 @@ def test_min_reduces_extra_dimension() -> None:
         xr_data, sampling_rate=100.0, subjectID="sub-01", groupID="group-A", condition="rest"
     )
 
-    out = cb.feature.Min(dim="run_index").apply(data)
+    out = cb.Min(dim="run_index").apply(data)
 
     assert isinstance(out, cb.Data)
     assert "run_index" not in out.data.dims
@@ -36,7 +36,7 @@ def test_min_raises_for_unknown_dimension() -> None:
     """Min raises a clear error when dim is missing."""
     data = cb.SignalData.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=100.0)
     with pytest.raises(ValueError, match="dim 'band_index' not found"):
-        cb.feature.Min(dim="band_index").apply(data)
+        cb.Min(dim="band_index").apply(data)
 
 
 def test_min_single_channel_timeseries_returns_single_value() -> None:
@@ -44,7 +44,7 @@ def test_min_single_channel_timeseries_returns_single_value() -> None:
     arr = np.array([[1.0], [2.0], [3.0], [4.0]])
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Min(dim="time").apply(data)
+    out = cb.Min(dim="time").apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space", "time")
@@ -59,7 +59,7 @@ def test_min_finds_smallest_value_with_negative_numbers() -> None:
     arr = np.array([[2.0, -1.0], [-5.0, 4.0], [3.0, -7.0], [1.0, 0.0]])
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Min(dim="time").apply(data)
+    out = cb.Min(dim="time").apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.shape == (2, 1)
@@ -75,7 +75,7 @@ def test_min_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Min(dim="time").apply(data)
+    _ = cb.Min(dim="time").apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -92,7 +92,7 @@ def test_min_preserves_metadata() -> None:
         groupID="control",
         condition="task",
     )
-    result = cb.feature.Min(dim="time").apply(data)
+    result = cb.Min(dim="time").apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"

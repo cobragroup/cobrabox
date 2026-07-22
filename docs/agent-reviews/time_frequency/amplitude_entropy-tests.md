@@ -59,7 +59,7 @@ def test_amplitude_entropy_zero_total_counts() -> None:
     arr = np.full((5, 5), np.nan)
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=1.0)
+    feature = cb.AmplitudeEntropy(band_width=1.0)
     result = feature.apply(data)
 
     # Should not raise, should return finite value (0.0 from the guard)
@@ -74,7 +74,7 @@ def test_amplitude_entropy_zero_total_counts_mocked() -> None:
     from unittest.mock import patch
 
     data = _make_data(n_time=5, n_space=5)
-    feature = cb.feature.AmplitudeEntropy(band_width=1.0)
+    feature = cb.AmplitudeEntropy(band_width=1.0)
 
     # Mock np.histogram to return zero counts
     with patch('numpy.histogram', return_value=(np.array([0, 0]), np.array([0, 1, 2]))):

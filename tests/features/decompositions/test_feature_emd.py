@@ -41,7 +41,7 @@ def _make_sine_data(
 def test_emd_history_updated() -> None:
     """EMD appends 'EMD' to history."""
     data = _make_data()
-    result = cb.feature.EMD().apply(data)
+    result = cb.EMD().apply(data)
     assert result.history[-1] == "EMD"
 
 
@@ -56,7 +56,7 @@ def test_emd_metadata_preserved() -> None:
         groupID="control",
         condition="task",
     )
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"
@@ -66,7 +66,7 @@ def test_emd_metadata_preserved() -> None:
 def test_emd_returns_data_instance() -> None:
     """EMD.apply() always returns a Data instance."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     assert isinstance(result, cb.Data)
 
 
@@ -77,7 +77,7 @@ def test_emd_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.EMD(max_imfs=3).apply(data)
+    _ = cb.EMD(max_imfs=3).apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -87,14 +87,14 @@ def test_emd_does_not_mutate_input() -> None:
 def test_emd_adds_imf_dimension() -> None:
     """EMD adds an 'imf' dimension to the output."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     assert "imf" in result.data.dims
 
 
 def test_emd_imf_coords_labelled_correctly() -> None:
     """IMF coordinates are labelled imf0, imf1, ... with residual as last."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     imf_coords = list(result.data.coords["imf"].values)
 
     # Should have imf0, imf1, ..., residual
@@ -106,7 +106,7 @@ def test_emd_imf_coords_labelled_correctly() -> None:
 def test_emd_residual_always_included() -> None:
     """Residual is always included as the last IMF."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     imf_coords = list(result.data.coords["imf"].values)
     assert imf_coords[-1] == "residual"
     assert all(c.startswith("imf") for c in imf_coords[:-1])
@@ -115,7 +115,7 @@ def test_emd_residual_always_included() -> None:
 def test_emd_keep_orig_includes_original() -> None:
     """When keep_orig=True, original signal is included as first IMF."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
+    result = cb.EMD(max_imfs=3, keep_orig=True).apply(data)
     imf_coords = list(result.data.coords["imf"].values)
 
     # Original should be first, residual should be last
@@ -127,7 +127,7 @@ def test_emd_keep_orig_includes_original() -> None:
 def test_emd_keep_orig_false_excludes_original() -> None:
     """When keep_orig=False (default), original signal is not included."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3, keep_orig=False).apply(data)
+    result = cb.EMD(max_imfs=3, keep_orig=False).apply(data)
     imf_coords = list(result.data.coords["imf"].values)
     assert "original" not in imf_coords
 
@@ -135,7 +135,7 @@ def test_emd_keep_orig_false_excludes_original() -> None:
 def test_emd_keep_orig_original_matches_input() -> None:
     """The 'original' IMF matches the input signal."""
     data = _make_data(n_space=1)
-    result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
+    result = cb.EMD(max_imfs=3, keep_orig=True).apply(data)
 
     original_from_result = result.data.sel(imf="original").values
     original_from_input = data.data.values.squeeze()
@@ -145,7 +145,7 @@ def test_emd_keep_orig_original_matches_input() -> None:
 def test_emd_preserves_time_coords() -> None:
     """Time coordinates survive the decomposition."""
     data = _make_data(sampling_rate=100.0)
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     np.testing.assert_array_equal(
         result.data.coords["time"].values, data.data.coords["time"].values
     )
@@ -160,7 +160,7 @@ def test_emd_preserves_space_coords() -> None:
         coords={"time": np.arange(200) / 100.0, "space": ["Fp1", "Fp2", "C3", "C4"]},
     )
     data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     assert list(result.data.coords["space"].values) == ["Fp1", "Fp2", "C3", "C4"]
 
 
@@ -172,14 +172,14 @@ def test_emd_preserves_space_coords() -> None:
 def test_emd_output_not_all_zeros() -> None:
     """EMD output should contain non-zero values."""
     data = _make_data()
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
     assert not np.allclose(result.to_numpy(), 0.0)
 
 
 def test_emd_imfs_sum_to_original() -> None:
     """IMFs (including residual) should sum back to the original signal."""
     data = _make_data(n_space=1)
-    result = cb.feature.EMD(max_imfs=5).apply(data)
+    result = cb.EMD(max_imfs=5).apply(data)
 
     # Sum all IMFs along the imf dimension
     reconstructed = result.data.sum(dim="imf")
@@ -193,7 +193,7 @@ def test_emd_extracts_oscillatory_components() -> None:
     """EMD should separate a mixed signal into oscillatory IMFs."""
     # Create a signal with two distinct frequencies
     data = _make_sine_data([5.0, 20.0], sampling_rate=100.0, duration=5.0)
-    result = cb.feature.EMD(max_imfs=4).apply(data)
+    result = cb.EMD(max_imfs=4).apply(data)
 
     # Should have extracted at least 2 IMFs
     n_imfs = result.data.sizes["imf"]
@@ -209,7 +209,7 @@ def test_emd_extracts_oscillatory_components() -> None:
 def test_emd_different_methods_work(method: str) -> None:
     """Different sift methods should all produce valid output."""
     data = _make_data(n_time=200, n_space=1)
-    result = cb.feature.EMD(max_imfs=3, method=method).apply(data)  # type: ignore[arg-type]
+    result = cb.EMD(max_imfs=3, method=method).apply(data)  # type: ignore[arg-type]
     assert "imf" in result.data.dims
     assert result.data.sizes["imf"] >= 1
 
@@ -225,7 +225,7 @@ def test_emd_3d_data() -> None:
     arr = rng.standard_normal((100, 3, 2))
     xr_da = xr.DataArray(arr, dims=["time", "space", "channel"])
     data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     assert "imf" in result.data.dims
     assert "space" in result.data.dims
@@ -237,7 +237,7 @@ def test_emd_1d_data() -> None:
     rng = np.random.default_rng(42)
     arr = rng.standard_normal(200)
     data = cb.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     assert "imf" in result.data.dims
     assert "time" in result.data.dims
@@ -253,7 +253,7 @@ def test_emd_1d_data_n_imfs_in_attrs() -> None:
     rng = np.random.default_rng(42)
     arr = rng.standard_normal(200)
     data = cb.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     # n_imfs should be in attrs as a dict
     assert "n_imfs" in result.data.attrs
@@ -273,7 +273,7 @@ def test_emd_1d_data_n_imfs_correct_with_keep_orig() -> None:
     rng = np.random.default_rng(42)
     arr = rng.standard_normal(200)
     data = cb.SignalData.from_numpy(arr, dims=["time"], sampling_rate=100.0, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3, keep_orig=True).apply(data)
+    result = cb.EMD(max_imfs=3, keep_orig=True).apply(data)
 
     n_imfs = result.data.attrs["n_imfs"]["signal"]
     imf_coords = list(result.data.coords["imf"].values)
@@ -285,7 +285,7 @@ def test_emd_1d_data_n_imfs_correct_with_keep_orig() -> None:
 def test_emd_multidim_n_imfs_in_attrs() -> None:
     """For multi-dimensional data, n_imfs is stored in attrs as a dict."""
     data = _make_data(n_time=200, n_space=3)
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     # n_imfs should be in attrs as a dict
     assert "n_imfs" in result.data.attrs
@@ -307,7 +307,7 @@ def test_emd_multidim_n_imfs_keys_match_coords() -> None:
         coords={"time": np.arange(200) / 100.0, "space": ["Fp1", "Fp2", "C3", "C4"]},
     )
     data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     n_imfs = result.data.attrs["n_imfs"]
     # Keys should be the space coordinate values
@@ -322,7 +322,7 @@ def test_emd_3d_data_n_imfs_dict() -> None:
         arr, dims=["time", "space", "channel"], coords={"space": ["A", "B"], "channel": ["X", "Y"]}
     )
     data = cb.SignalData.from_xarray(xr_da, subjectID="s1")
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     # n_imfs should be in attrs as a dict
     assert "n_imfs" in result.data.attrs
@@ -342,10 +342,10 @@ def test_emd_3d_data_n_imfs_dict() -> None:
 def test_emd_output_is_valid_for_further_features() -> None:
     """The output can be fed into another feature (e.g. Mean)."""
     data = _make_data(n_time=200, n_space=2)
-    result = cb.feature.EMD(max_imfs=3).apply(data)
+    result = cb.EMD(max_imfs=3).apply(data)
 
     # Mean over imf dimension should collapse it
-    reduced = cb.feature.Mean(dim="imf").apply(result)
+    reduced = cb.Mean(dim="imf").apply(result)
     assert "imf" not in reduced.data.dims
     assert "EMD" in reduced.history
     assert "Mean" in reduced.history
@@ -359,16 +359,16 @@ def test_emd_output_is_valid_for_further_features() -> None:
 def test_emd_invalid_method_raises() -> None:
     """EMD raises ValueError for invalid method."""
     with pytest.raises(ValueError, match="Invalid method"):
-        cb.feature.EMD(method="invalid_method")  # type: ignore[arg-type]
+        cb.EMD(method="invalid_method")  # type: ignore[arg-type]
 
 
 def test_emd_zero_max_imfs_raises() -> None:
     """EMD raises ValueError for max_imfs of 0."""
     with pytest.raises(ValueError, match="max_imfs must be positive"):
-        cb.feature.EMD(max_imfs=0)
+        cb.EMD(max_imfs=0)
 
 
 def test_emd_negative_max_imfs_raises() -> None:
     """EMD raises ValueError for negative max_imfs."""
     with pytest.raises(ValueError, match="max_imfs must be positive"):
-        cb.feature.EMD(max_imfs=-1)
+        cb.EMD(max_imfs=-1)

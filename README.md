@@ -42,14 +42,15 @@ my_array = np.random.default_rng(seed=0).normal(size=(100, 4))
 
 data = cb.from_numpy(arr=my_array, dims=["time", "space"], sampling_rate=100.0)
 
-# Single feature
-feat = cb.feature.LineLength().apply(data)
+# Single feature — one-shot function, or the class
+feat = cb.line_length(data)
+feat = cb.LineLength().apply(data)
 
 # Pipeline with sliding window (chord: fan-out → map → fan-in)
 result = cb.Chord(
-    split=cb.feature.SlidingWindow(window_size=20, step_size=10),
-    pipeline=cb.feature.LineLength(),
-    aggregate=cb.feature.MeanAggregate(),
+    split=cb.SlidingWindow(window_size=20, step_size=10),
+    pipeline=cb.LineLength(),
+    aggregate=cb.MeanAggregate(),
 ).apply(data)
 
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
@@ -58,7 +59,7 @@ print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord
 ## Core Concepts
 
 - **Data container**: `cobrabox.Data` (with `EEG` and `FMRI` subclasses) — immutable, xarray-backed
-- **Features** (`BaseFeature`): dataclasses under `cb.feature.*`; call `.apply(data)` or chain with `|`
+- **Features** (`BaseFeature`): every feature has a one-shot function (`cb.line_length(data)`) and a class (`cb.LineLength()`) for chaining with `|`
 - **Splitters** (`SplitterFeature`): yield a lazy stream of `Data` per window (e.g. `SlidingWindow`)
 - **Aggregators** (`AggregatorFeature`): fold a stream back into one `Data` (e.g. `MeanAggregate`)
 - **Chord**: combines a splitter + pipeline + aggregator into a single composable feature

@@ -94,8 +94,8 @@ class SampleEntropy(BaseFeature[SignalData]):
         ValueError: If time series length is not greater than embedding dimension m.
 
     Example:
-        >>> entropy = cb.feature.SampleEntropy(m=2).apply(data)  # base-2 (default)
-        >>> entropy_nat = cb.feature.SampleEntropy(m=2, log_base=np.e).apply(data)  # natural log
+        >>> entropy = cb.SampleEntropy(m=2).apply(data)  # base-2 (default)
+        >>> entropy_nat = cb.SampleEntropy(m=2, log_base=np.e).apply(data)  # natural log
     """
 
     _tags: ClassVar[list[str]] = [

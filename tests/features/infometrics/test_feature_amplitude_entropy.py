@@ -1,4 +1,4 @@
-"""Tests for cb.feature.AmplitudeEntropy."""
+"""Tests for cb.AmplitudeEntropy."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _make_data(
 def test_amplitude_entropy_basic() -> None:
     """AmplitudeEntropy returns a Data object with scalar entropy value."""
     data = _make_data(n_time=50, n_space=10)
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -53,7 +53,7 @@ def test_amplitude_entropy_deterministic() -> None:
     """AmplitudeEntropy returns same result for identical inputs."""
     data = _make_data(n_time=30, n_space=8, seed=42)
 
-    feature = cb.feature.AmplitudeEntropy(band_width=0.3)
+    feature = cb.AmplitudeEntropy(band_width=0.3)
 
     result1 = feature.apply(data)
     result2 = feature.apply(data)
@@ -67,7 +67,7 @@ def test_amplitude_entropy_constant_data() -> None:
     arr = np.ones((20, 5))
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -92,7 +92,7 @@ def test_amplitude_entropy_uniform_data() -> None:
 
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=1.0)
+    feature = cb.AmplitudeEntropy(band_width=1.0)
     result = feature.apply(data)
 
     # Uniform distribution over n_bins has entropy = log2(n_bins)
@@ -106,8 +106,8 @@ def test_amplitude_entropy_different_band_widths() -> None:
     """AmplitudeEntropy produces different results with different band_widths."""
     data = _make_data(n_time=50, n_space=20, seed=123)
 
-    feature_narrow = cb.feature.AmplitudeEntropy(band_width=0.1)
-    feature_wide = cb.feature.AmplitudeEntropy(band_width=1.0)
+    feature_narrow = cb.AmplitudeEntropy(band_width=0.1)
+    feature_wide = cb.AmplitudeEntropy(band_width=1.0)
 
     result_narrow = feature_narrow.apply(data)
     result_wide = feature_wide.apply(data)
@@ -122,7 +122,7 @@ def test_amplitude_entropy_different_band_widths() -> None:
 def test_amplitude_entropy_history_updated() -> None:
     """AmplitudeEntropy appends 'AmplitudeEntropy' to history."""
     data = _make_data()
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert result.history[-1] == "AmplitudeEntropy"
@@ -131,7 +131,7 @@ def test_amplitude_entropy_history_updated() -> None:
 def test_amplitude_entropy_metadata_preserved() -> None:
     """AmplitudeEntropy preserves subjectID, groupID, condition; sampling_rate becomes None."""
     data = _make_data(subjectID="s42", groupID="control", condition="task")
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert result.subjectID == "s42"
@@ -144,7 +144,7 @@ def test_amplitude_entropy_metadata_preserved() -> None:
 def test_amplitude_entropy_returns_data_instance() -> None:
     """AmplitudeEntropy.apply() always returns a Data instance."""
     data = _make_data()
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -157,7 +157,7 @@ def test_amplitude_entropy_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     _ = feature.apply(data)
 
     assert data.history == original_history
@@ -172,7 +172,7 @@ def test_amplitude_entropy_empty_row_handling() -> None:
     arr = np.zeros((5, 1))  # Single value per row
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=1.0)
+    feature = cb.AmplitudeEntropy(band_width=1.0)
     result = feature.apply(data)
 
     # Should not raise, should return finite value
@@ -182,13 +182,13 @@ def test_amplitude_entropy_empty_row_handling() -> None:
 def test_amplitude_entropy_negative_band_width() -> None:
     """AmplitudeEntropy raises ValueError for negative band_width."""
     with pytest.raises(ValueError, match="band_width must be positive"):
-        cb.feature.AmplitudeEntropy(band_width=-0.5)
+        cb.AmplitudeEntropy(band_width=-0.5)
 
 
 def test_amplitude_entropy_zero_band_width() -> None:
     """AmplitudeEntropy raises ValueError for zero band_width."""
     with pytest.raises(ValueError, match="band_width must be positive"):
-        cb.feature.AmplitudeEntropy(band_width=0.0)
+        cb.AmplitudeEntropy(band_width=0.0)
 
 
 def test_amplitude_entropy_single_row() -> None:
@@ -197,7 +197,7 @@ def test_amplitude_entropy_single_row() -> None:
     arr = rng.standard_normal((1, 10))
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -211,7 +211,7 @@ def test_amplitude_entropy_single_column() -> None:
     arr = rng.standard_normal((50, 1))
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     result = feature.apply(data)
 
     assert isinstance(result, cb.Data)
@@ -225,7 +225,7 @@ def test_amplitude_entropy_1d_input_raises() -> None:
     arr = rng.standard_normal(50)
     data = cb.Data.from_numpy(arr, dims=["time"])
 
-    feature = cb.feature.AmplitudeEntropy(band_width=0.5)
+    feature = cb.AmplitudeEntropy(band_width=0.5)
     with pytest.raises(ValueError, match="Input data must have at least 2 dimensions"):
         feature.apply(data)
 
@@ -237,7 +237,7 @@ def test_amplitude_entropy_zero_total_counts() -> None:
 
     arr = np.random.default_rng(42).standard_normal((5, 5))
     data = cb.Data.from_numpy(arr, dims=["time", "space"])
-    feature = cb.feature.AmplitudeEntropy(band_width=1.0)
+    feature = cb.AmplitudeEntropy(band_width=1.0)
 
     # Mock np.histogram to return zero counts, triggering the guard
     with patch("numpy.histogram", return_value=(np.array([0, 0]), np.array([0, 1, 2]))):

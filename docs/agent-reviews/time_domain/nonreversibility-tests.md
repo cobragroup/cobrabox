@@ -29,7 +29,7 @@ All tests are correct and complete — no changes needed.
 - `test_nonreversibility_spectral_radius_rescaling` — forces the spectral‑radius rescaling branch.
 - `test_nonreversibility_zero_denominator_returns_zero` — covers the zero‑denominator fallback.
 - `test_nonreversibility_does_not_mutate_input` — verifies input immutability.
-- `test_nonreversibility_public_api` — confirms auto‑discovery registration via `cb.feature.Nonreversibility`.
+- `test_nonreversibility_public_api` — confirms auto‑discovery registration via `cb.Nonreversibility`.
 
 ## Fix
 

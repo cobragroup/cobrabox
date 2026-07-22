@@ -52,7 +52,7 @@ class Spectrogram(BaseFeature[SignalData]):
 
     Example:
         >>> data = cb.load_dataset("dummy_random")[0]
-        >>> sg = cb.feature.Spectrogram().apply(data)
+        >>> sg = cb.Spectrogram().apply(data)
         >>> sg.data.dims
         ('space', 'frequency', 'time')
     """

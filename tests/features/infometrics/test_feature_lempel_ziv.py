@@ -17,7 +17,7 @@ def test_feature_lempel_ziv_output_type_and_history() -> None:
     data = cb.SignalData.from_numpy(
         arr, dims=["time", "space"], sampling_rate=256.0, subjectID="sub-01"
     )
-    out = cb.feature.LempelZiv().apply(data)
+    out = cb.LempelZiv().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -40,7 +40,7 @@ def test_feature_lempel_ziv_known_value() -> None:
 
     arr = signal.reshape(-1, 1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    out = cb.feature.LempelZiv().apply(data)
+    out = cb.LempelZiv().apply(data)
 
     assert float(out.to_numpy()[0]) == pytest.approx(expected)
 
@@ -55,7 +55,7 @@ def test_feature_lempel_ziv_random_more_complex_than_periodic() -> None:
     def _lzc(sig: np.ndarray) -> float:
         arr = sig.reshape(-1, 1)
         data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-        return float(cb.feature.LempelZiv().apply(data).to_numpy()[0])
+        return float(cb.LempelZiv().apply(data).to_numpy()[0])
 
     assert _lzc(random) > _lzc(periodic)
 
@@ -65,7 +65,7 @@ def test_feature_lempel_ziv_values_are_positive() -> None:
     rng = np.random.default_rng(7)
     arr = rng.standard_normal((256, 4))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.LempelZiv().apply(data)
+    out = cb.LempelZiv().apply(data)
 
     assert np.all(out.to_numpy() > 0)
 
@@ -76,9 +76,9 @@ def test_feature_lempel_ziv_via_chord() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=50, step_size=25),
-        pipeline=cb.feature.LempelZiv(),
-        aggregate=cb.feature.MeanAggregate(),
+        split=cb.SlidingWindow(window_size=50, step_size=25),
+        pipeline=cb.LempelZiv(),
+        aggregate=cb.MeanAggregate(),
     )
     out = chord.apply(data)
 
@@ -94,7 +94,7 @@ def test_feature_lempel_ziv_multichannel_independent() -> None:
     ch1 = np.sin(2 * np.pi * np.arange(128) / 10)  # periodic → lower LZC
     arr = np.stack([ch0, ch1], axis=1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    out = cb.feature.LempelZiv().apply(data)
+    out = cb.LempelZiv().apply(data)
 
     assert out.data.shape == (2,)
     # Random channel should be more complex than sinusoidal channel
@@ -112,7 +112,7 @@ def test_feature_lempel_ziv_missing_time_raises() -> None:
     object.__setattr__(raw, "_data", xr_data)
     # xarray raises ValueError when core dim is missing
     with pytest.raises(ValueError, match="not in tuple"):
-        cb.feature.LempelZiv().apply(raw)
+        cb.LempelZiv().apply(raw)
 
 
 def test_feature_lempel_ziv_does_not_mutate_input() -> None:
@@ -126,7 +126,7 @@ def test_feature_lempel_ziv_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.LempelZiv().apply(data)
+    _ = cb.LempelZiv().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape

@@ -66,16 +66,16 @@ class RecurrenceMatrix(BaseFeature[SignalData]):
 
     Example:
         >>> # state-vector mode (default)
-        >>> rec = cb.feature.RecurrenceMatrix().apply(data)
+        >>> rec = cb.RecurrenceMatrix().apply(data)
 
         >>> # window/FC mode — just fc_metric, rest default
-        >>> rec = cb.feature.RecurrenceMatrix('cosine', ['pearson']).apply(data)
+        >>> rec = cb.RecurrenceMatrix('cosine', ['pearson']).apply(data)
 
         >>> # window/FC mode — full control
-        >>> rec = cb.feature.RecurrenceMatrix('cosine', ['pearson', 50, 0.25]).apply(data)
+        >>> rec = cb.RecurrenceMatrix('cosine', ['pearson', 50, 0.25]).apply(data)
 
         >>> # 3-D pre-computed FC time-series
-        >>> rec = cb.feature.RecurrenceMatrix('cosine').apply(fc_data)
+        >>> rec = cb.RecurrenceMatrix('cosine').apply(fc_data)
 
     References:
         Eckmann, J. P., Kamphorst, S. O., & Ruelle, D. (1987). Recurrence plots of dynamical

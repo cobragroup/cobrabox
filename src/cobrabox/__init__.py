@@ -15,7 +15,7 @@ from .base_feature import AggregatorFeature, BaseFeature, Chord, Pipeline, Split
 
 # Every feature is re-exported at the root namespace in both forms: the class
 # `cb.Correlation()` for composition and serialization, and the one-shot function
-# `cb.correlation(d)` for a single call. `cb.<domain>.X` and `cb.feature.X` remain
+# `cb.correlation(d)` for a single call. `cb.<domain>.X` and `cb.X` remain
 # valid aliases. `tests/test_public_api.py` fails if these drift apart.
 from .connectivity import (
     Coherence,

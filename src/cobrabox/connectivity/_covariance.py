@@ -35,7 +35,7 @@ class Covariance(BaseFeature[Data]):
 
     Example:
         >>> data = cb.load_dataset("dummy_random")[0]
-        >>> cov = cb.feature.Covariance().apply(data)
+        >>> cov = cb.Covariance().apply(data)
         >>> cov.data.dims
         ('space_to', 'space_from')
 

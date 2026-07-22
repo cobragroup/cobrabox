@@ -57,7 +57,7 @@ def test_feature_svd_output_u_mode() -> None:
     arr = np.random.default_rng(42).normal(size=(30, 5)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "channel"], sampling_rate=100.0)
 
-    out = cb.feature.SVD(dim="time", n_components=3, center=True, output="U").apply(data)
+    out = cb.SVD(dim="time", n_components=3, center=True, output="U").apply(data)
 
     assert out.data.name == "U"
     assert out.data.dims == ("time", "component")
@@ -80,7 +80,7 @@ def test_feature_svd_no_centering_no_zscore() -> None:
     arr = np.random.default_rng(42).normal(size=(25, 4)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.SVD(
+    out = cb.SVD(
         dim="time",
         n_components=3,
         center=False,

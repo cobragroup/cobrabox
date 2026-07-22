@@ -56,15 +56,15 @@ class SVD(BaseFeature[Data]):
 
     Example:
         # fMRI (time,x,y,z) + mask -> returns V(component,x,y,z)
-        >>> result = cb.feature.SVD(dim="time", n_components=10, mask=brain_mask).apply(data)
+        >>> result = cb.SVD(dim="time", n_components=10, mask=brain_mask).apply(data)
         # EEG (time,channel) -> returns V(component,channel)
-        >>> result = cb.feature.SVD(dim="time", n_components=10).apply(eeg_data)
+        >>> result = cb.SVD(dim="time", n_components=10).apply(eeg_data)
         # EEG time-frequency (time,channel,freq) + zscore -> V(component,channel,freq)
-        >>> result = cb.feature.SVD(dim="time", n_components=10, zscore=True).apply(tfr_data)
+        >>> result = cb.SVD(dim="time", n_components=10, zscore=True).apply(tfr_data)
         # Trial-wise (trial,time,channel) -> V(component,time,channel), U stored in attrs
-        >>> result = cb.feature.SVD(dim="trial", n_components=10).apply(epochs_data)
+        >>> result = cb.SVD(dim="trial", n_components=10).apply(epochs_data)
         # No unstacking -> main output is Vh(component,features)
-        >>> out = cb.feature.SVD(dim="time", n_components=10, return_unstacked_V=False).apply(data)
+        >>> out = cb.SVD(dim="time", n_components=10, return_unstacked_V=False).apply(data)
         >>> svd = out.data.attrs["svd"]
         >>>         U = svd["U"]  # sample scores / timecourses (if output="V")
         >>> S = svd["S"]  # singular values

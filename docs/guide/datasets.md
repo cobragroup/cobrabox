@@ -255,9 +255,9 @@ ds.describe()
 ds = cb.load_dataset("dummy_chain")
 
 pipeline = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10)
+    | cb.LineLength()
+    | cb.MeanAggregate()
 )
 
 results = cb.Dataset([pipeline.apply(item) for item in ds])

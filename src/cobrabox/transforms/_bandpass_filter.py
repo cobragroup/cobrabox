@@ -45,8 +45,8 @@ class BandpassFilter(BaseFeature[SignalData]):
             the input data with an additional ``band`` dimension.
 
     Example:
-        >>> result = cb.feature.BandpassFilter().apply(data)
-        >>> result = cb.feature.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+        >>> result = cb.BandpassFilter().apply(data)
+        >>> result = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

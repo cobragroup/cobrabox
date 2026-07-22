@@ -42,7 +42,7 @@ class LempelZiv(BaseFeature[SignalData]):
         IEEE Transactions on Information Theory, 22(1), 75-81.
 
     Example:
-        >>> result = cb.feature.LempelZiv().apply(data)
+        >>> result = cb.LempelZiv().apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

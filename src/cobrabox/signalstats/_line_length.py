@@ -26,7 +26,7 @@ class LineLength(BaseFeature[SignalData]):
         are in the same units as the input signal.
 
     Example:
-        >>> result = cb.feature.LineLength().apply(data)
+        >>> result = cb.LineLength().apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

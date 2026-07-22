@@ -24,7 +24,7 @@ def test_higuchi_output_type_dims_history(rng: np.random.Generator) -> None:
         groupID="g1",
         condition="rest",
     )
-    out = cb.feature.FractalDimension().apply(data)
+    out = cb.FractalDimension().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -40,7 +40,7 @@ def test_higuchi_linear_signal_fd_equals_one() -> None:
     """A perfectly linear signal has FD = 1 (analytically exact)."""
     arr = np.arange(1, 257, dtype=float).reshape(-1, 1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.FractalDimension().apply(data)
+    out = cb.FractalDimension().apply(data)
 
     assert float(out.to_numpy()[0]) == pytest.approx(1.0, abs=1e-10)
 
@@ -53,7 +53,7 @@ def test_higuchi_known_value_matches_static_method() -> None:
 
     arr = signal.reshape(-1, 1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0)
-    out = cb.feature.FractalDimension().apply(data)
+    out = cb.FractalDimension().apply(data)
 
     assert float(out.to_numpy()[0]) == pytest.approx(expected)
 
@@ -68,7 +68,7 @@ def test_higuchi_random_more_complex_than_sine() -> None:
     def _hfd(sig: np.ndarray) -> float:
         arr = sig.reshape(-1, 1)
         data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-        return float(cb.feature.FractalDimension().apply(data).to_numpy()[0])
+        return float(cb.FractalDimension().apply(data).to_numpy()[0])
 
     assert _hfd(noise) > _hfd(sine)
 
@@ -77,7 +77,7 @@ def test_higuchi_fd_in_expected_range(rng: np.random.Generator) -> None:
     """HFD for random EEG-like data should be clearly above 1 and finite."""
     arr = rng.standard_normal((512, 4))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    values = cb.feature.FractalDimension().apply(data).to_numpy()
+    values = cb.FractalDimension().apply(data).to_numpy()
 
     # Random noise should be clearly more complex than a line (FD > 1)
     assert np.all(values > 1.5)
@@ -92,7 +92,7 @@ def test_higuchi_multichannel_computed_independently() -> None:
     ch1 = np.random.default_rng(7).standard_normal(256)  # noise
     arr = np.stack([ch0, ch1], axis=1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.FractalDimension().apply(data)
+    out = cb.FractalDimension().apply(data)
 
     assert out.data.shape == (2,)
     # Noise channel must be more complex than the sine channel
@@ -105,8 +105,8 @@ def test_higuchi_custom_k_max() -> None:
     arr = rng.standard_normal((512, 1))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
 
-    out_k5 = float(cb.feature.FractalDimension(k_max=5).apply(data).to_numpy()[0])
-    out_k20 = float(cb.feature.FractalDimension(k_max=20).apply(data).to_numpy()[0])
+    out_k5 = float(cb.FractalDimension(k_max=5).apply(data).to_numpy()[0])
+    out_k20 = float(cb.FractalDimension(k_max=20).apply(data).to_numpy()[0])
 
     # Both should be reasonable FDs: finite, positive, clearly above 1
     assert np.isfinite(out_k5)
@@ -120,7 +120,7 @@ def test_higuchi_n_steps_zero_path() -> None:
     # At k=10, m=10: n_steps = (11-10)//10 = 0 — exercises the zero-step branch
     arr = np.arange(11, dtype=float).reshape(-1, 1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.FractalDimension(k_max=10).apply(data)
+    out = cb.FractalDimension(k_max=10).apply(data)
 
     assert isinstance(out, cb.Data)
     assert np.isfinite(float(out.to_numpy()[0]))
@@ -132,7 +132,7 @@ def test_higuchi_does_not_mutate_input(rng: np.random.Generator) -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
     original_history = list(data.history)
     original_shape = data.data.shape
-    _ = cb.feature.FractalDimension().apply(data)
+    _ = cb.FractalDimension().apply(data)
     assert data.history == original_history
     assert data.data.shape == original_shape
 
@@ -140,7 +140,7 @@ def test_higuchi_does_not_mutate_input(rng: np.random.Generator) -> None:
 def test_higuchi_raises_for_invalid_k_max() -> None:
     """k_max < 2 must raise ValueError at construction time."""
     with pytest.raises(ValueError, match="k_max must be >= 2"):
-        cb.feature.FractalDimension(k_max=1)
+        cb.FractalDimension(k_max=1)
 
 
 def test_higuchi_raises_when_signal_too_short() -> None:
@@ -148,7 +148,7 @@ def test_higuchi_raises_when_signal_too_short() -> None:
     arr = np.ones((10, 1))  # length 10, k_max defaults to 10 → N <= k_max
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
     with pytest.raises(ValueError, match="Signal length"):
-        cb.feature.FractalDimension().apply(data)
+        cb.FractalDimension().apply(data)
 
 
 def test_higuchi_via_chord() -> None:
@@ -158,9 +158,9 @@ def test_higuchi_via_chord() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0)
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=100, step_size=50),
-        pipeline=cb.feature.FractalDimension(),
-        aggregate=cb.feature.MeanAggregate(),
+        split=cb.SlidingWindow(window_size=100, step_size=50),
+        pipeline=cb.FractalDimension(),
+        aggregate=cb.MeanAggregate(),
     )
     out = chord.apply(data)
 
@@ -185,7 +185,7 @@ def test_katz_output_type_dims_history(rng: np.random.Generator) -> None:
         groupID="g2",
         condition="task",
     )
-    out = cb.feature.FractalDimension(method="katz").apply(data)
+    out = cb.FractalDimension(method="katz").apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -201,7 +201,7 @@ def test_katz_linear_signal_fd_equals_one() -> None:
     """A linear signal has KFD = 1 (analytically exact)."""
     arr = np.arange(1, 257, dtype=float).reshape(-1, 1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.FractalDimension(method="katz").apply(data)
+    out = cb.FractalDimension(method="katz").apply(data)
 
     assert float(out.to_numpy()[0]) == pytest.approx(1.0, abs=1e-10)
 
@@ -214,7 +214,7 @@ def test_katz_known_value_matches_static_method() -> None:
 
     arr = signal.reshape(-1, 1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0)
-    out = cb.feature.FractalDimension(method="katz").apply(data)
+    out = cb.FractalDimension(method="katz").apply(data)
 
     assert float(out.to_numpy()[0]) == pytest.approx(expected)
 
@@ -229,7 +229,7 @@ def test_katz_random_more_complex_than_sine() -> None:
     def _kfd(sig: np.ndarray) -> float:
         arr = sig.reshape(-1, 1)
         data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-        return float(cb.feature.FractalDimension(method="katz").apply(data).to_numpy()[0])
+        return float(cb.FractalDimension(method="katz").apply(data).to_numpy()[0])
 
     assert _kfd(noise) > _kfd(sine)
 
@@ -241,9 +241,9 @@ def test_katz_via_chord() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0)
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=100, step_size=50),
-        pipeline=cb.feature.FractalDimension(method="katz"),
-        aggregate=cb.feature.MeanAggregate(),
+        split=cb.SlidingWindow(window_size=100, step_size=50),
+        pipeline=cb.FractalDimension(method="katz"),
+        aggregate=cb.MeanAggregate(),
     )
     out = chord.apply(data)
 
@@ -258,6 +258,6 @@ def test_katz_does_not_mutate_input(rng: np.random.Generator) -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
     original_history = list(data.history)
     original_shape = data.data.shape
-    _ = cb.feature.FractalDimension(method="katz").apply(data)
+    _ = cb.FractalDimension(method="katz").apply(data)
     assert data.history == original_history
     assert data.data.shape == original_shape

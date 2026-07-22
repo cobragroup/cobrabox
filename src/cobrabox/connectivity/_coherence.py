@@ -32,7 +32,7 @@ class Coherence(BaseFeature[SignalData]):
 
     Example:
         >>> data = cb.load_dataset("dummy_random")[0]
-        >>> coh = cb.feature.Coherence().apply(data)
+        >>> coh = cb.Coherence().apply(data)
         >>> coh.data.dims
         ('space_to', 'space_from')
 

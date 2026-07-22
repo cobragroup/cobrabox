@@ -86,7 +86,7 @@ class EpileptogenicityIndex(BaseFeature[SignalData]):
         ValueError: If any channel's signal is shorter than one ER window.
 
     Example:
-        >>> ei = cb.feature.EpileptogenicityIndex().apply(seizure_data)
+        >>> ei = cb.EpileptogenicityIndex().apply(seizure_data)
         >>> ei_vals = ei.data  # (space,) values in [0, 1]
     """
 

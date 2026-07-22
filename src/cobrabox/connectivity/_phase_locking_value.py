@@ -46,9 +46,9 @@ class PhaseLockingValue(BaseFeature[SignalData]):
 
     Example:
         >>> # Full matrix
-        >>> plv = cb.feature.PhaseLockingValue().apply(data)
+        >>> plv = cb.PhaseLockingValue().apply(data)
         >>> # Single pair
-        >>> plv = cb.feature.PhaseLockingValue(coords=["F3", "F4"]).apply(data)
+        >>> plv = cb.PhaseLockingValue(coords=["F3", "F4"]).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

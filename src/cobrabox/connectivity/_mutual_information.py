@@ -61,7 +61,7 @@ class MutualInformation(BaseFeature[SignalData]):
         ...     dims=["space", "time"],
         ...     sampling_rate=100.0
         ... )
-        >>> result = cb.feature.MutualInformation().apply(data)
+        >>> result = cb.MutualInformation().apply(data)
         >>> result.data.shape
         (10, 10)
 

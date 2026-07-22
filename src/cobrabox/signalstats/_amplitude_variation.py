@@ -26,7 +26,7 @@ class AmplitudeVariation(BaseFeature[SignalData]):
         are in the same units as the input signal.
 
     Example:
-        >>> result = cb.feature.AmplitudeVariation().apply(data)
+        >>> result = cb.AmplitudeVariation().apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

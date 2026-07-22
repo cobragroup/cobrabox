@@ -1,4 +1,4 @@
-"""Tests for cb.feature.SampleEntropy."""
+"""Tests for cb.SampleEntropy."""
 
 from __future__ import annotations
 

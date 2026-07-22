@@ -16,7 +16,7 @@ data = cb.from_numpy(
 )
 
 # Creates a NEW Data object; data is unchanged
-result = cb.feature.LineLength().apply(data)
+result = cb.LineLength().apply(data)
 
 assert data.history == []
 assert result.history == ["LineLength"]
@@ -59,14 +59,14 @@ Every operation appends its class name to `history`:
 data = cb.from_numpy(arr, dims=["time", "space"])
 print(data.history)  # []
 
-result = cb.feature.LineLength().apply(data)
+result = cb.LineLength().apply(data)
 print(result.history)  # ['LineLength']
 
 # Chord: SlidingWindow + per-window pipeline + aggregation
 result2 = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5)
+    | cb.LineLength()
+    | cb.MeanAggregate()
 ).apply(data)
 print(result2.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
@@ -84,7 +84,7 @@ AggregatorFeature  (Data, stream) → Data  fold stream back to Data
 ### Sequential pipeline
 
 ```python
-pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+pipeline = cb.Min(dim="time") | cb.Max(dim="time")
 result = pipeline.apply(data)
 ```
 
@@ -92,9 +92,9 @@ result = pipeline.apply(data)
 
 ```python
 chord = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10)
+    | cb.LineLength()
+    | cb.MeanAggregate()
 )
 result = chord.apply(data)
 ```

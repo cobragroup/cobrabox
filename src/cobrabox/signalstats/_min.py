@@ -22,7 +22,7 @@ class Min(BaseFeature[Data]):
         in the same units as the input signal.
 
     Example:
-        >>> result = cb.feature.Min(dim="time").apply(data)
+        >>> result = cb.Min(dim="time").apply(data)
     """
 
     _tags: ClassVar[list[str]] = ["reduction", "io:scalar"]

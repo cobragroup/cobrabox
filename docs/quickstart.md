@@ -27,7 +27,7 @@ data = cb.from_numpy(
 Call `.apply(data)` on any feature class:
 
 ```python
-feat = cb.feature.LineLength().apply(data)
+feat = cb.LineLength().apply(data)
 
 print(f"Shape: {feat.data.shape}")
 print(f"History: {feat.history}")  # ['LineLength']
@@ -38,7 +38,7 @@ print(f"History: {feat.history}")  # ['LineLength']
 Use `|` to build a sequential `Pipeline`:
 
 ```python
-pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+pipeline = cb.Min(dim="time") | cb.Max(dim="time")
 result = pipeline.apply(data)
 print(result.history)  # ['Min', 'Max']
 ```
@@ -49,9 +49,9 @@ Pipe a `SplitterFeature` into a pipeline and close it with an `AggregatorFeature
 
 ```python
 chord = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10)
+    | cb.LineLength()
+    | cb.MeanAggregate()
 )
 result = chord.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
@@ -70,9 +70,9 @@ ds.filter(groupID="A")     # subset by metadata
 ds.groupby("condition")    # dict[str, Dataset]
 
 pipeline = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10)
+    | cb.LineLength()
+    | cb.MeanAggregate()
 )
 
 results = cb.Dataset([pipeline.apply(d) for d in ds])

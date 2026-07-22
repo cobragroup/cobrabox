@@ -68,9 +68,9 @@ class Cordance(BaseFeature[SignalData]):
             where some channels may be silent. Defaults to ``False``.
 
     Example:
-        >>> cord = cb.feature.Cordance().apply(data)
-        >>> cord_theta = cb.feature.Cordance(bands={"theta": True}).apply(data)
-        >>> disc = cb.feature.Cordance(output="discordance").apply(data)
+        >>> cord = cb.Cordance().apply(data)
+        >>> cord_theta = cb.Cordance(bands={"theta": True}).apply(data)
+        >>> disc = cb.Cordance(output="discordance").apply(data)
 
     Returns:
         xarray DataArray with dims ``(band_index, space)``. The ``band_index``

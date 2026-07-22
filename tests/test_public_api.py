@@ -187,3 +187,54 @@ def test_dataset_is_not_a_module() -> None:
     """
     assert not hasattr(cb, "dataset")
     assert callable(cb.load_dataset)
+
+
+# --- prose examples (GH #116) ----------------------------------------------
+#
+# The docstring guard above only reads `src/`. #107's renames also stranded nine
+# pre-restructure class names in the user guide — `cb.Bandpower`, `cb.Hilbert`,
+# `cb.PhaseLockingValueMatrix` — which nothing caught, because prose is not
+# executed either. Check the same way.
+
+REPO_ROOT = SRC_ROOT.parents[1]
+
+# Excluded on purpose:
+#   docs/agent-reviews/  archived reports, accurate for the code they reviewed
+#   docs/contributing/   teaches writing your own feature, so its `cb.Variance`
+#                        and `cb.SpectralPower` are hypothetical by design
+PROSE_SOURCES = [
+    *sorted((REPO_ROOT / "docs" / "guide").glob("*.md")),
+    *sorted((REPO_ROOT / "examples").glob("*.py")),
+    REPO_ROOT / "README.md",
+]
+
+
+def _prose_references() -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for path in PROSE_SOURCES:
+        if not path.exists():
+            continue
+        rel = str(path.relative_to(REPO_ROOT))
+        found.extend(
+            (rel, dotted.lstrip("."))
+            for dotted in set(_CB_REFERENCE.findall(path.read_text(encoding="utf-8")))
+        )
+    return sorted(set(found))
+
+
+PROSE_REFERENCES = _prose_references()
+
+
+def test_prose_actually_references_the_api() -> None:
+    assert len(PROSE_REFERENCES) > 40
+
+
+@pytest.mark.parametrize(("source_file", "dotted"), PROSE_REFERENCES)
+def test_prose_reference_resolves(source_file: str, dotted: str) -> None:
+    target: object = cb
+    for part in dotted.split("."):
+        assert hasattr(target, part), (
+            f"{source_file} uses `cb.{dotted}`, which does not resolve. Guides and "
+            f"examples are not executed, so a rename strands them silently (GH #116)."
+        )
+        target = getattr(target, part)

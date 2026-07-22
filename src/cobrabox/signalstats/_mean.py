@@ -25,7 +25,7 @@ class Mean(BaseFeature[Data]):
         ValueError: If the specified dimension is not found in the data.
 
     Example:
-        >>> result = cb.feature.Mean(dim="time").apply(data)
+        >>> result = cb.Mean(dim="time").apply(data)
     """
 
     _tags: ClassVar[list[str]] = ["reduction", "io:scalar"]

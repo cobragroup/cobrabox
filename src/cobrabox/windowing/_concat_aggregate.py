@@ -26,9 +26,9 @@ class ConcatAggregate(AggregatorFeature):
 
     Example:
         >>> chord = (
-        ...     cb.feature.SlidingWindow(window_size=100, step_size=50)
-        ...     | cb.feature.LineLength()
-        ...     | cb.feature.ConcatAggregate()
+        ...     cb.SlidingWindow(window_size=100, step_size=50)
+        ...     | cb.LineLength()
+        ...     | cb.ConcatAggregate()
         ... )
         >>> result = chord.apply(data)
         >>> result.data.dims  # ('window', ...)

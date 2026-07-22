@@ -28,7 +28,7 @@ def test_spectrogram_output_dims() -> None:
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((512, 3)))
 
-    out = cb.feature.Spectrogram().apply(data)
+    out = cb.Spectrogram().apply(data)
 
     assert isinstance(out, cb.Data)
     assert set(out.data.dims) == {"space", "frequency", "time"}
@@ -43,7 +43,7 @@ def test_spectrogram_space_dim_preserved() -> None:
     )
     data = cb.SignalData.from_xarray(arr_xr)
 
-    out = cb.feature.Spectrogram().apply(data)
+    out = cb.Spectrogram().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz", "Oz"])
 
@@ -54,7 +54,7 @@ def test_spectrogram_frequency_coords_are_nonneg_and_bounded() -> None:
     fs = 256.0
     data = _make_data(rng.standard_normal((512, 2)), sampling_rate=fs)
 
-    out = cb.feature.Spectrogram().apply(data)
+    out = cb.Spectrogram().apply(data)
 
     freqs = out.data.coords["frequency"].values
     assert np.all(freqs >= 0.0)
@@ -66,7 +66,7 @@ def test_spectrogram_time_coords_are_positive() -> None:
     rng = np.random.default_rng(3)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out = cb.feature.Spectrogram().apply(data)
+    out = cb.Spectrogram().apply(data)
 
     t = out.data.coords["time"].values
     assert np.all(t > 0)
@@ -81,7 +81,7 @@ def test_spectrogram_output_shape_matches_scipy() -> None:
     arr = rng.standard_normal((n_time, n_space))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = cb.feature.Spectrogram(nperseg=seg).apply(data)
+    out = cb.Spectrogram(nperseg=seg).apply(data)
 
     f, t, _ = _sp(arr[:, 0], fs=fs, nperseg=seg, window="hann")
     assert out.data.sizes["frequency"] == len(f)
@@ -103,7 +103,7 @@ def test_spectrogram_log_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((512, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = cb.feature.Spectrogram(nperseg=seg, scaling="log").apply(data)
+    out = cb.Spectrogram(nperseg=seg, scaling="log").apply(data)
 
     for ch in range(2):
         _, _, Sxx = _sp(arr[:, ch], fs=fs, nperseg=seg, window="hann", scaling="density")
@@ -120,7 +120,7 @@ def test_spectrogram_density_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((256, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = cb.feature.Spectrogram(nperseg=seg, scaling="density").apply(data)
+    out = cb.Spectrogram(nperseg=seg, scaling="density").apply(data)
 
     for ch in range(2):
         _, _, Sxx = _sp(arr[:, ch], fs=fs, nperseg=seg, window="hann", scaling="density")
@@ -136,7 +136,7 @@ def test_spectrogram_spectrum_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((256, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = cb.feature.Spectrogram(nperseg=seg, scaling="spectrum").apply(data)
+    out = cb.Spectrogram(nperseg=seg, scaling="spectrum").apply(data)
 
     for ch in range(2):
         _, _, Sxx = _sp(arr[:, ch], fs=fs, nperseg=seg, window="hann", scaling="spectrum")
@@ -152,7 +152,7 @@ def test_spectrogram_magnitude_scaling_matches_scipy() -> None:
     arr = rng.standard_normal((256, 2))
     data = _make_data(arr, sampling_rate=fs)
 
-    out = cb.feature.Spectrogram(nperseg=seg, scaling="magnitude").apply(data)
+    out = cb.Spectrogram(nperseg=seg, scaling="magnitude").apply(data)
 
     for ch in range(2):
         _, _, Zxx = _stft(arr[:, ch], fs=fs, nperseg=seg, window="hann")
@@ -165,7 +165,7 @@ def test_spectrogram_log_no_neg_inf() -> None:
     arr[0, 0] = 1e-20
     data = _make_data(arr)
 
-    out = cb.feature.Spectrogram(scaling="log").apply(data)
+    out = cb.Spectrogram(scaling="log").apply(data)
 
     assert np.all(np.isfinite(out.data.values))
 
@@ -175,7 +175,7 @@ def test_spectrogram_density_values_nonneg() -> None:
     rng = np.random.default_rng(9)
     data = _make_data(rng.standard_normal((512, 4)))
 
-    out = cb.feature.Spectrogram(scaling="density").apply(data)
+    out = cb.Spectrogram(scaling="density").apply(data)
 
     assert np.all(out.data.values >= 0.0)
 
@@ -189,7 +189,7 @@ def test_spectrogram_pure_tone_has_peak_at_correct_freq() -> None:
     arr = sig[:, np.newaxis]  # (1024, 1)
     data = _make_data(arr, sampling_rate=fs)
 
-    out = cb.feature.Spectrogram(nperseg=256, scaling="density").apply(data)
+    out = cb.Spectrogram(nperseg=256, scaling="density").apply(data)
     psd = out.data.isel(space=0).values  # (n_freq, n_t)
     mean_psd = psd.mean(axis=-1)
     peak_freq = out.data.coords["frequency"].values[np.argmax(mean_psd)]
@@ -215,7 +215,7 @@ def test_spectrogram_preserves_metadata() -> None:
         extra={"session": 2},
     )
 
-    out = cb.feature.Spectrogram().apply(data)
+    out = cb.Spectrogram().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "ctrl"
@@ -246,7 +246,7 @@ def test_spectrogram_preserves_extra_dim() -> None:
     )
     data = cb.SignalData.from_xarray(arr_xr)
 
-    out = cb.feature.Spectrogram(nperseg=32).apply(data)
+    out = cb.Spectrogram(nperseg=32).apply(data)
 
     assert "window_index" in out.data.dims
     assert out.data.sizes["window_index"] == n_windows
@@ -265,8 +265,8 @@ def test_spectrogram_custom_nperseg_changes_freq_resolution() -> None:
     rng = np.random.default_rng(12)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out32 = cb.feature.Spectrogram(nperseg=32).apply(data)
-    out128 = cb.feature.Spectrogram(nperseg=128).apply(data)
+    out32 = cb.Spectrogram(nperseg=32).apply(data)
+    out128 = cb.Spectrogram(nperseg=128).apply(data)
 
     assert out32.data.sizes["frequency"] < out128.data.sizes["frequency"]
 
@@ -276,8 +276,8 @@ def test_spectrogram_noverlap_changes_time_resolution() -> None:
     rng = np.random.default_rng(13)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out_lo = cb.feature.Spectrogram(nperseg=64, noverlap=0).apply(data)
-    out_hi = cb.feature.Spectrogram(nperseg=64, noverlap=60).apply(data)
+    out_lo = cb.Spectrogram(nperseg=64, noverlap=0).apply(data)
+    out_hi = cb.Spectrogram(nperseg=64, noverlap=60).apply(data)
 
     assert out_lo.data.sizes["time"] < out_hi.data.sizes["time"]
 
@@ -287,8 +287,8 @@ def test_spectrogram_different_windows_produce_different_results() -> None:
     rng = np.random.default_rng(14)
     data = _make_data(rng.standard_normal((512, 2)))
 
-    out_hann = cb.feature.Spectrogram(window="hann").apply(data)
-    out_hamming = cb.feature.Spectrogram(window="hamming").apply(data)
+    out_hann = cb.Spectrogram(window="hann").apply(data)
+    out_hamming = cb.Spectrogram(window="hamming").apply(data)
 
     assert not np.allclose(out_hann.data.values, out_hamming.data.values)
 
@@ -303,7 +303,7 @@ def test_spectrogram_raises_on_invalid_scaling() -> None:
     data = _make_data(np.ones((64, 2)))
 
     with pytest.raises(ValueError, match="scaling"):
-        cb.feature.Spectrogram(scaling="invalid").apply(data)
+        cb.Spectrogram(scaling="invalid").apply(data)
 
 
 def test_spectrogram_raises_when_nperseg_exceeds_n_time() -> None:
@@ -311,7 +311,7 @@ def test_spectrogram_raises_when_nperseg_exceeds_n_time() -> None:
     data = _make_data(np.ones((32, 2)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        cb.feature.Spectrogram(nperseg=64).apply(data)
+        cb.Spectrogram(nperseg=64).apply(data)
 
 
 def test_spectrogram_raises_when_nperseg_is_less_than_two() -> None:
@@ -319,7 +319,7 @@ def test_spectrogram_raises_when_nperseg_is_less_than_two() -> None:
     data = _make_data(np.ones((64, 2)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        cb.feature.Spectrogram(nperseg=1).apply(data)
+        cb.Spectrogram(nperseg=1).apply(data)
 
 
 def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
@@ -327,7 +327,7 @@ def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
     data = _make_data(np.ones((128, 2)))
 
     with pytest.raises(ValueError, match="noverlap"):
-        cb.feature.Spectrogram(nperseg=32, noverlap=32).apply(data)
+        cb.Spectrogram(nperseg=32, noverlap=32).apply(data)
 
 
 # ---------------------------------------------------------------------------
@@ -336,5 +336,5 @@ def test_spectrogram_raises_when_noverlap_gte_nperseg() -> None:
 
 
 def test_spectrogram_accessible_via_feature_module() -> None:
-    """Spectrogram is accessible as cb.feature.Spectrogram."""
-    assert callable(cb.feature.Spectrogram)
+    """Spectrogram is accessible as cb.Spectrogram."""
+    assert callable(cb.Spectrogram)

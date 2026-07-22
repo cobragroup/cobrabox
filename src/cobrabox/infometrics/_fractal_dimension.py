@@ -102,9 +102,9 @@ class FractalDimension(BaseFeature[SignalData]):
         Computers in Biology and Medicine, 18(3), 145-156.
 
     Example:
-        >>> result = cb.feature.FractalDimension().apply(data)  # Higuchi, k_max=10
-        >>> result = cb.feature.FractalDimension(method="higuchi", k_max=20).apply(data)
-        >>> result = cb.feature.FractalDimension(method="katz").apply(data)
+        >>> result = cb.FractalDimension().apply(data)  # Higuchi, k_max=10
+        >>> result = cb.FractalDimension(method="higuchi", k_max=20).apply(data)
+        >>> result = cb.FractalDimension(method="katz").apply(data)
     """
 
     _tags: ClassVar[list[str]] = [

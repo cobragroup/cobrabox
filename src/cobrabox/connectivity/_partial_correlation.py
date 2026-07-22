@@ -64,9 +64,9 @@ class PartialCorrelation(BaseFeature[SignalData]):
 
     Example:
         >>> # Full matrix
-        >>> pc = cb.feature.PartialCorrelation().apply(data)
+        >>> pc = cb.PartialCorrelation().apply(data)
         >>> # Two-channel subset, control on an extra channel
-        >>> pc = cb.feature.PartialCorrelation(
+        >>> pc = cb.PartialCorrelation(
         ...     coords=["F3", "F4"], control_vars=["Cz"]
         ... ).apply(data)
     """

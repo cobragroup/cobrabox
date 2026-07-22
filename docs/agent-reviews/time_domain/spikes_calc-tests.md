@@ -16,7 +16,7 @@ Coverage: 0% (no test file exists)
 ## Proposed test file
 
 ```python
-"""Tests for cb.feature.SpikeCount."""
+"""Tests for cb.SpikeCount."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def _make_data_with_spikes(
 def test_spike_count_basic() -> None:
     """SpikeCount returns a scalar Data object with no dimensions."""
     data = _make_data()
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert isinstance(result, cb.Data)
     assert result.data.dims == ()
     assert result.data.shape == ()
@@ -87,7 +87,7 @@ def test_spike_count_basic() -> None:
 def test_spike_count_detects_outliers() -> None:
     """SpikeCount correctly detects outliers using IQR method."""
     data = _make_data_with_spikes(n_spikes=5)
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     # With 5 inserted spikes, we expect at least 5 detected
     assert result.to_numpy() >= 5
 
@@ -97,7 +97,7 @@ def test_spike_count_no_spikes() -> None:
     # Create data with very small variance, no outliers
     arr = np.ones((10, 10)) * 5.0
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert result.to_numpy() == 0.0
 
 
@@ -106,13 +106,13 @@ def test_spike_count_empty_data_raises() -> None:
     arr = np.array([])
     data = cb.Data.from_numpy(arr, dims=[], sampling_rate=100.0)
     with pytest.raises(ValueError, match="empty"):
-        cb.feature.SpikeCount().apply(data)
+        cb.SpikeCount().apply(data)
 
 
 def test_spike_count_history_updated() -> None:
     """SpikeCount appends 'SpikeCount' to history."""
     data = _make_data()
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert result.history[-1] == "SpikeCount"
 
 
@@ -121,7 +121,7 @@ def test_spike_count_metadata_preserved() -> None:
     data = _make_data(
         sampling_rate=250.0, subjectID="s42", groupID="control", condition="task"
     )
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"
@@ -130,14 +130,14 @@ def test_spike_count_metadata_preserved() -> None:
 def test_spike_count_sampling_rate_none() -> None:
     """SpikeCount sets sampling_rate to None (output_type = Data)."""
     data = _make_data(sampling_rate=250.0)
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert result.sampling_rate is None
 
 
 def test_spike_count_returns_data_instance() -> None:
     """SpikeCount.apply() always returns a Data instance."""
     data = _make_data()
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert isinstance(result, cb.Data)
 
 
@@ -148,7 +148,7 @@ def test_spike_count_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.SpikeCount().apply(data)
+    _ = cb.SpikeCount().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -162,7 +162,7 @@ def test_spike_count_1d_data() -> None:
     # Add some spikes
     arr[[10, 20, 30]] = [10.0, -10.0, 10.0]
     data = cb.Data.from_numpy(arr, dims=["time"], sampling_rate=100.0)
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert result.to_numpy() >= 3
 
 
@@ -171,7 +171,7 @@ def test_spike_count_3d_data() -> None:
     rng = np.random.default_rng(42)
     arr = rng.standard_normal((10, 10, 10))
     data = cb.Data.from_numpy(arr, dims=["x", "y", "z"], sampling_rate=100.0)
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     assert isinstance(result, cb.Data)
     assert result.data.shape == ()
 
@@ -187,7 +187,7 @@ def test_spike_count_iqr_calculation() -> None:
         np.array([-100.0, 200.0]),  # Two clear outliers outside bounds
     ])
     data = cb.Data.from_numpy(arr, dims=["time"], sampling_rate=100.0)
-    result = cb.feature.SpikeCount().apply(data)
+    result = cb.SpikeCount().apply(data)
     # Should detect exactly 2 spikes
     assert result.to_numpy() == 2.0
 ```

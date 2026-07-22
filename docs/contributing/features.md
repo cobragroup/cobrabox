@@ -61,7 +61,7 @@ class Variance(BaseFeature[Data]):
         dim: Dimension to reduce over.
 
     Example:
-        >>> result = cb.feature.Variance(dim="time").apply(data)
+        >>> result = cb.Variance(dim="time").apply(data)
     """
 
     dim: str
@@ -103,7 +103,7 @@ class SpectralPower(BaseFeature[SignalData]):
         fmax: Upper frequency bound in Hz.
 
     Example:
-        >>> result = cb.feature.SpectralPower(fmin=8, fmax=12).apply(data)
+        >>> result = cb.SpectralPower(fmin=8, fmax=12).apply(data)
     """
 
     fmin: float
@@ -198,7 +198,7 @@ def test_variance_reduces_time_dimension() -> None:
     arr = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Variance(dim="time").apply(data)
+    out = cb.Variance(dim="time").apply(data)
 
     assert isinstance(out, cb.Data)
     assert "time" not in out.data.dims
@@ -210,7 +210,7 @@ def test_variance_raises_for_unknown_dimension() -> None:
     """Test error handling with SignalData."""
     data = cb.SignalData.from_numpy(np.ones((5, 3)), dims=["time", "space"])
     with pytest.raises(ValueError, match="dim 'band_index' not found"):
-        cb.feature.Variance(dim="band_index").apply(data)
+        cb.Variance(dim="band_index").apply(data)
 ```
 
 **Cover at minimum:**

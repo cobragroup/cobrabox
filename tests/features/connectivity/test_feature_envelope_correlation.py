@@ -39,7 +39,7 @@ def _make_data(
 def test_envelope_correlation_output_dims_and_shape() -> None:
     """EnvelopeCorrelation returns (space, space_from) Data."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space_to", "space_from")
@@ -56,7 +56,7 @@ def test_envelope_correlation_space_coords_preserved() -> None:
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(512) / 256.0},
     )
     data = cb.SignalData.from_xarray(arr_xr)
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_from"].values, ["Fz", "Cz", "Pz"])
@@ -70,7 +70,7 @@ def test_envelope_correlation_space_coords_preserved() -> None:
 def test_envelope_correlation_matrix_is_symmetric() -> None:
     """AEC matrix must be symmetric: C[i, j] == C[j, i]."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     mat = out.data.values
     np.testing.assert_allclose(mat, mat.T, atol=1e-12)
@@ -79,7 +79,7 @@ def test_envelope_correlation_matrix_is_symmetric() -> None:
 def test_envelope_correlation_diagonal_is_finite() -> None:
     """Diagonal entries (self-correlation) must be finite values."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     mat = out.data.values
     assert np.all(np.isfinite(np.diag(mat)))
@@ -88,7 +88,7 @@ def test_envelope_correlation_diagonal_is_finite() -> None:
 def test_envelope_correlation_absolute_true_gives_nonnegative() -> None:
     """absolute=True must produce non-negative off-diagonal values."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation(absolute=True).apply(data)
+    out = cb.EnvelopeCorrelation(absolute=True).apply(data)
 
     mat = out.data.values
     np.testing.assert_array_less(-1e-12, mat)
@@ -97,7 +97,7 @@ def test_envelope_correlation_absolute_true_gives_nonnegative() -> None:
 def test_envelope_correlation_values_in_valid_range() -> None:
     """All correlation values lie in [-1, 1]."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     mat = out.data.values
     assert np.all(mat >= -1.0 - 1e-10)
@@ -112,7 +112,7 @@ def test_envelope_correlation_values_in_valid_range() -> None:
 def test_envelope_correlation_orthogonalize_false_same_shape() -> None:
     """orthogonalize=False produces the same output shape."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
+    out = cb.EnvelopeCorrelation(orthogonalize=False).apply(data)
 
     assert out.data.shape == (4, 4)
     assert out.data.dims == ("space_to", "space_from")
@@ -121,8 +121,8 @@ def test_envelope_correlation_orthogonalize_false_same_shape() -> None:
 def test_envelope_correlation_orthogonalize_changes_values() -> None:
     """orthogonalize='pairwise' and False produce different correlation values."""
     data = _make_data()
-    out_orth = cb.feature.EnvelopeCorrelation(orthogonalize="pairwise").apply(data)
-    out_none = cb.feature.EnvelopeCorrelation(orthogonalize=False).apply(data)
+    out_orth = cb.EnvelopeCorrelation(orthogonalize="pairwise").apply(data)
+    out_none = cb.EnvelopeCorrelation(orthogonalize=False).apply(data)
 
     assert not np.allclose(out_orth.data.values, out_none.data.values)
 
@@ -135,7 +135,7 @@ def test_envelope_correlation_orthogonalize_changes_values() -> None:
 def test_envelope_correlation_history_appended() -> None:
     """'EnvelopeCorrelation' is the last entry in history."""
     data = _make_data()
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     assert out.history[-1] == "EnvelopeCorrelation"
 
@@ -143,7 +143,7 @@ def test_envelope_correlation_history_appended() -> None:
 def test_envelope_correlation_metadata_preserved() -> None:
     """subjectID, groupID, condition preserved; sampling_rate None for Data without time."""
     data = _make_data(subjectID="sub-99", groupID="group-A", condition="rest")
-    out = cb.feature.EnvelopeCorrelation().apply(data)
+    out = cb.EnvelopeCorrelation().apply(data)
 
     assert out.subjectID == "sub-99"
     assert out.groupID == "group-A"
@@ -159,7 +159,7 @@ def test_envelope_correlation_no_mutation() -> None:
     original_shape = data.data.shape
     original_values = data.data.values.copy()
 
-    _ = cb.feature.EnvelopeCorrelation().apply(data)
+    _ = cb.EnvelopeCorrelation().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -176,7 +176,7 @@ def test_envelope_correlation_raises_for_single_channel() -> None:
     data = _make_data(n_space=1)
 
     with pytest.raises(ValueError, match="at least 2 spatial channels"):
-        cb.feature.EnvelopeCorrelation().apply(data)
+        cb.EnvelopeCorrelation().apply(data)
 
 
 def test_envelope_correlation_raises_for_extra_dims() -> None:
@@ -195,4 +195,4 @@ def test_envelope_correlation_raises_for_extra_dims() -> None:
     data = cb.SignalData.from_xarray(arr_xr)
 
     with pytest.raises(ValueError, match="extra dims"):
-        cb.feature.EnvelopeCorrelation().apply(data)
+        cb.EnvelopeCorrelation().apply(data)

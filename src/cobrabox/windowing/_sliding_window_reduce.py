@@ -33,7 +33,7 @@ class SlidingWindowReduce(BaseFeature[SignalData]):
 
     Example:
         >>> # Mean of each 100-sample window, stepping by 50
-        >>> result = cb.feature.SlidingWindowReduce(
+        >>> result = cb.SlidingWindowReduce(
         ...     window_size=100, step_size=50, dim="time", agg="mean"
         ... ).apply(data)
         >>> result.data.dims

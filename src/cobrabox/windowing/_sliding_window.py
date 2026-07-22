@@ -28,7 +28,7 @@ class SlidingWindow(SplitterFeature[SignalData]):
         preserved.
 
     Example:
-        >>> windows = list(cb.feature.SlidingWindow(window_size=100, step_size=50)(data))
+        >>> windows = list(cb.SlidingWindow(window_size=100, step_size=50)(data))
         >>> len(windows)  # number of windows depends on data length
         >>> windows[0].data.sizes["time"]
         100

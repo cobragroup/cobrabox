@@ -37,7 +37,7 @@ class Correlation(BaseFeature[Data]):
 
     Example:
         >>> data = cb.load_dataset("dummy_random")[0]
-        >>> corr = cb.feature.Correlation().apply(data)
+        >>> corr = cb.Correlation().apply(data)
         >>> corr.data.dims
         ('space_to', 'space_from')
 
