@@ -21,6 +21,7 @@ import inspect
 from pathlib import Path
 
 import cobrabox as cb
+from cobrabox._functional import function_name, has_functional_form
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS = REPO_ROOT / "docs"
@@ -266,6 +267,9 @@ def gen_domain_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
             f"Access them as `cb.<Feature>` (canonical), or as "
             f"`cb.{domain}.<Feature>` / `cb.feature.<Feature>`.",
             "",
+            "Each feature has two forms: a **class** for building pipelines, and a "
+            "one-shot **function** for a single call.",
+            "",
         ]
         for name, cls in features:
             tags = getattr(cls, "_tags", [])
@@ -273,6 +277,17 @@ def gen_domain_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
             summary = _summary(cls)
             if summary:
                 lines.append(summary)
+            if has_functional_form(cls):
+                lines.append("")
+                one_shot = f"cb.{function_name(cls)}(data, ...)"
+                composable = f"cb.{name}(...).apply(data)"
+                width = max(len(one_shot), len(composable))
+                lines.append(
+                    "```python\n"
+                    f"{one_shot:<{width}}  # one-shot\n"
+                    f"{composable:<{width}}  # composable, for pipelines\n"
+                    "```"
+                )
             if tags:
                 tag_links = ", ".join(f"[`{t}`](../tags.md#tag-{_tag_slug(t)})" for t in tags)
                 lines.append("")

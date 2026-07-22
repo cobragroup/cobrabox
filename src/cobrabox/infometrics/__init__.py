@@ -14,3 +14,8 @@ __all__ = [
     "RecurrenceMatrix",
     "SampleEntropy",
 ]
+
+# One-shot functional wrappers (cb.line_length(d) beside cb.LineLength().apply(d)). See GH #116.
+from .._functional import install as _install_functional
+
+_install_functional(__name__)

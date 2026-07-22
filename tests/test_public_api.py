@@ -61,6 +61,10 @@ def test_every_feature_belongs_to_exactly_one_domain() -> None:
     for domain in DOMAINS:
         module = importlib.import_module(f"cobrabox.{domain}")
         for name in module.__all__:
+            # `__all__` also carries the functional wrappers (GH #116); this test is
+            # about the classes. test_functional_api.py covers the function side.
+            if not isinstance(getattr(module, name, None), type):
+                continue
             owners.setdefault(name, []).append(domain)
 
     duplicates = {n: ds for n, ds in owners.items() if len(ds) > 1}
