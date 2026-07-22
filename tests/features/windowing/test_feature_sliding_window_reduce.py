@@ -186,3 +186,51 @@ def test_sliding_window_reduce_does_not_mutate_input() -> None:
     assert data.history == original_history
     assert data.data.shape == original_shape
     np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_sliding_window_reduce_labels_window_axis_with_start_times() -> None:
+    """The window axis carries window start times, matching SlidingWindow (issue #118)."""
+    arr = np.arange(100, dtype=float).reshape(1, 100)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+
+    result = cb.feature.SlidingWindowReduce(window_size=20, step_size=10, agg="mean").apply(data)
+
+    np.testing.assert_allclose(
+        result.data.coords["window"].values, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    )
+    np.testing.assert_allclose(
+        result.data.coords["window_end"].values,
+        [0.19, 0.29, 0.39, 0.49, 0.59, 0.69, 0.79, 0.89, 0.99],
+    )
+
+
+def test_sliding_window_reduce_matches_chord_window_axis() -> None:
+    """SlidingWindowReduce and SlidingWindow|...|ConcatAggregate agree on window labels."""
+    arr = np.arange(200, dtype=float).reshape(2, 100)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+
+    reduced = cb.feature.SlidingWindowReduce(window_size=20, step_size=10, agg="mean").apply(data)
+    chord = (
+        cb.feature.SlidingWindow(window_size=20, step_size=10)
+        | cb.feature.Mean(dim="time")
+        | cb.feature.ConcatAggregate()
+    )
+    via_chord = chord.apply(data)
+
+    np.testing.assert_allclose(
+        reduced.data.coords["window"].values, via_chord.data.coords["window"].values
+    )
+    np.testing.assert_allclose(
+        reduced.data.coords["window_end"].values, via_chord.data.coords["window_end"].values
+    )
+
+
+def test_sliding_window_reduce_window_labels_without_sampling_rate() -> None:
+    """Without a time coordinate in seconds, window labels are sample indices."""
+    arr = np.arange(50, dtype=float).reshape(1, 50)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"])
+
+    result = cb.feature.SlidingWindowReduce(window_size=10, step_size=10, agg="mean").apply(data)
+
+    np.testing.assert_allclose(result.data.coords["window"].values, [0, 10, 20, 30, 40])
+    np.testing.assert_allclose(result.data.coords["window_end"].values, [9, 19, 29, 39, 49])

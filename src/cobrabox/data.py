@@ -11,6 +11,25 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+TIME_PLACEHOLDER_ATTR = "cobrabox_time_placeholder"
+"""Marks a singleton 'time' axis fabricated by :meth:`SignalData._copy_with_new_data`
+after a feature consumed the real one. Not a time axis you can compute over."""
+
+
+def has_placeholder_time(data: Data) -> bool:
+    """True if ``data``'s time axis is a fabricated placeholder, not real time.
+
+    A feature that reduces over time (``LineLength``, ``Nonreversibility``, ...) leaves
+    behind a length-1 'time' axis so the ``SignalData`` contract still holds. Computing
+    along that axis is meaningless — it yields zeros or NaNs rather than an error.
+    """
+    xr_data = data.data
+    return (
+        "time" in xr_data.dims
+        and xr_data.sizes["time"] == 1
+        and bool(xr_data.attrs.get(TIME_PLACEHOLDER_ATTR, False))
+    )
+
 
 class Data:
     """Container for labelled multidimensional data.
@@ -705,8 +724,15 @@ class SignalData(Data):
 
         # If result already has time dimension, return as-is (but as SignalData)
         if "time" in result.data.dims:
+            result_data = result.data
+            # A multi-sample time axis is real by definition — drop any inherited flag.
+            if result_data.sizes["time"] > 1 and TIME_PLACEHOLDER_ATTR in result_data.attrs:
+                result_data = result_data.copy()
+                result_data.attrs = {
+                    k: v for k, v in result_data.attrs.items() if k != TIME_PLACEHOLDER_ATTR
+                }
             return SignalData(
-                data=result.data,
+                data=result_data,
                 sampling_rate=result.sampling_rate,
                 subjectID=result.subjectID,
                 groupID=result.groupID,
@@ -715,13 +741,17 @@ class SignalData(Data):
                 extra=result.extra,
             )
 
-        # Add singleton time dimension
+        # Add singleton time dimension. This axis is fabricated purely to satisfy the
+        # SignalData contract — the feature consumed the real time axis — so flag it.
+        # BaseFeature.apply refuses to run time-domain features on a flagged axis rather
+        # than letting them compute a degenerate result over a single sample.
         result_data = result.data
         original_sampling_rate = self.sampling_rate
         if original_sampling_rate is not None:
             # Store sampling_rate in attrs so it doesn't need to be inferred
             result_attrs = dict(result_data.attrs) if result_data.attrs else {}
             result_attrs["sampling_rate"] = original_sampling_rate
+            result_attrs[TIME_PLACEHOLDER_ATTR] = True
             result_data = result_data.assign_attrs(result_attrs)
             # Use proper time coordinate for consistency
             time_delta = 1.0 / original_sampling_rate
@@ -730,6 +760,7 @@ class SignalData(Data):
             # Fallback: use a small time value that suggests 100 Hz
             result_attrs = dict(result_data.attrs) if result_data.attrs else {}
             result_attrs["sampling_rate"] = 100.0
+            result_attrs[TIME_PLACEHOLDER_ATTR] = True
             result_data = result_data.assign_attrs(result_attrs)
             result_data = result_data.expand_dims("time", axis=-1).assign_coords(time=[0.01])
 

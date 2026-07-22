@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal
 
+import numpy as np
 import xarray as xr
 
 from ..base_feature import BaseFeature
@@ -29,7 +30,10 @@ class SlidingWindowReduce(BaseFeature[SignalData]):
     Returns:
         Data with the reduced dimension removed and a new "window" dimension
         added. The "window" dimension has length equal to the number of
-        windows that fit in the input data.
+        windows that fit in the input data. It is coordinate-labelled with each
+        window's **start** position on the reduced axis (seconds when windowing
+        over time with a known sampling rate), and a non-dimension
+        ``window_end`` coordinate carries the matching end positions.
 
     Example:
         >>> # Mean of each 100-sample window, stepping by 50
@@ -38,6 +42,8 @@ class SlidingWindowReduce(BaseFeature[SignalData]):
         ... ).apply(data)
         >>> result.data.dims
         ('window', 'channel')  # time dimension is reduced, window dim added
+        >>> result.data.window.values[:3]  # 100 Hz data, step of 50 samples
+        array([0. , 0.5, 1. ])
     """
 
     _tags: ClassVar[list[str]] = [
@@ -81,9 +87,21 @@ class SlidingWindowReduce(BaseFeature[SignalData]):
         agg_func = getattr(rolling, self.agg)
         full_agg = agg_func()
 
-        # Select valid windows (every step_size-th position, starting from window_size-1)
-        window_starts = range(self.window_size - 1, n_dim, self.step_size)
-        indexed = full_agg.isel({self.dim: list(window_starts)})
+        # Rolling labels each window at its *last* sample, so these are window end positions.
+        # Select every step_size-th complete window.
+        end_positions = list(range(self.window_size - 1, n_dim, self.step_size))
+        indexed = full_agg.isel({self.dim: end_positions})
 
         # Rename dimension to 'window'
-        return indexed.rename({self.dim: "window"})
+        renamed = indexed.rename({self.dim: "window"})
+
+        # Label windows by their start position on the original axis, matching
+        # SlidingWindow/ConcatAggregate. The end positions are kept alongside.
+        if self.dim in xr_data.coords:
+            coord_values = np.asarray(xr_data.coords[self.dim].values)
+        else:
+            coord_values = np.arange(n_dim)
+        starts = [coord_values[end - self.window_size + 1] for end in end_positions]
+        ends = [coord_values[end] for end in end_positions]
+
+        return renamed.assign_coords(window=starts, window_end=("window", ends))
