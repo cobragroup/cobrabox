@@ -39,6 +39,23 @@ def test_data_from_numpy_no_time() -> None:
     assert ds.sampling_rate is None  # No time dimension
 
 
+def test_data_xarr_is_alias_for_data() -> None:
+    """Data.xarr returns the exact same xarray DataArray as Data.data."""
+    a = RNG.standard_normal((5, 3))
+    ds = cb.Data.from_numpy(a, dims=["x", "y"])
+    assert ds.xarr is ds.data
+
+
+def test_data_numpy_returns_underlying_array_without_copy() -> None:
+    """Data.numpy exposes the underlying numpy array (no copy), matching .xarr.data."""
+    a = RNG.standard_normal((5, 3))
+    ds = cb.Data.from_numpy(a, dims=["x", "y"])
+    assert isinstance(ds.numpy, np.ndarray)
+    assert ds.numpy is ds.xarr.data
+    assert ds.numpy is ds.data.data
+    np.testing.assert_array_almost_equal(ds.numpy, a)
+
+
 def test_data_from_xarray_basic() -> None:
     """Data.from_xarray wraps a DataArray with arbitrary dimensions."""
     ar = xr.DataArray(
