@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Extract analytic-signal representations along the time axis.
 
 ```python
-cb.analytic_signal(data, ...)       # one-shot
+cb.analytic_signal(data, ...)  # one-shot
 cb.AnalyticSignal(...).apply(data)  # composable, for pipelines
 ```
 
@@ -20,7 +20,7 @@ cb.AnalyticSignal(...).apply(data)  # composable, for pipelines
 Filter a signal into frequency bands.
 
 ```python
-cb.bandpass_filter(data, ...)       # one-shot
+cb.bandpass_filter(data, ...)  # one-shot
 cb.BandpassFilter(...).apply(data)  # composable, for pipelines
 ```
 
@@ -30,7 +30,7 @@ cb.BandpassFilter(...).apply(data)  # composable, for pipelines
 Real-valued FFT along the time axis.
 
 ```python
-cb.fourier_transform(data, ...)       # one-shot
+cb.fourier_transform(data, ...)  # one-shot
 cb.FourierTransform(...).apply(data)  # composable, for pipelines
 ```
 
@@ -40,7 +40,7 @@ cb.FourierTransform(...).apply(data)  # composable, for pipelines
 Inverse of :class:`~cobrabox.transforms.fourier_transform.FourierTransform`.
 
 ```python
-cb.inverse_fourier_transform(data, ...)      # one-shot
+cb.inverse_fourier_transform(data, ...)  # one-shot
 cb.InverseFourierTransform(...).apply(data)  # composable, for pipelines
 ```
 

@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Decompose a signal into Intrinsic Mode Functions (IMFs) using Empirical Mode Decomposition.
 
 ```python
-cb.emd(data, ...)        # one-shot
+cb.emd(data, ...)  # one-shot
 cb.EMD(...).apply(data)  # composable, for pipelines
 ```
 
@@ -20,7 +20,7 @@ cb.EMD(...).apply(data)  # composable, for pipelines
 Compute truncated SVD over one dimension.
 
 ```python
-cb.svd(data, ...)        # one-shot
+cb.svd(data, ...)  # one-shot
 cb.SVD(...).apply(data)  # composable, for pipelines
 ```
 

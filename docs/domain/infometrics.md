@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Compute amplitude entropy from time-series data using histogram-based probability estimation.
 
 ```python
-cb.amplitude_entropy(data, ...)       # one-shot
+cb.amplitude_entropy(data, ...)  # one-shot
 cb.AmplitudeEntropy(...).apply(data)  # composable, for pipelines
 ```
 
@@ -20,7 +20,7 @@ cb.AmplitudeEntropy(...).apply(data)  # composable, for pipelines
 Compute fractal dimension over the time dimension.
 
 ```python
-cb.fractal_dimension(data, ...)       # one-shot
+cb.fractal_dimension(data, ...)  # one-shot
 cb.FractalDimension(...).apply(data)  # composable, for pipelines
 ```
 
@@ -30,7 +30,7 @@ cb.FractalDimension(...).apply(data)  # composable, for pipelines
 Compute Lempel-Ziv Complexity (LZC) over the time dimension.
 
 ```python
-cb.lempel_ziv(data, ...)       # one-shot
+cb.lempel_ziv(data, ...)  # one-shot
 cb.LempelZiv(...).apply(data)  # composable, for pipelines
 ```
 
@@ -40,7 +40,7 @@ cb.LempelZiv(...).apply(data)  # composable, for pipelines
 Compute dc_norm: normalised deviation from causal normality (time-irreversibility).
 
 ```python
-cb.nonreversibility(data, ...)        # one-shot
+cb.nonreversibility(data, ...)  # one-shot
 cb.Nonreversibility(...).apply(data)  # composable, for pipelines
 ```
 
@@ -50,7 +50,7 @@ cb.Nonreversibility(...).apply(data)  # composable, for pipelines
 Compute a pairwise recurrence (self-similarity) matrix from a time-series.
 
 ```python
-cb.recurrence_matrix(data, ...)       # one-shot
+cb.recurrence_matrix(data, ...)  # one-shot
 cb.RecurrenceMatrix(...).apply(data)  # composable, for pipelines
 ```
 
@@ -60,7 +60,7 @@ cb.RecurrenceMatrix(...).apply(data)  # composable, for pipelines
 Sample Entropy feature.
 
 ```python
-cb.sample_entropy(data, ...)       # one-shot
+cb.sample_entropy(data, ...)  # one-shot
 cb.SampleEntropy(...).apply(data)  # composable, for pipelines
 ```
 

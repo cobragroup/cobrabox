@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Compute band power for specified frequency bands using Welch's method.
 
 ```python
-cb.band_power(data, ...)       # one-shot
+cb.band_power(data, ...)  # one-shot
 cb.BandPower(...).apply(data)  # composable, for pipelines
 ```
 
@@ -20,7 +20,7 @@ cb.BandPower(...).apply(data)  # composable, for pipelines
 Continuous wavelet transform (CWT) scalogram.
 
 ```python
-cb.continuous_wavelet_transform(data, ...)      # one-shot
+cb.continuous_wavelet_transform(data, ...)  # one-shot
 cb.ContinuousWaveletTransform(...).apply(data)  # composable, for pipelines
 ```
 
@@ -30,7 +30,7 @@ cb.ContinuousWaveletTransform(...).apply(data)  # composable, for pipelines
 Compute cordance, a qEEG measure combining absolute and relative bandpower.
 
 ```python
-cb.cordance(data, ...)        # one-shot
+cb.cordance(data, ...)  # one-shot
 cb.Cordance(...).apply(data)  # composable, for pipelines
 ```
 
@@ -40,7 +40,7 @@ cb.Cordance(...).apply(data)  # composable, for pipelines
 Multi-level discrete wavelet decomposition (DWT).
 
 ```python
-cb.discrete_wavelet_transform(data, ...)      # one-shot
+cb.discrete_wavelet_transform(data, ...)  # one-shot
 cb.DiscreteWaveletTransform(...).apply(data)  # composable, for pipelines
 ```
 
@@ -50,7 +50,7 @@ cb.DiscreteWaveletTransform(...).apply(data)  # composable, for pipelines
 Compute the power spectrogram for each spatial channel.
 
 ```python
-cb.spectrogram(data, ...)        # one-shot
+cb.spectrogram(data, ...)  # one-shot
 cb.Spectrogram(...).apply(data)  # composable, for pipelines
 ```
 

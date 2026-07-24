@@ -282,13 +282,13 @@ def gen_domain_pages(by_domain: dict[str, list[tuple[str, type]]]) -> list[str]:
                 lines.append(summary)
             if has_functional_form(cls):
                 lines.append("")
-                one_shot = f"cb.{function_name(cls)}(data, ...)"
-                composable = f"cb.{name}(...).apply(data)"
-                width = max(len(one_shot), len(composable))
+                # Exactly two spaces before the comment — `ruff format` (which CI runs
+                # over Python fences in Markdown) collapses aligned padding, so aligning
+                # here would make the generator and the formatter fight.
                 lines.append(
                     "```python\n"
-                    f"{one_shot:<{width}}  # one-shot\n"
-                    f"{composable:<{width}}  # composable, for pipelines\n"
+                    f"cb.{function_name(cls)}(data, ...)  # one-shot\n"
+                    f"cb.{name}(...).apply(data)  # composable, for pipelines\n"
                     "```"
                 )
             if tags:

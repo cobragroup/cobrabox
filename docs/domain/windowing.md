@@ -20,7 +20,7 @@ Aggregate a stream of per-window Data by averaging across windows.
 Yield one Data per sliding window over the time dimension.
 
 ```python
-cb.sliding_window(data, ...)       # one-shot
+cb.sliding_window(data, ...)  # one-shot
 cb.SlidingWindow(...).apply(data)  # composable, for pipelines
 ```
 
@@ -30,7 +30,7 @@ cb.SlidingWindow(...).apply(data)  # composable, for pipelines
 Sliding window with automatic per-window reduction.
 
 ```python
-cb.sliding_window_reduce(data, ...)      # one-shot
+cb.sliding_window_reduce(data, ...)  # one-shot
 cb.SlidingWindowReduce(...).apply(data)  # composable, for pipelines
 ```
 

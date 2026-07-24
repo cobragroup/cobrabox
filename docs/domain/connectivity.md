@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Compute magnitude-squared coherence for all pairwise channel combinations.
 
 ```python
-cb.coherence(data, ...)        # one-shot
+cb.coherence(data, ...)  # one-shot
 cb.Coherence(...).apply(data)  # composable, for pipelines
 ```
 
@@ -20,7 +20,7 @@ cb.Coherence(...).apply(data)  # composable, for pipelines
 Compute pairwise Pearson or Spearman correlation between all channel pairs.
 
 ```python
-cb.correlation(data, ...)        # one-shot
+cb.correlation(data, ...)  # one-shot
 cb.Correlation(...).apply(data)  # composable, for pipelines
 ```
 
@@ -30,7 +30,7 @@ cb.Correlation(...).apply(data)  # composable, for pipelines
 Compute pairwise sample covariance between all channel pairs.
 
 ```python
-cb.covariance(data, ...)        # one-shot
+cb.covariance(data, ...)  # one-shot
 cb.Covariance(...).apply(data)  # composable, for pipelines
 ```
 
@@ -40,7 +40,7 @@ cb.Covariance(...).apply(data)  # composable, for pipelines
 Estimate the Directed Transfer Function (DTF) between channels via a VAR model.
 
 ```python
-cb.directed_transfer_function(data, ...)      # one-shot
+cb.directed_transfer_function(data, ...)  # one-shot
 cb.DirectedTransferFunction(...).apply(data)  # composable, for pipelines
 ```
 
@@ -50,7 +50,7 @@ cb.DirectedTransferFunction(...).apply(data)  # composable, for pipelines
 Compute amplitude envelope correlation (AEC) between all channel pairs.
 
 ```python
-cb.envelope_correlation(data, ...)       # one-shot
+cb.envelope_correlation(data, ...)  # one-shot
 cb.EnvelopeCorrelation(...).apply(data)  # composable, for pipelines
 ```
 
@@ -60,7 +60,7 @@ cb.EnvelopeCorrelation(...).apply(data)  # composable, for pipelines
 Compute the Granger causality matrix across channels.
 
 ```python
-cb.granger_causality(data, ...)       # one-shot
+cb.granger_causality(data, ...)  # one-shot
 cb.GrangerCausality(...).apply(data)  # composable, for pipelines
 ```
 
@@ -70,7 +70,7 @@ cb.GrangerCausality(...).apply(data)  # composable, for pipelines
 Compute mutual information (MI) between all pairs of series along a specified dimension (by
 
 ```python
-cb.mutual_information(data, ...)       # one-shot
+cb.mutual_information(data, ...)  # one-shot
 cb.MutualInformation(...).apply(data)  # composable, for pipelines
 ```
 
@@ -80,7 +80,7 @@ cb.MutualInformation(...).apply(data)  # composable, for pipelines
 Compute the partial-correlation matrix across channels.
 
 ```python
-cb.partial_correlation(data, ...)       # one-shot
+cb.partial_correlation(data, ...)  # one-shot
 cb.PartialCorrelation(...).apply(data)  # composable, for pipelines
 ```
 
@@ -90,7 +90,7 @@ cb.PartialCorrelation(...).apply(data)  # composable, for pipelines
 Estimate the Partial Directed Coherence (PDC) between channels via a VAR model.
 
 ```python
-cb.partial_directed_coherence(data, ...)      # one-shot
+cb.partial_directed_coherence(data, ...)  # one-shot
 cb.PartialDirectedCoherence(...).apply(data)  # composable, for pipelines
 ```
 
@@ -100,7 +100,7 @@ cb.PartialDirectedCoherence(...).apply(data)  # composable, for pipelines
 Compute the phase-locking-value (PLV) matrix across channels.
 
 ```python
-cb.phase_locking_value(data, ...)      # one-shot
+cb.phase_locking_value(data, ...)  # one-shot
 cb.PhaseLockingValue(...).apply(data)  # composable, for pipelines
 ```
 
@@ -110,7 +110,7 @@ cb.PhaseLockingValue(...).apply(data)  # composable, for pipelines
 Compute per-channel Reciprocal Connectivity (RC) from a directed connectivity matrix.
 
 ```python
-cb.reciprocal_connectivity(data, ...)       # one-shot
+cb.reciprocal_connectivity(data, ...)  # one-shot
 cb.ReciprocalConnectivity(...).apply(data)  # composable, for pipelines
 ```
 

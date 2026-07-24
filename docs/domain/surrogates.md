@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Generate Fourier transform surrogates (preserving autocorrelation) of SignalData.
 
 ```python
-cb.fourier_transform_surrogates(data, ...)      # one-shot
+cb.fourier_transform_surrogates(data, ...)  # one-shot
 cb.FourierTransformSurrogates(...).apply(data)  # composable, for pipelines
 ```
 

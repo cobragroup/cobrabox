@@ -10,7 +10,7 @@ Each feature has two forms: a **class** for building pipelines, and a one-shot *
 Compute amplitude variation over the time dimension.
 
 ```python
-cb.amplitude_variation(data, ...)       # one-shot
+cb.amplitude_variation(data, ...)  # one-shot
 cb.AmplitudeVariation(...).apply(data)  # composable, for pipelines
 ```
 
@@ -20,7 +20,7 @@ cb.AmplitudeVariation(...).apply(data)  # composable, for pipelines
 Compute normalized autocorrelation at a given lag along a required dimension.
 
 ```python
-cb.autocorrelation(data, ...)        # one-shot
+cb.autocorrelation(data, ...)  # one-shot
 cb.Autocorrelation(...).apply(data)  # composable, for pipelines
 ```
 
@@ -30,7 +30,7 @@ cb.Autocorrelation(...).apply(data)  # composable, for pipelines
 Compute the Epileptogenicity Index (EI) per channel (Bartolomei et al., 2008).
 
 ```python
-cb.epileptogenicity_index(data, ...)       # one-shot
+cb.epileptogenicity_index(data, ...)  # one-shot
 cb.EpileptogenicityIndex(...).apply(data)  # composable, for pipelines
 ```
 
@@ -40,7 +40,7 @@ cb.EpileptogenicityIndex(...).apply(data)  # composable, for pipelines
 Compute line length over the time dimension.
 
 ```python
-cb.line_length(data, ...)       # one-shot
+cb.line_length(data, ...)  # one-shot
 cb.LineLength(...).apply(data)  # composable, for pipelines
 ```
 
@@ -50,7 +50,7 @@ cb.LineLength(...).apply(data)  # composable, for pipelines
 Compute the maximum value across a dimension.
 
 ```python
-cb.max(data, ...)        # one-shot
+cb.max(data, ...)  # one-shot
 cb.Max(...).apply(data)  # composable, for pipelines
 ```
 
@@ -60,7 +60,7 @@ cb.Max(...).apply(data)  # composable, for pipelines
 Compute the mean value across a dimension.
 
 ```python
-cb.mean(data, ...)        # one-shot
+cb.mean(data, ...)  # one-shot
 cb.Mean(...).apply(data)  # composable, for pipelines
 ```
 
@@ -70,7 +70,7 @@ cb.Mean(...).apply(data)  # composable, for pipelines
 Compute the minimum value across a dimension.
 
 ```python
-cb.min(data, ...)        # one-shot
+cb.min(data, ...)  # one-shot
 cb.Min(...).apply(data)  # composable, for pipelines
 ```
 
@@ -80,7 +80,7 @@ cb.Min(...).apply(data)  # composable, for pipelines
 Calculate spikes in the input data using the IQR method.
 
 ```python
-cb.spike_count(data, ...)       # one-shot
+cb.spike_count(data, ...)  # one-shot
 cb.SpikeCount(...).apply(data)  # composable, for pipelines
 ```
 
