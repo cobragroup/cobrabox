@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -93,3 +94,41 @@ class Covariance(BaseFeature[Data]):
         return xr.DataArray(
             cov_matrix, dims=[f"{other_dim}_to", f"{other_dim}_from"], coords=coords
         )
+
+
+@functional(Covariance)
+def covariance(data: Data, dim: str = "time") -> Data:
+    """Compute pairwise sample covariance between all channel pairs.
+
+    Computes the sample covariance matrix along a chosen dimension (default:
+    ``"time"``) producing a symmetric N x N matrix. Input data must be exactly
+    2-dimensional: one dimension is the channel axis, the other is the axis
+    along which covariance is computed.
+
+    The diagonal contains the sample variance of each channel (``ddof=1``).
+    The result is a plain :class:`~cobrabox.Data` object (``output_type = Data``)
+    because the covariance axis is consumed.
+
+    Args:
+        dim: Name of the dimension to compute covariance along. Defaults to
+            ``"time"``. Must be present in the input data. The remaining
+            dimension becomes both ``<other_dim>_to`` and ``<other_dim>_from``
+            in the output.
+
+    Raises:
+        ValueError: If input data is not exactly 2-dimensional.
+        ValueError: If ``dim`` is not present in the input data's dimensions.
+
+    Example:
+        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> cov = cb.covariance(data)
+        >>> cov.data.dims
+        ('space_to', 'space_from')
+
+    Returns:
+        :class:`~cobrabox.Data` with dims ``(<other_dim>_to, <other_dim>_from)``.
+        Both coordinate axes carry the original channel labels. The diagonal
+        contains per-channel sample variance; off-diagonal entries are
+        covariances. The matrix is symmetric.
+    """
+    return Covariance(dim=dim).apply(data)

@@ -60,6 +60,9 @@ def _collect() -> dict[str, list[tuple[str, type]]]:
     by_domain: dict[str, list[tuple[str, type]]] = {}
     for name in cb.feature.__all__:
         cls = getattr(cb.feature, name)
+        # cb.feature carries the one-shot functions too; the docs are built per class.
+        if not isinstance(cls, type):
+            continue
         by_domain.setdefault(_domain_of(cls), []).append((name, cls))
     for features in by_domain.values():
         features.sort(key=lambda item: item[0])

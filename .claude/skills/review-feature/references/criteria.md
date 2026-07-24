@@ -50,6 +50,7 @@ class Spectrogram(BaseFeature[SignalData]):
     # No output_type needed - defaults to preserving SignalData
     ...
 
+
 # ✅ Feature that returns plain Data - ONLY set when changing type
 @dataclass
 class Coherence(BaseFeature[SignalData]):
@@ -127,12 +128,13 @@ class LineLength(BaseFeature[SignalData]):
     # _is_cobrabox_feature is inherited as True
     ...
 
+
 # ❌ Unnecessary - already inherited
 _is_cobrabox_feature = True  # Don't add this for class-based features!
 
+
 @dataclass
-class LineLength(BaseFeature[SignalData]):
-    ...
+class LineLength(BaseFeature[SignalData]): ...
 ```
 
 The marker is only needed at the **module level** for legacy function-based features (not using the dataclass pattern). Since all modern features use the class-based pattern, **never add `_is_cobrabox_feature = True` to new feature files**.
@@ -176,10 +178,12 @@ and makes the helpers logically part of the feature they serve.
 # ❌ loose module-level helpers — only used by MyFeature
 def _compute_thing(arr: np.ndarray) -> np.ndarray: ...
 
+
 @dataclass
 class MyFeature(BaseFeature[Data]):
     def __call__(self, data: Data) -> xr.DataArray:
         return _compute_thing(data.data.values)
+
 
 # ✅ helpers live inside the class
 @dataclass
@@ -349,6 +353,7 @@ class SlidingWindow(SplitterFeature):
     window_size: int
     step_size: int = 1
 
+
 # ❌ untyped field
 @dataclass
 class SlidingWindow(SplitterFeature):
@@ -378,6 +383,7 @@ of truth.
 # ❌ plain str with a separate tuple for validation
 _VALID_METHODS = ("mean", "median", "max")
 
+
 @dataclass
 class MyFeature(BaseFeature[Data]):
     method: str = "mean"
@@ -386,10 +392,12 @@ class MyFeature(BaseFeature[Data]):
         if self.method not in _VALID_METHODS:
             raise ValueError(...)
 
+
 # ✅ Literal type — type alias + get_args for validation
 from typing import Literal, get_args
 
 Method = Literal["mean", "median", "max"]
+
 
 @dataclass
 class MyFeature(BaseFeature[Data]):
@@ -414,6 +422,7 @@ print("whatever", whatever)
 
 # ✅
 import logging
+
 logger = logging.getLogger(__name__)
 logger.debug("whatever: %s", whatever)
 ```

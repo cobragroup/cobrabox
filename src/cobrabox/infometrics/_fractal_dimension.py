@@ -20,6 +20,7 @@ from typing import ClassVar, Literal
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -150,3 +151,54 @@ class FractalDimension(BaseFeature[SignalData]):
                 vectorize=True,
             )
         return xr.apply_ufunc(_katz_1d, data.data, input_core_dims=[["time"]], vectorize=True)
+
+
+@functional(FractalDimension)
+def fractal_dimension(
+    data: SignalData, method: Literal["higuchi", "katz"] = "higuchi", k_max: int = 10
+) -> Data:
+    """Compute fractal dimension over the time dimension.
+
+    Selects the algorithm via the ``method`` parameter:
+
+    * ``"higuchi"`` — Higuchi Fractal Dimension. Constructs k sub-series for
+      each interval k = 1…k_max, computes their normalised average curve
+      length L(k), then estimates the fractal dimension as the slope of
+      log(L(k)) vs log(1/k) via least-squares regression. Tunable via
+      ``k_max``. Values close to 1 indicate a smooth signal; values close
+      to 2 indicate a highly irregular signal.
+
+    * ``"katz"`` — Katz Fractal Dimension. Models the signal as a 2-D curve
+      and estimates fractal dimension from the total Euclidean path length,
+      step count, and maximum planar distance from the first sample.
+      Parameter-free, O(N).
+
+    Args:
+        method: Which fractal dimension algorithm to use. One of ``"higuchi"``
+            (default) or ``"katz"``.
+        k_max: Maximum interval for the Higuchi algorithm. Must be >= 2.
+            Default is 10. **Ignored when ``method="katz"``** (a warning is
+            issued when a non-default value is passed but unused).
+
+    Returns:
+        xarray DataArray with the ``time`` dimension removed. Shape is
+        ``(space,)`` for standard input. Values are dimensionless floats
+        typically in [1, 2] for Higuchi and >= 1 for Katz.
+
+    Raises:
+        ValueError: If ``method`` is not one of the valid options, or if
+            ``k_max < 2`` when using the Higuchi method.
+
+    References:
+        Higuchi, T. (1988). Approach to an irregular time series on the
+        basis of the fractal theory. Physica D, 31(2), 277-283.
+
+        Katz, M. J. (1988). Fractals and the analysis of waveforms.
+        Computers in Biology and Medicine, 18(3), 145-156.
+
+    Example:
+        >>> result = cb.fractal_dimension(data)  # Higuchi, k_max=10
+        >>> result = cb.fractal_dimension(data, method="higuchi", k_max=20)
+        >>> result = cb.fractal_dimension(data, method="katz")
+    """
+    return FractalDimension(method=method, k_max=k_max).apply(data)

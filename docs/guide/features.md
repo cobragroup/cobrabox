@@ -7,8 +7,8 @@ Features are the core building blocks of CobraBox pipelines. They are classes th
 Every feature is reachable two ways, and both are permanent:
 
 ```python
-result = cb.line_length(data)              # one-shot function
-result = cb.LineLength().apply(data)       # class
+result = cb.line_length(data)  # one-shot function
+result = cb.LineLength().apply(data)  # class
 ```
 
 Use the **function** when you want one result from one call. Use the **class** when the
@@ -23,7 +23,7 @@ The function name is the snake_case of the class (`BandPower` → `cb.band_power
 takes the data first, then the feature's parameters:
 
 ```python
-cb.correlation(data, method="spearman")    # == cb.Correlation(method="spearman").apply(data)
+cb.correlation(data, method="spearman")  # == cb.Correlation(method="spearman").apply(data)
 ```
 
 Aggregators (`MeanAggregate`, `ConcatAggregate`) are class-only: they fold a stream
@@ -54,6 +54,7 @@ from dataclasses import dataclass
 import xarray as xr
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import SignalData
+
 
 @dataclass
 class SpectralPower(BaseFeature[SignalData]):
@@ -86,9 +87,11 @@ Use `BaseFeature[Data]` for features that work with any data container:
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import Data
 
+
 @dataclass
 class Mean(BaseFeature[Data]):
     """Compute mean over any dimension."""
+
     dim: str
 
     def __call__(self, data: Data) -> xr.DataArray:
@@ -102,6 +105,7 @@ Use `BaseFeature[SignalData]` for features that require time-series data:
 ```python
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import SignalData
+
 
 @dataclass
 class LineLength(BaseFeature[SignalData]):
@@ -170,9 +174,7 @@ Used inside a `Chord` — not called directly in typical pipelines.
 
 ```python
 # Single-step sliding window with aggregation
-result = cb.SlidingWindowReduce(
-    window_size=100, step_size=50, dim="time", agg="mean"
-).apply(data)
+result = cb.SlidingWindowReduce(window_size=100, step_size=50, dim="time", agg="mean").apply(data)
 # Returns Data with 'window' dimension, 'time' is reduced
 ```
 
@@ -181,8 +183,8 @@ Combines windowing and aggregation in one step — simpler than a Chord for basi
 ### `BandPower`
 
 ```python
-bp = cb.BandPower().apply(data)                          # all five default bands
-bp = cb.BandPower(bands={"alpha": True}).apply(data)     # single default band
+bp = cb.BandPower().apply(data)  # all five default bands
+bp = cb.BandPower(bands={"alpha": True}).apply(data)  # single default band
 bp = cb.BandPower(bands={"ripple": [45, 80]}).apply(data)  # custom range
 ```
 
@@ -320,10 +322,7 @@ separation), and `iterated_mask_sift`.
 cord = cb.Cordance().apply(data)
 
 # Custom bands and output type
-cord = cb.Cordance(
-    bands={"alpha": [8, 12], "beta": [12, 30]},
-    output="concordance"
-).apply(data)
+cord = cb.Cordance(bands={"alpha": [8, 12], "beta": [12, 30]}, output="concordance").apply(data)
 ```
 
 Computes cordance (Leuchter et al., 1994), a quantitative EEG measure that combines
@@ -397,14 +396,10 @@ producing an output with dims `(<other_dim>_to, <other_dim>_from)`.
 
 ```python
 # Single pair with controls
-pc = cb.PartialCorrelation(
-    coord_x=0, coord_y=1, control_vars=[2, 3]
-).apply(data)
+pc = cb.PartialCorrelation(coord_x=0, coord_y=1, control_vars=[2, 3]).apply(data)
 
 # Full matrix for multiple coordinates
-pcm = cb.PartialCorrelation(
-    coords=[0, 1, 2], control_vars=[3]
-).apply(data)
+pcm = cb.PartialCorrelation(coords=[0, 1, 2], control_vars=[3]).apply(data)
 ```
 
 Computes partial correlation between coordinates while controlling for others.
@@ -415,7 +410,7 @@ of coordinates. All coordinates must be from the space dimension.
 ### `Autocorrelation`
 
 ```python
-ac = cb.Autocorrelation(dim="time", fs=1000.0).apply(data)           # default 5 ms lag
+ac = cb.Autocorrelation(dim="time", fs=1000.0).apply(data)  # default 5 ms lag
 ac = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)  # explicit steps
 ac = cb.Autocorrelation(dim="time", fs=1000.0, lag_ms=10.0).apply(data)  # explicit ms
 ```
@@ -446,9 +441,7 @@ PLV measures phase synchrony in [0, 1] where 1 indicates perfect phase locking.
 mi_matrix = cb.MutualInformation().apply(data)
 
 # With custom number of bins and equidistant binning
-mi_matrix = cb.MutualInformation(
-    bins=10, equiprobable_bins=False
-).apply(data)
+mi_matrix = cb.MutualInformation(bins=10, equiprobable_bins=False).apply(data)
 
 # With natural logarithm (nats instead of bits)
 mi_matrix = cb.MutualInformation(log_base=np.e).apply(data)
@@ -471,10 +464,10 @@ as n^(1/3) where n is the number of samples.
 rec = cb.RecurrenceMatrix().apply(data)
 
 # window/FC mode — just fc_metric, rest default
-rec = cb.RecurrenceMatrix('cosine', ['pearson']).apply(data)
+rec = cb.RecurrenceMatrix("cosine", ["pearson"]).apply(data)
 
 # window/FC mode — full control
-rec = cb.RecurrenceMatrix('cosine', ['pearson', 50, 0.25]).apply(data)
+rec = cb.RecurrenceMatrix("cosine", ["pearson", 50, 0.25]).apply(data)
 ```
 
 Computes a pairwise recurrence (self-similarity) matrix from a time-series. Behaviour depends on the shape of the input and `fc_options`. For 2-D input `(N, T)`, can operate in state-vector mode (each time-point as a state vector) or window/FC mode where functional connectivity matrices are computed per window and then compared. For 3-D input `(N, N, T)` (pre-computed FC matrices), computes similarity between FC matrices across time.
@@ -584,15 +577,11 @@ feat = cb.FourierTransformSurrogates(n_surrogates=100, random_state=42)
 surrogates = list(feat(data))  # original + 100 surrogates
 
 # Generate surrogates without original data
-feat = cb.FourierTransformSurrogates(
-    n_surrogates=50, return_data=False, random_state=42
-)
+feat = cb.FourierTransformSurrogates(n_surrogates=50, return_data=False, random_state=42)
 surrogates = list(feat(data))  # 50 surrogates only
 
 # Multivariate mode preserves cross-channel correlations
-feat = cb.FourierTransformSurrogates(
-    n_surrogates=100, multivariate=True, random_state=42
-)
+feat = cb.FourierTransformSurrogates(n_surrogates=100, multivariate=True, random_state=42)
 ```
 
 Generates surrogate time series by randomizing Fourier phases while preserving
@@ -704,11 +693,7 @@ print(result.history)  # ['Min', 'Max']
 Start a `Chord` by piping a `SplitterFeature` into a pipeline step, then into an `AggregatorFeature`:
 
 ```python
-chord = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
-)
+chord = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 result = chord.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
@@ -720,7 +705,7 @@ full = (
     cb.SlidingWindow(window_size=20, step_size=10)
     | cb.LineLength()
     | cb.MeanAggregate()
-    | cb.Mean(dim="time")   # post-chord step
+    | cb.Mean(dim="time")  # post-chord step
 )
 ```
 
@@ -733,7 +718,7 @@ Implementation modules are private — `LineLength` lives in `signalstats/_line_
 ```python
 import cobrabox as cb
 
-print(cb.feature.__all__)   # the full catalog
+print(cb.feature.__all__)  # the full catalog
 ```
 
 ## Creating Custom Features
@@ -747,6 +732,7 @@ from dataclasses import dataclass
 import xarray as xr
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import Data
+
 
 @dataclass
 class Variance(BaseFeature[Data]):
@@ -769,6 +755,7 @@ from dataclasses import dataclass
 import xarray as xr
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import SignalData
+
 
 @dataclass
 class BandPower(BaseFeature[SignalData]):
@@ -793,6 +780,7 @@ from dataclasses import dataclass
 from cobrabox.base_feature import SplitterFeature
 from cobrabox.data import Data, SignalData
 
+
 @dataclass
 class TrialSplit(SplitterFeature[SignalData]):
     """Yield one Data per trial block."""
@@ -816,6 +804,7 @@ from dataclasses import dataclass
 import xarray as xr
 from cobrabox.base_feature import AggregatorFeature
 from cobrabox.data import Data
+
 
 @dataclass
 class MaxAggregate(AggregatorFeature):
@@ -848,9 +837,7 @@ feat = cb.LineLength().apply(data)
 print(feat.history)  # ['LineLength']
 
 result = (
-    cb.SlidingWindow(window_size=10, step_size=5)
-    | cb.LineLength()
-    | cb.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5) | cb.LineLength() | cb.MeanAggregate()
 ).apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```

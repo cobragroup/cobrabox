@@ -45,7 +45,7 @@ git lfs pull
 data = cb.Data.from_numpy(
     arr,
     dims=["time", "space"],
-    sampling_rate=100.0  # Required for frequency-domain features
+    sampling_rate=100.0,  # Required for frequency-domain features
 )
 ```
 
@@ -62,8 +62,7 @@ print(data.data.dims)  # e.g., ('channels', 'samples')
 
 # Rename to expected names
 data = cb.Data.from_xarray(
-    data.data.rename({"channels": "space", "samples": "time"}),
-    sampling_rate=100.0
+    data.data.rename({"channels": "space", "samples": "time"}), sampling_rate=100.0
 )
 ```
 
@@ -124,8 +123,8 @@ cb.feature.LineLength().apply(result)  # ValueError: no real time axis left
 To reduce over windows, use a feature that takes a `dim` argument:
 
 ```python
-cb.feature.Mean(dim="window").apply(result)   # average the time course
-cb.feature.Max(dim="window").apply(result)    # peak across windows
+cb.feature.Mean(dim="window").apply(result)  # average the time course
+cb.feature.Max(dim="window").apply(result)  # peak across windows
 ```
 
 To apply a second time-domain feature *per window*, put it inside the chord rather than after it:
@@ -184,9 +183,7 @@ result = cb.Chord(
 
 ```python
 result = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 ).apply(data)
 
 print(result.history)
@@ -207,11 +204,7 @@ print(result.history)
 # pipeline = cb.load("old_pipeline.yaml")  # Raises SchemaVersionError
 
 # Recreate with current version
-pipeline = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 cb.save(pipeline, "new_pipeline.yaml")
 ```
 
@@ -253,6 +246,7 @@ result = cb.Mean(dim="time").apply(data)  # Also OK
 
 ```python
 from cobrabox.data import SignalData
+
 
 @dataclass
 class MyFeature(BaseFeature[SignalData]):  # type: ignore[type-var]

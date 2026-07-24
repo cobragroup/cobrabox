@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -102,3 +103,33 @@ class Autocorrelation(BaseFeature[Data]):
             return self._acf_numpy(x, lag)
 
         return xr.apply_ufunc(_wrapper, xr_data, input_core_dims=[[self.dim]], vectorize=True)
+
+
+@functional(Autocorrelation)
+def autocorrelation(
+    data: Data, dim: str, fs: float, lag_steps: int | None = None, lag_ms: float | None = None
+) -> Data:
+    """Compute normalized autocorrelation at a given lag along a required dimension.
+
+    MATLAB equivalent from mapping_seizure_dynamics/calc_feat:
+        acf = autocorr(d,'NumLags',round(fs/1000*5));
+        autocorrel = acf(end);
+
+    Specify either ``lag_steps`` or ``lag_ms``, not both.
+    If neither is specified, the default lag of 5 ms is used.
+
+    Args:
+        dim: Dimension to compute autocorrelation along.
+        fs: Sampling frequency in Hz. Must be positive.
+        lag_steps: Lag in number of samples. Mutually exclusive with ``lag_ms``.
+        lag_ms: Lag in milliseconds. Mutually exclusive with ``lag_steps``.
+
+    Returns:
+        xarray DataArray with the ``dim`` dimension removed. Shape is the input shape
+        minus the size of ``dim``; each element is the normalized autocorrelation at the
+        computed lag for that position in the remaining dimensions.
+
+    Example:
+        >>> result = cb.autocorrelation(data, dim="time", fs=1000.0, lag_steps=5)
+    """
+    return Autocorrelation(dim=dim, fs=fs, lag_steps=lag_steps, lag_ms=lag_ms).apply(data)

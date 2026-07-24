@@ -7,6 +7,7 @@ import numpy as np
 import pywt
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -189,3 +190,68 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
                 "time": time_coords,
             },
         )
+
+
+@functional(ContinuousWaveletTransform)
+def continuous_wavelet_transform(
+    data: SignalData,
+    wavelet: _CwtWavelet = "morl",
+    scales: list[float] | None = None,
+    n_scales: int = 64,
+    scaling: Literal["magnitude", "power", "complex"] = "magnitude",
+) -> Data:
+    """Continuous wavelet transform (CWT) scalogram.
+
+    Applies ``pywt.cwt`` along the ``time`` axis for each spatial channel,
+    producing a 2-D time-scale representation. The output preserves the
+    ``time`` dimension and adds a ``scale`` dimension, making it directly
+    composable with downstream features that operate along time or space.
+
+    Args:
+        wavelet: Continuous wavelet name. Common choices for EEG analysis:
+
+            * ``"morl"`` *(default)* — real Morlet; captures oscillatory
+              components with strong time-frequency localisation.
+            * ``"mexh"`` — Mexican Hat (second derivative of a Gaussian);
+              highlights singularities and sharp transitions.
+            * ``"cmor{B}-{C}"`` — complex Morlet (e.g. ``"cmor1.5-1.0"``);
+              gives complex coefficients with better frequency resolution.
+
+            See ``pywt.wavelist(kind='continuous')`` for all built-in options.
+        scales: Explicit array of scales to analyse. If ``None`` (default),
+            ``n_scales`` linearly-spaced integer scales ``[1, 2, ..., n_scales]``
+            are used. Larger scales correspond to lower frequencies.
+        n_scales: Number of scales when ``scales`` is ``None``. Defaults to 64.
+        scaling: Output scaling. One of:
+
+            * ``"magnitude"`` *(default)* — ``|CWT|``; real-valued, non-negative.
+            * ``"power"`` — ``|CWT|²``; power scalogram.
+            * ``"complex"`` — raw complex coefficients (dtype ``complex128``).
+
+    Returns:
+        xarray DataArray with dims ``(*extra_dims, "space", "scale", "time")``
+        where:
+
+        * ``scale`` holds the raw pywt scale values.
+        * ``frequency`` is a non-index coordinate on the ``scale`` dimension
+          giving the pseudo-frequency in Hz (from ``data.sampling_rate``;
+          falls back to cycles/sample when ``sampling_rate`` is ``None``).
+        * ``time`` preserves the original time coordinates from the input.
+
+    Raises:
+        ValueError: If ``wavelet`` is not a valid continuous wavelet, if
+            ``scales`` is empty or contains non-positive values, if
+            ``n_scales < 1``, or if ``scaling`` is not one of the three valid
+            options.
+
+    Example:
+        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> cwt = cb.continuous_wavelet_transform(data, n_scales=32)
+        >>> cwt.data.dims
+        ('space', 'scale', 'time')
+        >>> "frequency" in cwt.data.coords
+        True
+    """
+    return ContinuousWaveletTransform(
+        wavelet=wavelet, scales=scales, n_scales=n_scales, scaling=scaling
+    ).apply(data)

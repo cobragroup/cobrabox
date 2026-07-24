@@ -13,6 +13,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 from ..transforms._fourier_transform import _rfft_1d, _rfftfreq
@@ -234,3 +235,82 @@ class EpileptogenicityIndex(BaseFeature[SignalData]):
             ei_values /= max_ei
 
         return xr.DataArray(ei_values, dims=["space"], coords={"space": space_coords})
+
+
+@functional(EpileptogenicityIndex)
+def epileptogenicity_index(
+    data: SignalData,
+    window_duration: float = 1.0,
+    bias: float = 0.5,
+    threshold: float = 30.0,
+    integration_window: float = 5.0,
+    tau: float = 1.0,
+) -> Data:
+    """Compute the Epileptogenicity Index (EI) per channel (Bartolomei et al., 2008).
+
+    EI quantifies the epileptogenicity of each recorded brain structure by combining
+    two features of the ictal SEEG signal: the *spectral* property (presence of
+    high-frequency rapid discharges) and the *temporal* property (how early in the
+    seizure process the discharge appears relative to other channels). Higher EI
+    indicates a more epileptogenic structure.
+
+    The algorithm operates in three stages:
+
+    1. **Energy Ratio ER[n]** — a sliding-window periodogram is computed along each
+       channel. At each window position the ratio of high- to low-frequency band
+       power is computed::
+
+           ER[n] = (E_beta + E_gamma) / (E_theta + E_alpha)
+
+       Frequency bands (Table 2 of the paper):
+       θ 3.5-7.4 Hz · alpha 7.4-12.4 Hz · beta 12.4-24 Hz · gamma 24 Hz-Nyquist
+
+    2. **Page-Hinkley (CUSUM) detection** — applied per channel to find the detection
+       time *N_d* (onset of the rapid discharge). Channels where no alarm fires are
+       assigned *N_d* = last ER sample, which yields near-zero EI after normalisation.
+
+    3. **EI formula and normalisation** — given the earliest detection time *N_0*
+       (reference channel) and integration window *H* samples::
+
+           EI_i = sum(ER[N_di : N_di + H]) / (N_di - N_0 + tau)
+
+       Values are divided by the per-recording maximum to obtain a [0, 1] scale.
+
+    Reference:
+        Bartolomei F, Chauvel P, Wendling F. *Epileptogenicity of brain structures
+        in human temporal lobe epilepsy: a quantified study from intracerebral EEG.*
+        Brain (2008), 131:1818-1830. DOI: 10.1093/brain/awn111
+
+    Args:
+        window_duration: Duration of the ER sliding window in seconds. Longer windows
+            give better frequency resolution but coarser temporal resolution.
+            Default: 1.0 s.
+        bias: Page-Hinkley bias *v*. Higher values suppress small ER fluctuations and
+            reduce false detections. Default: 0.5.
+        threshold: Page-Hinkley alarm threshold *λ*. Higher values reduce false alarms
+            at the cost of delayed or missed detections. Default: 30.0.
+        integration_window: Duration *H* (seconds) over which ER[n] is summed after
+            detection to capture the rapid-discharge energy. Default: 5.0 s.
+        tau: Small constant *τ* preventing division by zero when a channel is the
+            first to fire (delay = 0). Default: 1.0.
+
+    Returns:
+        xarray DataArray with dim ``(space,)``, values normalised to [0, 1]. If no
+        rapid discharge is detected in any channel, all values are 0.
+
+    Raises:
+        ValueError: If ``data`` does not have exactly ``time`` and ``space`` dimensions.
+        ValueError: If ``data.sampling_rate`` is not set.
+        ValueError: If any channel's signal is shorter than one ER window.
+
+    Example:
+        >>> ei = cb.epileptogenicity_index(seizure_data)
+        >>> ei_vals = ei.data  # (space,) values in [0, 1]
+    """
+    return EpileptogenicityIndex(
+        window_duration=window_duration,
+        bias=bias,
+        threshold=threshold,
+        integration_window=integration_window,
+        tau=tau,
+    ).apply(data)

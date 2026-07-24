@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -125,3 +126,36 @@ class AmplitudeEntropy(BaseFeature[Data]):
         tabar = float(np.mean(ta))
 
         return xr.DataArray(tabar)
+
+
+@functional(AmplitudeEntropy)
+def amplitude_entropy(data: Data, band_width: float) -> Data:
+    """Compute amplitude entropy from time-series data using histogram-based probability estimation.
+
+    Amplitude entropy quantifies the randomness or unpredictability of the amplitude distribution
+    in the data. It uses a histogram-based approach where the data is binned according to the
+    specified band_width, and Shannon entropy is computed from the resulting probability
+    distribution.
+
+    The entropy for each row (time point) is calculated as H = -sum(p_i * log2(p_i)), where p_i
+    is the probability of the i-th bin. The final result is the mean entropy across all time
+    points, returned as a scalar value.
+
+    Args:
+        band_width: The width of histogram bins for discretizing the data. Must be positive.
+
+    Returns:
+        A 0-dimensional xarray.DataArray containing the mean amplitude entropy as a scalar value.
+
+    Raises:
+        ValueError: If band_width is not positive.
+        ValueError: If input data has fewer than 2 dimensions.
+
+    Example:
+        >>> import cobrabox as cb
+        >>> import numpy as np
+        >>> data = cb.Data.from_numpy(np.random.randn(50, 10), dims=["time", "space"])
+        >>> result = cb.amplitude_entropy(data, band_width=0.5)
+        >>> float(result.to_numpy())  # Scalar entropy value
+    """
+    return AmplitudeEntropy(band_width=band_width).apply(data)

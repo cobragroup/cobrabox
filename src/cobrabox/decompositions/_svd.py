@@ -7,6 +7,7 @@ from typing import ClassVar, Literal, get_args
 import numpy as np
 import xarray as xr
 
+from cobrabox._functional import functional
 from cobrabox.base_feature import BaseFeature
 from cobrabox.data import Data
 
@@ -202,3 +203,89 @@ class SVD(BaseFeature[Data]):
         }
 
         return primary
+
+
+@functional(SVD)
+def svd(
+    data: Data,
+    dim: str,
+    n_components: int = 10,
+    center: bool = True,
+    zscore: bool = False,
+    mask: xr.DataArray | None = None,
+    return_unstacked_V: bool = True,
+    output: _SVDOutputMode = "V",
+) -> Data:
+    """Compute truncated SVD over one dimension.
+
+    The input `data.data` may be N-D (fMRI, EEG, etc.). We treat `dim` as the
+    sample axis and stack all other dims into a single feature axis internally.
+
+    Args:
+        dim: Sample dimension (e.g. "time", "trial").
+        n_components: Number of components to return.
+        center:
+            If True, subtract each feature's baseline (mean over `dim`) before SVD.
+            Intuition: removes offsets/mean image so components describe
+            fluctuations rather than the average level.
+        zscore:
+            If True, after centering, also normalize each feature by its
+            variability (divide by std over `dim`).
+            Intuition: prevents a few "loud"/high-variance features from
+            dominating; components reflect shared patterns rather than amplitude.
+            Implies centering.
+        mask:
+            Optional boolean selector over non-`dim` dims.
+            True keeps a feature (voxel/channel/etc.), False removes it.
+            Use mask to restrict SVD to a subset of features, for instance to
+            exclude irrelevant/noisy features (e.g. non-brain voxels, bad EEG
+            channels), speed up computation, and focus on a region/sensor set.
+        return_unstacked_V:
+            If True, return V reshaped back to the original non-`dim` dims.
+        output:
+            Which primary output to return as xr.DataArray:
+            - "V" (default): feature patterns/maps, shape (component, ...)
+            - "U": sample scores/timecourses, shape (dim, component)
+
+    Returns:
+        xr.DataArray:
+            If output="V": (component, ...) feature patterns/maps
+            If output="U": (dim, component) sample scores/timecourses
+
+        Extra outputs are stored in `result.attrs["svd"]`:
+            S, Vh, mean, std, and whichever of U/V is not returned.
+
+    Example:
+        # fMRI (time,x,y,z) + mask -> returns V(component,x,y,z)
+        >>> result = cb.svd(data, dim="time", n_components=10, mask=brain_mask)
+        # EEG (time,channel) -> returns V(component,channel)
+        >>> result = cb.svd(eeg_data, dim="time", n_components=10)
+        # EEG time-frequency (time,channel,freq) + zscore -> V(component,channel,freq)
+        >>> result = cb.svd(tfr_data, dim="time", n_components=10, zscore=True)
+        # Trial-wise (trial,time,channel) -> V(component,time,channel), U stored in attrs
+        >>> result = cb.svd(epochs_data, dim="trial", n_components=10)
+        # No unstacking -> main output is Vh(component,features)
+        >>> out = cb.svd(data, dim="time", n_components=10, return_unstacked_V=False)
+        >>> svd = out.data.attrs["svd"]
+        >>>         U = svd["U"]  # sample scores / timecourses (if output="V")
+        >>> S = svd["S"]  # singular values
+
+    Raises:
+        ValueError: If ``dim`` is not found in the input data dimensions.
+        ValueError: If ``n_components`` is not positive.
+        ValueError: If ``output`` is not one of ``{"V", "U"}``.
+
+    References:
+        Golub, G. H., & Kahan, W. (1965). Calculating the singular values and pseudo-inverse
+        of a matrix. *Journal of the Society for Industrial and Applied Mathematics: Series B,
+        Numerical Analysis*, 2(2), 205-224.
+    """
+    return SVD(
+        dim=dim,
+        n_components=n_components,
+        center=center,
+        zscore=zscore,
+        mask=mask,
+        return_unstacked_V=return_unstacked_V,
+        output=output,
+    ).apply(data)

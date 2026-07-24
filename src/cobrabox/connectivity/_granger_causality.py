@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 from ._mvar import granger_log_ratio
@@ -121,3 +122,48 @@ class GrangerCausality(BaseFeature[SignalData]):
             dims=("space_to", "space_from", "lag_index"),
             coords={"space_to": coords_list, "space_from": coords_list, "lag_index": lags_to_test},
         )
+
+
+@functional(GrangerCausality)
+def granger_causality(
+    data: SignalData,
+    coords: list[str] | list[int] | None = None,
+    lag: int | None = None,
+    maxlag: int = 1,
+) -> Data:
+    """Compute the Granger causality matrix across channels.
+
+    For each ordered pair ``(i, j)``, measures whether channel ``j``
+    Granger-causes channel ``i`` via the log-ratio of prediction-error
+    variances of two VAR models (restricted: past of ``i`` only; unrestricted:
+    past of both ``i`` and ``j``). Self-causality is undefined and reported
+    as NaN on the diagonal.
+
+    Args:
+        coords: Channels to include. ``None`` (default) computes the full
+            ``(K, K)`` matrix across all space coordinates. Pass a list of
+            coordinate names to restrict the output (each pair is an
+            independent OLS solve, so this is a real compute saving).
+        lag: Specific lag order to test. When set, returns a 2-D matrix.
+        maxlag: Maximum lag to test when ``lag`` is ``None``. The output gains
+            a ``lag_index`` dimension when ``maxlag > 1``. Default: 1.
+
+    Returns:
+        xarray DataArray with dims ``(space_to, space_from)`` (or
+        ``(space_to, space_from, lag_index)`` when multiple lags are tested).
+        ``result.sel(space_to=A, space_from=B)`` is the causal influence
+        ``B → A``. Diagonal entries are NaN.
+
+    Raises:
+        ValueError: If ``maxlag < 1``, ``lag < 1`` when provided, or ``coords``
+            is an empty list.
+
+    Example:
+        >>> # Full matrix at lag 2
+        >>> result = cb.granger_causality(data, lag=2)
+        >>> # Restricted to two channels at the default lag
+        >>> result = cb.granger_causality(data, coords=["F3", "F4"])
+        >>> # Range of lags
+        >>> result = cb.granger_causality(data, maxlag=4)
+    """
+    return GrangerCausality(coords=coords, lag=lag, maxlag=maxlag).apply(data)

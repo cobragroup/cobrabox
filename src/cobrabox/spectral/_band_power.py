@@ -7,8 +7,9 @@ import numpy as np
 import xarray as xr
 from scipy.signal import welch
 
+from .._functional import functional
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 _DEFAULTS: dict[str, tuple[float, float]] = {
     "delta": (1.0, 4.0),
@@ -141,3 +142,49 @@ class BandPower(BaseFeature[SignalData]):
             {"band_index": np.array(list(resolved.keys()))}
             | {d: xr_data.coords[d] for d in non_time_dims if d in xr_data.coords}
         )
+
+
+@functional(BandPower)
+def band_power(
+    data: SignalData, bands: dict[str, list[float] | bool] | None = None, nperseg: int | None = None
+) -> Data:
+    """Compute band power for specified frequency bands using Welch's method.
+
+    For each frequency band, integrates the power spectral density (PSD)
+    estimated via Welch's method over the band's frequency range. Operates
+    over the ``time`` dimension, returning one scalar power value per
+    (space, band) pair.
+
+    Args:
+        bands: Mapping of band name to frequency range ``[f_low, f_high]``
+            in Hz, or ``True`` to use the default range for that band name.
+            If ``None`` or empty, all five default bands are computed:
+
+            - ``delta``:  1 - 4 Hz
+            - ``theta``:  4 - 8 Hz
+            - ``alpha``:  8 - 12 Hz
+            - ``beta``:  12 - 30 Hz
+            - ``gamma``: 30 - 45 Hz
+
+        nperseg: Number of samples per Welch segment. Controls the trade-off
+            between frequency resolution (larger → finer bins) and variance
+            reduction (smaller → more segments to average). Defaults to
+            ``min(n_time, 256)`` as chosen by :func:`scipy.signal.welch`.
+
+    Example:
+        >>> bp = cb.band_power(data)
+        >>> bp_custom = cb.band_power(data, bands={"alpha": True, "ripple": [45, 80]})
+        >>> bp_fine = cb.band_power(data, nperseg=512)
+
+    Returns:
+        xarray DataArray with dims ``(band_index, space)`` (plus a singleton
+        ``time`` dimension added by ``BaseFeature.apply``). The ``band_index``
+        coordinate holds the band names. Values are absolute power in units of
+        the input signal squared per Hz (signal² / Hz).
+
+    Raises:
+        ValueError: If sampling_rate is not set on the input data.
+        ValueError: If nperseg is less than 2.
+        ValueError: If an unknown band name is provided or band spec is False.
+    """
+    return BandPower(bands=bands, nperseg=nperseg).apply(data)

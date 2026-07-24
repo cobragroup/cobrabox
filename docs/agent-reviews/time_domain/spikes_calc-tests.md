@@ -52,11 +52,7 @@ def _make_data(
     )
 
 
-def _make_data_with_spikes(
-    n_time: int = 100,
-    n_space: int = 10,
-    n_spikes: int = 5,
-) -> cb.Data:
+def _make_data_with_spikes(n_time: int = 100, n_space: int = 10, n_spikes: int = 5) -> cb.Data:
     """Create test data with known outliers for spike detection."""
     rng = np.random.default_rng(42)
     arr = rng.standard_normal((n_time, n_space))
@@ -118,9 +114,7 @@ def test_spike_count_history_updated() -> None:
 
 def test_spike_count_metadata_preserved() -> None:
     """SpikeCount preserves subjectID, groupID, condition."""
-    data = _make_data(
-        sampling_rate=250.0, subjectID="s42", groupID="control", condition="task"
-    )
+    data = _make_data(sampling_rate=250.0, subjectID="s42", groupID="control", condition="task")
     result = cb.SpikeCount().apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
@@ -182,10 +176,12 @@ def test_spike_count_iqr_calculation() -> None:
     # Q1=25, Q2=50, Q3=75, IQR=50
     # Lower bound = 25 - 1.5*50 = -50
     # Upper bound = 75 + 1.5*50 = 150
-    arr = np.concatenate([
-        np.linspace(0, 100, 100),  # Normal data
-        np.array([-100.0, 200.0]),  # Two clear outliers outside bounds
-    ])
+    arr = np.concatenate(
+        [
+            np.linspace(0, 100, 100),  # Normal data
+            np.array([-100.0, 200.0]),  # Two clear outliers outside bounds
+        ]
+    )
     data = cb.Data.from_numpy(arr, dims=["time"], sampling_rate=100.0)
     result = cb.SpikeCount().apply(data)
     # Should detect exactly 2 spikes

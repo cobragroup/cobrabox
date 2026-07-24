@@ -7,8 +7,9 @@ import emd as emd_pkg
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 _SIFT_METHODS = ("sift", "mask_sift", "iterated_mask_sift")
 
@@ -165,3 +166,60 @@ class EMD(BaseFeature[SignalData]):
         result = combined.unstack("stacked")
         result.attrs["n_imfs"] = n_imfs_dict
         return result
+
+
+@functional(EMD)
+def emd(
+    data: SignalData,
+    max_imfs: int | None = None,
+    method: Literal["sift", "mask_sift", "iterated_mask_sift"] = "sift",
+    keep_orig: bool = False,
+) -> Data:
+    """Decompose a signal into Intrinsic Mode Functions (IMFs) using Empirical Mode Decomposition.
+
+    Applies EMD along the ``time`` axis and stacks the resulting IMFs along
+    a new ``imf`` dimension with coordinates ``imf0``, ``imf1``, etc.
+    The last component is always the residual (labelled ``residual``).
+
+    The IMFs sum to the original signal: ``result.sum(dim='imf') == original``.
+
+    When processing multi-channel data, different channels may produce different
+    numbers of IMFs. Missing IMFs are filled with ``NaN`` (not zero) so that
+    operations like ``mean(dim='imf')`` give correct results without being
+    diluted by fake zeros.
+
+    Args:
+        max_imfs: Maximum number of IMFs to compute (not including residual).
+            If ``None``, the algorithm determines the number adaptively.
+            Defaults to ``None``.
+        method: Sift method to use. One of:
+
+            * ``'sift'`` — standard EMD (default)
+            * ``'mask_sift'`` — mask sift for improved mode separation
+            * ``'iterated_mask_sift'`` — iterated mask sift
+
+        keep_orig: Whether to keep the original signal as an IMF named ``original``.
+            Defaults to ``False``.
+
+    Raises:
+        ValueError: If ``method`` is not a valid sift method.
+        ValueError: If ``max_imfs`` is not positive.
+
+    Returns:
+        xarray.DataArray: The IMFs stacked along a new ``imf`` dimension.
+            The ``imf`` coordinate contains labels ``imf0``, ``imf1``, ..., ``residual``
+            (and ``original`` if ``keep_orig=True``).
+            Shape is the same as input with an additional ``imf`` dimension.
+
+            An ``n_imfs`` dict in ``attrs`` tracks the number of actual IMFs
+            extracted per channel (excluding residual and original). Keys are
+            channel names (e.g. ``"Fp1"`` or ``"Fp1/A"`` for multi-dimensional),
+            or ``"signal"`` for 1D data. This is useful when channels produce
+            different numbers of IMFs and missing IMFs are filled with NaN.
+
+    Example:
+        >>> result = cb.emd(data)
+        >>> result = cb.emd(data, max_imfs=5, method="mask_sift")
+        >>> result = cb.emd(data, keep_orig=True)
+    """
+    return EMD(max_imfs=max_imfs, method=method, keep_orig=keep_orig).apply(data)

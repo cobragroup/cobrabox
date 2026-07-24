@@ -24,12 +24,7 @@ import numpy as np
 my_array = np.random.default_rng(seed=0).normal(size=(100, 4))
 
 # Wrap in Data container
-data = cb.from_numpy(
-    arr=my_array,
-    dims=["time", "space"],
-    sampling_rate=100.0,
-    subjectID="sub-01"
-)
+data = cb.from_numpy(arr=my_array, dims=["time", "space"], sampling_rate=100.0, subjectID="sub-01")
 
 # Apply features
 feat = cb.LineLength().apply(data)

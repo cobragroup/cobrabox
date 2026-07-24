@@ -7,8 +7,9 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import SplitterFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 from ..transforms._fourier_transform import _irfft_1d, _rfft_1d
 
 
@@ -104,3 +105,63 @@ class FourierTransformSurrogates(SplitterFeature[SignalData]):
             yield data
         for _ in range(self.n_surrogates):
             yield self._surrogate(data)
+
+
+@functional(FourierTransformSurrogates)
+def fourier_transform_surrogates(
+    data: SignalData,
+    n_surrogates: int,
+    multivariate: bool = True,
+    return_data: bool = True,
+    random_state: np.random.Generator | int | None = None,
+) -> Iterator[Data]:
+    """Generate Fourier transform surrogates (preserving autocorrelation) of SignalData.
+
+    Creates surrogate time series by randomizing the phases of the Fourier transform
+    while preserving the power spectrum (and thus autocorrelation). This generates
+    null-hypothesis data for testing whether observed effects exceed what would be
+    expected from linear, stationary, Gaussian processes with the same correlation
+    structure.
+
+    Args:
+        n_surrogates: Number of surrogate time series to generate. Must be a
+            non-negative integer.
+        multivariate: If True (default), applies the same random phases to all
+            series. This ensures that cross-correlations are approximately preserved.
+        return_data: If True (default), the generator yields the original data
+            first, followed by the surrogates. This gives length 1 + n_surrogates.
+        random_state: Initialiser for the pseudorandom number generator to
+            ensure reproducibility. Can be a Generator, int seed, or None.
+
+    Returns:
+        Iterator yielding SignalData objects containing the surrogate time series
+        (and optionally the original data first).
+
+    Raises:
+        ValueError: If n_surrogates is not an integer.
+        ValueError: If n_surrogates is negative.
+
+    References:
+        Theiler, J., Eubank, S., Longtin, A., Galdrikian, B., & Farmer, J. D.
+        (1992). Testing for nonlinearity in time series: the method of surrogate
+        data. Physica D: Nonlinear Phenomena, 58(1-4), 77-94.
+        https://doi.org/10.1016/0167-2789(92)90102-S
+
+    Example:
+        >>> import cobrabox as cb
+        >>> data = cb.SignalData.from_numpy(
+        ...     np.random.randn(100, 10),
+        ...     dims=["time", "space"],
+        ...     sampling_rate=100.0
+        ... )
+        >>> feature = cb.fourier_transform_surrogates(
+        ...     n_surrogates=5, random_state=42
+        ... )
+        >>> surrogates = list(feature(data))
+    """
+    return FourierTransformSurrogates(
+        n_surrogates=n_surrogates,
+        multivariate=multivariate,
+        return_data=return_data,
+        random_state=random_state,
+    )(data)

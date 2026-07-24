@@ -10,10 +10,7 @@ All `Data` objects are **immutable**. Once created, you cannot modify them. Inst
 import cobrabox as cb
 import numpy as np
 
-data = cb.from_numpy(
-    arr=np.random.normal(size=(100, 4)),
-    dims=["time", "space"]
-)
+data = cb.from_numpy(arr=np.random.normal(size=(100, 4)), dims=["time", "space"])
 
 # Creates a NEW Data object; data is unchanged
 result = cb.LineLength().apply(data)
@@ -40,7 +37,7 @@ data = cb.from_numpy(
     sampling_rate=100.0,
     subjectID="sub-01",
     groupID="control",
-    condition="baseline"
+    condition="baseline",
 )
 
 print(f"Subject: {data.subjectID}")
@@ -64,9 +61,7 @@ print(result.history)  # ['LineLength']
 
 # Chord: SlidingWindow + per-window pipeline + aggregation
 result2 = (
-    cb.SlidingWindow(window_size=10, step_size=5)
-    | cb.LineLength()
-    | cb.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5) | cb.LineLength() | cb.MeanAggregate()
 ).apply(data)
 print(result2.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
@@ -91,11 +86,7 @@ result = pipeline.apply(data)
 ### Chord (fan-out → map → fan-in)
 
 ```python
-chord = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
-)
+chord = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 result = chord.apply(data)
 ```
 
@@ -155,10 +146,7 @@ Use the `extra` dict for custom metadata:
 data = cb.from_numpy(
     arr,
     dims=["time", "space"],
-    extra={
-        "preprocessing_notes": "Bandpass filtered 1-40 Hz",
-        "bad_channels": ["E12", "E15"],
-    }
+    extra={"preprocessing_notes": "Bandpass filtered 1-40 Hz", "bad_channels": ["E12", "E15"]},
 )
 
 notes = data.extra["preprocessing_notes"]

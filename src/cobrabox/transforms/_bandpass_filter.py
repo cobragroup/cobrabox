@@ -6,8 +6,9 @@ from typing import ClassVar
 import xarray as xr
 from scipy import signal
 
+from .._functional import functional
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 _DEFAULTS: dict[str, list[float]] = {
     "delta": [1.0, 4.0],
@@ -108,3 +109,43 @@ class BandpassFilter(BaseFeature[SignalData]):
             band_arrays.append(filtered.assign_coords({"band": band_name}).expand_dims("band"))
 
         return xr.concat(band_arrays, dim="band")
+
+
+@functional(BandpassFilter)
+def bandpass_filter(
+    data: SignalData,
+    bands: dict[str, list[float]] | None = None,
+    ord: int = 3,
+    keep_orig: bool = False,
+) -> Data:
+    """Filter a signal into frequency bands.
+
+    Applies a Butterworth bandpass filter for each band and stacks
+    the results along a new ``band`` dimension.
+
+    Args:
+        bands: Mapping of band name to ``[low_hz, high_hz]`` frequency edges.
+            Defaults to the five standard EEG bands:
+            delta (1-4 Hz), theta (4-8 Hz), alpha (8-12 Hz),
+            beta (12-30 Hz), gamma (30-45 Hz).
+        ord: Order of the filter.
+            Defaults to 3.
+        keep_orig: Whether to keep the original signal as a "band" named "original".
+            Defaults to ``False``.
+
+    Raises:
+        ValueError: If the input ``Data`` has no known ``sampling_rate``.
+
+    Returns:
+        xarray.DataArray: The bandpass-filtered signals stacked along a new
+            ``band`` dimension. The ``band`` coordinate contains the band names
+            (and "original" if ``keep_orig=True``). The shape is the same as
+            the input data with an additional ``band`` dimension.
+
+    Example:
+        >>> result = cb.bandpass_filter(data)
+        >>> result = cb.bandpass_filter(data, bands={"alpha": [8, 12]})
+    """
+    if bands is None:
+        return BandpassFilter(ord=ord, keep_orig=keep_orig).apply(data)
+    return BandpassFilter(ord=ord, keep_orig=keep_orig, bands=bands).apply(data)

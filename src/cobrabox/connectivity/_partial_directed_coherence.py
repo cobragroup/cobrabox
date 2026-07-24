@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 from ._mvar import fit_mvar, frequency_response, pdc_from_A
@@ -95,3 +96,38 @@ class PartialDirectedCoherence(BaseFeature[SignalData]):
             dims=["space_to", "space_from", "frequency"],
             coords={"space_to": space_vals, "space_from": space_vals, "frequency": freqs},
         )
+
+
+@functional(PartialDirectedCoherence)
+def partial_directed_coherence(
+    data: SignalData, var_order: int | None = None, n_freqs: int = 128
+) -> Data:
+    """Estimate the Partial Directed Coherence (PDC) between channels via a VAR model.
+
+    Fits a multivariate autoregressive (VAR) model to the input time series and
+    derives the PDC spectrum from the estimated coefficient matrices.
+
+    For each frequency bin, ``PDC[i, j, f]`` represents the normalized directional
+    influence **from channel j to channel i**. Values lie in ``[0, 1]`` and sum to 1
+    across the ``space_to`` (sink) dimension for each source channel and frequency
+    bin: ``sum_i PDC[i, j, f]^2 = 1`` for all ``j, f``.
+
+    Args:
+        var_order: Number of lags for the VAR model. ``None`` (default) lets
+            :func:`statsmodels.tsa.api.VAR` pick the optimal order via AIC.
+        n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
+
+    Returns:
+        xarray DataArray with dims ``("space_to", "space_from", "frequency")``.
+
+    Raises:
+        ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,
+            there are fewer than 2 channels, or ``var_order < 1`` /
+            ``n_freqs < 1``.
+
+    References:
+        Baccalá, L. A., & Sameshima, K. (2001). Partial directed coherence: a
+        new concept in neural structure determination. Biological Cybernetics
+        84(6), 463-474.
+    """
+    return PartialDirectedCoherence(var_order=var_order, n_freqs=n_freqs).apply(data)

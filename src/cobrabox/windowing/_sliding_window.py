@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import numpy as np
 
+from .._functional import functional
 from ..base_feature import SplitterFeature
 from ..data import Data, SignalData
 
@@ -87,3 +88,39 @@ class SlidingWindow(SplitterFeature[SignalData]):
                     "window_end": float(time_coord[end - 1]),
                 },
             )
+
+
+@functional(SlidingWindow)
+def sliding_window(data: SignalData, window_size: int = 10, step_size: int = 5) -> Iterator[Data]:
+    """Yield one Data per sliding window over the time dimension.
+
+    Lazily generates windows to avoid materialising all windows in memory at once.
+
+    Args:
+        window_size: Number of timepoints per window. Must be >= 1.
+        step_size: Step between window starts in timepoints. Must be >= 1.
+
+    Returns:
+        Generator of ``Data`` objects. Each yielded item has the same
+        dimensions as the input with the ``time`` axis sliced to
+        ``window_size`` samples. The string ``"SlidingWindow"`` is appended
+        to ``history`` on each yielded window. All other metadata is
+        preserved.
+
+        Each window also carries its position on the original time axis in
+        ``extra``: ``window_start`` (time of the window's first sample) and
+        ``window_end`` (time of its last sample), taken from the input's
+        ``time`` coordinate — in seconds when a sampling rate is known, in
+        sample indices otherwise. These survive per-window features that
+        consume the time dimension, which is how ``ConcatAggregate`` can
+        label the stacked ``window`` axis with real times.
+
+    Example:
+        >>> windows = list(cb.sliding_window(data, window_size=100, step_size=50))
+        >>> len(windows)  # number of windows depends on data length
+        >>> windows[0].data.sizes["time"]
+        100
+        >>> windows[1].extra["window_start"]  # 100 Hz data, step of 50 samples
+        0.5
+    """
+    return SlidingWindow(window_size=window_size, step_size=step_size)(data)

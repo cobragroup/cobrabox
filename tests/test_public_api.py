@@ -33,12 +33,17 @@ DOMAINS = [
     "windowing",
 ]
 
+# `cb.feature.__all__` carries both classes (`Correlation`) and their one-shot
+# functions (`correlation`) since GH #116. The namespace-agreement tests below run
+# over both, so a function that is missing from a re-export is caught too.
 FEATURE_NAMES = sorted(cb.feature.__all__)
+CLASS_NAMES = sorted(n for n in FEATURE_NAMES if isinstance(getattr(cb, n), type))
 
 
 def test_features_were_discovered() -> None:
     """A discovery bug that finds nothing would make every other test here vacuous."""
-    assert len(FEATURE_NAMES) > 30
+    assert len(CLASS_NAMES) > 30
+    assert len(FEATURE_NAMES) > len(CLASS_NAMES)  # functions are present too
 
 
 @pytest.mark.parametrize("name", FEATURE_NAMES)
@@ -69,7 +74,7 @@ def test_every_feature_belongs_to_exactly_one_domain() -> None:
 
     duplicates = {n: ds for n, ds in owners.items() if len(ds) > 1}
     assert not duplicates, f"features exported by more than one domain: {duplicates}"
-    assert sorted(owners) == FEATURE_NAMES
+    assert sorted(owners) == CLASS_NAMES
 
 
 @pytest.mark.parametrize("name", FEATURE_NAMES)

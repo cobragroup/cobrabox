@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -108,3 +109,42 @@ class Correlation(BaseFeature[Data]):
         return xr.DataArray(
             corr_matrix, dims=[f"{other_dim}_to", f"{other_dim}_from"], coords=coords
         )
+
+
+@functional(Correlation)
+def correlation(data: Data, dim: str = "time", method: str = "pearson") -> Data:
+    """Compute pairwise Pearson or Spearman correlation between all channel pairs.
+
+    Correlates channels along a chosen dimension (default: ``"time"``) producing a
+    symmetric N x N matrix. Input data must be exactly 2-dimensional: one dimension
+    is the channel axis, the other is the axis along which correlation is computed.
+
+    The diagonal (self-correlation) is set to ``1.0``. The result is a plain
+    :class:`~cobrabox.Data` object (``output_type = Data``) because the correlation
+    axis is consumed.
+
+    Args:
+        dim: Name of the dimension to correlate along. Defaults to ``"time"``.
+            Must be present in the input data. The remaining dimension becomes
+            both ``<other_dim>_to`` and ``<other_dim>_from`` in the output.
+        method: Correlation method to use. ``"pearson"`` (default) uses
+            :func:`numpy.corrcoef`. ``"spearman"`` converts values to ranks
+            along ``dim`` first, then applies :func:`numpy.corrcoef`.
+
+    Raises:
+        ValueError: If ``method`` is not ``"pearson"`` or ``"spearman"``.
+        ValueError: If input data is not exactly 2-dimensional.
+        ValueError: If ``dim`` is not present in the input data's dimensions.
+
+    Example:
+        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> corr = cb.correlation(data)
+        >>> corr.data.dims
+        ('space_to', 'space_from')
+
+    Returns:
+        :class:`~cobrabox.Data` with dims ``(<other_dim>_to, <other_dim>_from)``.
+        Both coordinate axes carry the original channel labels. Values are in
+        ``[-1, 1]``; the diagonal is ``1.0``. The matrix is symmetric.
+    """
+    return Correlation(dim=dim, method=method).apply(data)

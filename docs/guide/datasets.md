@@ -50,15 +50,15 @@ print(item in ds)
 ds1 = cb.load_dataset("dummy_chain")
 ds2 = cb.load_dataset("dummy_random")
 
-combined = ds1 + ds2   # → Dataset[SignalData]
+combined = ds1 + ds2  # → Dataset[SignalData]
 print(len(combined))
 ```
 
 ### Representation
 
 ```python
-repr(ds)    # 'Dataset(3 × SignalData)'
-str(ds)     # multi-line summary with shapes and metadata
+repr(ds)  # 'Dataset(3 × SignalData)'
+str(ds)  # multi-line summary with shapes and metadata
 ds.describe()  # prints str(ds)
 ```
 
@@ -67,14 +67,16 @@ ds.describe()  # prints str(ds)
 Filter by any combination of metadata fields (AND semantics):
 
 ```python
-ds = cb.Dataset([
-    cb.from_numpy(arr, dims=["time", "space"], subjectID="S1", groupID="control"),
-    cb.from_numpy(arr, dims=["time", "space"], subjectID="S2", groupID="patient"),
-    cb.from_numpy(arr, dims=["time", "space"], subjectID="S3", groupID="control"),
-])
+ds = cb.Dataset(
+    [
+        cb.from_numpy(arr, dims=["time", "space"], subjectID="S1", groupID="control"),
+        cb.from_numpy(arr, dims=["time", "space"], subjectID="S2", groupID="patient"),
+        cb.from_numpy(arr, dims=["time", "space"], subjectID="S3", groupID="control"),
+    ]
+)
 
-controls = ds.filter(groupID="control")   # Dataset with S1 and S3
-s1_only  = ds.filter(subjectID="S1", groupID="control")  # Dataset with S1
+controls = ds.filter(groupID="control")  # Dataset with S1 and S3
+s1_only = ds.filter(subjectID="S1", groupID="control")  # Dataset with S1
 
 # Returns empty Dataset (not an error) if nothing matches
 empty = ds.filter(groupID="nonexistent")
@@ -194,9 +196,13 @@ Most datasets are large. Use `subset` to download only the subjects you need:
 ds = cb.load_dataset("chb_mit", subset=["chb01", "chb02"], accept=True)
 
 # Dict form — fine-grained file-level control
-ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": 2}, accept=True)          # first 2 files
-ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]}, accept=True)  # specific file
-ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3}, accept=True)  # all of ID01, 3 of ID02
+ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": 2}, accept=True)  # first 2 files
+ds = cb.load_dataset(
+    "swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]}, accept=True
+)  # specific file
+ds = cb.load_dataset(
+    "swiss_eeg_long", subset={"ID01": None, "ID02": 3}, accept=True
+)  # all of ID01, 3 of ID02
 ```
 
 Call `cb.dataset_info()` to see the available subset keys for a dataset before downloading.
@@ -236,14 +242,16 @@ import numpy as np
 items = []
 for i in range(5):
     arr = np.random.default_rng(i).normal(size=(100, 4))
-    items.append(cb.from_numpy(
-        arr=arr,
-        dims=["time", "space"],
-        sampling_rate=100.0,
-        subjectID=f"S{i+1:02d}",
-        groupID="control" if i < 3 else "patient",
-        condition="rest",
-    ))
+    items.append(
+        cb.from_numpy(
+            arr=arr,
+            dims=["time", "space"],
+            sampling_rate=100.0,
+            subjectID=f"S{i + 1:02d}",
+            groupID="control" if i < 3 else "patient",
+            condition="rest",
+        )
+    )
 
 ds = cb.Dataset(items)
 ds.describe()
@@ -254,11 +262,7 @@ ds.describe()
 ```python
 ds = cb.load_dataset("dummy_chain")
 
-pipeline = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 
 results = cb.Dataset([pipeline.apply(item) for item in ds])
 results.describe()

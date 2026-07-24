@@ -1,15 +1,15 @@
 # Connectivity features: which regions are synchronized/interacting.
-from ._coherence import Coherence
-from ._correlation import Correlation
-from ._covariance import Covariance
-from ._directed_transfer_function import DirectedTransferFunction
-from ._envelope_correlation import EnvelopeCorrelation
-from ._granger_causality import GrangerCausality
-from ._mutual_information import MutualInformation
-from ._partial_correlation import PartialCorrelation
-from ._partial_directed_coherence import PartialDirectedCoherence
-from ._phase_locking_value import PhaseLockingValue
-from ._reciprocal_connectivity import ReciprocalConnectivity
+from ._coherence import Coherence, coherence
+from ._correlation import Correlation, correlation
+from ._covariance import Covariance, covariance
+from ._directed_transfer_function import DirectedTransferFunction, directed_transfer_function
+from ._envelope_correlation import EnvelopeCorrelation, envelope_correlation
+from ._granger_causality import GrangerCausality, granger_causality
+from ._mutual_information import MutualInformation, mutual_information
+from ._partial_correlation import PartialCorrelation, partial_correlation
+from ._partial_directed_coherence import PartialDirectedCoherence, partial_directed_coherence
+from ._phase_locking_value import PhaseLockingValue, phase_locking_value
+from ._reciprocal_connectivity import ReciprocalConnectivity, reciprocal_connectivity
 
 __all__ = [
     "Coherence",
@@ -23,9 +23,15 @@ __all__ = [
     "PartialDirectedCoherence",
     "PhaseLockingValue",
     "ReciprocalConnectivity",
+    "coherence",
+    "correlation",
+    "covariance",
+    "directed_transfer_function",
+    "envelope_correlation",
+    "granger_causality",
+    "mutual_information",
+    "partial_correlation",
+    "partial_directed_coherence",
+    "phase_locking_value",
+    "reciprocal_connectivity",
 ]
-
-# One-shot functional wrappers (cb.line_length(d) beside cb.LineLength().apply(d)). See GH #116.
-from .._functional import install as _install_functional
-
-_install_functional(__name__)

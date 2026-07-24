@@ -13,6 +13,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -105,3 +106,33 @@ class LempelZiv(BaseFeature[SignalData]):
                     c += 1
                     stop = True
         return c, n
+
+
+@functional(LempelZiv)
+def lempel_ziv(data: SignalData) -> Data:
+    """Compute Lempel-Ziv Complexity (LZC) over the time dimension.
+
+    The signal is binarised relative to its mean (values above the mean → 1,
+    values at or below → 0). LZC counts distinct patterns in the resulting
+    binary sequence and normalises by the theoretical maximum, giving a value
+    in (0, 1] where higher values indicate greater irregularity.
+
+    The counting algorithm follows Lempel & Ziv (1976) as implemented in
+    NeuroKit2 (https://github.com/neuropsychology/NeuroKit, MIT licence).
+
+    Args:
+        None
+
+    Returns:
+        xarray DataArray with the ``time`` dimension removed. Shape is
+        ``(space,)`` for standard input. Values are dimensionless floats in
+        (0, 1].
+
+    References:
+        Lempel, A., & Ziv, J. (1976). On the complexity of finite sequences.
+        IEEE Transactions on Information Theory, 22(1), 75-81.
+
+    Example:
+        >>> result = cb.lempel_ziv(data)
+    """
+    return LempelZiv().apply(data)

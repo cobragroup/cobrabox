@@ -77,7 +77,7 @@ def test_amplitude_entropy_zero_total_counts_mocked() -> None:
     feature = cb.AmplitudeEntropy(band_width=1.0)
 
     # Mock np.histogram to return zero counts
-    with patch('numpy.histogram', return_value=(np.array([0, 0]), np.array([0, 1, 2]))):
+    with patch("numpy.histogram", return_value=(np.array([0, 0]), np.array([0, 1, 2]))):
         result = feature.apply(data)
 
     # Should return 0.0 from the guard

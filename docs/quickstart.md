@@ -18,7 +18,7 @@ data = cb.from_numpy(
     dims=["time", "space"],
     sampling_rate=100.0,  # Hz
     subjectID="sub-01",
-    condition="baseline"
+    condition="baseline",
 )
 ```
 
@@ -48,11 +48,7 @@ print(result.history)  # ['Min', 'Max']
 Pipe a `SplitterFeature` into a pipeline and close it with an `AggregatorFeature`:
 
 ```python
-chord = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
-)
+chord = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 result = chord.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
@@ -65,15 +61,11 @@ A `Chord` is itself a `BaseFeature`, so it composes with `|` like any other step
 
 ```python
 ds = cb.load_dataset("dummy_chain")
-ds.describe()              # print shapes, metadata summary
-ds.filter(groupID="A")     # subset by metadata
-ds.groupby("condition")    # dict[str, Dataset]
+ds.describe()  # print shapes, metadata summary
+ds.filter(groupID="A")  # subset by metadata
+ds.groupby("condition")  # dict[str, Dataset]
 
-pipeline = (
-    cb.SlidingWindow(window_size=20, step_size=10)
-    | cb.LineLength()
-    | cb.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 
 results = cb.Dataset([pipeline.apply(d) for d in ds])
 ```

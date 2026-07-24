@@ -7,6 +7,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -153,3 +154,51 @@ class ReciprocalConnectivity(BaseFeature[Data]):
             space_vals = np.arange(n_ch)
 
         return xr.DataArray(rc, dims=["space"], coords={"space": space_vals})
+
+
+@functional(ReciprocalConnectivity)
+def reciprocal_connectivity(
+    data: Data, freq_band: tuple[float, float] | None = (30.0, 80.0), normalize: bool = False
+) -> Data:
+    """Compute per-channel Reciprocal Connectivity (RC) from a directed connectivity matrix.
+
+    **Reciprocal Connectivity** quantifies the net directional role of each
+    channel: positive values indicate a net *sink* (more influence received
+    than sent), and negative values indicate a net *source* (more influence
+    sent than received).
+
+    For each channel ``i``::
+
+        RC[i] = in_strength[i] - out_strength[i]
+
+    where (with ``mat[i, j]`` = flow *from j to i*):
+
+    * ``in_strength[i]``  = mean over j of ``mat[i, j, band]``
+    * ``out_strength[i]`` = mean over j of ``mat[j, i, band]``
+
+    Matrix-only input. To compute RC from a raw signal, pipe it through a
+    directed connectivity feature first::
+
+        rc = (PartialDirectedCoherence() | ReciprocalConnectivity()).apply(signal)
+
+    Args:
+        freq_band: Frequency band ``(fmin, fmax)`` in Hz to average over.
+            Required when the input matrix has a ``"frequency"`` dimension;
+            pass ``None`` when the input is already a single matrix.
+            Default ``(30.0, 80.0)`` Hz.
+        normalize: If ``True``, z-score the matrix (excluding the diagonal)
+            before computing in/out strengths.
+
+    Returns:
+        xarray DataArray with dim ``("space",)``, shape ``(n_channels,)``.
+
+    Raises:
+        ValueError: If the input lacks ``"space_to"`` and ``"space_from"``
+            dimensions, if the matrix is asymmetric vs symmetric requirements
+            are violated, or if ``freq_band`` is incompatible with the input.
+
+    Example:
+        >>> rc = cb.reciprocal_connectivity(pdc_matrix, freq_band=(30.0, 80.0))
+        >>> rc = (cb.PartialDirectedCoherence() | rc).apply(signal_data)
+    """
+    return ReciprocalConnectivity(freq_band=freq_band, normalize=normalize).apply(data)

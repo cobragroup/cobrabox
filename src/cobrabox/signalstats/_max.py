@@ -5,6 +5,7 @@ from typing import ClassVar
 
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -38,3 +39,24 @@ class Max(BaseFeature[Data]):
         if self.dim not in data.data.dims:
             raise ValueError(f"dim '{self.dim}' not found in data dimensions {data.data.dims}")
         return data.data.max(dim=self.dim)
+
+
+@functional(Max)
+def max(data: Data, dim: str) -> Data:
+    """Compute the maximum value across a dimension.
+
+    Args:
+        dim: Name of the dimension to reduce over (e.g. ``"time"``).
+
+    Returns:
+        xarray DataArray with ``dim`` removed. Shape is the input shape
+        minus the reduced dimension. Values are the per-position maximum
+        in the same units as the input data.
+
+    Raises:
+        ValueError: If the specified dimension is not found in the data.
+
+    Example:
+        >>> result = cb.max(data, dim="time")
+    """
+    return Max(dim=dim).apply(data)

@@ -81,11 +81,7 @@ def test_feature_svd_no_centering_no_zscore() -> None:
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     out = cb.SVD(
-        dim="time",
-        n_components=3,
-        center=False,
-        zscore=False,
-        return_unstacked_V=False,
+        dim="time", n_components=3, center=False, zscore=False, return_unstacked_V=False
     ).apply(data)
 
     svd = out.data.attrs["svd"]

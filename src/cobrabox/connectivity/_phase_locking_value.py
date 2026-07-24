@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 from ..transforms._analytic_signal import _analytic_signal_1d
@@ -111,3 +112,36 @@ class PhaseLockingValue(BaseFeature[SignalData]):
             dims=("space_to", "space_from"),
             coords={"space_to": coords_list, "space_from": coords_list},
         )
+
+
+@functional(PhaseLockingValue)
+def phase_locking_value(data: SignalData, coords: list[str] | list[int] | None = None) -> Data:
+    """Compute the phase-locking-value (PLV) matrix across channels.
+
+    For each ordered pair ``(i, j)``, computes the PLV between channels
+    ``i`` and ``j`` via instantaneous phase differences (extracted with the
+    Hilbert transform). PLV is symmetric, takes values in ``[0, 1]``, and is
+    1 on the diagonal.
+
+    Args:
+        coords: Channels to include. ``None`` (default) computes the full
+            ``(K, K)`` matrix across all space coordinates; pass a list of
+            coordinate names to restrict the output. Restricting saves both
+            the Hilbert transform (run on the selected channels only) and
+            the pairwise loop.
+
+    Returns:
+        xarray DataArray with dims ``(space_to, space_from)``. Values are
+        symmetric and in ``[0, 1]``.
+
+    Raises:
+        ValueError: If ``coords`` is an empty list or any coordinate is not
+            found in the space dimension.
+
+    Example:
+        >>> # Full matrix
+        >>> plv = cb.phase_locking_value(data)
+        >>> # Single pair
+        >>> plv = cb.phase_locking_value(data, coords=["F3", "F4"])
+    """
+    return PhaseLockingValue(coords=coords).apply(data)

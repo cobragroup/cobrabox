@@ -5,6 +5,7 @@ from typing import ClassVar
 
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -33,3 +34,21 @@ class Min(BaseFeature[Data]):
         if self.dim not in data.data.dims:
             raise ValueError(f"dim '{self.dim}' not found in data dimensions {data.data.dims}")
         return data.data.min(dim=self.dim)
+
+
+@functional(Min)
+def min(data: Data, dim: str) -> Data:
+    """Compute the minimum value across a dimension.
+
+    Args:
+        dim: Name of the dimension to reduce over (e.g. ``"time"``).
+
+    Returns:
+        xarray DataArray with ``dim`` removed. Shape is the input shape
+        minus the reduced dimension. Values are the per-position minimum
+        in the same units as the input signal.
+
+    Example:
+        >>> result = cb.min(data, dim="time")
+    """
+    return Min(dim=dim).apply(data)

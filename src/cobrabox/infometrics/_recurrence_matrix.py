@@ -12,6 +12,7 @@ from scipy.spatial.distance import cdist
 from scipy.stats import spearmanr
 from sklearn.metrics import mutual_info_score
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..connectivity._envelope_correlation import EnvelopeCorrelation
 from ..data import Data, SignalData
@@ -252,3 +253,76 @@ class RecurrenceMatrix(BaseFeature[SignalData]):
                 n = len(starts)
 
         return xr.DataArray(mat, dims=["t1", "t2"], coords={"t1": np.arange(n), "t2": np.arange(n)})
+
+
+@functional(RecurrenceMatrix)
+def recurrence_matrix(
+    data: SignalData,
+    rec_metric: RecMetric = "cosine",
+    fc_options: list[str | int | float] | None = None,
+) -> Data:
+    """Compute a pairwise recurrence (self-similarity) matrix from a time-series.
+
+    Behaviour depends on the **shape of the input** and the contents of
+    ``fc_options``:
+
+    **2-D input** ``(N, T)`` — multivariate time-series:
+
+    - ``fc_options=[]`` *(default)*: each time-point is used as a state
+      vector directly.  Output shape ``(T, T)``.
+    - ``fc_options=['pearson']``: FC computed per window with default
+      ``window_size=10`` and ``overlap=0.5``.
+    - ``fc_options=['pearson', 50]``: FC with ``window_size=50``,
+      default ``overlap=0.5``.
+    - ``fc_options=['pearson', 50, 0.25]``: FC with ``window_size=50``
+      and ``overlap=0.25``.
+    - Supported FC metrics: ``'pearson'``, ``'spearman'``, ``'MI'``, ``'PLV'``, ``'AEC'``.
+    - A ``UserWarning`` is raised if ``window_size < 5``.
+
+    **3-D input** ``(N, N, T)`` — time-series of FC matrices:
+
+    Already-computed FC matrices; ``fc_options`` is ignored.
+    Output shape ``(T, T)``.
+
+    Args:
+        rec_metric: Pairwise similarity metric.  One of ``'cosine'``
+            *(default)*, ``'correlation'``, ``'euclidean'``.
+        fc_options: List controlling window-based FC computation.
+            ``[]`` = state-vector mode.
+            ``[fc_metric]`` = FC with defaults.  Supported: ``'pearson'``,
+            ``'spearman'``, ``'MI'``, ``'PLV'``, ``'AEC'``.
+            ``[fc_metric, window_size]`` = FC with given window size.
+            ``[fc_metric, window_size, overlap]`` = full control.
+
+    Returns:
+        xarray DataArray of shape ``(n, n)`` with dims ``('t1', 't2')``.
+
+    Raises:
+        ValueError: If a required dimension is missing.
+        ValueError: If ``window_size >= n_time``.
+        ValueError: If metric values are invalid.
+
+    Example:
+        >>> # state-vector mode (default)
+        >>> rec = cb.recurrence_matrix(data)
+
+        >>> # window/FC mode — just fc_metric, rest default
+        >>> rec = cb.recurrence_matrix(data, 'cosine', ['pearson'])
+
+        >>> # window/FC mode — full control
+        >>> rec = cb.recurrence_matrix(data, 'cosine', ['pearson', 50, 0.25])
+
+        >>> # 3-D pre-computed FC time-series
+        >>> rec = cb.recurrence_matrix(fc_data, 'cosine')
+
+    References:
+        Eckmann, J. P., Kamphorst, S. O., & Ruelle, D. (1987). Recurrence plots of dynamical
+        systems. Europhysics Letters, 4(9), 973-977. https://doi.org/10.1209/0295-5075/4/9/004
+
+        Marwan, N., Romano, M. C., Thiel, M., & Kurths, J. (2007). Recurrence plots for the
+        analysis of complex systems. Physics Reports, 438(5-6), 237-329.
+        https://doi.org/10.1016/j.physrep.2006.11.001
+    """
+    if fc_options is None:
+        return RecurrenceMatrix(rec_metric=rec_metric).apply(data)
+    return RecurrenceMatrix(rec_metric=rec_metric, fc_options=fc_options).apply(data)

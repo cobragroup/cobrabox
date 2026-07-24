@@ -75,26 +75,26 @@ CobraBox, but these one-liners cover the most common needs:
 item = cb.load_dataset("dummy_chain")[0]
 
 # Shape metadata — straight off the Data object
-item.dims                                        # ('space', 'time')
-item.shape                                       # (4, 200)                  as numpy has it
-item.size                                        # 800                       total elements
-item.sizes                                       # {'space': 4, 'time': 200} as xarray has it
+item.dims  # ('space', 'time')
+item.shape  # (4, 200)                  as numpy has it
+item.size  # 800                       total elements
+item.sizes  # {'space': 4, 'time': 200} as xarray has it
 
 # Reach the wrapped object without the .data.data double-take
-item.xarr                                        # the xarray.DataArray
-item.numpy                                       # the numpy array, no copy
+item.xarr  # the xarray.DataArray
+item.numpy  # the numpy array, no copy
 
 # Coordinate values as a Python list
-item.data.coords["space"].values.tolist()        # [0, 1, 2, 3]
-item.data.coords["time"].values.tolist()         # [0.0, 0.005, 0.01, ...]
+item.data.coords["space"].values.tolist()  # [0, 1, 2, 3]
+item.data.coords["time"].values.tolist()  # [0.0, 0.005, 0.01, ...]
 
 # Select by label (returns xarray.DataArray)
-item.data.sel(space=0)                           # one channel
-item.data.sel(time=slice(0.0, 0.5))             # time window
+item.data.sel(space=0)  # one channel
+item.data.sel(time=slice(0.0, 0.5))  # time window
 
 # Convert to numpy or pandas
-item.to_numpy()                                  # plain ndarray
-item.to_pandas()                                 # DataFrame with MultiIndex
+item.to_numpy()  # plain ndarray
+item.to_pandas()  # DataFrame with MultiIndex
 ```
 
 To attach named coordinates (e.g., electrode labels), build the DataArray explicitly:
@@ -106,10 +106,10 @@ import numpy as np
 xr_arr = xr.DataArray(
     np.random.normal(size=(200, 8)),
     dims=["time", "space"],
-    coords={"time": np.arange(200) / 100.0, "space": [f"E{i+1}" for i in range(8)]},
+    coords={"time": np.arange(200) / 100.0, "space": [f"E{i + 1}" for i in range(8)]},
 )
 data = cb.Data.from_xarray(xr_arr, sampling_rate=100.0, subjectID="sub-01")
-data.data.coords["space"].values.tolist()        # ['E1', 'E2', ..., 'E8']
+data.data.coords["space"].values.tolist()  # ['E1', 'E2', ..., 'E8']
 ```
 
 See [`examples/data_basics.py`](examples/data_basics.py) for a full walkthrough, and
@@ -186,7 +186,7 @@ pipeline = cb.load("my_pipeline.yaml")
 
 # Or work with strings directly
 yaml_str = cb.serialize(pipeline)
-pipeline  = cb.deserialize(yaml_str)
+pipeline = cb.deserialize(yaml_str)
 ```
 
 See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a full walkthrough.
@@ -198,12 +198,12 @@ See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a ful
 ```python
 ds = cb.load_dataset("dummy_chain")
 
-ds.describe()                        # print summary: shapes, metadata
-ds.filter(groupID="control")         # Dataset[SignalData] with matching items
-ds.groupby("condition")              # dict[str, Dataset[SignalData]]
-ds[0]                                # first item
-ds[1:3]                              # slice → Dataset[SignalData]
-ds1 + ds2                            # concatenate two Datasets
+ds.describe()  # print summary: shapes, metadata
+ds.filter(groupID="control")  # Dataset[SignalData] with matching items
+ds.groupby("condition")  # dict[str, Dataset[SignalData]]
+ds[0]  # first item
+ds[1:3]  # slice → Dataset[SignalData]
+ds1 + ds2  # concatenate two Datasets
 ```
 
 Available identifiers:

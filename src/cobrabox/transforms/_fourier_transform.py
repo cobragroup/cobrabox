@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -68,3 +69,25 @@ class FourierTransform(BaseFeature[SignalData]):
         coords = {d: ordered.coords[d] for d in non_time_dims if d in ordered.coords}
         coords["frequency"] = freqs
         return xr.DataArray(result, dims=(*non_time_dims, "frequency"), coords=coords)
+
+
+@functional(FourierTransform)
+def fourier_transform(data: SignalData, return_magnitude: bool = True) -> Data:
+    """Real-valued FFT along the time axis.
+
+    Produces a frequency-domain representation of every channel. Output dims
+    are ``(*non_time_dims, "frequency")``; ``time`` is consumed. When
+    ``data.sampling_rate`` is available the ``frequency`` coordinate is in Hz,
+    otherwise it falls back to cycles-per-sample.
+
+    Args:
+        return_magnitude: If ``True`` (default), return ``|FFT|`` as a
+            real-valued array. If ``False``, return the raw complex
+            coefficients.
+
+    Returns:
+        xarray DataArray with dims ``(*non_time_dims, "frequency")``. Dtype is
+        ``complex128`` when ``return_magnitude=False`` and ``float64``
+        otherwise.
+    """
+    return FourierTransform(return_magnitude=return_magnitude).apply(data)

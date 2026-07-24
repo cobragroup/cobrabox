@@ -7,6 +7,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 from ..transforms._fourier_transform import _rfft_1d
@@ -149,3 +150,43 @@ class Coherence(BaseFeature[SignalData]):
             dims=(*extra_dims, "space_to", "space_from"),
             coords={**extra_coords, "space_to": space_coords, "space_from": space_coords},
         )
+
+
+@functional(Coherence)
+def coherence(data: SignalData, nperseg: int | None = None) -> Data:
+    """Compute magnitude-squared coherence for all pairwise channel combinations.
+
+    Uses Welch's method (50 % overlap, Hann window) to estimate the
+    magnitude-squared coherence between each unique pair of spatial channels,
+    then averages over frequency bins to produce a single scalar per pair.
+    Because coherence is symmetric the result is a symmetric NxN matrix;
+    the diagonal is set to NaN (self-coherence is uninformative).
+
+    Extra dimensions beyond 'space' and 'time' (e.g. ``window_index``) are
+    preserved — coherence is computed along the 'time' axis for every
+    combination of those extra dimensions.
+
+    Args:
+        nperseg: Samples per FFT segment. Defaults to ``min(256, n_time)``.
+            Must be >= 2 and <= n_time.
+
+    Example:
+        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> coh = cb.coherence(data)
+        >>> coh.data.dims
+        ('space_to', 'space_from')
+
+    Returns:
+        xarray DataArray with dims ``(*extra_dims, space_to, space_from)`` (plus a
+        singleton ``time`` dimension added by ``BaseFeature.apply``). Both
+        ``space_to`` and ``space_from`` carry the original channel coordinates.
+        Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix
+        is symmetric: ``result[i, j] == result[j, i]``.
+
+    Raises:
+        ValueError: If nperseg is provided and less than 2.
+        ValueError: If input data lacks a 'space' dimension.
+        ValueError: If fewer than 2 spatial channels are present.
+        ValueError: If computed nperseg is less than 2 or exceeds time samples.
+    """
+    return Coherence(nperseg=nperseg).apply(data)

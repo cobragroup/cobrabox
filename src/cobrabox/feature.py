@@ -54,9 +54,15 @@ def _discover() -> dict[str, object]:
                 continue
 
             for name, obj in vars(module).items():
+                # A feature class (`_is_cobrabox_feature`) or its one-shot function
+                # (`_is_cobrabox_feature_function`, set by @functional). Both are
+                # collected so `cb.feature` carries `Correlation` and `correlation`.
+                is_feature = getattr(obj, "_is_cobrabox_feature", False) or getattr(
+                    obj, "_is_cobrabox_feature_function", False
+                )
                 if (
                     callable(obj)
-                    and getattr(obj, "_is_cobrabox_feature", False)
+                    and is_feature
                     and getattr(obj, "__module__", "") == full_module_name
                 ):
                     if name in discovered:  # pragma: no cover

@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -127,3 +128,47 @@ class PartialCorrelation(BaseFeature[SignalData]):
             dims=("space_to", "space_from"),
             coords={"space_to": output_coords, "space_from": output_coords},
         )
+
+
+@functional(PartialCorrelation)
+def partial_correlation(
+    data: SignalData,
+    coords: list[str] | list[int] | None = None,
+    control_vars: list[str] | list[int] | None = None,
+) -> Data:
+    """Compute the partial-correlation matrix across channels.
+
+    Each off-diagonal entry ``result[i, j]`` is the correlation between
+    channels ``i`` and ``j`` after partialling out the influence of every
+    other channel in the matrix (and any explicit ``control_vars``). Computed
+    via inversion of the full correlation matrix — conditioning therefore
+    requires all channels, so ``coords`` only filters the *output*; the
+    precision-matrix inversion is still O(K³) in the full channel count.
+
+    Args:
+        coords: Channels to include in the output. ``None`` (default) returns
+            the full ``(K, K)`` matrix; pass a list of coordinate names to
+            restrict the output (compute cost is unchanged).
+        control_vars: Additional coordinates to control for that are not part
+            of the output matrix. When ``None`` and ``coords`` is set, no
+            extra controls are added (only the channels in ``coords`` enter
+            the precision matrix).
+
+    Returns:
+        xarray DataArray with dims ``(space_to, space_from)`` and shape
+        ``(len(coords), len(coords))``. Symmetric, with ``1`` on the diagonal.
+
+    Raises:
+        ValueError: If the correlation matrix is singular (perfect collinearity
+            or too few samples), if ``coords`` is an empty list, or if any
+            named coordinate is missing from the space dimension.
+
+    Example:
+        >>> # Full matrix
+        >>> pc = cb.partial_correlation(data)
+        >>> # Two-channel subset, control on an extra channel
+        >>> pc = cb.partial_correlation(data,
+        ...     coords=["F3", "F4"], control_vars=["Cz"]
+        ... )
+    """
+    return PartialCorrelation(coords=coords, control_vars=control_vars).apply(data)

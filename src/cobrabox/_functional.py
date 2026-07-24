@@ -1,42 +1,54 @@
-"""Generate the one-shot functional API from the feature classes (GH #116).
+"""Helpers and the marker for the one-shot functional API (GH #116).
 
-    o = cb.autocorrelation(d, dim="time", fs=250.0)     # this module
-    o = cb.Autocorrelation(dim="time", fs=250.0).apply(d)
+Every feature class has a companion function defined **in the same file**, just
+below the class:
 
-The functional layer is **additive**. Pipelines compose feature *instances* —
-``cb.SlidingWindow(...) | cb.LineLength() | cb.MeanAggregate()`` — so the classes
-remain the primary API; these wrappers just remove the ``().apply()`` ceremony
-from a single call.
+    cb.correlation(data, method="spearman")         # one-shot
+    cb.Correlation(method="spearman").apply(data)   # class, for pipelines
 
-Names come from the implementation module, not from the class: splitting
-``CamelCase`` gives ``e_m_d`` and ``s_v_d``, while the filenames (``_emd.py``,
-``_svd.py``) are already correct. The mapping is 1:1, so the module name minus
-its leading underscore is the function name.
+The function is written as ordinary source and decorated with
+``@functional(TheClass)``. Writing it by hand (rather than synthesising it at
+import time) is deliberate: ``cb.correlation?`` then points at the feature file
+where the real code lives, and type-checkers see its true signature. The marker
+lets discovery (``feature.py``) and the doc/stub generators find the function
+and tie it back to its class.
 
-Wrappers are generated rather than hand-written so a new parameter cannot drift
-out of sync with its dataclass. ``scripts/gen_stubs.py`` renders matching ``.pyi``
-signatures for static analysis.
+This module keeps only the shared helpers and the marker; the wrappers
+themselves live with their classes. ``scripts/gen_functional_wrappers.py`` seeds
+the wrapper for any feature that lacks one, deriving it from the class.
 """
 
 from __future__ import annotations
 
 import dataclasses
-import inspect
-import sys
-from collections.abc import Callable, Iterator
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
-from .base_feature import AggregatorFeature, SplitterFeature
-from .data import Data
+from .base_feature import AggregatorFeature
 
-# Aggregators fold a stream produced by a splitter — `(Data, Iterator[Data]) -> Data`.
-# Outside a Chord there is no stream to fold, so a standalone `mean_aggregate(d, windows)`
-# would invite misuse. They stay class-only, deliberately; test_functional_api.py pins it.
-_EXCLUDED_BASES = (AggregatorFeature,)
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+def functional(feature_cls: type) -> Callable[[_F], _F]:
+    """Mark a module-level function as the functional form of ``feature_cls``.
+
+    Returns the function unchanged — so ``inspect.getsourcefile`` still resolves
+    to the feature file — while tagging it for auto-discovery.
+    """
+
+    def decorate(fn: _F) -> _F:
+        # Attributes on a function object: set through Any, since a typed callable
+        # does not admit arbitrary attributes.
+        marked: Any = fn
+        marked._wrapped_feature = feature_cls
+        marked._is_cobrabox_feature_function = True
+        return fn
+
+    return decorate
 
 
 def function_name(cls: type) -> str:
-    """`cobrabox.signalstats._line_length` -> `line_length`."""
+    """``cobrabox.signalstats._line_length`` -> ``line_length``."""
     return cls.__module__.rsplit(".", 1)[-1].lstrip("_")
 
 
@@ -46,148 +58,5 @@ def public_fields(cls: type) -> list[dataclasses.Field]:
 
 
 def has_functional_form(cls: type) -> bool:
-    return not issubclass(cls, _EXCLUDED_BASES)
-
-
-class _FactoryDefault:
-    """Stand-in for a ``default_factory`` field in the displayed signature.
-
-    The field is optional, but its value is built per call, so there is no single
-    object to show. ``__signature__`` is metadata only — the wrapper really takes
-    ``(data, *args, **kwargs)`` — so this is never passed to the dataclass.
-    """
-
-    def __repr__(self) -> str:
-        return "<factory>"
-
-
-FACTORY_DEFAULT = _FactoryDefault()
-
-
-def _signature(cls: type) -> inspect.Signature:
-    """`(data, <dataclass fields in declaration order>)`.
-
-    Mirroring the dataclass keeps positional calls working, which is what the
-    issue asked for — `cb.correlation(d, "time", "spearman")` rather than
-    keyword-only.
-    """
-    params = [inspect.Parameter("data", inspect.Parameter.POSITIONAL_OR_KEYWORD)]
-    for f in public_fields(cls):
-        if f.default is not dataclasses.MISSING:
-            default = f.default
-        elif f.default_factory is not dataclasses.MISSING:  # type: ignore[misc]
-            # Optional in the dataclass, so it must be optional here too, or a
-            # later defaulted field would make the signature invalid.
-            default = FACTORY_DEFAULT
-        else:
-            default = inspect.Parameter.empty
-        params.append(
-            inspect.Parameter(
-                f.name, inspect.Parameter.POSITIONAL_OR_KEYWORD, default=default, annotation=f.type
-            )
-        )
-    return inspect.Signature(params)
-
-
-def _summary(cls: type) -> str:
-    doc = inspect.getdoc(cls) or ""
-    for line in doc.splitlines():
-        if line.strip():
-            return line.strip()
-    return f"Apply {cls.__name__}."
-
-
-def _docstring(cls: type) -> str:
-    """Compose a docstring rather than copying the class's.
-
-    The class docstring's ``Example:`` shows the class form; reusing it verbatim
-    would document the wrong call. Prose stays single-sourced on the class.
-    """
-    name = function_name(cls)
-    fields = public_fields(cls)
-    lines = [_summary(cls), ""]
-
-    if fields:
-        lines.append("Args:")
-        lines.append("    data: Input data.")
-        for f in fields:
-            if f.default is not dataclasses.MISSING and f.default is not None:
-                suffix = f" Defaults to ``{f.default!r}``."
-            else:
-                suffix = ""
-            lines.append(f"    {f.name}: See :class:`~cobrabox.{cls.__name__}`.{suffix}")
-    else:
-        lines += ["Args:", "    data: Input data."]
-
-    call = f"{name}(data)" if not fields else f"{name}(data, ...)"
-    lines += [
-        "",
-        "Example:",
-        f"    >>> result = cb.{call}",
-        "",
-        f"Equivalent to ``cb.{cls.__name__}(...).apply(data)``. Use the class form to",
-        "compose a pipeline with ``|``, to serialize, or inside a ``Chord``.",
-    ]
-    return "\n".join(lines)
-
-
-def _drop_factory_sentinels(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Let the dataclass apply its own factory if the displayed default is passed back.
-
-    Guards the round-trip `f(d, **dict(inspect.signature(f).parameters ...))`, where
-    the sentinel could be handed straight back to us.
-    """
-    return {k: v for k, v in kwargs.items() if v is not FACTORY_DEFAULT}
-
-
-def make_functional(cls: type) -> Callable[..., Any]:
-    """Build the one-shot wrapper for a feature class."""
-    if issubclass(cls, SplitterFeature):
-
-        def wrapper(data: Data, *args: Any, **kwargs: Any) -> Iterator[Data]:
-            # Splitters have no .apply(); calling the instance yields the stream.
-            # `data` is typed `Data` here because the wrapper is uniform across
-            # features; the splitter's own validation enforces what it needs.
-            splitter: Any = cls(*args, **_drop_factory_sentinels(kwargs))
-            return splitter(data)
-    else:
-
-        def wrapper(data: Data, *args: Any, **kwargs: Any) -> Data:
-            return cls(*args, **_drop_factory_sentinels(kwargs)).apply(data)
-
-    name = function_name(cls)
-    # Rebound as Any: the dunders below are set dynamically, which is precisely
-    # what a typed function object does not allow.
-    fn: Any = wrapper
-    fn.__name__ = name
-    fn.__qualname__ = name
-    fn.__module__ = cls.__module__.rsplit(".", 1)[0]
-    fn.__doc__ = _docstring(cls)
-    fn.__signature__ = _signature(cls)
-    fn.__wrapped_feature__ = cls
-    return fn
-
-
-def install(package_name: str) -> list[str]:
-    """Install functional wrappers into a domain package and extend its ``__all__``.
-
-    Called at the end of each domain's ``__init__.py``. Returns the names added.
-    """
-    package: Any = sys.modules[package_name]
-    added: list[str] = []
-    for cls_name in list(getattr(package, "__all__", ())):
-        cls = getattr(package, cls_name, None)
-        if not isinstance(cls, type) or not getattr(cls, "_is_cobrabox_feature", False):
-            continue
-        if not has_functional_form(cls):
-            continue
-        name = function_name(cls)
-        if hasattr(package, name):
-            raise RuntimeError(
-                f"Cannot install functional wrapper {name!r} in {package_name!r}: "
-                f"the name is already taken by {getattr(package, name)!r}."
-            )
-        setattr(package, name, make_functional(cls))
-        added.append(name)
-    package.__all__ = sorted([*package.__all__, *added])
-    return added
+    """Aggregators fold a splitter's stream, so they get no standalone function."""
+    return not issubclass(cls, AggregatorFeature)

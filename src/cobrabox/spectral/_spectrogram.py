@@ -8,8 +8,9 @@ import xarray as xr
 from scipy.signal import spectrogram as _sp_spectrogram
 from scipy.signal import stft as _sp_stft
 
+from .._functional import functional
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 _VALID_SCALINGS = ("log", "density", "spectrum", "magnitude")
 
@@ -156,3 +157,56 @@ class Spectrogram(BaseFeature[SignalData]):
             coords={**extra_coords, "space": space_coords, "frequency": f_axis, "time": t_axis},
             attrs={"sampling_rate": fs},
         )
+
+
+@functional(Spectrogram)
+def spectrogram(
+    data: SignalData,
+    nperseg: int | None = None,
+    noverlap: int | None = None,
+    window: str = "hann",
+    scaling: str = "log",
+) -> Data:
+    """Compute the power spectrogram for each spatial channel.
+
+    Uses ``scipy.signal.spectrogram`` (Welch-style STFT) to estimate the
+    short-time power spectral density (or magnitude spectrum) for every
+    channel independently.  Extra dimensions (e.g. ``window_index``) are
+    preserved: the spectrogram is computed along the ``time`` axis for each
+    slice of those dimensions.
+
+    Args:
+        nperseg: Samples per FFT segment.  Controls frequency resolution.
+            Defaults to ``min(256, n_time)``.  Must be >= 2 and <= n_time.
+        noverlap: Overlap between consecutive segments in samples.  Defaults
+            to ``nperseg // 2`` (50 % overlap).  Must be < nperseg.
+        window: Window function name passed to scipy (e.g. ``"hann"``,
+            ``"hamming"``).  Defaults to ``"hann"``.
+        scaling: Output scaling.  One of:
+
+            * ``"log"`` *(default)* — 10 · log₁₀(PSD) in dB re 1 V²/Hz.
+              Values where PSD ≈ 0 are clamped to avoid -inf.
+            * ``"density"`` — power spectral density in V²/Hz.
+            * ``"spectrum"`` — power spectrum in V² (not normalised by
+              bandwidth).
+            * ``"magnitude"`` — |STFT| (absolute value of complex STFT
+              coefficients, computed via ``scipy.signal.stft``).
+
+    Returns:
+        xarray DataArray with dims ``(*extra_dims, "space", "frequency",
+        "time")`` where ``frequency`` is in Hz and ``time`` holds the window
+        centre times in seconds (as returned by scipy).
+
+    Raises:
+        ValueError: If ``scaling`` is not one of the four valid options, if
+            ``nperseg`` is invalid, or if ``noverlap >= nperseg``.
+
+    Example:
+        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> sg = cb.spectrogram(data)
+        >>> sg.data.dims
+        ('space', 'frequency', 'time')
+    """
+    return Spectrogram(nperseg=nperseg, noverlap=noverlap, window=window, scaling=scaling).apply(
+        data
+    )

@@ -31,7 +31,9 @@ DOMAINS = [
     "windowing",
 ]
 
-FEATURE_NAMES = sorted(cb.feature.__all__)
+# `cb.feature.__all__` now carries both the classes and their functions; these
+# tests reason about the classes.
+FEATURE_NAMES = sorted(n for n in cb.feature.__all__ if isinstance(getattr(cb, n), type))
 FUNCTIONAL = [n for n in FEATURE_NAMES if has_functional_form(getattr(cb, n))]
 CLASS_ONLY = [n for n in FEATURE_NAMES if not has_functional_form(getattr(cb, n))]
 
@@ -143,7 +145,24 @@ def test_function_matches_class_form(name: str, data: cb.SignalData) -> None:
 def test_function_is_bound_to_its_feature_class(name: str) -> None:
     cls = getattr(cb, name)
     fn = getattr(cb, function_name(cls))
-    assert fn.__wrapped_feature__ is cls
+    assert fn._wrapped_feature is cls
+
+
+@pytest.mark.parametrize("name", FUNCTIONAL)
+def test_function_is_defined_in_its_feature_file(name: str) -> None:
+    """The point of co-locating wrappers (GH #116): ``cb.correlation?`` and "go to
+    definition" land on ``_correlation.py``, where the real code is — not on a
+    factory module."""
+    cls = getattr(cb, name)
+    fn = getattr(cb, function_name(cls))
+    assert inspect.getsourcefile(fn) == inspect.getsourcefile(cls)
+
+
+@pytest.mark.parametrize("name", FUNCTIONAL)
+def test_function_reachable_through_feature_registry(name: str) -> None:
+    cls = getattr(cb, name)
+    fn_name = function_name(cls)
+    assert getattr(cb.feature, fn_name) is getattr(cb, fn_name)
 
 
 def test_positional_parameters_work(data: cb.SignalData) -> None:
@@ -163,13 +182,12 @@ def test_parameters_actually_reach_the_feature(data: cb.SignalData) -> None:
     )
 
 
-def test_factory_default_is_not_passed_through(data: cb.SignalData) -> None:
-    """`<factory>` is signature decoration; handing it back must not reach the dataclass."""
-    sentinel = inspect.signature(cb.bandpass_filter).parameters["bands"].default
-    assert repr(sentinel) == "<factory>"
+def test_factory_default_uses_the_class_default(data: cb.SignalData) -> None:
+    """A ``default_factory`` field takes ``None`` in the function; the class then
+    supplies its own default (the five EEG bands here)."""
+    assert inspect.signature(cb.bandpass_filter).parameters["bands"].default is None
     np.testing.assert_allclose(
-        cb.bandpass_filter(data, bands=sentinel).data.values,
-        cb.BandpassFilter().apply(data).data.values,
+        cb.bandpass_filter(data).data.values, cb.BandpassFilter().apply(data).data.values
     )
 
 
@@ -179,11 +197,14 @@ def test_splitter_returns_a_stream(data: cb.SignalData) -> None:
     assert all(isinstance(w, cb.Data) for w in windows)
 
 
-def test_docstring_shows_the_functional_form() -> None:
-    """Composed, not copied — the class docstring's example shows the class form."""
+def test_docstring_is_full_with_a_functional_example() -> None:
+    """Seeded from the class docstring (so Args/Returns carry over), with the
+    example rewritten to the functional call — no leftover class-form call."""
     doc = cb.correlation.__doc__ or ""
-    assert ">>> result = cb.correlation(" in doc
-    assert "cb.Correlation(...).apply(data)" in doc
+    assert "Args:" in doc  # the full class docstring came across,
+    assert "Returns:" in doc  # ...Args and Returns and all
+    assert "cb.correlation(data)" in doc  # example rewritten to the function
+    assert "cb.Correlation(" not in doc  # ...with no class-form call left behind
 
 
 def test_no_function_name_collides_with_anything_public() -> None:

@@ -1,9 +1,9 @@
 # Spectral features: what's happening in frequency space.
-from ._band_power import BandPower
-from ._continuous_wavelet_transform import ContinuousWaveletTransform
-from ._cordance import Cordance
-from ._discrete_wavelet_transform import DiscreteWaveletTransform
-from ._spectrogram import Spectrogram
+from ._band_power import BandPower, band_power
+from ._continuous_wavelet_transform import ContinuousWaveletTransform, continuous_wavelet_transform
+from ._cordance import Cordance, cordance
+from ._discrete_wavelet_transform import DiscreteWaveletTransform, discrete_wavelet_transform
+from ._spectrogram import Spectrogram, spectrogram
 
 __all__ = [
     "BandPower",
@@ -11,9 +11,9 @@ __all__ = [
     "Cordance",
     "DiscreteWaveletTransform",
     "Spectrogram",
+    "band_power",
+    "continuous_wavelet_transform",
+    "cordance",
+    "discrete_wavelet_transform",
+    "spectrogram",
 ]
-
-# One-shot functional wrappers (cb.line_length(d) beside cb.LineLength().apply(d)). See GH #116.
-from .._functional import install as _install_functional
-
-_install_functional(__name__)

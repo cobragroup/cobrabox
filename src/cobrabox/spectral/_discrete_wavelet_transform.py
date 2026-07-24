@@ -7,6 +7,7 @@ import numpy as np
 import pywt
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -155,3 +156,64 @@ class DiscreteWaveletTransform(BaseFeature[SignalData]):
             dims=(*extra_dims, "space", "wavelet_level", "coef_index"),
             coords={**extra_coords, "space": space_coords, "wavelet_level": level_labels},
         )
+
+
+@functional(DiscreteWaveletTransform)
+def discrete_wavelet_transform(
+    data: SignalData,
+    wavelet: _DwtWavelet = "db4",
+    level: int | None = None,
+    mode: Literal[
+        "zero",
+        "constant",
+        "symmetric",
+        "periodic",
+        "smooth",
+        "periodization",
+        "reflect",
+        "antisymmetric",
+        "antireflect",
+    ] = "symmetric",
+) -> Data:
+    """Multi-level discrete wavelet decomposition (DWT).
+
+    Uses ``pywt.wavedec`` to decompose the ``time`` axis into one approximation
+    and ``level`` detail coefficient arrays. Because each decomposition level
+    has a different number of coefficients, shorter arrays are right-padded with
+    ``NaN`` to match the length of the finest-level (level 1) detail
+    coefficients, producing a rectangular output that can be passed to
+    downstream features.
+
+    Args:
+        wavelet: Discrete wavelet name (e.g. ``"db4"``, ``"haar"``, ``"sym5"``).
+            See ``pywt.wavelist(kind='discrete')`` for all valid options.
+            Daubechies-4 (``"db4"``) is a standard choice for EEG analysis.
+        level: Decomposition level. ``None`` (default) uses the maximum level
+            allowed by the signal length and wavelet filter length.
+        mode: Signal extension mode for boundary handling (e.g. ``"symmetric"``,
+            ``"periodization"``, ``"zero"``). See ``pywt.Modes`` for options.
+
+    Returns:
+        xarray DataArray with dims ``(*extra_dims, "space", "wavelet_level",
+        "coef_index")`` where:
+
+        * ``wavelet_level`` has string coordinates following the ``pywt.wavedec``
+          output order: ``["approx", "detail_L", ..., "detail_1"]``
+          (coarsest approximation first, then details from coarsest to finest).
+        * ``coef_index`` runs from 0 to the length of the finest detail minus 1.
+          Shorter levels are NaN-padded on the right.
+
+    Raises:
+        ValueError: If ``wavelet`` is not a valid discrete wavelet name, if
+            ``level < 1``, or if ``level`` exceeds the maximum possible for
+            the signal length.
+
+    Example:
+        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> dwt = cb.discrete_wavelet_transform(data, wavelet="db4", level=4)
+        >>> dwt.data.dims
+        ('space', 'wavelet_level', 'coef_index')
+        >>> list(dwt.data.coords["wavelet_level"].values)
+        ['approx', 'detail_4', 'detail_3', 'detail_2', 'detail_1']
+    """
+    return DiscreteWaveletTransform(wavelet=wavelet, level=level, mode=mode).apply(data)

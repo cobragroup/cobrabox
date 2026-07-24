@@ -6,6 +6,7 @@ from typing import ClassVar, Literal
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -105,3 +106,49 @@ class SlidingWindowReduce(BaseFeature[SignalData]):
         ends = [coord_values[end] for end in end_positions]
 
         return renamed.assign_coords(window=starts, window_end=("window", ends))
+
+
+@functional(SlidingWindowReduce)
+def sliding_window_reduce(
+    data: SignalData,
+    window_size: int = 10,
+    step_size: int = 5,
+    dim: str = "time",
+    agg: Literal["mean", "std", "sum", "min", "max"] = "mean",
+) -> Data:
+    """Sliding window with automatic per-window reduction.
+
+    Creates sliding windows over a dimension, applies an aggregation function
+    to each window, and stacks results along a new "window" dimension.
+
+    This combines windowing + aggregation into a single feature, avoiding
+    the need for a Chord when you just want reduced window statistics.
+
+    Args:
+        window_size: Number of samples per window. Must be >= 1.
+        step_size: Step between window starts in samples. Must be >= 1.
+        dim: Name of the dimension to window over and reduce (default: "time").
+        agg: Aggregation function to apply to each window. One of:
+            "mean", "std", "sum", "min", "max".
+
+    Returns:
+        Data with the reduced dimension removed and a new "window" dimension
+        added. The "window" dimension has length equal to the number of
+        windows that fit in the input data. It is coordinate-labelled with each
+        window's **start** position on the reduced axis (seconds when windowing
+        over time with a known sampling rate), and a non-dimension
+        ``window_end`` coordinate carries the matching end positions.
+
+    Example:
+        >>> # Mean of each 100-sample window, stepping by 50
+        >>> result = cb.sliding_window_reduce(data,
+        ...     window_size=100, step_size=50, dim="time", agg="mean"
+        ... )
+        >>> result.data.dims
+        ('window', 'channel')  # time dimension is reduced, window dim added
+        >>> result.data.window.values[:3]  # 100 Hz data, step of 50 samples
+        array([0. , 0.5, 1. ])
+    """
+    return SlidingWindowReduce(
+        window_size=window_size, step_size=step_size, dim=dim, agg=agg
+    ).apply(data)

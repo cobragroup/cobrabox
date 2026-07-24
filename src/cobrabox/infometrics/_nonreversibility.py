@@ -8,6 +8,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..connectivity._mvar import fit_mvar
 from ..data import Data, SignalData
@@ -121,3 +122,40 @@ class Nonreversibility(BaseFeature[SignalData]):
         X = xr_data.values  # shape (n_space, n_time)
         dc = self._compute_dc_norm(X)
         return xr.DataArray([dc], dims=["space"], coords={"space": ["dc_norm"]})
+
+
+@functional(Nonreversibility)
+def nonreversibility(data: SignalData) -> Data:
+    """Compute dc_norm: normalised deviation from causal normality (time-irreversibility).
+
+    Fits a VAR(1) model in forward and reverse time directions:
+
+        Forward:  X_t = A @ X_{t-1} + noise
+        Reverse:  X_t = B @ X_{t+1} + noise
+
+    Both A and B are rescaled so their spectral radius is strictly less than 1.
+    dc_norm quantifies the asymmetry between forward and reverse dynamics:
+
+        dc_norm = ||A - B^T||_F / (||A + B^T||_F + ||A - B^T||_F)
+
+    Result is bounded in [0, 1). A dc_norm of 0 indicates perfect
+    time-reversibility; larger values indicate stronger irreversibility.
+
+    Args:
+        None
+
+    Returns:
+        xarray DataArray with a single spatial coordinate ('dc_norm').
+        The time dimension is removed.
+
+    Raises:
+        ValueError: If 'time' dimension is missing or has fewer than 2 timepoints.
+        ValueError: If 'space' dimension has fewer than 2 channels.
+
+    Example:
+        >>> result = cb.nonreversibility(data)
+
+    References:
+        TODO: Add citation for the dc_norm / time-irreversibility VAR(1) measure.
+    """
+    return Nonreversibility().apply(data)

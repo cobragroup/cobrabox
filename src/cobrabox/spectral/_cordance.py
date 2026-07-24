@@ -6,6 +6,7 @@ from typing import ClassVar, Literal
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 from ._band_power import BandPower
@@ -188,3 +189,92 @@ class Cordance(BaseFeature[SignalData]):
             result = xr.where(zero_mask, np.nan, result)
 
         return result
+
+
+@functional(Cordance)
+def cordance(
+    data: SignalData,
+    bands: dict[str, list[float] | bool] | None = None,
+    nperseg: int | None = None,
+    threshold: float = 0.5,
+    output: Literal["cordance", "concordance", "discordance"] = "cordance",
+    nan_on_zero: bool = False,
+) -> Data:
+    """Compute cordance, a qEEG measure combining absolute and relative bandpower.
+
+    Cordance (Leuchter et al., 1994) integrates absolute and relative
+    spectral power into a single index per channel per frequency band.
+
+    Algorithm (Leuchter 1994 threshold-based):
+        1. Compute per-band **absolute power** (AP) via
+           :class:`~cobrabox.spectral.band_power.BandPower` (Welch's method).
+        2. Compute **relative power** (RP) as the ratio of each band's
+           absolute power to the total power across all requested bands.
+        3. Normalize AP and RP by dividing by the **maximum** across channels:
+           ``Anorm = AP / max(AP)``, ``Rnorm = RP / max(RP)``.
+        4. Classify each channel using a **threshold of 0.5**:
+           - **Concordant**: both Anorm > 0.5 and Rnorm > 0.5
+           - **Discordant**: Anorm < 0.5 and Rnorm > 0.5
+        5. Compute cordance scores as deviation from the threshold:
+           - Concordance = ``(Anorm - 0.5) + (Rnorm - 0.5)``
+           - Discordance = ``(0.5 - Anorm) + (Rnorm - 0.5)``
+
+    By default, this returns a combined "cordance" value where concordant
+    channels get positive scores and discordant channels get negative scores.
+    Use the ``output`` parameter to get concordance or discordance maps
+    separately.
+
+    Args:
+        bands: Mapping of band name to frequency range ``[f_low, f_high]``
+            in Hz, or ``True`` to use the default range for that band name.
+            If ``None`` or empty, all five default bands are computed:
+
+            - ``delta``:  1 - 4 Hz
+            - ``theta``:  4 - 8 Hz
+            - ``alpha``:  8 - 12 Hz
+            - ``beta``:  12 - 30 Hz
+            - ``gamma``: 30 - 45 Hz
+
+        nperseg: Number of samples per Welch segment. Controls the trade-off
+            between frequency resolution and variance reduction. Defaults to
+            ``min(n_time, 256)`` as chosen by :func:`scipy.signal.welch`.
+
+        threshold: Threshold for classifying concordant vs discordant channels.
+            Default is 0.5 (50% of normalized maximum) as in the original
+            Leuchter 1994 algorithm.
+
+        output: What to return:
+            - ``"cordance"`` (default): Combined score where concordant channels
+              are positive and discordant channels are negative. Channels that
+              are neither concordant nor discordant return 0.
+            - ``"concordance"``: Only concordance scores (0 for non-concordant).
+            - ``"discordance"``: Only discordance scores (0 for non-discordant).
+
+        nan_on_zero: If ``True``, channels with zero total bandpower output
+            ``NaN`` instead of raising an error. Useful for batch processing
+            where some channels may be silent. Defaults to ``False``.
+
+    Example:
+        >>> cord = cb.cordance(data)
+        >>> cord_theta = cb.cordance(data, bands={"theta": True})
+        >>> disc = cb.cordance(data, output="discordance")
+
+    Returns:
+        xarray DataArray with dims ``(band_index, space)``. The ``band_index``
+        coordinate holds the band names. Values are unitless cordance scores:
+        positive for concordant channels, negative for discordant channels.
+
+    References:
+        Leuchter, A. F., Cook, I. A., Lufkin, R. B., Dunkin, J.,
+        Newton, T. F., Cummings, J. L., ... & Walter, D. O. (1994).
+        Cordance: a new method for assessment of cerebral perfusion and
+        metabolism using quantitative electroencephalography. *NeuroImage*,
+        1(3), 208-219.
+
+        US Patent 5,309,923 (1994). Method and apparatus for determining
+        brain activity including the nature of brain lesions by
+        electroencephalography.
+    """
+    return Cordance(
+        bands=bands, nperseg=nperseg, threshold=threshold, output=output, nan_on_zero=nan_on_zero
+    ).apply(data)

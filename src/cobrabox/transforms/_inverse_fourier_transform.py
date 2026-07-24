@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 from ._fourier_transform import _irfft_1d
@@ -55,3 +56,24 @@ class InverseFourierTransform(BaseFeature[Data]):
         if self.sampling_rate is not None:
             coords["time"] = np.arange(n_time) / float(self.sampling_rate)
         return xr.DataArray(reconstructed, dims=(*non_freq_dims, "time"), coords=coords)
+
+
+@functional(InverseFourierTransform)
+def inverse_fourier_transform(
+    data: Data, n: int | None = None, sampling_rate: float | None = None
+) -> Data:
+    """Inverse of :class:`~cobrabox.transforms.fourier_transform.FourierTransform`.
+
+    Takes an array with a ``frequency`` dimension (complex coefficients) and
+    returns a time-domain reconstruction.
+
+    Args:
+        n: Length of the output time axis. If ``None``, defaults to
+            ``2 * (n_freq - 1)``.
+        sampling_rate: Sampling rate to attach to the reconstructed time axis.
+            When ``None`` the resulting Data has no sampling rate.
+
+    Returns:
+        xarray DataArray with the ``frequency`` dim replaced by ``time``.
+    """
+    return InverseFourierTransform(n=n, sampling_rate=sampling_rate).apply(data)

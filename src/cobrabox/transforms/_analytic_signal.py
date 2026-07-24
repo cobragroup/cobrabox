@@ -7,8 +7,9 @@ import numpy as np
 import xarray as xr
 from scipy.signal import hilbert as _scipy_hilbert
 
+from .._functional import functional
 from ..base_feature import BaseFeature
-from ..data import SignalData
+from ..data import Data, SignalData
 
 _VALID_REPRESENTATIONS = ("analytic", "envelope", "phase", "frequency")
 
@@ -121,3 +122,44 @@ class AnalyticSignal(BaseFeature[SignalData]):
             axis=time_axis,
         )
         return xr.DataArray(result, dims=xr_data.dims, coords=xr_data.coords)
+
+
+@functional(AnalyticSignal)
+def analytic_signal(
+    data: SignalData, feature: Literal["analytic", "envelope", "phase", "frequency"] = "analytic"
+) -> Data:
+    """Extract analytic-signal representations along the time axis.
+
+    Computes the analytic signal via :func:`scipy.signal.hilbert` along the
+    ``time`` axis, then derives the requested representation. The output always
+    has the same shape and dimensions as the input — the ``time`` dimension is
+    preserved.
+
+    Args:
+        feature: Which representation to extract. One of:
+
+            * ``'analytic'``  — the complex analytic signal as a ``complex128``
+              DataArray with the same dims and coords as the input.
+            * ``'envelope'``  — amplitude envelope (``|analytic|``), always
+              non-negative.
+            * ``'phase'``     — instantaneous phase in radians (``∈ [-pi, pi]``).
+            * ``'frequency'`` — instantaneous frequency in Hz, computed as the
+              time-derivative of the unwrapped phase divided by 2π. Requires
+              ``data.sampling_rate`` to be set.
+
+    Returns:
+        xarray DataArray with the same dims and coords as the input. Dtype is
+        ``complex128`` for ``'analytic'``, ``float64`` for all other modes.
+
+    Raises:
+        ValueError: If ``feature`` is not one of the four valid options.
+        ValueError: If ``feature='frequency'`` but ``data.sampling_rate`` is
+            ``None``.
+
+    Example:
+        >>> analytic = cb.analytic_signal(data)
+        >>> env = cb.analytic_signal(data, feature="envelope")
+        >>> phase = cb.analytic_signal(data, feature="phase")
+        >>> freq = cb.analytic_signal(data, feature="frequency")
+    """
+    return AnalyticSignal(feature=feature).apply(data)

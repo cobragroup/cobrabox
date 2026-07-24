@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 else:
     from numba import prange
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
@@ -162,3 +163,47 @@ class SampleEntropy(BaseFeature[SignalData]):
         )
         # Preserve original attributes (excluding the time coordinate which is gone).
         return xr.DataArray(result, attrs=data.data.attrs)
+
+
+@functional(SampleEntropy)
+def sample_entropy(
+    data: SignalData, m: int = 2, r: float | None = None, log_base: float = 2
+) -> Data:
+    """Sample Entropy feature.
+
+    Sample entropy quantifies the regularity of a time-series. It is the
+    negative logarithm of the conditional probability that two sequences
+    similar for *m* points remain similar when one more point is included.
+    Lower values indicate more regular (predictable) signals, while higher
+    values indicate greater complexity.
+
+    By default, the binary logarithm (base 2) is used, diverging from the
+    original definition which uses the natural logarithm. This can be
+    configured via the ``log_base`` parameter.
+
+    The feature works on any ``SignalData`` that contains a ``time`` dimension.
+    The ``time`` dimension is collapsed and all other dimensions are preserved.
+
+    Args:
+        m: Embedding dimension (length of compared sequences). Must be >= 1.
+        r: Tolerance for matching sequences. If ``None`` a default of
+           ``0.2 * std(signal)`` is used, where ``std`` is the standard
+           deviation of the time series.
+        log_base: Base of the logarithm used in the entropy calculation.
+           Defaults to 2 (binary logarithm). Use ``np.e`` for the natural
+           logarithm (original definition) or 10 for base-10 logarithm.
+
+    Returns:
+        An ``xarray.DataArray`` containing the sample entropy with the
+        ``time`` dimension collapsed.
+
+    Raises:
+        ValueError: If embedding dimension m is less than 1.
+        ValueError: If logarithm base is invalid (<= 0 or == 1).
+        ValueError: If time series length is not greater than embedding dimension m.
+
+    Example:
+        >>> entropy = cb.sample_entropy(data, m=2)  # base-2 (default)
+        >>> entropy_nat = cb.sample_entropy(data, m=2, log_base=np.e)  # natural log
+    """
+    return SampleEntropy(m=m, r=r, log_base=log_base).apply(data)

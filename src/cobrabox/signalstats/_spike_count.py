@@ -6,6 +6,7 @@ from typing import ClassVar
 import numpy as np
 import xarray as xr
 
+from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
 
@@ -61,3 +62,26 @@ class SpikeCount(BaseFeature[Data]):
 
         # Return as 0-dimensional scalar array
         return xr.DataArray(float(spike_count))
+
+
+@functional(SpikeCount)
+def spike_count(data: Data) -> Data:
+    """Calculate spikes in the input data using the IQR method.
+
+    Detects outliers as values falling outside ±1.5*IQR from Q1/Q3.
+    Returns a scalar count of detected spikes.
+
+    Args:
+        None
+
+    Returns:
+        xr.DataArray with shape (), dims (),
+        containing the spike count as a scalar float value.
+
+    Raises:
+        ValueError: If input data is empty.
+
+    Example:
+        >>> result = SpikeCount().apply(data)
+    """
+    return SpikeCount().apply(data)
