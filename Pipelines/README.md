@@ -17,18 +17,19 @@ This folder is the entry point to start using *[Cobrabox]() – a python toolbox
 
 #### Tutorial notebooks
 
-1. *[Loading your Dataset](#)* : Write short description.
-2. *[Spectral properties](#)* : A notebook illustrating the *spectral* functionalities of CobraBox (filtering data, getting the power spectra, etc.)
+1. *[Getting started with CobraBox](#)* : Explain and showcase the data objects in CobraBox: Xarray dependency, the different data classes, how to access the numeric data, relevant attributes, manipulating / exploring data objects, operating with them, etc. Basic creation of cobrabox data objects.
+2. *[Loading your Dataset](#)* : How can users load their own datasets into cobrabox and start using them? Or, how can they create their own datasets in the cobrabox data object formats?
 3. *[Exploring and Fetching Remote Datasets](01_data_exploration.ipynb)* : First example of the functionalities in Cobrabox to access selected datasets from public repositories and setting up for their analysis.
 4. *[SlidingWindow.ipynb]()* : Analysis of multivariate signals over temporal windows.
-5. *[Tutorial Notebook #2]()* : Short description of the notebook.
-6. *[Tutorial Notebook #3]()* : Short description of the notebook.
+5. *[Spectral properties](#)* : A notebook illustrating the *spectral* functionalities of CobraBox (filtering data, getting the power spectra, etc.)
+6. *[Tutorial Notebook #2]()* : Short description of the notebook.
+7. *[Tutorial Notebook #3]()* : Short description of the notebook.
 
 
 #### Use-cases, in-depth topics and examples
 
-- *[ReciprocalConnectivity – #1 DataPreparation](02_preprocessing_and_computation.ipynb)* : Use-Case. Illustration of how renormalization of connectivity allows for network comparison under *SRNA*, without the need of generating surrogates.
-- *[ReciprocalConnectivity – #2 Analysis.ipynb](03_analysis.ipynb)* : In-Depth. Generalization of the (geodesic) graph distance between nodes as *response times*. Validity for weighted networks.
+- *[ReciprocalConnectivity – #1 DataPreparation](02_preprocessing_and_computation.ipynb)* : Short explanation here.
+- *[ReciprocalConnectivity – #2 Analysis.ipynb](03_analysis.ipynb)* : Short-explanation here.
 - *[Seizure Detection](seizure_detection_minimal.ipynb)* : Short description of the notebook.
 - *[Notebook topic]()* : Short description of the notebook.
 
@@ -50,12 +51,8 @@ Pointers to the introductory documentation, installation instructions and requir
 &nbsp;
 ### REFERENCES AND CITATION
 
-> TODO: Cite here anything related to Cobrabox, e.g., the Cobrabox initial paper.
+> TODO: Cite here anything related to Cobrabox and the methods in cobrabox, specially metrics developed by the COBRA group. E.g., the Cobrabox initial paper.
 
-- G. Zamora-López and M. Gilson *[An integrative dynamical perspective for graph theory and the analysis of complex networks.](https://doi.org/10.1063/5.0202241)* Chaos 34, 041501 (2024).
-- M. Gilson, N. Kouvaris, et al. *[Network analysis of whole-brain fMRI
-dynamics: A new framework based on dynamic communicability.](https://doi.org/10.1016/j.neuroimage.2019.116007)* NeuroImage 201, 116007 (2019).
-- M. Gilson, N. Kouvaris, G. Deco & G.Zamora-Lopez "*[Framework based on communicability and flow to analyze complex networks](https://doi.org/10.1103/PhysRevE.97.052301)*" Phys. Rev. E 97, 052301 (2018).
 
 
 
