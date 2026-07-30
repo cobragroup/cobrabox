@@ -47,6 +47,7 @@ class FourierTransform(BaseFeature[SignalData]):
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
         ValueError: If ``norm`` is not one of [None, 'real', 'psd'].
         ValueError: If negative ``cutoff`` is given.
+        UserWarning: If ``data`` does not have ``sampling_rate`` defined.
         UserWarning: If ``cutoff`` larger than Nyquist frequency given.
     """
 
@@ -71,7 +72,7 @@ class FourierTransform(BaseFeature[SignalData]):
         except (TypeError, ValueError):
             _sr = 1.0
             _warn_msg1 = "Fourier transform requires 'sampling_rate' on input Data. None found, setting to 1.0"
-            warn( _warn_msg1, category=RuntimeWarning )
+            warn( _warn_msg1, category=UserWarning )
 
         _nyq = _sr / 2
         if self.cutoff is not None and self.cutoff > _nyq:
@@ -140,6 +141,7 @@ def fourier_transform(
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
         ValueError: If ``norm`` is not one of [None, 'real', 'psd'].
         ValueError: If negative ``cutoff`` is given.
+        UserWarning: If ``data`` does not have ``sampling_rate`` defined.
         UserWarning: If ``cutoff`` larger than Nyquist frequency given.
     """
     return FourierTransform(norm=norm,cutoff=cutoff).apply(data)
