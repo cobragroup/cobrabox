@@ -33,7 +33,7 @@ class FourierTransform(BaseFeature[SignalData]):
     Args:
         norm: If ``None`` (default), returns the raw complex coefficients.
             If ``"real"`` returns ``|FFT|`` as a real-valued array.
-            If ``"psd"`` returns ``|FFT|^2`` as  the power spectral density.
+            If ``"psd"`` returns the power spectral density ``|FFT|^2``.
         cutoff: None (default) or ``float`` (in Hz). Largest frequency returned.
             If ``None`` or ``cutoff`` > Nyquist freq, parameter is ignored and
             output contains frequencies up to Nyquist frequency ``self.sampling_rate // 2``.
@@ -41,8 +41,7 @@ class FourierTransform(BaseFeature[SignalData]):
 
     Returns:
         :class:`~cobrabox.Data` with dims ``(*non_time_dims, "frequency")``. Dtype is
-        ``complex128`` when ``return_magnitude=False`` and ``float64``
-        otherwise.
+        ``complex128`` when ``norm=None`` and ``float64`` otherwise.
 
     Raises:
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
@@ -70,12 +69,14 @@ class FourierTransform(BaseFeature[SignalData]):
         try:
             _sr = float(data.sampling_rate)
         except (TypeError, ValueError):
-            raise ValueError( "Fourier transform requires a known sampling_rate on the input Data object")
+            _sr = 1.0
+            _warn_msg1 = "Fourier transform requires 'sampling_rate' on input Data. None found, setting to 1.0"
+            warn( _warn_msg1, category=RuntimeWarning )
 
-        _nyq = _sr // 2
-        if self.cutoff is not None and self.cutoff >= _nyq:
-            _warn_msg1 = f"cutoff smaller than Nyquist frequency expected. {self.cutoff} given and Nyquist {_nyq} for present data. \ncutoff ignored and using Nyquist."
-            warn( _warn_msg1 ,category=UserWarning)
+        _nyq = _sr / 2
+        if self.cutoff is not None and self.cutoff > _nyq:
+            _warn_msg2 = f"cutoff ({self.cutoff} Hz) larger than Nyquist frequency ({_nyq} Hz) for present data. \nIgnoring cutoff and using Nyquist."
+            warn( _warn_msg2 ,category=UserWarning)
             self.cutoff = None
 
         xr_data = data.data
@@ -107,7 +108,8 @@ class FourierTransform(BaseFeature[SignalData]):
 
 
 @functional(FourierTransform)
-def fourier_transform(data: SignalData,
+def fourier_transform(
+    data: SignalData,
     norm: Literal["real", "psd"] | None = None,
     cutoff: float | None = None
 ) -> Data:
@@ -124,7 +126,7 @@ def fourier_transform(data: SignalData,
             carrying a ``time`` dimension).
         norm: If ``None`` (default), returns the raw complex coefficients.
             If ``"real"`` returns ``|FFT|`` as a real-valued array.
-            If ``"psd"`` returns ``|FFT|^2`` as  the power spectral density.
+            If ``"psd"`` returns the power spectral density ``|FFT|^2``.
         cutoff: None (default) or ``float`` (in Hz). Largest frequency returned.
             If ``None`` or ``cutoff`` > Nyquist freq, parameter is ignored and
             output contains frequencies up to Nyquist frequency ``self.sampling_rate // 2``.
@@ -132,8 +134,7 @@ def fourier_transform(data: SignalData,
 
     Returns:
         :class:`~cobrabox.Data` with dims ``(*non_time_dims, "frequency")``. Dtype is
-        ``complex128`` when ``return_magnitude=False`` and ``float64``
-        otherwise.
+        ``complex128`` when ``norm=None`` and ``float64`` otherwise.
 
     Raises:
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
