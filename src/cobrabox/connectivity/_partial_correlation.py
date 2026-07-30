@@ -55,7 +55,7 @@ class PartialCorrelation(BaseFeature[SignalData]):
             the precision matrix).
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)`` and shape
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)`` and shape
         ``(len(coords), len(coords))``. Symmetric, with ``1`` on the diagonal.
 
     Raises:
@@ -146,6 +146,9 @@ def partial_correlation(
     precision-matrix inversion is still O(K³) in the full channel count.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         coords: Channels to include in the output. ``None`` (default) returns
             the full ``(K, K)`` matrix; pass a list of coordinate names to
             restrict the output (compute cost is unchanged).
@@ -155,7 +158,7 @@ def partial_correlation(
             the precision matrix).
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)`` and shape
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)`` and shape
         ``(len(coords), len(coords))``. Symmetric, with ``1`` on the diagonal.
 
     Raises:

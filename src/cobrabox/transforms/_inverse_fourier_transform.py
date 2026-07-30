@@ -26,7 +26,7 @@ class InverseFourierTransform(BaseFeature[Data]):
             When ``None`` the resulting Data has no sampling rate.
 
     Returns:
-        xarray DataArray with the ``frequency`` dim replaced by ``time``.
+        :class:`~cobrabox.Data` with the ``frequency`` dim replaced by ``time``.
     """
 
     _tags: ClassVar[list[str]] = ["ifft", "time-domain", "io:time-output", "req:frequency-input"]
@@ -68,12 +68,13 @@ def inverse_fourier_transform(
     returns a time-domain reconstruction.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         n: Length of the output time axis. If ``None``, defaults to
             ``2 * (n_freq - 1)``.
         sampling_rate: Sampling rate to attach to the reconstructed time axis.
             When ``None`` the resulting Data has no sampling rate.
 
     Returns:
-        xarray DataArray with the ``frequency`` dim replaced by ``time``.
+        :class:`~cobrabox.Data` with the ``frequency`` dim replaced by ``time``.
     """
     return InverseFourierTransform(n=n, sampling_rate=sampling_rate).apply(data)

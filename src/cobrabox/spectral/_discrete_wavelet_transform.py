@@ -58,7 +58,7 @@ class DiscreteWaveletTransform(BaseFeature[SignalData]):
             ``"periodization"``, ``"zero"``). See ``pywt.Modes`` for options.
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, "space", "wavelet_level",
+        :class:`~cobrabox.Data` with dims ``(*extra_dims, "space", "wavelet_level",
         "coef_index")`` where:
 
         * ``wavelet_level`` has string coordinates following the ``pywt.wavedec``
@@ -185,6 +185,9 @@ def discrete_wavelet_transform(
     downstream features.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         wavelet: Discrete wavelet name (e.g. ``"db4"``, ``"haar"``, ``"sym5"``).
             See ``pywt.wavelist(kind='discrete')`` for all valid options.
             Daubechies-4 (``"db4"``) is a standard choice for EEG analysis.
@@ -194,7 +197,7 @@ def discrete_wavelet_transform(
             ``"periodization"``, ``"zero"``). See ``pywt.Modes`` for options.
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, "space", "wavelet_level",
+        :class:`~cobrabox.Data` with dims ``(*extra_dims, "space", "wavelet_level",
         "coef_index")`` where:
 
         * ``wavelet_level`` has string coordinates following the ``pywt.wavedec``

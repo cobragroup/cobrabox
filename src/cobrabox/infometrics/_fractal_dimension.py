@@ -87,7 +87,7 @@ class FractalDimension(BaseFeature[SignalData]):
             issued when a non-default value is passed but unused).
 
     Returns:
-        xarray DataArray with the ``time`` dimension removed. Shape is
+        :class:`~cobrabox.Data` with the ``time`` dimension removed. Shape is
         ``(space,)`` for standard input. Values are dimensionless floats
         typically in [1, 2] for Higuchi and >= 1 for Katz.
 
@@ -174,6 +174,9 @@ def fractal_dimension(
       Parameter-free, O(N).
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         method: Which fractal dimension algorithm to use. One of ``"higuchi"``
             (default) or ``"katz"``.
         k_max: Maximum interval for the Higuchi algorithm. Must be >= 2.
@@ -181,7 +184,7 @@ def fractal_dimension(
             issued when a non-default value is passed but unused).
 
     Returns:
-        xarray DataArray with the ``time`` dimension removed. Shape is
+        :class:`~cobrabox.Data` with the ``time`` dimension removed. Shape is
         ``(space,)`` for standard input. Values are dimensionless floats
         typically in [1, 2] for Higuchi and >= 1 for Katz.
 

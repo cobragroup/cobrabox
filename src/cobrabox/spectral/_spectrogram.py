@@ -43,7 +43,7 @@ class Spectrogram(BaseFeature[SignalData]):
               coefficients, computed via ``scipy.signal.stft``).
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, "space", "frequency",
+        :class:`~cobrabox.SignalData` with dims ``(*extra_dims, "space", "frequency",
         "time")`` where ``frequency`` is in Hz and ``time`` holds the window
         centre times in seconds (as returned by scipy).
 
@@ -176,6 +176,9 @@ def spectrogram(
     slice of those dimensions.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         nperseg: Samples per FFT segment.  Controls frequency resolution.
             Defaults to ``min(256, n_time)``.  Must be >= 2 and <= n_time.
         noverlap: Overlap between consecutive segments in samples.  Defaults
@@ -193,7 +196,7 @@ def spectrogram(
               coefficients, computed via ``scipy.signal.stft``).
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, "space", "frequency",
+        :class:`~cobrabox.SignalData` with dims ``(*extra_dims, "space", "frequency",
         "time")`` where ``frequency`` is in Hz and ``time`` holds the window
         centre times in seconds (as returned by scipy).
 

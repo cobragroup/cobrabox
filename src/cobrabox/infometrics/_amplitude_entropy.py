@@ -29,7 +29,8 @@ class AmplitudeEntropy(BaseFeature[Data]):
         band_width: The width of histogram bins for discretizing the data. Must be positive.
 
     Returns:
-        A 0-dimensional xarray.DataArray containing the mean amplitude entropy as a scalar value.
+        A 0-dimensional :class:`~cobrabox.Data` containing the mean amplitude
+        entropy as a scalar value.
 
     Raises:
         ValueError: If band_width is not positive.
@@ -142,10 +143,12 @@ def amplitude_entropy(data: Data, band_width: float) -> Data:
     points, returned as a scalar value.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         band_width: The width of histogram bins for discretizing the data. Must be positive.
 
     Returns:
-        A 0-dimensional xarray.DataArray containing the mean amplitude entropy as a scalar value.
+        A 0-dimensional :class:`~cobrabox.Data` containing the mean amplitude
+        entropy as a scalar value.
 
     Raises:
         ValueError: If band_width is not positive.

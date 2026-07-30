@@ -34,7 +34,7 @@ class EnvelopeCorrelation(BaseFeature[SignalData]):
             the mne-connectivity default of ``True``).
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)`` containing
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)`` containing
         Pearson correlation values between amplitude envelopes.
 
     Raises:
@@ -127,6 +127,9 @@ def envelope_correlation(
     ``log=False``.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         orthogonalize: Whether and how to orthogonalise signal pairs before
             correlating. ``'pairwise'`` (default) removes zero-lag correlations
             per pair. ``False`` skips orthogonalisation.
@@ -135,7 +138,7 @@ def envelope_correlation(
             the mne-connectivity default of ``True``).
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)`` containing
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)`` containing
         Pearson correlation values between amplitude envelopes.
 
     Raises:

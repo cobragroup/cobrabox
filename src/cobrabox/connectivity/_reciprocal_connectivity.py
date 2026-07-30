@@ -44,7 +44,7 @@ class ReciprocalConnectivity(BaseFeature[Data]):
             before computing in/out strengths.
 
     Returns:
-        xarray DataArray with dim ``("space",)``, shape ``(n_channels,)``.
+        :class:`~cobrabox.Data` with dim ``("space",)``, shape ``(n_channels,)``.
 
     Raises:
         ValueError: If the input lacks ``"space_to"`` and ``"space_from"``
@@ -182,6 +182,7 @@ def reciprocal_connectivity(
         rc = (PartialDirectedCoherence() | ReciprocalConnectivity()).apply(signal)
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         freq_band: Frequency band ``(fmin, fmax)`` in Hz to average over.
             Required when the input matrix has a ``"frequency"`` dimension;
             pass ``None`` when the input is already a single matrix.
@@ -190,7 +191,7 @@ def reciprocal_connectivity(
             before computing in/out strengths.
 
     Returns:
-        xarray DataArray with dim ``("space",)``, shape ``(n_channels,)``.
+        :class:`~cobrabox.Data` with dim ``("space",)``, shape ``(n_channels,)``.
 
     Raises:
         ValueError: If the input lacks ``"space_to"`` and ``"space_from"``

@@ -97,6 +97,9 @@ def sliding_window(data: SignalData, window_size: int = 10, step_size: int = 5) 
     Lazily generates windows to avoid materialising all windows in memory at once.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         window_size: Number of timepoints per window. Must be >= 1.
         step_size: Step between window starts in timepoints. Must be >= 1.
 

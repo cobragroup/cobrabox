@@ -30,7 +30,7 @@ class PartialDirectedCoherence(BaseFeature[SignalData]):
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
     Returns:
-        xarray DataArray with dims ``("space_to", "space_from", "frequency")``.
+        :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
 
     Raises:
         ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,
@@ -113,12 +113,15 @@ def partial_directed_coherence(
     bin: ``sum_i PDC[i, j, f]^2 = 1`` for all ``j, f``.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         var_order: Number of lags for the VAR model. ``None`` (default) lets
             :func:`statsmodels.tsa.api.VAR` pick the optimal order via AIC.
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
     Returns:
-        xarray DataArray with dims ``("space_to", "space_from", "frequency")``.
+        :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
 
     Raises:
         ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,

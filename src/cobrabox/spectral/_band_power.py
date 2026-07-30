@@ -51,7 +51,7 @@ class BandPower(BaseFeature[SignalData]):
         >>> bp_fine = cb.BandPower(nperseg=512).apply(data)
 
     Returns:
-        xarray DataArray with dims ``(band_index, space)`` (plus a singleton
+        :class:`~cobrabox.Data` with dims ``(band_index, space)`` (plus a singleton
         ``time`` dimension added by ``BaseFeature.apply``). The ``band_index``
         coordinate holds the band names. Values are absolute power in units of
         the input signal squared per Hz (signal² / Hz).
@@ -156,6 +156,9 @@ def band_power(
     (space, band) pair.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         bands: Mapping of band name to frequency range ``[f_low, f_high]``
             in Hz, or ``True`` to use the default range for that band name.
             If ``None`` or empty, all five default bands are computed:
@@ -177,7 +180,7 @@ def band_power(
         >>> bp_fine = cb.band_power(data, nperseg=512)
 
     Returns:
-        xarray DataArray with dims ``(band_index, space)`` (plus a singleton
+        :class:`~cobrabox.Data` with dims ``(band_index, space)`` (plus a singleton
         ``time`` dimension added by ``BaseFeature.apply``). The ``band_index``
         coordinate holds the band names. Values are absolute power in units of
         the input signal squared per Hz (signal² / Hz).

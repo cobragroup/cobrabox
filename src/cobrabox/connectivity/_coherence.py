@@ -38,7 +38,7 @@ class Coherence(BaseFeature[SignalData]):
         ('space_to', 'space_from')
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, space_to, space_from)`` (plus a
+        :class:`~cobrabox.Data` with dims ``(*extra_dims, space_to, space_from)`` (plus a
         singleton ``time`` dimension added by ``BaseFeature.apply``). Both
         ``space_to`` and ``space_from`` carry the original channel coordinates.
         Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix
@@ -167,6 +167,9 @@ def coherence(data: SignalData, nperseg: int | None = None) -> Data:
     combination of those extra dimensions.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         nperseg: Samples per FFT segment. Defaults to ``min(256, n_time)``.
             Must be >= 2 and <= n_time.
 
@@ -177,7 +180,7 @@ def coherence(data: SignalData, nperseg: int | None = None) -> Data:
         ('space_to', 'space_from')
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, space_to, space_from)`` (plus a
+        :class:`~cobrabox.Data` with dims ``(*extra_dims, space_to, space_from)`` (plus a
         singleton ``time`` dimension added by ``BaseFeature.apply``). Both
         ``space_to`` and ``space_from`` carry the original channel coordinates.
         Values are in [0, 1]; the diagonal is NaN (self-coherence). The matrix

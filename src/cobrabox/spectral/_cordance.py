@@ -74,7 +74,7 @@ class Cordance(BaseFeature[SignalData]):
         >>> disc = cb.Cordance(output="discordance").apply(data)
 
     Returns:
-        xarray DataArray with dims ``(band_index, space)``. The ``band_index``
+        :class:`~cobrabox.Data` with dims ``(band_index, space)``. The ``band_index``
         coordinate holds the band names. Values are unitless cordance scores:
         positive for concordant channels, negative for discordant channels.
 
@@ -225,6 +225,9 @@ def cordance(
     separately.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         bands: Mapping of band name to frequency range ``[f_low, f_high]``
             in Hz, or ``True`` to use the default range for that band name.
             If ``None`` or empty, all five default bands are computed:
@@ -260,7 +263,7 @@ def cordance(
         >>> disc = cb.cordance(data, output="discordance")
 
     Returns:
-        xarray DataArray with dims ``(band_index, space)``. The ``band_index``
+        :class:`~cobrabox.Data` with dims ``(band_index, space)``. The ``band_index``
         coordinate holds the band names. Values are unitless cordance scores:
         positive for concordant channels, negative for discordant channels.
 

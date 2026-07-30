@@ -29,7 +29,7 @@ class Autocorrelation(BaseFeature[Data]):
         lag_ms: Lag in milliseconds. Mutually exclusive with ``lag_steps``.
 
     Returns:
-        xarray DataArray with the ``dim`` dimension removed. Shape is the input shape
+        :class:`~cobrabox.Data` with the ``dim`` dimension removed. Shape is the input shape
         minus the size of ``dim``; each element is the normalized autocorrelation at the
         computed lag for that position in the remaining dimensions.
 
@@ -119,13 +119,14 @@ def autocorrelation(
     If neither is specified, the default lag of 5 ms is used.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         dim: Dimension to compute autocorrelation along.
         fs: Sampling frequency in Hz. Must be positive.
         lag_steps: Lag in number of samples. Mutually exclusive with ``lag_ms``.
         lag_ms: Lag in milliseconds. Mutually exclusive with ``lag_steps``.
 
     Returns:
-        xarray DataArray with the ``dim`` dimension removed. Shape is the input shape
+        :class:`~cobrabox.Data` with the ``dim`` dimension removed. Shape is the input shape
         minus the size of ``dim``; each element is the normalized autocorrelation at the
         computed lag for that position in the remaining dimensions.
 

@@ -32,7 +32,7 @@ class DirectedTransferFunction(BaseFeature[SignalData]):
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
     Returns:
-        xarray DataArray with dims ``("space_to", "space_from", "frequency")``.
+        :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
 
     References:
         Kamiński, M., & Blinowska, K. J. (1991). A new method of the description
@@ -112,12 +112,15 @@ def directed_transfer_function(
     ``[0, 1]`` and the rows of the magnitude-squared DTF sum to 1.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         var_order: Number of lags for the VAR model. ``None`` (default) lets
             statsmodels pick the optimal order via AIC.
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
     Returns:
-        xarray DataArray with dims ``("space_to", "space_from", "frequency")``.
+        :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
 
     References:
         Kamiński, M., & Blinowska, K. J. (1991). A new method of the description

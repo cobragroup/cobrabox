@@ -58,7 +58,7 @@ class RecurrenceMatrix(BaseFeature[SignalData]):
             ``[fc_metric, window_size, overlap]`` = full control.
 
     Returns:
-        xarray DataArray of shape ``(n, n)`` with dims ``('t1', 't2')``.
+        :class:`~cobrabox.Data` of shape ``(n, n)`` with dims ``('t1', 't2')``.
 
     Raises:
         ValueError: If a required dimension is missing.
@@ -285,6 +285,9 @@ def recurrence_matrix(
     Output shape ``(T, T)``.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         rec_metric: Pairwise similarity metric.  One of ``'cosine'``
             *(default)*, ``'correlation'``, ``'euclidean'``.
         fc_options: List controlling window-based FC computation.
@@ -295,7 +298,7 @@ def recurrence_matrix(
             ``[fc_metric, window_size, overlap]`` = full control.
 
     Returns:
-        xarray DataArray of shape ``(n, n)`` with dims ``('t1', 't2')``.
+        :class:`~cobrabox.Data` of shape ``(n, n)`` with dims ``('t1', 't2')``.
 
     Raises:
         ValueError: If a required dimension is missing.

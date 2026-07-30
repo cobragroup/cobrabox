@@ -125,6 +125,9 @@ def sliding_window_reduce(
     the need for a Chord when you just want reduced window statistics.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         window_size: Number of samples per window. Must be >= 1.
         step_size: Step between window starts in samples. Must be >= 1.
         dim: Name of the dimension to window over and reduce (default: "time").

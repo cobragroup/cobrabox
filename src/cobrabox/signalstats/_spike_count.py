@@ -22,7 +22,7 @@ class SpikeCount(BaseFeature[Data]):
         None
 
     Returns:
-        xr.DataArray with shape (), dims (),
+        :class:`~cobrabox.Data` with shape (), dims (),
         containing the spike count as a scalar float value.
 
     Raises:
@@ -72,10 +72,10 @@ def spike_count(data: Data) -> Data:
     Returns a scalar count of detected spikes.
 
     Args:
-        None
+        data: The input data to process, as a :class:`~cobrabox.Data`.
 
     Returns:
-        xr.DataArray with shape (), dims (),
+        :class:`~cobrabox.Data` with shape (), dims (),
         containing the spike count as a scalar float value.
 
     Raises:

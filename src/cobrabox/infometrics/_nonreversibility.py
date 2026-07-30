@@ -35,7 +35,7 @@ class Nonreversibility(BaseFeature[SignalData]):
         None
 
     Returns:
-        xarray DataArray with a single spatial coordinate ('dc_norm').
+        :class:`~cobrabox.Data` with a single spatial coordinate ('dc_norm').
         The time dimension is removed.
 
     Raises:
@@ -142,10 +142,12 @@ def nonreversibility(data: SignalData) -> Data:
     time-reversibility; larger values indicate stronger irreversibility.
 
     Args:
-        None
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
 
     Returns:
-        xarray DataArray with a single spatial coordinate ('dc_norm').
+        :class:`~cobrabox.Data` with a single spatial coordinate ('dc_norm').
         The time dimension is removed.
 
     Raises:

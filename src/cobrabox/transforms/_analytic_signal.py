@@ -77,7 +77,7 @@ class AnalyticSignal(BaseFeature[SignalData]):
               ``data.sampling_rate`` to be set.
 
     Returns:
-        xarray DataArray with the same dims and coords as the input. Dtype is
+        :class:`~cobrabox.SignalData` with the same dims and coords as the input. Dtype is
         ``complex128`` for ``'analytic'``, ``float64`` for all other modes.
 
     Raises:
@@ -136,6 +136,9 @@ def analytic_signal(
     preserved.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         feature: Which representation to extract. One of:
 
             * ``'analytic'``  — the complex analytic signal as a ``complex128``
@@ -148,7 +151,7 @@ def analytic_signal(
               ``data.sampling_rate`` to be set.
 
     Returns:
-        xarray DataArray with the same dims and coords as the input. Dtype is
+        :class:`~cobrabox.SignalData` with the same dims and coords as the input. Dtype is
         ``complex128`` for ``'analytic'``, ``float64`` for all other modes.
 
     Raises:

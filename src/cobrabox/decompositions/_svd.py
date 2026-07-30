@@ -48,7 +48,7 @@ class SVD(BaseFeature[Data]):
             - "U": sample scores/timecourses, shape (dim, component)
 
     Returns:
-        xr.DataArray:
+        :class:`~cobrabox.Data`:
             If output="V": (component, ...) feature patterns/maps
             If output="U": (dim, component) sample scores/timecourses
 
@@ -222,6 +222,7 @@ def svd(
     sample axis and stack all other dims into a single feature axis internally.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         dim: Sample dimension (e.g. "time", "trial").
         n_components: Number of components to return.
         center:
@@ -248,7 +249,7 @@ def svd(
             - "U": sample scores/timecourses, shape (dim, component)
 
     Returns:
-        xr.DataArray:
+        :class:`~cobrabox.Data`:
             If output="V": (component, ...) feature patterns/maps
             If output="U": (dim, component) sample scores/timecourses
 

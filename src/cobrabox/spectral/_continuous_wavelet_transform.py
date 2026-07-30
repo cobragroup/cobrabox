@@ -69,7 +69,7 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
             * ``"complex"`` — raw complex coefficients (dtype ``complex128``).
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, "space", "scale", "time")``
+        :class:`~cobrabox.SignalData` with dims ``(*extra_dims, "space", "scale", "time")``
         where:
 
         * ``scale`` holds the raw pywt scale values.
@@ -208,6 +208,9 @@ def continuous_wavelet_transform(
     composable with downstream features that operate along time or space.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         wavelet: Continuous wavelet name. Common choices for EEG analysis:
 
             * ``"morl"`` *(default)* — real Morlet; captures oscillatory
@@ -229,7 +232,7 @@ def continuous_wavelet_transform(
             * ``"complex"`` — raw complex coefficients (dtype ``complex128``).
 
     Returns:
-        xarray DataArray with dims ``(*extra_dims, "space", "scale", "time")``
+        :class:`~cobrabox.SignalData` with dims ``(*extra_dims, "space", "scale", "time")``
         where:
 
         * ``scale`` holds the raw pywt scale values.

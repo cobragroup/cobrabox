@@ -78,7 +78,7 @@ class EpileptogenicityIndex(BaseFeature[SignalData]):
             first to fire (delay = 0). Default: 1.0.
 
     Returns:
-        xarray DataArray with dim ``(space,)``, values normalised to [0, 1]. If no
+        :class:`~cobrabox.Data` with dim ``(space,)``, values normalised to [0, 1]. If no
         rapid discharge is detected in any channel, all values are 0.
 
     Raises:
@@ -282,6 +282,9 @@ def epileptogenicity_index(
         Brain (2008), 131:1818-1830. DOI: 10.1093/brain/awn111
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         window_duration: Duration of the ER sliding window in seconds. Longer windows
             give better frequency resolution but coarser temporal resolution.
             Default: 1.0 s.
@@ -295,7 +298,7 @@ def epileptogenicity_index(
             first to fire (delay = 0). Default: 1.0.
 
     Returns:
-        xarray DataArray with dim ``(space,)``, values normalised to [0, 1]. If no
+        :class:`~cobrabox.Data` with dim ``(space,)``, values normalised to [0, 1]. If no
         rapid discharge is detected in any channel, all values are 0.
 
     Raises:

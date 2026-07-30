@@ -34,7 +34,7 @@ class LempelZiv(BaseFeature[SignalData]):
         None
 
     Returns:
-        xarray DataArray with the ``time`` dimension removed. Shape is
+        :class:`~cobrabox.Data` with the ``time`` dimension removed. Shape is
         ``(space,)`` for standard input. Values are dimensionless floats in
         (0, 1].
 
@@ -121,10 +121,12 @@ def lempel_ziv(data: SignalData) -> Data:
     NeuroKit2 (https://github.com/neuropsychology/NeuroKit, MIT licence).
 
     Args:
-        None
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
 
     Returns:
-        xarray DataArray with the ``time`` dimension removed. Shape is
+        :class:`~cobrabox.Data` with the ``time`` dimension removed. Shape is
         ``(space,)`` for standard input. Values are dimensionless floats in
         (0, 1].
 

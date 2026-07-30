@@ -38,7 +38,7 @@ class PhaseLockingValue(BaseFeature[SignalData]):
             the pairwise loop.
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)``. Values are
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)``. Values are
         symmetric and in ``[0, 1]``.
 
     Raises:
@@ -124,6 +124,9 @@ def phase_locking_value(data: SignalData, coords: list[str] | list[int] | None =
     1 on the diagonal.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         coords: Channels to include. ``None`` (default) computes the full
             ``(K, K)`` matrix across all space coordinates; pass a list of
             coordinate names to restrict the output. Restricting saves both
@@ -131,7 +134,7 @@ def phase_locking_value(data: SignalData, coords: list[str] | list[int] | None =
             the pairwise loop.
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)``. Values are
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)``. Values are
         symmetric and in ``[0, 1]``.
 
     Raises:

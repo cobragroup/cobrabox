@@ -18,7 +18,7 @@ class Mean(BaseFeature[Data]):
         dim: Name of the dimension to reduce over (e.g. ``"time"``).
 
     Returns:
-        xarray DataArray with ``dim`` removed. Shape is the input shape
+        :class:`~cobrabox.Data` with ``dim`` removed. Shape is the input shape
         minus the reduced dimension. Values are the per-position arithmetic
         mean in the same units as the input signal.
 
@@ -44,10 +44,11 @@ def mean(data: Data, dim: str) -> Data:
     """Compute the mean value across a dimension.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         dim: Name of the dimension to reduce over (e.g. ``"time"``).
 
     Returns:
-        xarray DataArray with ``dim`` removed. Shape is the input shape
+        :class:`~cobrabox.Data` with ``dim`` removed. Shape is the input shape
         minus the reduced dimension. Values are the per-position arithmetic
         mean in the same units as the input signal.
 

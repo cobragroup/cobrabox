@@ -86,7 +86,7 @@ class SampleEntropy(BaseFeature[SignalData]):
            logarithm (original definition) or 10 for base-10 logarithm.
 
     Returns:
-        An ``xarray.DataArray`` containing the sample entropy with the
+        A :class:`~cobrabox.Data` containing the sample entropy with the
         ``time`` dimension collapsed.
 
     Raises:
@@ -185,6 +185,9 @@ def sample_entropy(
     The ``time`` dimension is collapsed and all other dimensions are preserved.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         m: Embedding dimension (length of compared sequences). Must be >= 1.
         r: Tolerance for matching sequences. If ``None`` a default of
            ``0.2 * std(signal)`` is used, where ``std`` is the standard
@@ -194,7 +197,7 @@ def sample_entropy(
            logarithm (original definition) or 10 for base-10 logarithm.
 
     Returns:
-        An ``xarray.DataArray`` containing the sample entropy with the
+        A :class:`~cobrabox.Data` containing the sample entropy with the
         ``time`` dimension collapsed.
 
     Raises:

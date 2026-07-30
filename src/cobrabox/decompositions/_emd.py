@@ -47,7 +47,7 @@ class EMD(BaseFeature[SignalData]):
         ValueError: If ``max_imfs`` is not positive.
 
     Returns:
-        xarray.DataArray: The IMFs stacked along a new ``imf`` dimension.
+        :class:`~cobrabox.SignalData`: The IMFs stacked along a new ``imf`` dimension.
             The ``imf`` coordinate contains labels ``imf0``, ``imf1``, ..., ``residual``
             (and ``original`` if ``keep_orig=True``).
             Shape is the same as input with an additional ``imf`` dimension.
@@ -189,6 +189,9 @@ def emd(
     diluted by fake zeros.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         max_imfs: Maximum number of IMFs to compute (not including residual).
             If ``None``, the algorithm determines the number adaptively.
             Defaults to ``None``.
@@ -206,7 +209,7 @@ def emd(
         ValueError: If ``max_imfs`` is not positive.
 
     Returns:
-        xarray.DataArray: The IMFs stacked along a new ``imf`` dimension.
+        :class:`~cobrabox.SignalData`: The IMFs stacked along a new ``imf`` dimension.
             The ``imf`` coordinate contains labels ``imf0``, ``imf1``, ..., ``residual``
             (and ``original`` if ``keep_orig=True``).
             Shape is the same as input with an additional ``imf`` dimension.

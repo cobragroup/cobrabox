@@ -41,7 +41,7 @@ class FourierTransform(BaseFeature[SignalData]):
             coefficients.
 
     Returns:
-        xarray DataArray with dims ``(*non_time_dims, "frequency")``. Dtype is
+        :class:`~cobrabox.Data` with dims ``(*non_time_dims, "frequency")``. Dtype is
         ``complex128`` when ``return_magnitude=False`` and ``float64``
         otherwise.
     """
@@ -81,12 +81,15 @@ def fourier_transform(data: SignalData, return_magnitude: bool = True) -> Data:
     otherwise it falls back to cycles-per-sample.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         return_magnitude: If ``True`` (default), return ``|FFT|`` as a
             real-valued array. If ``False``, return the raw complex
             coefficients.
 
     Returns:
-        xarray DataArray with dims ``(*non_time_dims, "frequency")``. Dtype is
+        :class:`~cobrabox.Data` with dims ``(*non_time_dims, "frequency")``. Dtype is
         ``complex128`` when ``return_magnitude=False`` and ``float64``
         otherwise.
     """

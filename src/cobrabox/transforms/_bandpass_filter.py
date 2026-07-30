@@ -40,7 +40,7 @@ class BandpassFilter(BaseFeature[SignalData]):
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
 
     Returns:
-        xarray.DataArray: The bandpass-filtered signals stacked along a new
+        :class:`~cobrabox.SignalData`: The bandpass-filtered signals stacked along a new
             ``band`` dimension. The ``band`` coordinate contains the band names
             (and "original" if ``keep_orig=True``). The shape is the same as
             the input data with an additional ``band`` dimension.
@@ -124,6 +124,9 @@ def bandpass_filter(
     the results along a new ``band`` dimension.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         bands: Mapping of band name to ``[low_hz, high_hz]`` frequency edges.
             Defaults to the five standard EEG bands:
             delta (1-4 Hz), theta (4-8 Hz), alpha (8-12 Hz),
@@ -137,7 +140,7 @@ def bandpass_filter(
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
 
     Returns:
-        xarray.DataArray: The bandpass-filtered signals stacked along a new
+        :class:`~cobrabox.SignalData`: The bandpass-filtered signals stacked along a new
             ``band`` dimension. The ``band`` coordinate contains the band names
             (and "original" if ``keep_orig=True``). The shape is the same as
             the input data with an additional ``band`` dimension.

@@ -38,9 +38,10 @@ class MutualInformation(BaseFeature[SignalData]):
         log_base: The logarithm base to use for computing MI. Default is 2.0.
 
     Returns:
-        An xarray.DataArray with dimensions "space_from" and "space_to" containing the pairwise
-        mutual information matrix. The shape is (..., n_space, n_space) where n_space is the size
-        of the dimension specified by `other_dim`.
+        A :class:`~cobrabox.Data` with dimensions "space_from" and "space_to"
+        containing the pairwise mutual information matrix. The shape is
+        (..., n_space, n_space) where n_space is the size of the dimension
+        specified by `other_dim`.
 
     Raises:
         ValueError: If bins is not a positive integer.
@@ -187,6 +188,9 @@ def mutual_information(
     bin has the same number of samples) or equidistant (i.e., each bin has the same width).
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         dim: The dimension along which to compute MI. Default is "time".
         other_dim: The other dimension to consider when computing MI. This is mandatory when the
             input data has more than two dimensions. Default is None.
@@ -198,9 +202,10 @@ def mutual_information(
         log_base: The logarithm base to use for computing MI. Default is 2.0.
 
     Returns:
-        An xarray.DataArray with dimensions "space_from" and "space_to" containing the pairwise
-        mutual information matrix. The shape is (..., n_space, n_space) where n_space is the size
-        of the dimension specified by `other_dim`.
+        A :class:`~cobrabox.Data` with dimensions "space_from" and "space_to"
+        containing the pairwise mutual information matrix. The shape is
+        (..., n_space, n_space) where n_space is the size of the dimension
+        specified by `other_dim`.
 
     Raises:
         ValueError: If bins is not a positive integer.

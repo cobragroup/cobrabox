@@ -110,6 +110,7 @@ def covariance(data: Data, dim: str = "time") -> Data:
     because the covariance axis is consumed.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         dim: Name of the dimension to compute covariance along. Defaults to
             ``"time"``. Must be present in the input data. The remaining
             dimension becomes both ``<other_dim>_to`` and ``<other_dim>_from``

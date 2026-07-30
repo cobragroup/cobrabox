@@ -32,7 +32,7 @@ class GrangerCausality(BaseFeature[SignalData]):
             a ``lag_index`` dimension when ``maxlag > 1``. Default: 1.
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)`` (or
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)`` (or
         ``(space_to, space_from, lag_index)`` when multiple lags are tested).
         ``result.sel(space_to=A, space_from=B)`` is the causal influence
         ``B → A``. Diagonal entries are NaN.
@@ -140,6 +140,9 @@ def granger_causality(
     as NaN on the diagonal.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         coords: Channels to include. ``None`` (default) computes the full
             ``(K, K)`` matrix across all space coordinates. Pass a list of
             coordinate names to restrict the output (each pair is an
@@ -149,7 +152,7 @@ def granger_causality(
             a ``lag_index`` dimension when ``maxlag > 1``. Default: 1.
 
     Returns:
-        xarray DataArray with dims ``(space_to, space_from)`` (or
+        :class:`~cobrabox.Data` with dims ``(space_to, space_from)`` (or
         ``(space_to, space_from, lag_index)`` when multiple lags are tested).
         ``result.sel(space_to=A, space_from=B)`` is the causal influence
         ``B → A``. Diagonal entries are NaN.

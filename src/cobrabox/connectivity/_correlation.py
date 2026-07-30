@@ -124,6 +124,7 @@ def correlation(data: Data, dim: str = "time", method: str = "pearson") -> Data:
     axis is consumed.
 
     Args:
+        data: The input data to process, as a :class:`~cobrabox.Data`.
         dim: Name of the dimension to correlate along. Defaults to ``"time"``.
             Must be present in the input data. The remaining dimension becomes
             both ``<other_dim>_to`` and ``<other_dim>_from`` in the output.

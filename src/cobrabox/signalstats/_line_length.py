@@ -21,7 +21,7 @@ class LineLength(BaseFeature[SignalData]):
         None
 
     Returns:
-        xarray DataArray with the ``time`` dimension removed. Shape is
+        :class:`~cobrabox.Data` with the ``time`` dimension removed. Shape is
         ``(space,)`` for standard input, or ``(*extra_dims, space)`` if
         additional dimensions are present (e.g. ``window_index``). Values
         are in the same units as the input signal.
@@ -55,10 +55,12 @@ def line_length(data: SignalData) -> Data:
     timepoints. A larger value indicates a more rapidly varying signal.
 
     Args:
-        None
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
 
     Returns:
-        xarray DataArray with the ``time`` dimension removed. Shape is
+        :class:`~cobrabox.Data` with the ``time`` dimension removed. Shape is
         ``(space,)`` for standard input, or ``(*extra_dims, space)`` if
         additional dimensions are present (e.g. ``window_index``). Values
         are in the same units as the input signal.

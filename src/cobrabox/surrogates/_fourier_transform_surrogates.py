@@ -124,6 +124,9 @@ def fourier_transform_surrogates(
     structure.
 
     Args:
+        data: The input time-series signal to process, as a
+            :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
+            carrying a ``time`` dimension).
         n_surrogates: Number of surrogate time series to generate. Must be a
             non-negative integer.
         multivariate: If True (default), applies the same random phases to all
