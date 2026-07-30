@@ -25,7 +25,7 @@ def _create_neuronal_signal(n_samples: int = 200) -> np.ndarray:
     return np.column_stack([neuron_a, neuron_b])
 
 
-data = cb.data.SignalData.from_numpy(
+data = cb.SignalData.from_numpy(
     _create_neuronal_signal(n_samples=200), dims=["time", "space"], sampling_rate=100.0
 )
 
@@ -37,7 +37,7 @@ print("=" * 60, "Single test", "=" * 60)
 # GrangerCausality returns a (space_to, space_from) matrix; select a single
 # direction with .sel(space_to=target, space_from=source). A is channel 0,
 # B is channel 1, so A -> B is space_to=1, space_from=0.
-m2 = cb.feature.GrangerCausality(lag=2).apply(data)
+m2 = cb.GrangerCausality(lag=2).apply(data)
 gc_a_to_b = m2.data.sel(space_to=1, space_from=0)
 gc_b_to_a = m2.data.sel(space_to=0, space_from=1)
 print(f"A -> B: GC = {gc_a_to_b.values.item():.6f} (strong causality)")
@@ -46,12 +46,12 @@ print(f"B -> A: GC = {gc_b_to_a.values.item():.6f} (weak coupling)")
 print()
 print("=" * 60, "Multiple lags", "=" * 60)
 # maxlag adds a lag_index dimension; select the A -> B direction across lags.
-r_multi = cb.feature.GrangerCausality(maxlag=4).apply(data)
+r_multi = cb.GrangerCausality(maxlag=4).apply(data)
 print(f"Lags 1-4 GC: {r_multi.data.sel(space_to=1, space_from=0).values}")
 
 print()
 print("=" * 60, "Matrix", "=" * 60)
-m = cb.feature.GrangerCausality(coords=[0, 1], lag=2).apply(data)
+m = cb.GrangerCausality(coords=[0, 1], lag=2).apply(data)
 print("Causality matrix (rows=space_to, cols=space_from):")
 print(m.data.values)
 a_to_b = float(m.data.sel(space_to=1, space_from=0))

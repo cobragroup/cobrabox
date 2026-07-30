@@ -32,7 +32,7 @@ def test_covariance_output_dims_and_shape() -> None:
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((4, 300)))
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space_to", "space_from")
@@ -46,7 +46,7 @@ def test_covariance_output_is_square() -> None:
     n = 6
     data = _make_data(rng.standard_normal((n, 200)))
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     assert out.data.shape == (n, n)
 
@@ -60,7 +60,7 @@ def test_covariance_channel_coords_preserved() -> None:
     )
     data = cb.Data.from_xarray(arr)
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space_to"].values, labels)
     np.testing.assert_array_equal(out.data.coords["space_from"].values, labels)
@@ -77,7 +77,7 @@ def test_covariance_matches_numpy_cov() -> None:
     arr = rng.standard_normal((5, 400))
     data = _make_data(arr)
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     np.testing.assert_allclose(out.data.values, np.cov(arr), atol=1e-12)
 
@@ -88,7 +88,7 @@ def test_covariance_diagonal_equals_sample_variance() -> None:
     arr = rng.standard_normal((4, 300))
     data = _make_data(arr)
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     expected_var = np.var(arr, axis=1, ddof=1)
     np.testing.assert_allclose(np.diag(out.data.values), expected_var, atol=1e-12)
@@ -99,7 +99,7 @@ def test_covariance_matrix_is_symmetric() -> None:
     rng = np.random.default_rng(5)
     data = _make_data(rng.standard_normal((5, 300)))
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
     mat = out.data.values
 
     np.testing.assert_allclose(mat, mat.T, atol=1e-12)
@@ -110,7 +110,7 @@ def test_covariance_diagonal_positive_for_nonzero_signals() -> None:
     rng = np.random.default_rng(6)
     data = _make_data(rng.standard_normal((4, 300)))
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     assert np.all(np.diag(out.data.values) > 0)
 
@@ -122,7 +122,7 @@ def test_covariance_identical_channels_diagonal_matches_off_diagonal() -> None:
     arr = np.stack([sig, sig, sig], axis=0)
     data = _make_data(arr)
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
     mat = out.data.values
 
     # All entries should be the same (var == cov for identical signals)
@@ -146,7 +146,7 @@ def test_covariance_preserves_metadata_and_history() -> None:
         extra={"session": 2},
     )
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "control"
@@ -161,7 +161,7 @@ def test_covariance_history_appends_correctly() -> None:
     rng = np.random.default_rng(9)
     data = cb.Data.from_numpy(rng.standard_normal((3, 200)), dims=["space", "time"])
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     assert out.history[-1] == "Covariance"
 
@@ -177,7 +177,7 @@ def test_covariance_custom_dim_name() -> None:
     arr = rng.standard_normal((4, 100))
     data = _make_data(arr, dims=["electrode", "frequency"])
 
-    out = cb.feature.Covariance(dim="frequency").apply(data)
+    out = cb.Covariance(dim="frequency").apply(data)
 
     assert out.data.dims == ("electrode_to", "electrode_from")
     assert out.data.shape == (4, 4)
@@ -189,7 +189,7 @@ def test_covariance_correlates_along_non_default_dim() -> None:
     arr = rng.standard_normal((300, 5))
     data = _make_data(arr, dims=["time", "space"])
 
-    out = cb.feature.Covariance(dim="time").apply(data)
+    out = cb.Covariance(dim="time").apply(data)
 
     assert out.data.dims == ("space_to", "space_from")
     assert out.data.shape == (5, 5)
@@ -201,7 +201,7 @@ def test_covariance_custom_dim_matches_numpy_cov() -> None:
     arr = rng.standard_normal((4, 100))
     data = _make_data(arr, dims=["electrode", "frequency"])
 
-    out = cb.feature.Covariance(dim="frequency").apply(data)
+    out = cb.Covariance(dim="frequency").apply(data)
 
     np.testing.assert_allclose(out.data.values, np.cov(arr), atol=1e-12)
 
@@ -218,7 +218,7 @@ def test_covariance_raises_on_3d_input() -> None:
     data = cb.Data.from_xarray(arr)
 
     with pytest.raises(ValueError, match="exactly 2-dimensional"):
-        cb.feature.Covariance().apply(data)
+        cb.Covariance().apply(data)
 
 
 def test_covariance_raises_on_1d_input() -> None:
@@ -228,7 +228,7 @@ def test_covariance_raises_on_1d_input() -> None:
     data = cb.Data.from_xarray(arr)
 
     with pytest.raises(ValueError, match="exactly 2-dimensional"):
-        cb.feature.Covariance().apply(data)
+        cb.Covariance().apply(data)
 
 
 def test_covariance_raises_when_dim_missing() -> None:
@@ -237,7 +237,7 @@ def test_covariance_raises_when_dim_missing() -> None:
     data = _make_data(rng.standard_normal((4, 300)), dims=["space", "frequency"])
 
     with pytest.raises(ValueError, match="'time'"):
-        cb.feature.Covariance(dim="time").apply(data)
+        cb.Covariance(dim="time").apply(data)
 
 
 def test_covariance_raises_when_dim_missing_includes_hint() -> None:
@@ -246,7 +246,7 @@ def test_covariance_raises_when_dim_missing_includes_hint() -> None:
     data = _make_data(rng.standard_normal((4, 300)), dims=["electrode", "frequency"])
 
     with pytest.raises(ValueError, match="dim="):
-        cb.feature.Covariance(dim="time").apply(data)
+        cb.Covariance(dim="time").apply(data)
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +262,7 @@ def test_covariance_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Covariance().apply(data)
+    _ = cb.Covariance().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -275,8 +275,8 @@ def test_covariance_does_not_mutate_input() -> None:
 
 
 def test_covariance_accessible_via_feature_module() -> None:
-    """Covariance is accessible as cb.feature.Covariance."""
-    assert callable(cb.feature.Covariance)
+    """Covariance is accessible as cb.Covariance."""
+    assert callable(cb.Covariance)
 
 
 def test_covariance_output_is_data_instance() -> None:
@@ -284,6 +284,6 @@ def test_covariance_output_is_data_instance() -> None:
     rng = np.random.default_rng(18)
     data = _make_data(rng.standard_normal((3, 200)))
 
-    out = cb.feature.Covariance().apply(data)
+    out = cb.Covariance().apply(data)
 
     assert isinstance(out, cb.Data)

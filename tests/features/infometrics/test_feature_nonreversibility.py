@@ -7,7 +7,7 @@ import pytest
 import xarray as xr
 
 import cobrabox as cb
-from cobrabox.infometrics.nonreversibility import Nonreversibility
+from cobrabox.infometrics import Nonreversibility
 
 
 def test_nonreversibility_output_shape_dims_and_metadata() -> None:
@@ -24,7 +24,7 @@ def test_nonreversibility_output_shape_dims_and_metadata() -> None:
         extra={"tag": "eeg"},
     )
 
-    out = cb.feature.Nonreversibility().apply(data)
+    out = cb.Nonreversibility().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -44,7 +44,7 @@ def test_nonreversibility_scalar_is_nonnegative() -> None:
     arr = rng.standard_normal((300, 4))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Nonreversibility().apply(data)
+    out = cb.Nonreversibility().apply(data)
     dc = float(out.data.values.flat[0])
 
     assert 0.0 <= dc < 1.0
@@ -56,7 +56,7 @@ def test_nonreversibility_raises_on_single_channel() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="at least 2 time series"):
-        cb.feature.Nonreversibility().apply(data)
+        cb.Nonreversibility().apply(data)
 
 
 def test_nonreversibility_raises_on_missing_space_dim() -> None:
@@ -79,7 +79,7 @@ def test_nonreversibility_raises_on_too_few_timepoints() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="at least 2 timepoints"):
-        cb.feature.Nonreversibility().apply(data)
+        cb.Nonreversibility().apply(data)
 
 
 def test_nonreversibility_spectral_radius_rescaling() -> None:
@@ -94,7 +94,7 @@ def test_nonreversibility_spectral_radius_rescaling() -> None:
         X[t] = 1.05 * X[t - 1] + 0.1 * rng.standard_normal(n_space)
     data = cb.SignalData.from_numpy(X, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Nonreversibility().apply(data)
+    out = cb.Nonreversibility().apply(data)
     dc = float(out.data.values.flat[0])
 
     assert 0.0 <= dc < 1.0
@@ -106,7 +106,7 @@ def test_nonreversibility_zero_denominator_returns_zero() -> None:
     arr = np.zeros((50, 3))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Nonreversibility().apply(data)
+    out = cb.Nonreversibility().apply(data)
     dc = float(out.data.values.flat[0])
 
     assert dc == pytest.approx(0.0)
@@ -121,7 +121,7 @@ def test_nonreversibility_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = np.copy(data.to_numpy())
 
-    _ = cb.feature.Nonreversibility().apply(data)
+    _ = cb.Nonreversibility().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -129,10 +129,10 @@ def test_nonreversibility_does_not_mutate_input() -> None:
 
 
 def test_nonreversibility_public_api() -> None:
-    """Nonreversibility is accessible via cb.feature.Nonreversibility."""
+    """Nonreversibility is accessible via cb.Nonreversibility."""
     assert hasattr(cb.feature, "Nonreversibility")
     rng = np.random.default_rng(seed=3)
     arr = rng.standard_normal((100, 3))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    out = cb.feature.Nonreversibility().apply(data)
+    out = cb.Nonreversibility().apply(data)
     assert isinstance(out, cb.Data)

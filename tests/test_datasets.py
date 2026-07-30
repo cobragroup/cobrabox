@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from cobrabox import datasets
+from cobrabox import datasets, downloader
 
 
 def test_dataset_dispatches_structured_identifiers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -495,7 +495,7 @@ def test_dataset_cache_status_no_when_dir_missing(tmp_path: Path) -> None:
         loader=lambda d, s: [],  # type: ignore[arg-type]
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "no"
 
 
@@ -513,7 +513,7 @@ def test_dataset_cache_status_no_when_dir_empty(tmp_path: Path) -> None:
         loader=lambda d, s: [],  # type: ignore[arg-type]
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "no"
 
 
@@ -532,7 +532,7 @@ def test_dataset_cache_status_no_manifest_only(tmp_path: Path) -> None:
         loader=lambda d, s: [],  # type: ignore[arg-type]
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "no"
 
 
@@ -553,7 +553,7 @@ def test_dataset_cache_status_yes_when_all_present(tmp_path: Path) -> None:
         known_subset_keys=("S",),
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "yes"
 
 
@@ -577,7 +577,7 @@ def test_dataset_cache_status_partial(tmp_path: Path) -> None:
         known_subset_keys=("S", "F"),
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "1/2"
 
 
@@ -602,7 +602,7 @@ def test_delete_remote_files_removes_entire_dir(tmp_path: Path) -> None:
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, confirm=False)
 
     assert not dataset_dir.exists()
@@ -620,7 +620,7 @@ def test_delete_remote_files_noop_when_missing(tmp_path: Path) -> None:
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, confirm=False)  # should not raise
 
 
@@ -646,7 +646,7 @@ def test_delete_remote_files_subset_removes_only_matching_files(tmp_path: Path) 
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, subset=["chb01", "chb02"], confirm=False)
 
     assert not (dataset_dir / "chb01.edf").exists()
@@ -675,7 +675,7 @@ def test_delete_remote_files_confirm_cancel_raises(tmp_path: Path) -> None:
     )
 
     with pytest.MonkeyPatch().context() as mp, patch("builtins.input", return_value="n"):
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         with pytest.raises(DownloadCancelled):
             delete_remote_files(spec, confirm=True)
 
@@ -707,7 +707,7 @@ def test_delete_remote_files_updates_manifest_on_subset_delete(tmp_path: Path) -
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, subset=["chb01"], confirm=False)
 
     manifest = json.loads((dataset_dir / "_manifest.json").read_text(encoding="utf-8"))

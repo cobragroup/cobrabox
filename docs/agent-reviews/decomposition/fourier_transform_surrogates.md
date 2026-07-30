@@ -38,7 +38,7 @@ The docstring is comprehensive and follows Google style:
 - **Lines 27-35**: `Args:` section documents all four dataclass fields with types and descriptions.
 - **Lines 37-40**: `Raises:` section correctly documents the validation errors.
 - **Lines 41-46**: `References:` includes the full citation to Theiler et al. (1992).
-- **Lines 47-58**: `Example:` shows practical usage via `.apply()` with the feature name `cb.feature.FourierTransformSurrogates`.
+- **Lines 47-58**: `Example:` shows practical usage via `.apply()` with the feature name `cb.FourierTransformSurrogates`.
 
 All required sections are present and complete.
 

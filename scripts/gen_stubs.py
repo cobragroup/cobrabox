@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Generate feature stubs for IDE / type-checker support.
+"""Generate the ``cb.feature`` stub for IDE / type-checker support.
 
-Scans every domain subdirectory of ``src/cobrabox/`` (skipping ``egg/`` and
-``_*``), finds classes inheriting from BaseFeature / SplitterFeature /
-AggregatorFeature, and writes a stub at::
+``cb.feature`` is populated dynamically (``feature.py`` scans the domain packages
+and ``globals().update()``s the result), so static analysis cannot see its
+members. This writes ``src/cobrabox/feature.pyi`` re-exporting every feature — the
+class ``Correlation`` and its one-shot function ``correlation`` alike — from the
+private module each lives in.
 
-  src/cobrabox/feature.pyi    — for ``cb.feature.X``
+The functions themselves are ordinary static defs in the feature files (see
+``_functional.py``), so ``cb.correlation`` and ``cb.connectivity.correlation``
+need no stub — only the dynamic ``cb.feature`` namespace does.
 
 Exit codes:
   0 — stub is already up to date
@@ -41,19 +45,29 @@ def _base_name(node: ast.expr) -> str | None:
     return None
 
 
-def find_feature_classes(path: Path) -> list[str]:
+def _has_functional_decorator(node: ast.FunctionDef) -> bool:
+    """True if the function is decorated with ``@functional(...)``."""
+    for dec in node.decorator_list:
+        target = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(target, ast.Name) and target.id == "functional":
+            return True
+    return False
+
+
+def find_feature_symbols(path: Path) -> list[str]:
+    """Feature classes and their ``@functional`` wrapper functions in one module."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     names: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            bases = {_base_name(b) for b in node.bases}
-            if bases & BASE_CLASSES:
-                names.append(node.name)
+    for node in tree.body:  # module level only
+        if isinstance(node, ast.ClassDef) and {_base_name(b) for b in node.bases} & BASE_CLASSES:
+            names.append(node.name)
+        elif isinstance(node, ast.FunctionDef) and _has_functional_decorator(node):
+            names.append(node.name)
     return sorted(names)
 
 
-def _collect_classes() -> dict[str, list[str]]:
-    """{relative_module_path: [ClassName, ...]} across every domain."""
+def _collect_symbols() -> dict[str, list[str]]:
+    """{relative_module_path: [Name, ...]} across every domain."""
     result: dict[str, list[str]] = {}
     for domain_dir in sorted(PACKAGE_ROOT.iterdir()):
         if not domain_dir.is_dir():
@@ -61,38 +75,41 @@ def _collect_classes() -> dict[str, list[str]]:
         if domain_dir.name in DOMAIN_BLOCKLIST or domain_dir.name.startswith("_"):
             continue
         for module_path in sorted(domain_dir.rglob("*.py")):
-            if module_path.name == "__init__.py" or module_path.name.startswith("_"):
+            # Implementation modules are private (`_autocorrelation.py`), so `_*.py`
+            # is scanned rather than skipped. Files with no feature — e.g.
+            # `connectivity/_mvar.py` — simply contribute nothing.
+            if module_path.name == "__init__.py":
                 continue
             rel_path = module_path.relative_to(PACKAGE_ROOT)
             module_key = "/".join(rel_path.with_suffix("").parts)
-            classes = find_feature_classes(module_path)
-            if classes:
-                result[module_key] = classes
+            symbols = find_feature_symbols(module_path)
+            if symbols:
+                result[module_key] = symbols
     return result
 
 
 def _all_block(names: list[str]) -> str:
-    items = "".join(f'    "{n}",\n' for n in sorted(names))
+    items = "".join(f'    "{n}",\n' for n in sorted(names, key=str.casefold))
     return f"\n__all__ = [\n{items}]\n"
 
 
-def _split_import_line(import_path: str, cls: str) -> str:
-    line = f"from {import_path} import {cls} as {cls}"
+def _split_import_line(import_path: str, name: str) -> str:
+    line = f"from {import_path} import {name} as {name}"
     # Match ruff's line-length check, which measures the line without its newline.
     if len(line.encode("utf-8")) <= 100:
         return line + "\n"
-    return f"from {import_path} import (\n    {cls} as {cls},\n)\n"
+    return f"from {import_path} import (\n    {name} as {name},\n)\n"
 
 
-def generate_feature_stub(classes_by_module: dict[str, list[str]]) -> str:
+def generate_feature_stub(symbols_by_module: dict[str, list[str]]) -> str:
     all_names = sorted(
-        (cls for classes in classes_by_module.values() for cls in classes), key=str.casefold
+        (n for symbols in symbols_by_module.values() for n in symbols), key=str.casefold
     )
     lines: list[str] = [HEADER_FEATURE]
-    for module_path, classes in classes_by_module.items():
+    for module_path, symbols in symbols_by_module.items():
         import_path = f".{module_path.replace('/', '.')}"
-        for cls in classes:
-            lines.append(_split_import_line(import_path, cls))
+        for name in symbols:
+            lines.append(_split_import_line(import_path, name))
     lines.append(_all_block(all_names))
     return "".join(lines)
 
@@ -107,8 +124,7 @@ def _write_if_changed(path: Path, content: str) -> bool:
 
 
 def main() -> int:
-    classes_by_module = _collect_classes()
-    changed = _write_if_changed(FEATURE_STUB_PATH, generate_feature_stub(classes_by_module))
+    changed = _write_if_changed(FEATURE_STUB_PATH, generate_feature_stub(_collect_symbols()))
     return 1 if changed else 0
 
 

@@ -28,7 +28,7 @@ def test_coherence_output_dims_and_shape() -> None:
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((300, 4)))
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space_to", "space_from")
@@ -43,9 +43,9 @@ def test_coherence_space_coords_are_preserved() -> None:
         dims=["time", "space"],
         coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(300, dtype=float) / 100.0},
     )
-    data = cb.data.SignalData.from_xarray(arr_xr)
+    data = cb.SignalData.from_xarray(arr_xr)
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space_to"].values, ["Fz", "Cz", "Pz"])
     np.testing.assert_array_equal(out.data.coords["space_from"].values, ["Fz", "Cz", "Pz"])
@@ -64,7 +64,7 @@ def test_coherence_identical_channels_give_unity_coherence() -> None:
     arr = np.stack([sig, sig, sig], axis=1)
     data = _make_data(arr, sampling_rate=200.0)
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
     mat = out.data.values  # (3, 3)
 
     for i in range(3):
@@ -78,7 +78,7 @@ def test_coherence_diagonal_is_nan() -> None:
     rng = np.random.default_rng(3)
     data = _make_data(rng.standard_normal((300, 5)))
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
     mat = out.data.values
 
     assert np.all(np.isnan(np.diag(mat)))
@@ -89,7 +89,7 @@ def test_coherence_matrix_is_symmetric() -> None:
     rng = np.random.default_rng(4)
     data = _make_data(rng.standard_normal((400, 6)))
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
     mat = out.data.values
 
     mask = ~np.isnan(mat)
@@ -101,7 +101,7 @@ def test_coherence_values_are_in_unit_range() -> None:
     rng = np.random.default_rng(5)
     data = _make_data(rng.standard_normal((512, 8)))
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
     mat = out.data.values
     off_diag = mat[~np.isnan(mat)]
 
@@ -127,7 +127,7 @@ def test_coherence_preserves_metadata_and_history() -> None:
         extra={"session": 1},
     )
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "control"
@@ -159,7 +159,7 @@ def test_coherence_with_run_index_preserves_extra_dim() -> None:
     )
     data = cb.SignalData.from_xarray(arr_xr, sampling_rate=100.0)
 
-    out = cb.feature.Coherence().apply(data)
+    out = cb.Coherence().apply(data)
 
     assert "run_index" in out.data.dims
     assert out.data.sizes["run_index"] == n_runs
@@ -181,7 +181,7 @@ def test_coherence_custom_nperseg_produces_valid_output() -> None:
     rng = np.random.default_rng(8)
     data = _make_data(rng.standard_normal((200, 3)))
 
-    out = cb.feature.Coherence(nperseg=32).apply(data)
+    out = cb.Coherence(nperseg=32).apply(data)
 
     assert isinstance(out, cb.Data)
     mat = out.data.values
@@ -195,8 +195,8 @@ def test_coherence_results_depend_on_nperseg() -> None:
     rng = np.random.default_rng(9)
     data = _make_data(rng.standard_normal((512, 3)))
 
-    out32 = cb.feature.Coherence(nperseg=32).apply(data)
-    out128 = cb.feature.Coherence(nperseg=128).apply(data)
+    out32 = cb.Coherence(nperseg=32).apply(data)
+    out128 = cb.Coherence(nperseg=128).apply(data)
 
     # Values will differ because segment length affects the estimate
     assert not np.allclose(out32.data.values, out128.data.values, equal_nan=True)
@@ -212,7 +212,7 @@ def test_coherence_raises_when_fewer_than_two_channels() -> None:
     data = _make_data(np.ones((100, 1)))
 
     with pytest.raises(ValueError, match="at least 2 spatial channels"):
-        cb.feature.Coherence().apply(data)
+        cb.Coherence().apply(data)
 
 
 def test_coherence_raises_when_nperseg_exceeds_n_time() -> None:
@@ -220,7 +220,7 @@ def test_coherence_raises_when_nperseg_exceeds_n_time() -> None:
     data = _make_data(np.ones((50, 3)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        cb.feature.Coherence(nperseg=100).apply(data)
+        cb.Coherence(nperseg=100).apply(data)
 
 
 def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
@@ -228,7 +228,7 @@ def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
     data = _make_data(np.ones((50, 3)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        cb.feature.Coherence(nperseg=1).apply(data)
+        cb.Coherence(nperseg=1).apply(data)
 
 
 # ---------------------------------------------------------------------------
@@ -237,8 +237,8 @@ def test_coherence_raises_when_nperseg_is_less_than_two() -> None:
 
 
 def test_coherence_accessible_via_feature_module() -> None:
-    """Coherence is accessible as cb.feature.Coherence."""
-    assert callable(cb.feature.Coherence)
+    """Coherence is accessible as cb.Coherence."""
+    assert callable(cb.Coherence)
 
 
 def test_coherence_missing_space_dim_raises() -> None:
@@ -250,7 +250,7 @@ def test_coherence_missing_space_dim_raises() -> None:
     object.__setattr__(raw, "_sampling_rate", 100.0)
 
     with pytest.raises(ValueError, match="space"):
-        cb.feature.Coherence().apply(raw)
+        cb.Coherence().apply(raw)
 
 
 def test_coherence_default_nperseg_too_small_raises() -> None:
@@ -259,7 +259,7 @@ def test_coherence_default_nperseg_too_small_raises() -> None:
     data = _make_data(rng.standard_normal((1, 3)))
 
     with pytest.raises(ValueError, match="nperseg"):
-        cb.feature.Coherence().apply(data)
+        cb.Coherence().apply(data)
 
 
 def test_coherence_does_not_mutate_input() -> None:
@@ -270,7 +270,7 @@ def test_coherence_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Coherence().apply(data)
+    _ = cb.Coherence().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape

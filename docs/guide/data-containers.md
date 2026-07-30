@@ -36,16 +36,12 @@ data = cb.Data.from_numpy(
     sampling_rate=100.0,
     subjectID="sub-01",
     groupID="control",
-    condition="baseline"
+    condition="baseline",
 )
 
 # 1D data (no time dimension)
 arr_1d = np.random.normal(size=(50,))
-data_1d = cb.Data.from_numpy(
-    arr=arr_1d,
-    dims=["channel"],
-    subjectID="sub-01"
-)
+data_1d = cb.Data.from_numpy(arr=arr_1d, dims=["channel"], subjectID="sub-01")
 # data_1d.sampling_rate is None (no time dimension)
 ```
 
@@ -63,7 +59,7 @@ import xarray as xr
 xr_data = xr.DataArray(
     np.random.normal(size=(100, 4)),
     dims=["x", "y"],
-    coords={"x": range(100), "y": ["A", "B", "C", "D"]}
+    coords={"x": range(100), "y": ["A", "B", "C", "D"]},
 )
 
 data = cb.Data.from_xarray(xr_data, subjectID="sub-01")
@@ -82,11 +78,7 @@ import numpy as np
 # Create time-series data
 arr = np.random.normal(size=(1000, 64))  # time x channels
 data = cb.SignalData.from_numpy(
-    arr=arr,
-    dims=["time", "space"],
-    sampling_rate=256.0,
-    subjectID="sub-01",
-    condition="task"
+    arr=arr, dims=["time", "space"], sampling_rate=256.0, subjectID="sub-01", condition="task"
 )
 
 # Time dimension is automatically moved to last position
@@ -104,20 +96,16 @@ print(data.shape)  # (64, 1000)
 
 ```python
 # EEG data (type marker)
-eeg = cb.EEG.from_numpy(
-    arr=arr,
-    dims=["time", "space"],
-    sampling_rate=256.0
-)
+eeg = cb.EEG.from_numpy(arr=arr, dims=["time", "space"], sampling_rate=256.0)
 print(isinstance(eeg, cb.SignalData))  # True
-print(isinstance(eeg, cb.Data))        # True
-print(type(eeg) == cb.EEG)             # True
+print(isinstance(eeg, cb.Data))  # True
+print(type(eeg) == cb.EEG)  # True
 
 # FMRI data (type marker)
 fmri = cb.FMRI.from_numpy(
     arr=fmri_arr,
     dims=["time", "spaceX", "spaceY", "spaceZ"],
-    sampling_rate=0.5  # TR = 2s
+    sampling_rate=0.5,  # TR = 2s
 )
 ```
 
@@ -127,12 +115,12 @@ fmri = cb.FMRI.from_numpy(
 
 ```python
 # All containers share these properties
-data.subjectID      # Subject identifier
-data.groupID        # Group identifier  
-data.condition      # Experimental condition
+data.subjectID  # Subject identifier
+data.groupID  # Group identifier
+data.condition  # Experimental condition
 data.sampling_rate  # Sampling rate in Hz (None if no time dimension)
-data.history        # List of applied operations
-data.extra          # Custom metadata dict
+data.history  # List of applied operations
+data.extra  # Custom metadata dict
 ```
 
 ### Data Access
@@ -142,19 +130,19 @@ usual questions about its shape — without reaching through `.data` yourself.
 
 ```python
 # Get at the wrapped object
-data.data           # Underlying xarray.DataArray
-data.xarr           # The same DataArray, under a name that can't be misread
-data.numpy          # Underlying numpy array, no copy
+data.data  # Underlying xarray.DataArray
+data.xarr  # The same DataArray, under a name that can't be misread
+data.numpy  # Underlying numpy array, no copy
 
 # Shape metadata, straight off the container
-data.shape          # (64, 1000)                  axis lengths
-data.size           # 64000                       total element count
-data.dims           # ('space', 'time')           axis names
-data.sizes          # {'space': 64, 'time': 1000} axis names → lengths
+data.shape  # (64, 1000)                  axis lengths
+data.size  # 64000                       total element count
+data.dims  # ('space', 'time')           axis names
+data.sizes  # {'space': 64, 'time': 1000} axis names → lengths
 
 # Convert (these build a new object, unlike the accessors above)
-data.to_numpy()     # numpy array
-data.to_pandas()    # pandas DataFrame
+data.to_numpy()  # numpy array
+data.to_pandas()  # pandas DataFrame
 ```
 
 Two distinctions are worth internalising, because both have bitten people:
@@ -198,11 +186,11 @@ Dimension names and lengths come straight off the container — see
 ```python
 item = cb.load_dataset("dummy_chain")[0]
 
-item.dims                            # e.g. ('space', 'time')
-item.sizes                           # e.g. {'space': 4, 'time': 200}
+item.dims  # e.g. ('space', 'time')
+item.sizes  # e.g. {'space': 4, 'time': 200}
 
 # Which coordinates have labels attached? (still via the DataArray)
-coords = list(item.data.coords)      # e.g. ['time'] or ['time', 'space']
+coords = list(item.data.coords)  # e.g. ['time'] or ['time', 'space']
 ```
 
 ### Get coordinate values as a list
@@ -213,8 +201,8 @@ space_labels = item.data.coords["space"].values.tolist()
 # e.g. ['E1', 'E2', 'E3', 'E4']  or  [0, 1, 2, 3] if no labels were set
 
 # Time coordinate in seconds
-time_array = item.data.coords["time"].values       # numpy array
-time_list  = time_array.tolist()                   # Python list
+time_array = item.data.coords["time"].values  # numpy array
+time_list = time_array.tolist()  # Python list
 ```
 
 > **Note:** If you created `Data` with `from_numpy()` and did not supply coordinate labels for
@@ -227,8 +215,8 @@ time_list  = time_array.tolist()                   # Python list
 import xarray as xr
 import numpy as np
 
-arr = np.random.normal(size=(200, 8))   # 200 time steps, 8 channels
-labels = [f"E{i+1}" for i in range(8)]
+arr = np.random.normal(size=(200, 8))  # 200 time steps, 8 channels
+labels = [f"E{i + 1}" for i in range(8)]
 
 xr_arr = xr.DataArray(
     arr,
@@ -241,14 +229,14 @@ xr_arr = xr.DataArray(
 data = cb.Data.from_xarray(xr_arr, sampling_rate=100.0, subjectID="sub-01")
 
 # Now space has labels:
-data.data.coords["space"].values.tolist()   # ['E1', 'E2', ..., 'E8']
+data.data.coords["space"].values.tolist()  # ['E1', 'E2', ..., 'E8']
 ```
 
 ### Select by coordinate value
 
 ```python
 # Single channel
-ch = data.data.sel(space="E3")            # xr.DataArray, shape (200,)
+ch = data.data.sel(space="E3")  # xr.DataArray, shape (200,)
 
 # Multiple channels
 subset = data.data.sel(space=["E1", "E5"])  # shape (2, 200) after transpose
@@ -258,7 +246,7 @@ window = data.data.sel(time=slice(0.5, 1.0))
 
 # To wrap the result back into a Data object:
 data_subset = cb.Data.from_xarray(
-    subset.rename({"space": "space"}),   # keep dims intact
+    subset.rename({"space": "space"}),  # keep dims intact
     subjectID=data.subjectID,
     sampling_rate=data.sampling_rate,
 )
@@ -267,11 +255,11 @@ data_subset = cb.Data.from_xarray(
 ### Convert to numpy or pandas
 
 ```python
-arr = data.to_numpy()          # plain numpy array, shape matches data.data.shape
-df  = data.to_pandas()         # pandas DataFrame with MultiIndex from dimensions
+arr = data.to_numpy()  # plain numpy array, shape matches data.data.shape
+df = data.to_pandas()  # pandas DataFrame with MultiIndex from dimensions
 
 # Access specific channels via pandas
-df.xs("E1", level="space")    # time-series for channel E1
+df.xs("E1", level="space")  # time-series for channel E1
 ```
 
 ## Sampling Rate
@@ -319,10 +307,7 @@ data.subjectID = "sub-02"  # AttributeError!
 
 # Instead, create a new Data object:
 new_data = cb.Data.from_xarray(
-    data.data,
-    subjectID="sub-02",
-    history=data.history,
-    extra=data.extra
+    data.data, subjectID="sub-02", history=data.history, extra=data.extra
 )
 ```
 
@@ -332,12 +317,7 @@ The `extra` dict stores custom metadata:
 
 ```python
 data = cb.SignalData.from_numpy(
-    arr,
-    dims=["time", "space"],
-    extra={
-        "notes": "Filtered 1-40 Hz",
-        "bad_channels": ["E12", "E15"]
-    }
+    arr, dims=["time", "space"], extra={"notes": "Filtered 1-40 Hz", "bad_channels": ["E12", "E15"]}
 )
 
 # Access (returns a copy)
@@ -375,17 +355,20 @@ Full type hints are provided:
 ```python
 from cobrabox import Data, SignalData, EEG, FMRI
 
+
 def process_general(data: Data) -> Data:
     """Works with any Data container."""
-    return cb.feature.Mean(dim="time").apply(data)
+    return cb.Mean(dim="time").apply(data)
+
 
 def process_timeseries(data: SignalData) -> Data:
     """Requires time-series data."""
-    return cb.feature.LineLength().apply(data)
+    return cb.LineLength().apply(data)
+
 
 def process_eeg(data: EEG) -> EEG:
     """EEG-specific processing."""
-    return cb.feature.LineLength().apply(data)
+    return cb.LineLength().apply(data)
 ```
 
 ## When to Use Each Container

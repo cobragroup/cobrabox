@@ -7,41 +7,33 @@ import cobrabox as cb
 data = cb.load_dataset("dummy_chain")[0]
 
 # Simple pipeline using | syntax
-pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+pipeline = cb.Min(dim="time") | cb.Max(dim="time")
 simple_out = pipeline.apply(data)
 print("simple pipeline history:", simple_out.history)
 print("simple pipeline shape:", simple_out.data.shape)
 
 win_min = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.Min(dim="time")
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5) | cb.Min(dim="time") | cb.MeanAggregate()
 ).apply(data)
 
 win_max = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.Max(dim="time")
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5) | cb.Max(dim="time") | cb.MeanAggregate()
 ).apply(data)
 
-feat = cb.feature.LineLength().apply(data)
+feat = cb.LineLength().apply(data)
 
 # Compute coherence
-coh = cb.feature.Coherence().apply(data)
+coh = cb.Coherence().apply(data)
 
 # SlidingWindowReduce — simpler alternative to Chord for basic windowed stats
-win_reduce = cb.feature.SlidingWindowReduce(
-    window_size=10, step_size=5, dim="time", agg="mean"
-).apply(data)
+win_reduce = cb.SlidingWindowReduce(window_size=10, step_size=5, dim="time", agg="mean").apply(data)
 
 # AmplitudeVariation — amplitude variation (std) over time
-amp_var = cb.feature.AmplitudeVariation().apply(data)
+amp_var = cb.AmplitudeVariation().apply(data)
 
 # AmplitudeVariation in a Chord — windowed amplitude variation
 win_amp_var = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.AmplitudeVariation()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5) | cb.AmplitudeVariation() | cb.MeanAggregate()
 ).apply(data)
 
 print("min over windows shape:", win_min.data.shape)

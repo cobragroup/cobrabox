@@ -33,7 +33,7 @@ def test_feature_autocorr_reduces_requested_dimension() -> None:
     arr = np.arange(20, dtype=float).reshape(10, 2)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0, subjectID="sub-01")
 
-    out = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
+    out = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -54,8 +54,8 @@ def test_feature_autocorr_default_5ms_matches_explicit_steps() -> None:
     arr = np.random.default_rng(0).normal(size=(50, 2)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
 
-    out_default = cb.feature.Autocorrelation(dim="time", fs=1000.0).apply(data)
-    out_steps = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
+    out_default = cb.Autocorrelation(dim="time", fs=1000.0).apply(data)
+    out_steps = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
 
     np.testing.assert_allclose(out_default.to_numpy(), out_steps.to_numpy(), equal_nan=True)
 
@@ -68,13 +68,13 @@ def test_feature_autocorr_raises_for_unknown_dimension() -> None:
     data = cb.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=1000.0)
 
     with pytest.raises(ValueError, match="dim 'band_index' not found"):
-        cb.feature.Autocorrelation(dim="band_index", fs=1000.0).apply(data)
+        cb.Autocorrelation(dim="band_index", fs=1000.0).apply(data)
 
 
 def test_feature_autocorr_raises_when_both_lag_inputs_provided() -> None:
     """Autocorr raises at construction when both lag_steps and lag_ms are provided."""
     with pytest.raises(ValueError, match="Specify either 'lag_steps' or 'lag_ms', not both"):
-        cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=5, lag_ms=5.0)
+        cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=5, lag_ms=5.0)
 
 
 def test_feature_autocorr_raises_for_lag_out_of_range() -> None:
@@ -82,7 +82,7 @@ def test_feature_autocorr_raises_for_lag_out_of_range() -> None:
     data = cb.from_numpy(np.ones((5, 1)), dims=["time", "space"], sampling_rate=1000.0)
 
     with pytest.raises(ValueError, match="lag must be between 1 and 4"):
-        cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
+        cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
 
 
 def test_feature_autocorr_constant_signal_returns_nan() -> None:
@@ -90,7 +90,7 @@ def test_feature_autocorr_constant_signal_returns_nan() -> None:
     arr = np.ones((30, 2), dtype=float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
 
-    out = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
+    out = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
 
     assert out.data.dims == ("space",)
     assert out.data.shape == (2,)
@@ -103,7 +103,7 @@ def test_feature_autocorr_all_nan_returns_nan() -> None:
     arr = np.full((10, 2), np.nan, dtype=float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
 
-    out = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
+    out = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
 
     assert out.data.dims == ("space",)
     assert out.data.shape == (2,)
@@ -115,9 +115,9 @@ def test_feature_autocorr_all_nan_returns_nan() -> None:
 def test_feature_autocorr_fs_non_positive_raises() -> None:
     """Autocorr raises ValueError when fs is zero or negative."""
     with pytest.raises(ValueError, match="fs must be positive"):
-        cb.feature.Autocorrelation(dim="time", fs=0.0)
+        cb.Autocorrelation(dim="time", fs=0.0)
     with pytest.raises(ValueError, match="fs must be positive"):
-        cb.feature.Autocorrelation(dim="time", fs=-100.0)
+        cb.Autocorrelation(dim="time", fs=-100.0)
 
 
 def test_feature_autocorr_metadata_preserved() -> None:
@@ -132,7 +132,7 @@ def test_feature_autocorr_metadata_preserved() -> None:
         condition="task",
     )
 
-    out = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
+    out = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "group-A"
@@ -149,7 +149,7 @@ def test_feature_autocorr_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
+    _ = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=1).apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -162,7 +162,7 @@ def test_feature_autocorr_lag_ms_parameter() -> None:
     arr = np.random.default_rng(0).normal(size=(50, 2)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
 
-    out_ms = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_ms=5.0).apply(data)
-    out_steps = cb.feature.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
+    out_ms = cb.Autocorrelation(dim="time", fs=1000.0, lag_ms=5.0).apply(data)
+    out_steps = cb.Autocorrelation(dim="time", fs=1000.0, lag_steps=5).apply(data)
 
     np.testing.assert_allclose(out_ms.to_numpy(), out_steps.to_numpy(), equal_nan=True)

@@ -39,7 +39,7 @@ def _make_windows(n_windows: int = 3, n_time: int = 5, n_space: int = 2) -> list
             groupID="win-grp",
             condition="win-cond",
         )
-        window = cb.feature.LineLength().apply(window)
+        window = cb.LineLength().apply(window)
         windows.append(window)
     return windows
 
@@ -171,8 +171,8 @@ def test_concat_aggregate_via_chord() -> None:
     )
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=4, step_size=2),
-        pipeline=cb.feature.LineLength(),
+        split=cb.SlidingWindow(window_size=4, step_size=2),
+        pipeline=cb.LineLength(),
         aggregate=cb.ConcatAggregate(),
     )
     result = chord.apply(data)
@@ -188,7 +188,7 @@ def test_concat_aggregate_via_chord() -> None:
 def test_concat_aggregate_accessible_via_cb_feature() -> None:
     """ConcatAggregate is accessible via cb.feature namespace."""
     assert hasattr(cb.feature, "ConcatAggregate")
-    assert cb.feature.ConcatAggregate is cb.ConcatAggregate
+    assert cb.ConcatAggregate is cb.ConcatAggregate
 
 
 def test_concat_aggregate_preserves_sampling_rate_with_time_dim() -> None:

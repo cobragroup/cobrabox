@@ -16,12 +16,12 @@ print(f"Input dims:   {data.data.dims}")
 print()
 
 # A simple per-window feature: line length collapses the time axis
-feature = cb.feature.LineLength()
+feature = cb.LineLength()
 
 # --- MeanAggregate: averages results across windows ---
-mean_result = (
-    cb.feature.SlidingWindow(window_size=50, step_size=25) | feature | cb.feature.MeanAggregate()
-).apply(data)
+mean_result = (cb.SlidingWindow(window_size=50, step_size=25) | feature | cb.MeanAggregate()).apply(
+    data
+)
 
 print("=== MeanAggregate ===")
 print(f"  Shape:   {dict(mean_result.data.sizes)}")
@@ -31,7 +31,7 @@ print()
 
 # --- ConcatAggregate: stacks all window results along a new 'window' dimension ---
 concat_result = (
-    cb.feature.SlidingWindow(window_size=50, step_size=25) | feature | cb.feature.ConcatAggregate()
+    cb.SlidingWindow(window_size=50, step_size=25) | feature | cb.ConcatAggregate()
 ).apply(data)
 
 print("=== ConcatAggregate ===")

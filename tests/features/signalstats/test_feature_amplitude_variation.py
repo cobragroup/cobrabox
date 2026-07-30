@@ -18,7 +18,7 @@ def test_feature_amp_var_expected_values_and_history() -> None:
     data = cb.SignalData.from_numpy(
         arr, dims=["time", "space"], sampling_rate=200.0, subjectID="sub-01"
     )
-    out = cb.feature.AmplitudeVariation().apply(data)
+    out = cb.AmplitudeVariation().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -33,7 +33,7 @@ def test_feature_amp_var_constant_signal_is_zero() -> None:
     """A constant signal has zero amplitude variation."""
     arr = np.ones((10, 3))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    out = cb.feature.AmplitudeVariation().apply(data)
+    out = cb.AmplitudeVariation().apply(data)
 
     assert out.data.shape == (3,)
     np.testing.assert_allclose(out.to_numpy(), 0.0)
@@ -43,7 +43,7 @@ def test_feature_amp_var_single_channel() -> None:
     """AmplitudeVariation works for a single-channel signal."""
     arr = np.array([[1.0], [2.0], [3.0]])
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-    out = cb.feature.AmplitudeVariation().apply(data)
+    out = cb.AmplitudeVariation().apply(data)
 
     assert out.data.dims == ("space",)
     assert out.data.shape == (1,)
@@ -56,9 +56,9 @@ def test_feature_amp_var_via_chord() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=5, step_size=2),
-        pipeline=cb.feature.AmplitudeVariation(),
-        aggregate=cb.feature.MeanAggregate(),
+        split=cb.SlidingWindow(window_size=5, step_size=2),
+        pipeline=cb.AmplitudeVariation(),
+        aggregate=cb.MeanAggregate(),
     )
     out = chord.apply(data)
 
@@ -77,7 +77,7 @@ def test_feature_amp_var_no_mutation() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.AmplitudeVariation().apply(data)
+    _ = cb.AmplitudeVariation().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -95,7 +95,7 @@ def test_feature_amp_var_metadata_preserved() -> None:
         groupID="group-A",
         condition="rest",
     )
-    out = cb.feature.AmplitudeVariation().apply(data)
+    out = cb.AmplitudeVariation().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "group-A"

@@ -11,7 +11,7 @@ import cobrabox as cb
 
 data = cb.load_dataset("dummy_chain")[0]
 
-pipeline = cb.feature.Min(dim="time") | cb.feature.Max(dim="time")
+pipeline = cb.Min(dim="time") | cb.Max(dim="time")
 result = pipeline.apply(data)
 print(result.history)  # ['Min', 'Max']
 ```
@@ -19,7 +19,7 @@ print(result.history)  # ['Min', 'Max']
 Each step receives the output of the previous one. The pipeline is itself composable — you can store it and reuse it across subjects.
 
 ```python
-pipeline = cb.feature.LineLength() | cb.feature.Mean(dim="space")
+pipeline = cb.LineLength() | cb.Mean(dim="space")
 
 results = [pipeline.apply(d) for d in cb.load_dataset("dummy_chain")]
 ```
@@ -29,11 +29,7 @@ results = [pipeline.apply(d) for d in cb.load_dataset("dummy_chain")]
 A `Chord` runs a `SplitterFeature` to produce a stream of windows, applies a per-window pipeline, and folds the results back into one `Data` with an `AggregatorFeature`.
 
 ```python
-chord = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-)
+chord = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 result = chord.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord']
 ```
@@ -63,7 +59,7 @@ chord = (
 )
 result = chord.apply(data)  # 1000 samples @ 100 Hz
 
-result.data.window.values[:4]      # array([0. , 0.5, 1. , 1.5])  — seconds
+result.data.window.values[:4]  # array([0. , 0.5, 1. , 1.5])  — seconds
 result.data.window_end.values[:4]  # array([0.99, 1.49, 1.99, 2.49])
 ```
 
@@ -82,8 +78,8 @@ onset = 4.2  # seizure onset, seconds
 starts = result.data.window.values
 index = int(np.searchsorted(starts, onset, side="right") - 1)
 
-result.data.isel(window=index)   # the window containing the onset
-result.data.sel(window=4.0)      # or select by start time directly
+result.data.isel(window=index)  # the window containing the onset
+result.data.sel(window=4.0)  # or select by start time directly
 ```
 
 Times are in seconds when the data has a sampling rate, and in sample indices otherwise. Selection by *position* still works with `.isel()`; `.sel()` now takes a time. Splitters that do not report window positions fall back to an integer index.
@@ -94,9 +90,7 @@ For basic windowed statistics without per-window features, use `SlidingWindowRed
 
 ```python
 # Single-step: window + aggregate
-result = cb.feature.SlidingWindowReduce(
-    window_size=100, step_size=50, dim="time", agg="mean"
-).apply(data)
+result = cb.SlidingWindowReduce(window_size=100, step_size=50, dim="time", agg="mean").apply(data)
 print(result.history)  # ['SlidingWindowReduce']
 ```
 
@@ -117,10 +111,10 @@ A `Chord` is itself a `BaseFeature`, so it composes freely with `|`:
 
 ```python
 full = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-    | cb.feature.Mean(dim="space")   # post-chord step
+    cb.SlidingWindow(window_size=20, step_size=10)
+    | cb.LineLength()
+    | cb.MeanAggregate()
+    | cb.Mean(dim="space")  # post-chord step
 )
 result = full.apply(data)
 print(result.history)  # ['SlidingWindow', 'LineLength', 'MeanAggregate', 'Chord', 'Mean']
@@ -132,10 +126,10 @@ Pipe multiple `BaseFeature` steps between the splitter and the aggregator:
 
 ```python
 chord = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.Mean(dim="time")
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10)
+    | cb.LineLength()
+    | cb.Mean(dim="time")
+    | cb.MeanAggregate()
 )
 result = chord.apply(data)
 print(result.history)
@@ -145,11 +139,7 @@ print(result.history)
 ## Applying to a Dataset
 
 ```python
-pipeline = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 
 datasets = cb.load_dataset("dummy_chain")
 results = [pipeline.apply(d) for d in datasets]
@@ -163,9 +153,7 @@ Every step appends its class name to `history`:
 data = cb.from_numpy(arr, dims=["time", "space"])
 
 result = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=10, step_size=5) | cb.LineLength() | cb.MeanAggregate()
 ).apply(data)
 
 print(result.history)
@@ -199,7 +187,7 @@ result = loaded.apply(data)
 
 ```python
 # Serialize to string
-yaml_str = cb.serialize(pipeline)          # YAML (default)
+yaml_str = cb.serialize(pipeline)  # YAML (default)
 json_str = cb.serialize(pipeline, fmt="json")
 
 # Deserialize from string
@@ -208,10 +196,10 @@ restored = cb.deserialize(json_str, fmt="json")
 
 # Method API — available on any feature, pipeline, or chord
 yaml_str = pipeline.to_yaml()
-pipeline  = cb.Pipeline.from_yaml(yaml_str)
+pipeline = cb.Pipeline.from_yaml(yaml_str)
 
-d        = pipeline.to_dict()
-pipeline  = cb.Pipeline.from_dict(d)
+d = pipeline.to_dict()
+pipeline = cb.Pipeline.from_dict(d)
 ```
 
 ### YAML format

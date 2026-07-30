@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 import cobrabox as cb
-from cobrabox.infometrics.recurrence_matrix import FcMetric, RecMetric, RecurrenceMatrix
+from cobrabox.infometrics._recurrence_matrix import FcMetric, RecMetric, RecurrenceMatrix
 
 
 def _make_2d(n_time: int = 100, n_ch: int = 5, seed: int = 0) -> cb.SignalData:

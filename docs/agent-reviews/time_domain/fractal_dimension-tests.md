@@ -52,7 +52,7 @@ def test_katz_multichannel_computed_independently() -> None:
     ch1 = np.random.default_rng(7).standard_normal(256)  # noise
     arr = np.stack([ch0, ch1], axis=1)
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.feature.FractalDimKatz().apply(data)
+    out = cb.FractalDimKatz().apply(data)
 
     assert out.data.shape == (2,)
     # Noise channel must be more complex than the sine channel
@@ -66,7 +66,7 @@ def test_katz_fd_in_expected_range(rng: np.random.Generator) -> None:
     """KFD for random EEG-like data should be finite and >= 1."""
     arr = rng.standard_normal((512, 4))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    values = cb.feature.FractalDimKatz().apply(data).to_numpy()
+    values = cb.FractalDimKatz().apply(data).to_numpy()
 
     # Random noise should be at least as complex as a line (FD >= 1)
     assert np.all(values >= 1.0)

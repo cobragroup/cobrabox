@@ -47,7 +47,7 @@ def test_feature_lempel_ziv_output_type_and_history() -> None:
         groupID="group-A",
         condition="rest",
     )
-    out = cb.feature.LempelZiv().apply(data)
+    out = cb.LempelZiv().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)

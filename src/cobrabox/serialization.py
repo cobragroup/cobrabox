@@ -195,33 +195,56 @@ def _build_document(obj: Any) -> dict[str, Any]:
 
 
 def _resolve_class(class_name: str, module_path: str) -> type:
-    """Import and return a feature class by name and module path."""
+    """Return a feature class, treating ``module_path`` as a hint rather than a key.
+
+    Saved files record where a feature lived when they were written. Module paths
+    move — the #107 catalog restructure relocated every feature, and #116 made the
+    implementation modules private — which would strand files written before the
+    move. Feature *names* are globally unique (discovery raises on duplicates), so
+    the name alone identifies the class and the module path is only used to
+    disambiguate nothing.
+
+    Resolution order: the recorded module first (fast, exact), then the discovery
+    registry. Falling back emits a ``DeprecationWarning`` naming the new location
+    so the file can be re-saved, but it does not fail.
+    """
     import importlib
 
+    module = None
     try:
         module = importlib.import_module(module_path)
-    except ImportError as exc:
-        raise FeatureNotFoundError(
-            f"Cannot import module {module_path!r} for feature {class_name!r}: {exc}"
-        ) from exc
+    except ImportError:
+        pass
 
-    cls = getattr(module, class_name, None)
-    if cls is None:
-        available = [
-            name
-            for name, obj in vars(module).items()
-            if isinstance(obj, type) and getattr(obj, "_is_cobrabox_feature", False)
-        ]
-        raise FeatureNotFoundError(
-            f"Feature {class_name!r} not found in module {module_path!r}. "
-            f"Available features: {available}"
+    if module is not None:
+        cls = getattr(module, class_name, None)
+        if cls is not None:
+            if not getattr(cls, "_is_cobrabox_feature", False):
+                raise FeatureNotFoundError(
+                    f"Class {class_name!r} in {module_path!r} is not a cobrabox feature "
+                    f"(missing _is_cobrabox_feature = True)."
+                )
+            return cls
+
+    # The recorded path is stale or the class has moved out of it — fall back to
+    # the live registry, which is keyed on the globally unique feature name.
+    from . import feature as _feature_registry
+
+    cls = getattr(_feature_registry, class_name, None)
+    if cls is not None and getattr(cls, "_is_cobrabox_feature", False):
+        warnings.warn(
+            f"Feature {class_name!r} was recorded at {module_path!r} but now lives at "
+            f"{cls.__module__!r}. Resolved by name; re-save the file to update it.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-    if not getattr(cls, "_is_cobrabox_feature", False):
-        raise FeatureNotFoundError(
-            f"Class {class_name!r} in {module_path!r} is not a cobrabox feature "
-            f"(missing _is_cobrabox_feature = True)."
-        )
-    return cls
+        return cls
+
+    available = sorted(getattr(_feature_registry, "__all__", []))
+    raise FeatureNotFoundError(
+        f"Feature {class_name!r} not found at {module_path!r} or in the feature "
+        f"registry. Available features: {available}"
+    )
 
 
 def _instantiate(cls: type, params: dict[str, Any]) -> Any:

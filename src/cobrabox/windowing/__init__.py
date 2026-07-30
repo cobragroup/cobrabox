@@ -1,7 +1,14 @@
 # Windowing features: segmentation and aggregation over time.
-from .concat_aggregate import ConcatAggregate
-from .mean_aggregate import MeanAggregate
-from .sliding_window import SlidingWindow
-from .sliding_window_reduce import SlidingWindowReduce
+from ._concat_aggregate import ConcatAggregate
+from ._mean_aggregate import MeanAggregate
+from ._sliding_window import SlidingWindow, sliding_window
+from ._sliding_window_reduce import SlidingWindowReduce, sliding_window_reduce
 
-__all__ = ["ConcatAggregate", "MeanAggregate", "SlidingWindow", "SlidingWindowReduce"]
+__all__ = [
+    "ConcatAggregate",
+    "MeanAggregate",
+    "SlidingWindow",
+    "SlidingWindowReduce",
+    "sliding_window",
+    "sliding_window_reduce",
+]

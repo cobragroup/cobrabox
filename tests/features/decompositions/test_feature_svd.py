@@ -20,9 +20,7 @@ def test_feature_svd_returns_dataarray_and_updates_history() -> None:
     arr = np.random.default_rng(0).normal(size=(20, 6)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "channel"], sampling_rate=1000.0, subjectID="sub-01")
 
-    out = cb.feature.SVD(dim="time", n_components=5, center=True, return_unstacked_V=True).apply(
-        data
-    )
+    out = cb.SVD(dim="time", n_components=5, center=True, return_unstacked_V=True).apply(data)
 
     assert isinstance(out, cb.Data)
     assert isinstance(out.data, xr.DataArray)
@@ -46,9 +44,7 @@ def test_feature_svd_unstacks_V_for_multidim_input() -> None:
     arr = rng.normal(size=(12, 4, 3, 2)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "x", "y", "z"], sampling_rate=2.0)
 
-    out = cb.feature.SVD(dim="time", n_components=4, center=True, return_unstacked_V=True).apply(
-        data
-    )
+    out = cb.SVD(dim="time", n_components=4, center=True, return_unstacked_V=True).apply(data)
 
     assert isinstance(out.data, xr.DataArray)
     assert out.data.name == "V"
@@ -63,7 +59,7 @@ def test_feature_svd_mask_reduces_feature_count() -> None:
 
     mask = xr.DataArray(rng.random(size=(5, 4)) > 0.5, dims=("x", "y"))
 
-    out = cb.feature.SVD(
+    out = cb.SVD(
         dim="time", n_components=6, center=True, mask=mask, return_unstacked_V=False
     ).apply(data)
 
@@ -81,7 +77,7 @@ def test_feature_svd_center_makes_feature_means_zero() -> None:
     arr = rng.normal(loc=10.0, scale=3.0, size=(40, 8)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
 
-    out = cb.feature.SVD(
+    out = cb.SVD(
         dim="time", n_components=5, center=True, zscore=False, return_unstacked_V=False
     ).apply(data)
 
@@ -98,9 +94,7 @@ def test_feature_svd_zscore_makes_means_zero_and_stds_one() -> None:
     arr = rng.normal(loc=5.0, scale=2.0, size=(60, 10)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "channel"], sampling_rate=250.0)
 
-    out = cb.feature.SVD(dim="time", n_components=7, zscore=True, return_unstacked_V=False).apply(
-        data
-    )
+    out = cb.SVD(dim="time", n_components=7, zscore=True, return_unstacked_V=False).apply(data)
 
     svd = out.data.attrs["svd"]
     assert svd["mean"] is not None
@@ -121,9 +115,7 @@ def test_feature_svd_reconstruction_matches_centered_matrix_full_rank_case() -> 
     arr = rng.normal(size=(30, 12)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=1000.0)
 
-    out = cb.feature.SVD(dim="time", n_components=12, center=True, return_unstacked_V=False).apply(
-        data
-    )
+    out = cb.SVD(dim="time", n_components=12, center=True, return_unstacked_V=False).apply(data)
 
     svd = out.data.attrs["svd"]
 
@@ -143,14 +135,14 @@ def test_feature_svd_raises_for_unknown_dimension() -> None:
     data = cb.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=1000.0)
 
     with pytest.raises(ValueError, match="dim 'band_index' not found"):
-        cb.feature.SVD(dim="band_index").apply(data)
+        cb.SVD(dim="band_index").apply(data)
 
 
 def test_feature_svd_n_components_non_positive_raises() -> None:
     data = cb.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=1000.0)
 
     with pytest.raises(ValueError, match="n_components must be > 0"):
-        cb.feature.SVD(dim="time", n_components=0).apply(data)
+        cb.SVD(dim="time", n_components=0).apply(data)
 
 
 def test_feature_svd_metadata_preserved() -> None:
@@ -164,9 +156,7 @@ def test_feature_svd_metadata_preserved() -> None:
         condition="task",
     )
 
-    out = cb.feature.SVD(dim="time", n_components=2, center=True, return_unstacked_V=False).apply(
-        data
-    )
+    out = cb.SVD(dim="time", n_components=2, center=True, return_unstacked_V=False).apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "group-A"
@@ -183,7 +173,7 @@ def test_feature_svd_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.SVD(dim="time", n_components=3, center=True).apply(data)
+    _ = cb.SVD(dim="time", n_components=3, center=True).apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -196,7 +186,7 @@ def test_feature_svd_output_u_mode() -> None:
     arr = np.random.default_rng(42).normal(size=(30, 5)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "channel"], sampling_rate=100.0)
 
-    out = cb.feature.SVD(dim="time", n_components=3, center=True, output="U").apply(data)
+    out = cb.SVD(dim="time", n_components=3, center=True, output="U").apply(data)
 
     assert out.data.name == "U"
     assert out.data.dims == ("time", "component")
@@ -214,7 +204,7 @@ def test_feature_svd_no_centering_no_zscore() -> None:
     arr = np.random.default_rng(42).normal(size=(25, 4)).astype(float)
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.SVD(
+    out = cb.SVD(
         dim="time", n_components=3, center=False, zscore=False, return_unstacked_V=False
     ).apply(data)
 

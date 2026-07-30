@@ -55,7 +55,7 @@ def test_pdc_output_dims() -> None:
     """PDC returns Data with dims (space_to, space_from, frequency)."""
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((4, 500)))
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space_to", "space_from", "frequency")
@@ -66,7 +66,7 @@ def test_pdc_output_shape() -> None:
     rng = np.random.default_rng(1)
     n_ch, n_freqs = 3, 64
     data = _make_data(rng.standard_normal((n_ch, 400)))
-    out = cb.feature.PartialDirectedCoherence(n_freqs=n_freqs).apply(data)
+    out = cb.PartialDirectedCoherence(n_freqs=n_freqs).apply(data)
 
     assert out.data.shape == (n_ch, n_ch, n_freqs)
 
@@ -76,7 +76,7 @@ def test_pdc_space_coords_preserved() -> None:
     labels = ["Fz", "Cz", "Pz"]
     rng = np.random.default_rng(2)
     data = _make_data(rng.standard_normal((3, 400)), space=labels)
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space_to"].values, labels)
     np.testing.assert_array_equal(out.data.coords["space_from"].values, labels)
@@ -87,7 +87,7 @@ def test_pdc_frequency_coord_range() -> None:
     sr = 250.0
     rng = np.random.default_rng(3)
     data = _make_data(rng.standard_normal((2, 500)), sampling_rate=sr)
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     freqs = out.data.coords["frequency"].values
     assert freqs[0] == pytest.approx(0.0)
@@ -98,7 +98,7 @@ def test_pdc_returns_data_not_signal_data() -> None:
     """output_type=Data: result is Data, not SignalData (no time dim)."""
     rng = np.random.default_rng(4)
     data = _make_data(rng.standard_normal((3, 300)))
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     assert type(out) is cb.Data
     assert "time" not in out.data.dims
@@ -108,7 +108,7 @@ def test_pdc_history_updated() -> None:
     """apply() appends 'PartialDirectedCoherence' to history."""
     rng = np.random.default_rng(5)
     data = _make_data(rng.standard_normal((2, 300)))
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     assert out.history[-1] == "PartialDirectedCoherence"
 
@@ -122,7 +122,7 @@ def test_pdc_values_in_unit_interval() -> None:
     """All PDC values lie in [0, 1]."""
     rng = np.random.default_rng(6)
     data = _make_data(rng.standard_normal((4, 600)))
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     vals = out.data.values
     assert np.all(vals >= 0.0 - 1e-10)
@@ -133,7 +133,7 @@ def test_pdc_column_sums_to_one() -> None:
     """At each frequency, the squared PDC values sum to 1 over the sink dimension."""
     rng = np.random.default_rng(7)
     data = _make_data(rng.standard_normal((3, 600)))
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     # pdc[space_to, space_from, frequency]; sum over 'space_to' at each (space_from, freq) ≈ 1
     vals = out.data.values  # (K, K, n_freqs)
@@ -148,7 +148,7 @@ def test_pdc_directed_coupling_detected() -> None:
     arr = _coupled_signals(n_times=2000, sr=sr, drive_freq=drive_freq)
     data = _make_data(arr, sampling_rate=sr)
 
-    out = cb.feature.PartialDirectedCoherence(var_order=5, n_freqs=256).apply(data)
+    out = cb.PartialDirectedCoherence(var_order=5, n_freqs=256).apply(data)
     freqs = out.data.coords["frequency"].values
 
     # Find index closest to the drive frequency
@@ -167,7 +167,7 @@ def test_pdc_fixed_var_order() -> None:
     """var_order parameter is respected (no crash, correct output dims)."""
     rng = np.random.default_rng(8)
     data = _make_data(rng.standard_normal((3, 400)))
-    out = cb.feature.PartialDirectedCoherence(var_order=3).apply(data)
+    out = cb.PartialDirectedCoherence(var_order=3).apply(data)
 
     assert out.data.dims == ("space_to", "space_from", "frequency")
 
@@ -183,7 +183,7 @@ def test_pdc_requires_sampling_rate() -> None:
     data = cb.SignalData.from_xarray(arr, sampling_rate=None)
 
     with pytest.raises(ValueError, match="sampling_rate"):
-        cb.feature.PartialDirectedCoherence().apply(data)
+        cb.PartialDirectedCoherence().apply(data)
 
 
 def test_pdc_requires_at_least_2_channels() -> None:
@@ -192,19 +192,19 @@ def test_pdc_requires_at_least_2_channels() -> None:
     data = _make_data(rng.standard_normal((1, 300)))
 
     with pytest.raises(ValueError, match="2 channels"):
-        cb.feature.PartialDirectedCoherence().apply(data)
+        cb.PartialDirectedCoherence().apply(data)
 
 
 def test_pdc_invalid_n_freqs_raises() -> None:
     """n_freqs < 1 raises ValueError at construction."""
     with pytest.raises(ValueError, match="n_freqs"):
-        cb.feature.PartialDirectedCoherence(n_freqs=0)
+        cb.PartialDirectedCoherence(n_freqs=0)
 
 
 def test_pdc_invalid_var_order_raises() -> None:
     """var_order < 1 raises ValueError at construction."""
     with pytest.raises(ValueError, match="var_order"):
-        cb.feature.PartialDirectedCoherence(var_order=0)
+        cb.PartialDirectedCoherence(var_order=0)
 
 
 def test_pdc_metadata_preserved() -> None:
@@ -219,7 +219,7 @@ def test_pdc_metadata_preserved() -> None:
         condition="task",
     )
 
-    out = cb.feature.PartialDirectedCoherence().apply(data)
+    out = cb.PartialDirectedCoherence().apply(data)
 
     assert out.subjectID == "s42"
     assert out.groupID == "control"
@@ -237,7 +237,7 @@ def test_pdc_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_data_array = data.data.values.copy()
 
-    _ = cb.feature.PartialDirectedCoherence().apply(data)
+    _ = cb.PartialDirectedCoherence().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -253,4 +253,4 @@ def test_pdc_invalid_ndim_raises() -> None:
     data = cb.SignalData.from_xarray(xr_arr, sampling_rate=250.0)
 
     with pytest.raises(ValueError, match="2-D input"):
-        cb.feature.PartialDirectedCoherence().apply(data)
+        cb.PartialDirectedCoherence().apply(data)

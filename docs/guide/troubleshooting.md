@@ -45,7 +45,7 @@ git lfs pull
 data = cb.Data.from_numpy(
     arr,
     dims=["time", "space"],
-    sampling_rate=100.0  # Required for frequency-domain features
+    sampling_rate=100.0,  # Required for frequency-domain features
 )
 ```
 
@@ -62,8 +62,7 @@ print(data.data.dims)  # e.g., ('channels', 'samples')
 
 # Rename to expected names
 data = cb.Data.from_xarray(
-    data.data.rename({"channels": "space", "samples": "time"}),
-    sampling_rate=100.0
+    data.data.rename({"channels": "space", "samples": "time"}), sampling_rate=100.0
 )
 ```
 
@@ -96,7 +95,7 @@ data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0
 output_type: ClassVar[type[Data] | None] = Data
 
 # This means sampling_rate will be None in output
-result = cb.feature.LineLength().apply(data)
+result = cb.LineLength().apply(data)
 print(result.sampling_rate)  # None - time dim removed
 ```
 
@@ -124,8 +123,8 @@ cb.feature.LineLength().apply(result)  # ValueError: no real time axis left
 To reduce over windows, use a feature that takes a `dim` argument:
 
 ```python
-cb.feature.Mean(dim="window").apply(result)   # average the time course
-cb.feature.Max(dim="window").apply(result)    # peak across windows
+cb.feature.Mean(dim="window").apply(result)  # average the time course
+cb.feature.Max(dim="window").apply(result)  # peak across windows
 ```
 
 To apply a second time-domain feature *per window*, put it inside the chord rather than after it:
@@ -150,10 +149,10 @@ Note that a feature keeping a real, multi-sample time axis per window (a filter,
 
 ```python
 # Wrong
-matrix = cb.feature.PhaseLockingValueMatrix(coords=[]).apply(data)
+matrix = cb.PhaseLockingValue(coords=[]).apply(data)
 
 # Correct
-matrix = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
+matrix = cb.PhaseLockingValue(coords=[0, 1, 2]).apply(data)
 ```
 
 ---
@@ -166,13 +165,13 @@ matrix = cb.feature.PhaseLockingValueMatrix(coords=[0, 1, 2]).apply(data)
 ```python
 # Memory-efficient approach with Chord
 result = cb.Chord(
-    split=cb.feature.SlidingWindow(window_size=1000, step_size=500),
-    pipeline=cb.feature.LineLength(),
-    aggregate=cb.feature.MeanAggregate(),
+    split=cb.SlidingWindow(window_size=1000, step_size=500),
+    pipeline=cb.LineLength(),
+    aggregate=cb.MeanAggregate(),
 ).apply(data)  # Processes one window at a time
 
 # Instead of loading all windows:
-# windows = list(cb.feature.SlidingWindow(...)(data))  # Don't do this for large data!
+# windows = list(cb.SlidingWindow(...)(data))  # Don't do this for large data!
 ```
 
 ---
@@ -184,9 +183,7 @@ result = cb.Chord(
 
 ```python
 result = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
+    cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 ).apply(data)
 
 print(result.history)
@@ -207,11 +204,7 @@ print(result.history)
 # pipeline = cb.load("old_pipeline.yaml")  # Raises SchemaVersionError
 
 # Recreate with current version
-pipeline = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 cb.save(pipeline, "new_pipeline.yaml")
 ```
 
@@ -238,10 +231,10 @@ uv sync  # Ensures all dependencies are installed
 ```python
 # SignalData features work with SignalData, not generic Data
 data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
-result = cb.feature.LineLength().apply(data)  # OK
+result = cb.LineLength().apply(data)  # OK
 
 # Generic Data features work with any Data
-result = cb.feature.Mean(dim="time").apply(data)  # Also OK
+result = cb.Mean(dim="time").apply(data)  # Also OK
 ```
 
 ---
@@ -253,6 +246,7 @@ result = cb.feature.Mean(dim="time").apply(data)  # Also OK
 
 ```python
 from cobrabox.data import SignalData
+
 
 @dataclass
 class MyFeature(BaseFeature[SignalData]):  # type: ignore[type-var]
@@ -315,16 +309,16 @@ Add tests for the missing lines.
 ```python
 # This keeps all windows in memory:
 result = cb.Chord(
-    split=cb.feature.SlidingWindow(window_size=100, step_size=10),
-    pipeline=cb.feature.LineLength(),
-    aggregate=cb.feature.ConcatAggregate(),  # Stacks all windows
+    split=cb.SlidingWindow(window_size=100, step_size=10),
+    pipeline=cb.LineLength(),
+    aggregate=cb.ConcatAggregate(),  # Stacks all windows
 ).apply(data)
 
 # This reduces to one result (memory-efficient):
 result = cb.Chord(
-    split=cb.feature.SlidingWindow(window_size=100, step_size=10),
-    pipeline=cb.feature.LineLength(),
-    aggregate=cb.feature.MeanAggregate(),  # Averages windows
+    split=cb.SlidingWindow(window_size=100, step_size=10),
+    pipeline=cb.LineLength(),
+    aggregate=cb.MeanAggregate(),  # Averages windows
 ).apply(data)
 ```
 

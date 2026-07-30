@@ -14,7 +14,7 @@ def test_spike_count_clean_data_no_outliers(rng: np.random.Generator) -> None:
     arr = rng.standard_normal((100, 2)) * 10 + 50
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0, subjectID="sub-01")
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.shape == ()
@@ -34,7 +34,7 @@ def test_spike_count_with_outliers() -> None:
 
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=200.0)
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.to_numpy() >= 2  # At least the 2 extreme values
@@ -53,7 +53,7 @@ def test_spike_count_preserves_metadata(rng: np.random.Generator) -> None:
         extra={"task_name": "motor"},
     )
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     assert out.subjectID == "sub-02"
     assert out.groupID == "control"
@@ -67,7 +67,7 @@ def test_spike_count_returns_scalar(rng: np.random.Generator) -> None:
     arr = rng.standard_normal((30, 2))
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     assert out.data.shape == ()
     assert out.data.dims == ()
@@ -85,7 +85,7 @@ def test_spike_count_multivariate_data(rng: np.random.Generator) -> None:
 
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.to_numpy() > 0
@@ -97,7 +97,7 @@ def test_spike_count_empty_data_raises() -> None:
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="empty"):
-        cb.feature.SpikeCount().apply(data)
+        cb.SpikeCount().apply(data)
 
 
 def test_spike_count_sampling_rate_none(rng: np.random.Generator) -> None:
@@ -105,7 +105,7 @@ def test_spike_count_sampling_rate_none(rng: np.random.Generator) -> None:
     arr = rng.standard_normal((50, 2))
     data = cb.Data.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     assert out.sampling_rate is None
 
@@ -119,7 +119,7 @@ def test_spike_count_does_not_mutate_input(rng: np.random.Generator) -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.SpikeCount().apply(data)
+    _ = cb.SpikeCount().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -135,7 +135,7 @@ def test_spike_count_boundary_values() -> None:
 
     data = cb.Data.from_numpy(arr.reshape(-1, 1), dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.SpikeCount().apply(data)
+    out = cb.SpikeCount().apply(data)
 
     # Values exactly at bounds should NOT be spikes
     # But anything beyond should be

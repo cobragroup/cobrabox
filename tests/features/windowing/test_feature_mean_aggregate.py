@@ -44,7 +44,7 @@ def _make_windows(
             condition="win-cond",
         )
         # Simulate pipeline history by applying LineLength first
-        window = cb.feature.LineLength().apply(window)
+        window = cb.LineLength().apply(window)
         windows.append(window)
     return windows
 
@@ -54,7 +54,7 @@ def test_mean_aggregate_basic() -> None:
     original_data = _make_data(n_time=5, n_space=2)
     windows = _make_windows(n_windows=3, base_value=1.0)
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     result = aggregator(original_data, iter(windows))
 
     assert isinstance(result, cb.Data)
@@ -66,7 +66,7 @@ def test_mean_aggregate_single_window() -> None:
     original_data = _make_data(n_time=5, n_space=2)
     windows = _make_windows(n_windows=1, base_value=5.0)
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     result = aggregator(original_data, iter(windows))
 
     assert isinstance(result, cb.Data)
@@ -76,7 +76,7 @@ def test_mean_aggregate_empty_stream_raises() -> None:
     """MeanAggregate raises ValueError when stream is empty."""
     original_data = _make_data()
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     with pytest.raises(ValueError, match="empty stream"):
         aggregator(original_data, iter([]))
 
@@ -88,7 +88,7 @@ def test_mean_aggregate_preserves_original_metadata() -> None:
     )
     windows = _make_windows(n_windows=2)
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     result = aggregator(original_data, iter(windows))
 
     assert result.subjectID == "sub-42"
@@ -104,7 +104,7 @@ def test_mean_aggregate_propagates_window_history() -> None:
     original_data = _make_data()
     windows = _make_windows(n_windows=2)
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     result = aggregator(original_data, iter(windows))
 
     assert "LineLength" in result.history
@@ -121,7 +121,7 @@ def test_mean_aggregate_does_not_mutate_original() -> None:
     window_histories = [list(w.history) for w in windows]
     window_shapes = [w.data.shape for w in windows]
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     _ = aggregator(original_data, iter(windows))
 
     assert original_data.history == original_history
@@ -137,7 +137,7 @@ def test_mean_aggregate_returns_data_instance() -> None:
     original_data = _make_data()
     windows = _make_windows(n_windows=2)
 
-    aggregator = cb.feature.MeanAggregate()
+    aggregator = cb.MeanAggregate()
     result = aggregator(original_data, iter(windows))
 
     assert isinstance(result, cb.Data)
@@ -153,9 +153,9 @@ def test_mean_aggregate_via_chord() -> None:
     )
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=4, step_size=2),
-        pipeline=cb.feature.LineLength(),
-        aggregate=cb.feature.MeanAggregate(),
+        split=cb.SlidingWindow(window_size=4, step_size=2),
+        pipeline=cb.LineLength(),
+        aggregate=cb.MeanAggregate(),
     )
     result = chord.apply(data)
 
