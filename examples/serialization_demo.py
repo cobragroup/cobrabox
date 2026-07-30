@@ -9,7 +9,7 @@ data = cb.load_dataset("dummy_chain")[0]
 
 # ─── Single feature ───────────────────────────────────────────────────────────
 
-feature = cb.feature.LineLength()
+feature = cb.LineLength()
 
 yaml_str = cb.serialize(feature)
 print("=== Single feature YAML ===")
@@ -21,11 +21,7 @@ print("Output shape:", restored.apply(data).data.shape)
 
 # ─── Pipeline ─────────────────────────────────────────────────────────────────
 
-pipeline = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=10, step_size=5) | cb.LineLength() | cb.MeanAggregate()
 
 yaml_str = cb.serialize(pipeline)
 print("\n=== Chord YAML ===")
@@ -66,11 +62,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # ─── Method API ───────────────────────────────────────────────────────────────
 
-chord = (
-    cb.feature.SlidingWindow(window_size=10, step_size=5)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-)
+chord = cb.SlidingWindow(window_size=10, step_size=5) | cb.LineLength() | cb.MeanAggregate()
 
 yaml_via_method = chord.to_yaml()
 restored_via_method = cb.Pipeline.from_yaml(yaml_via_method)

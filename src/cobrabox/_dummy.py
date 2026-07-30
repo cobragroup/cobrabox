@@ -26,7 +26,7 @@ class Dummy(BaseFeature):
         to the input signal.
 
     Example:
-        >>> result = cb.feature.Dummy(mandatory_arg=1).apply(data)
+        >>> result = cb.Dummy(mandatory_arg=1).apply(data)
     """
 
     mandatory_arg: int

@@ -48,7 +48,7 @@ Issue: Missing docstring and return type annotation.
 def test_bandpower_raises_when_nperseg_less_than_2() -> None:
     """Bandpower raises ValueError when nperseg is less than 2."""
     with pytest.raises(ValueError, match="nperseg must be >= 2"):
-        cb.feature.Bandpower(nperseg=1)
+        cb.Bandpower(nperseg=1)
 ```
 
 ### `test_bandpower_raises_for_false_band_spec`
@@ -60,7 +60,7 @@ def test_bandpower_raises_for_false_band_spec() -> None:
     """Bandpower raises ValueError when band spec is False."""
     data = _sine_data(freq_hz=10.0)
     with pytest.raises(ValueError, match="must be True"):
-        cb.feature.Bandpower(bands={"alpha": False}).apply(data)
+        cb.Bandpower(bands={"alpha": False}).apply(data)
 ```
 
 ## Add

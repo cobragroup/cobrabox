@@ -1,4 +1,4 @@
-"""Tests for cb.feature.SampleEntropy."""
+"""Tests for cb.SampleEntropy."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import pytest
 
 import cobrabox as cb
 from cobrabox import SignalData
-from cobrabox.infometrics.sample_entropy import SampleEntropy
+from cobrabox.infometrics import SampleEntropy
 
 
 def _naive_sampen(ts: np.ndarray, m: int, r: float, log_base: float = 2) -> float:

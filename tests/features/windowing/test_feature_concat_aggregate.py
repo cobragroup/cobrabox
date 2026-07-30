@@ -39,7 +39,7 @@ def _make_windows(n_windows: int = 3, n_time: int = 5, n_space: int = 2) -> list
             groupID="win-grp",
             condition="win-cond",
         )
-        window = cb.feature.LineLength().apply(window)
+        window = cb.LineLength().apply(window)
         windows.append(window)
     return windows
 
@@ -171,8 +171,8 @@ def test_concat_aggregate_via_chord() -> None:
     )
 
     chord = cb.Chord(
-        split=cb.feature.SlidingWindow(window_size=4, step_size=2),
-        pipeline=cb.feature.LineLength(),
+        split=cb.SlidingWindow(window_size=4, step_size=2),
+        pipeline=cb.LineLength(),
         aggregate=cb.ConcatAggregate(),
     )
     result = chord.apply(data)
@@ -188,7 +188,7 @@ def test_concat_aggregate_via_chord() -> None:
 def test_concat_aggregate_accessible_via_cb_feature() -> None:
     """ConcatAggregate is accessible via cb.feature namespace."""
     assert hasattr(cb.feature, "ConcatAggregate")
-    assert cb.feature.ConcatAggregate is cb.ConcatAggregate
+    assert cb.ConcatAggregate is cb.ConcatAggregate
 
 
 def test_concat_aggregate_preserves_sampling_rate_with_time_dim() -> None:
@@ -208,3 +208,71 @@ def test_concat_aggregate_preserves_sampling_rate_with_time_dim() -> None:
     # Result has (window, time, space) — Data sees time dim and preserves sampling_rate
     assert "time" in result.data.dims
     assert result.sampling_rate == pytest.approx(250.0)
+
+
+def test_concat_aggregate_labels_window_axis_with_time() -> None:
+    """Windows from SlidingWindow give the window axis real start times (issue #118)."""
+    data = _make_data(n_time=100, n_space=3)
+    windows = list(cb.feature.SlidingWindow(window_size=20, step_size=10)(data))
+
+    result = cb.feature.ConcatAggregate()(data, iter(windows))
+
+    # 100 Hz, step of 10 samples → a window every 0.1 s
+    np.testing.assert_allclose(
+        result.data.coords["window"].values, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    )
+    # window_end is the last sample of each window: start + 19 samples
+    np.testing.assert_allclose(
+        result.data.coords["window_end"].values,
+        [0.19, 0.29, 0.39, 0.49, 0.59, 0.69, 0.79, 0.89, 0.99],
+    )
+
+
+def test_concat_aggregate_window_times_survive_time_reducing_feature() -> None:
+    """A chord whose per-window feature drops time still yields a time-labelled axis."""
+    data = _make_data(n_time=100, n_space=3)
+    chord = (
+        cb.feature.SlidingWindow(window_size=20, step_size=10)
+        | cb.feature.LineLength()
+        | cb.feature.ConcatAggregate()
+    )
+
+    result = chord.apply(data)
+
+    np.testing.assert_allclose(
+        result.data.coords["window"].values, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    )
+
+
+def test_concat_aggregate_locates_an_event_on_the_window_axis() -> None:
+    """The motivating use case: map an event time onto a window (issue #118)."""
+    data = _make_data(n_time=1000, n_space=3)
+    chord = (
+        cb.feature.SlidingWindow(window_size=100, step_size=50)
+        | cb.feature.LineLength()
+        | cb.feature.ConcatAggregate()
+    )
+
+    result = chord.apply(data)
+
+    starts = result.data.coords["window"].values
+    onset = 4.2  # seizure onset in seconds
+    index = int(np.searchsorted(starts, onset, side="right") - 1)
+    assert starts[index] == pytest.approx(4.0)
+    assert result.data.coords["window_end"].values[index] >= onset
+
+
+def test_concat_aggregate_window_axis_is_not_reindexed_by_position() -> None:
+    """The window coordinate carries time, so label-based selection uses seconds."""
+    data = _make_data(n_time=100, n_space=3)
+    chord = (
+        cb.feature.SlidingWindow(window_size=20, step_size=10)
+        | cb.feature.LineLength()
+        | cb.feature.ConcatAggregate()
+    )
+
+    result = chord.apply(data)
+
+    selected = result.data.sel(window=0.3)
+    positional = result.data.isel(window=3)
+    np.testing.assert_allclose(selected.values, positional.values)

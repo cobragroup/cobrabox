@@ -61,20 +61,20 @@ class TestDiscreteWaveletTransform:
     def test_dwt_output_dims(self) -> None:
         """DWT returns Data with (space, wavelet_level, coef_index) dims."""
         data = _make_data()
-        out = cb.feature.DiscreteWaveletTransform(level=4).apply(data)
+        out = cb.DiscreteWaveletTransform(level=4).apply(data)
         assert isinstance(out, cb.Data)
         assert out.data.dims == ("space", "wavelet_level", "coef_index")
 
     def test_dwt_output_type_is_data_not_signal_data(self) -> None:
         """DWT returns plain Data (time dim is consumed)."""
         data = _make_data()
-        out = cb.feature.DiscreteWaveletTransform(level=2).apply(data)
+        out = cb.DiscreteWaveletTransform(level=2).apply(data)
         assert type(out) is cb.Data
 
     def test_dwt_level_labels_correct_order(self) -> None:
         """wavelet_level coordinate follows pywt order: approx, detail_L, ..., detail_1."""
         data = _make_data()
-        out = cb.feature.DiscreteWaveletTransform(level=3).apply(data)
+        out = cb.DiscreteWaveletTransform(level=3).apply(data)
         expected = ["approx", "detail_3", "detail_2", "detail_1"]
         assert list(out.data.coords["wavelet_level"].values) == expected
 
@@ -82,7 +82,7 @@ class TestDiscreteWaveletTransform:
         """Number of wavelet_level entries = level + 1 (approx + level details)."""
         data = _make_data()
         for lv in (1, 2, 4):
-            out = cb.feature.DiscreteWaveletTransform(level=lv).apply(data)
+            out = cb.DiscreteWaveletTransform(level=lv).apply(data)
             assert out.data.sizes["wavelet_level"] == lv + 1
 
     def test_dwt_space_coords_preserved(self) -> None:
@@ -93,7 +93,7 @@ class TestDiscreteWaveletTransform:
             coords={"space": ["Fz", "Cz", "Pz"], "time": np.arange(N_TIME) / SR},
         )
         data = cb.SignalData.from_xarray(xr_arr)
-        out = cb.feature.DiscreteWaveletTransform(level=2).apply(data)
+        out = cb.DiscreteWaveletTransform(level=2).apply(data)
         np.testing.assert_array_equal(out.data.coords["space"].values, ["Fz", "Cz", "Pz"])
 
     def test_dwt_coef_index_length_matches_finest_detail(self) -> None:
@@ -102,7 +102,7 @@ class TestDiscreteWaveletTransform:
 
         data = _make_data()
         level = 3
-        out = cb.feature.DiscreteWaveletTransform(level=level).apply(data)
+        out = cb.DiscreteWaveletTransform(level=level).apply(data)
 
         # Compute expected finest-detail length directly
         rng = np.random.default_rng(0)
@@ -123,7 +123,7 @@ class TestDiscreteWaveletTransform:
         arr = rng.standard_normal((N_TIME, N_SPACE))
         data = _make_data(seed=3)
         level = 3
-        out = cb.feature.DiscreteWaveletTransform(level=level).apply(data)
+        out = cb.DiscreteWaveletTransform(level=level).apply(data)
 
         for ch in range(N_SPACE):
             expected_coeffs = pywt.wavedec(arr[:, ch], "db4", level=level)
@@ -144,7 +144,7 @@ class TestDiscreteWaveletTransform:
         data = cb.SignalData.from_xarray(xr_arr)
 
         level = 3
-        out = cb.feature.DiscreteWaveletTransform(level=level).apply(data)
+        out = cb.DiscreteWaveletTransform(level=level).apply(data)
         expected_coeffs = pywt.wavedec(arr[:, 0], "db4", level=level)
         # pywt order: [cA, cD_L, ..., cD_1]; detail_j in output corresponds to index (level-j+1)
         for j in range(1, level + 1):
@@ -160,7 +160,7 @@ class TestDiscreteWaveletTransform:
 
         data = _make_data()
         level = 4
-        out = cb.feature.DiscreteWaveletTransform(level=level).apply(data)
+        out = cb.DiscreteWaveletTransform(level=level).apply(data)
 
         rng = np.random.default_rng(0)
         coeffs = pywt.wavedec(rng.standard_normal(N_TIME), "db4", level=level)
@@ -175,7 +175,7 @@ class TestDiscreteWaveletTransform:
     def test_dwt_finest_detail_has_no_nan(self) -> None:
         """The finest detail level (detail_1) has no NaN values."""
         data = _make_data()
-        out = cb.feature.DiscreteWaveletTransform(level=3).apply(data)
+        out = cb.DiscreteWaveletTransform(level=3).apply(data)
         finest = out.data.sel(wavelet_level="detail_1").values
         assert np.all(np.isfinite(finest))
 
@@ -184,7 +184,7 @@ class TestDiscreteWaveletTransform:
         import pywt
 
         data = _make_data()
-        out = cb.feature.DiscreteWaveletTransform(level=None).apply(data)
+        out = cb.DiscreteWaveletTransform(level=None).apply(data)
         expected_max = pywt.dwt_max_level(N_TIME, "db4")
         assert out.data.sizes["wavelet_level"] == expected_max + 1
 
@@ -196,7 +196,7 @@ class TestDiscreteWaveletTransform:
         """DWT processes correctly when a window_index dimension is present."""
         n_windows = 4
         data = _make_data_with_window_dim(n_windows=n_windows, n_time=128)
-        out = cb.feature.DiscreteWaveletTransform(level=2).apply(data)
+        out = cb.DiscreteWaveletTransform(level=2).apply(data)
         assert "window_index" in out.data.dims
         assert out.data.sizes["window_index"] == n_windows
         assert out.data.sizes["space"] == N_SPACE
@@ -210,7 +210,7 @@ class TestDiscreteWaveletTransform:
         and sets sampling_rate to None.
         """
         data = _make_data()
-        out = cb.feature.DiscreteWaveletTransform(level=2).apply(data)
+        out = cb.DiscreteWaveletTransform(level=2).apply(data)
         assert out.subjectID == "sub-01"
         assert out.groupID == "ctrl"
         assert out.condition == "rest"
@@ -222,7 +222,7 @@ class TestDiscreteWaveletTransform:
         data = _make_data()
         original_values = data.data.values.copy()
         original_history = list(data.history)
-        cb.feature.DiscreteWaveletTransform(level=2).apply(data)
+        cb.DiscreteWaveletTransform(level=2).apply(data)
         np.testing.assert_array_equal(data.data.values, original_values)
         assert data.history == original_history
 
@@ -241,7 +241,7 @@ class TestDiscreteWaveletTransform:
 
         data = _make_data()
         for lv in (2, 4):
-            out = cb.feature.DiscreteWaveletTransform(level=lv).apply(data)
+            out = cb.DiscreteWaveletTransform(level=lv).apply(data)
             coeffs = pywt.wavedec(data.data.values[0], "db4", level=lv)
             approx_len = len(coeffs[0])  # cA length at this level
             approx_row = out.data.isel(space=0).sel(wavelet_level="approx").values
@@ -267,21 +267,21 @@ class TestDiscreteWaveletTransform:
 
     def test_dwt_raises_on_invalid_wavelet(self) -> None:
         with pytest.raises(ValueError, match="Unknown discrete wavelet"):
-            cb.feature.DiscreteWaveletTransform(wavelet="notawavelet")
+            cb.DiscreteWaveletTransform(wavelet="notawavelet")
 
     def test_dwt_raises_on_level_zero(self) -> None:
         with pytest.raises(ValueError, match="level must be >= 1"):
-            cb.feature.DiscreteWaveletTransform(level=0)
+            cb.DiscreteWaveletTransform(level=0)
 
     def test_dwt_raises_when_level_exceeds_max(self) -> None:
         """DiscreteWaveletTransform raises ValueError when level > max for signal."""
         data = _make_data(n_time=8)  # very short signal
         with pytest.raises(ValueError, match="exceeds the maximum"):
-            cb.feature.DiscreteWaveletTransform(level=100).apply(data)
+            cb.DiscreteWaveletTransform(level=100).apply(data)
 
     # -----------------------------------------------------------------------
     # API accessibility
     # -----------------------------------------------------------------------
 
     def test_dwt_accessible_via_feature_module(self) -> None:
-        assert callable(cb.feature.DiscreteWaveletTransform)
+        assert callable(cb.DiscreteWaveletTransform)

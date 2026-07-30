@@ -581,6 +581,61 @@ def _load_zurich_ieeg(
     return Dataset(items)
 
 
+def _clean_zurich_dataset(ds: Dataset[SignalData]) -> Dataset[SignalData]:
+    """Drop the per-subject columns-C+D channels from a loaded Zurich dataset.
+
+    For each item, the electrodes flagged in ``_ZURICH_IEEG_CLEAN_REMOVE`` for its
+    subject are removed from the ``space`` dimension. Subjects with no flagged
+    channels pass through unchanged. Cleaned items gain ``"zurich_ieeg_clean"`` in
+    ``history`` and the dropped channel names in ``extra["removed_channels"]``.
+    Warns (rather than fails) if a flagged channel is not present in the data.
+
+    Pure transform on an already-loaded dataset, so it is testable without the
+    (large) download.
+    """
+    import warnings
+
+    from .downloader import _ZURICH_IEEG_CLEAN_REMOVE
+
+    cleaned: list[SignalData] = []
+    for item in ds:
+        remove = set(_ZURICH_IEEG_CLEAN_REMOVE.get(item.subjectID or "", []))
+        if not remove:
+            cleaned.append(item)
+            continue
+
+        ch_names = [str(c) for c in item.data.coords["space"].to_numpy()]
+        missing = remove - set(ch_names)
+        if missing:
+            warnings.warn(
+                f"zurich_ieeg_clean: {item.subjectID}: "
+                f"{len(missing)} channel(s) flagged for removal not found in data: "
+                f"{sorted(missing)}",
+                stacklevel=2,
+            )
+        keep = [c for c in ch_names if c not in remove]
+        removed = [c for c in ch_names if c in remove]
+        cleaned.append(
+            item._copy_with_new_data(
+                item.data.sel(space=keep),
+                operation_name="zurich_ieeg_clean",
+                extra={"removed_channels": removed},
+            )
+        )
+    return Dataset(cleaned)
+
+
+def _load_zurich_ieeg_clean(
+    dataset_dir: Path, subset: Sequence[str] | None = None
+) -> Dataset[SignalData]:
+    """Load the Zurich iEEG dataset, then apply the columns-C+D channel cleaning.
+
+    Same files and download directory as :func:`_load_zurich_ieeg`; only the
+    per-subject channel removal (see :func:`_clean_zurich_dataset`) differs.
+    """
+    return _clean_zurich_dataset(_load_zurich_ieeg(dataset_dir, subset=subset))
+
+
 def _load_swiss_eeg_short(
     dataset_dir: Path, subset: Sequence[str] | None = None
 ) -> Dataset[SignalData]:

@@ -77,6 +77,7 @@ Every test function must have a one-line docstring describing what it verifies.
 def test_line_length_basic() -> None:
     """LineLength returns correct shape with time dimension removed."""
 
+
 # ❌ missing docstring
 def test_line_length_basic() -> None:
     data = ...
@@ -164,6 +165,7 @@ def test_myfeature_missing_time_raises() -> None:
     data = cb.Data.from_numpy(arr, dims=["space"])
     with pytest.raises(ValueError, match="time"):
         cb.feature.MyFeature().apply(data)
+
 
 # ❌ no error case tested (for BaseFeature[Data] features that validate time)
 ```
@@ -260,6 +262,7 @@ def test_line_length_basic() -> None:
     data = cb.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
     result = cb.feature.LineLength().apply(data)
     ...
+
 
 # ❌ test depends on module-level mutable state
 data = cb.from_numpy(...)  # module-level — shared across tests

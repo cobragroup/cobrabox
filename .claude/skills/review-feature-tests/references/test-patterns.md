@@ -94,9 +94,11 @@ def test_line_length_history_updated() -> None:
 def test_line_length_history_accumulates() -> None:
     """Chained features accumulate in history in order."""
     data = _make_data()
-    chord = cb.feature.SlidingWindow(window_size=20, step_size=10) | \
-            cb.feature.LineLength() | \
-            cb.feature.MeanAggregate()
+    chord = (
+        cb.feature.SlidingWindow(window_size=20, step_size=10)
+        | cb.feature.LineLength()
+        | cb.feature.MeanAggregate()
+    )
     result = chord.apply(data)
     assert "LineLength" in result.history
     assert result.history[-1] == "MeanAggregate"
@@ -209,6 +211,7 @@ For features that return generators, verify they are truly lazy.
 def test_sliding_window_is_lazy() -> None:
     """Generator should not materialise all windows upfront."""
     import inspect
+
     data = _make_data(n_time=100)
     gen = cb.feature.SlidingWindow(window_size=10, step_size=1)(data)
     assert inspect.isgenerator(gen)

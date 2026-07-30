@@ -43,7 +43,7 @@ def _make_data_no_sr() -> cb.SignalData:
 def test_hilbert_output_is_signal_data() -> None:
     """Hilbert returns a SignalData instance."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     assert isinstance(out, cb.SignalData)
 
 
@@ -51,7 +51,7 @@ def test_hilbert_output_dims_preserved() -> None:
     """Hilbert preserves all dimensions for all feature modes."""
     data = _make_data()
     for feat in ("analytic", "envelope", "phase", "frequency"):
-        out = cb.feature.AnalyticSignal(feature=feat).apply(data)
+        out = cb.AnalyticSignal(feature=feat).apply(data)
         assert out.data.dims == data.data.dims, f"dims changed for feature={feat!r}"
 
 
@@ -59,14 +59,14 @@ def test_hilbert_output_shape_preserved() -> None:
     """Hilbert preserves array shape for all feature modes."""
     data = _make_data()
     for feat in ("analytic", "envelope", "phase", "frequency"):
-        out = cb.feature.AnalyticSignal(feature=feat).apply(data)
+        out = cb.AnalyticSignal(feature=feat).apply(data)
         assert out.data.shape == data.data.shape, f"shape changed for feature={feat!r}"
 
 
 def test_hilbert_analytic_dtype_is_complex() -> None:
     """Hilbert analytic mode returns complex128 dtype."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="analytic").apply(data)
+    out = cb.AnalyticSignal(feature="analytic").apply(data)
     assert np.iscomplexobj(out.data.values)
     assert out.data.dtype == np.complex128
 
@@ -74,15 +74,15 @@ def test_hilbert_analytic_dtype_is_complex() -> None:
 def test_hilbert_analytic_real_part_equals_input() -> None:
     """Real part of the analytic signal equals the original signal."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="analytic").apply(data)
+    out = cb.AnalyticSignal(feature="analytic").apply(data)
     np.testing.assert_allclose(out.data.values.real, data.data.values, atol=1e-10)
 
 
 def test_hilbert_default_feature_is_analytic() -> None:
     """Hilbert default feature parameter is 'analytic'."""
     data = _make_data()
-    out_default = cb.feature.AnalyticSignal().apply(data)
-    out_explicit = cb.feature.AnalyticSignal(feature="analytic").apply(data)
+    out_default = cb.AnalyticSignal().apply(data)
+    out_explicit = cb.AnalyticSignal(feature="analytic").apply(data)
     np.testing.assert_array_equal(out_default.data.values, out_explicit.data.values)
 
 
@@ -94,7 +94,7 @@ def test_hilbert_default_feature_is_analytic() -> None:
 def test_hilbert_envelope_pure_sine() -> None:
     """Envelope of a unit-amplitude sine ≈ 1 everywhere (away from edges)."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     envelope = out.data.values  # shape (space, time)
 
     # Trim edge artefacts — check the middle 80 %
@@ -107,14 +107,14 @@ def test_hilbert_envelope_pure_sine() -> None:
 def test_hilbert_envelope_nonnegative() -> None:
     """Hilbert envelope is always non-negative."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     assert np.all(out.data.values >= 0)
 
 
 def test_hilbert_phase_range() -> None:
     """Instantaneous phase must be within [-pi, pi]."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="phase").apply(data)
+    out = cb.AnalyticSignal(feature="phase").apply(data)
     phase = out.data.values
     assert np.all(phase >= -np.pi - 1e-10)
     assert np.all(phase <= np.pi + 1e-10)
@@ -123,7 +123,7 @@ def test_hilbert_phase_range() -> None:
 def test_hilbert_frequency_pure_sine() -> None:
     """Instantaneous frequency of a pure sine ≈ FREQ_HZ (away from edges)."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="frequency").apply(data)
+    out = cb.AnalyticSignal(feature="frequency").apply(data)
     freq = out.data.values  # shape (space, time)
 
     trim = N_TIME // 10
@@ -142,28 +142,28 @@ def test_hilbert_frequency_pure_sine() -> None:
 def test_hilbert_history_appended() -> None:
     """Hilbert appends 'Hilbert' to history."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     assert out.history[-1] == "AnalyticSignal"
 
 
 def test_hilbert_subject_id_preserved() -> None:
     """Hilbert preserves subjectID metadata."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     assert out.subjectID == "test-subject"
 
 
 def test_hilbert_sampling_rate_preserved() -> None:
     """Hilbert preserves sampling_rate metadata."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     assert out.sampling_rate == SR
 
 
 def test_hilbert_coords_preserved() -> None:
     """Hilbert preserves coordinate values for all dimensions."""
     data = _make_data()
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     for dim in data.data.dims:
         if dim in data.data.coords:
             np.testing.assert_array_equal(out.data.coords[dim].values, data.data.coords[dim].values)
@@ -180,7 +180,7 @@ def test_hilbert_group_id_and_condition_preserved() -> None:
         groupID="test-group",
         condition="test-condition",
     )
-    out = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    out = cb.AnalyticSignal(feature="envelope").apply(data)
     assert out.groupID == "test-group"
     assert out.condition == "test-condition"
 
@@ -192,7 +192,7 @@ def test_hilbert_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.data.values.copy()
 
-    _ = cb.feature.AnalyticSignal(feature="envelope").apply(data)
+    _ = cb.AnalyticSignal(feature="envelope").apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -207,14 +207,14 @@ def test_hilbert_does_not_mutate_input() -> None:
 def test_hilbert_invalid_feature_raises() -> None:
     """Hilbert raises ValueError for invalid feature parameter."""
     with pytest.raises(ValueError, match="Invalid feature"):
-        cb.feature.AnalyticSignal(feature="invalid")  # type: ignore[arg-type]
+        cb.AnalyticSignal(feature="invalid")  # type: ignore[arg-type]
 
 
 def test_hilbert_frequency_without_sampling_rate_raises() -> None:
     """Hilbert raises ValueError for frequency mode without sampling_rate."""
     data = _make_data_no_sr()
     with pytest.raises(ValueError, match="sampling_rate"):
-        cb.feature.AnalyticSignal(feature="frequency").apply(data)
+        cb.AnalyticSignal(feature="frequency").apply(data)
 
 
 def test_hilbert_missing_time_raises() -> None:
@@ -227,7 +227,7 @@ def test_hilbert_missing_time_raises() -> None:
     raw = cb.Data.__new__(cb.Data)
     object.__setattr__(raw, "_data", bad_xr)
     with pytest.raises(ValueError):  # noqa: PT011
-        cb.feature.AnalyticSignal(feature="envelope").apply(raw)
+        cb.AnalyticSignal(feature="envelope").apply(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ def test_hilbert_missing_time_raises() -> None:
 def test_hilbert_pipe_with_line_length() -> None:
     """Hilbert | LineLength should work end-to-end."""
     data = _make_data()
-    pipeline = cb.feature.AnalyticSignal(feature="envelope") | cb.feature.LineLength()
+    pipeline = cb.AnalyticSignal(feature="envelope") | cb.LineLength()
     out = pipeline.apply(data)
     assert isinstance(out, cb.Data)
     assert "time" not in out.data.dims

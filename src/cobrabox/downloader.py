@@ -15,7 +15,7 @@ import urllib.request
 import zipfile
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from rich.console import Console, Group
@@ -39,6 +39,10 @@ from .dataset import Dataset
 
 class DownloadCancelled(Exception):
     """Raised when the user declines a download or deletion at the confirmation prompt."""
+
+
+class LargeLoadError(Exception):
+    """Raised when loading a dataset would pull an unexpectedly large amount into memory."""
 
 
 def _load_file_index() -> dict[str, list[RemoteFile]]:
@@ -130,6 +134,29 @@ def _prompt_download_verify(
         Panel("\n".join(lines), title=f"[bold cyan]{spec.identifier}[/bold cyan]")
     )
     answer = input("Proceed with download? [y/N] ").strip().lower()
+    return answer in {"y", "yes"}
+
+
+def _prompt_large_load_verify(spec: RemoteDatasetSpec, n: int, total_bytes: int) -> bool:
+    """Show a Rich panel warning about the estimated memory footprint of a load.
+
+    Returns ``True`` if the user confirmed, ``False`` otherwise.
+    """
+    lines = [
+        f"[dim]Subjects :[/dim] {n}",
+        f"[dim]Est. size:[/dim] ~{_format_bytes(total_bytes)} "
+        "(on-disk estimate; actual memory use after decoding may be higher)",
+        "",
+        "[dim]This will be loaded into memory all at once. Pass "
+        "[bold]subset=[/bold]... to load only part of the dataset, or use "
+        "[bold]download_dataset()[/bold] instead to fetch the files without "
+        "loading them into memory.[/dim]",
+        "\n[dim]Tip: pass [bold]accept=True[/bold] to skip this prompt.[/dim]",
+    ]
+    Console(file=sys.stdout, highlight=False).print(
+        Panel("\n".join(lines), title=f"[bold yellow]{spec.identifier}: large load[/bold yellow]")
+    )
+    answer = input("Load into memory now? [y/N] ").strip().lower()
     return answer in {"y", "yes"}
 
 
@@ -2319,6 +2346,302 @@ _ZURICH_ALL_CHANNELS_PER_SUBJECT: dict[str, list[str]] = {
 }
 
 
+# Source: Electrode info for Pipeline1.xlsx, columns C+D (union per subject).
+# Column C: "Electrodes/Channels to be additionally removed due to lack of metadata".
+# Column D: "Electrodes/Channels to be additionally removed as electrical stimulation
+# caused motor or language responses". Consumed by the 'zurich_ieeg_clean' dataset,
+# which drops these monopolar channels per subject. Subjects absent here have nothing
+# to remove. Patient N in the sheet maps to sub-0N.
+_ZURICH_IEEG_CLEAN_REMOVE: dict[str, list[str]] = {
+    "sub-01": [
+        "HL5",
+        "HL6",
+        "HL7",
+        "HL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "PHR5",
+        "PHR6",
+        "PHR7",
+        "PHR8",
+    ],
+    "sub-02": [
+        "AHL5",
+        "AHL6",
+        "AHL7",
+        "AHL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "ECL5",
+        "ECL6",
+        "ECL7",
+        "ECL8",
+        "ECR5",
+        "ECR6",
+        "ECR7",
+        "ECR8",
+        "PHL5",
+        "PHL6",
+        "PHL7",
+        "PHL8",
+        "PHR5",
+        "PHR6",
+        "PHR7",
+        "PHR8",
+    ],
+    "sub-03": [
+        "AHL5",
+        "AHL6",
+        "AHL7",
+        "AHL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "ECL5",
+        "ECL6",
+        "ECL7",
+        "ECL8",
+        "PHL5",
+        "PHL6",
+        "PHL7",
+        "PHL8",
+    ],
+    "sub-04": [
+        "HL5",
+        "HL6",
+        "HL7",
+        "HL8",
+        "HR5",
+        "HR6",
+        "HR7",
+        "HR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "EL5",
+        "EL6",
+        "EL7",
+        "EL8",
+        "ER5",
+        "ER6",
+        "ER7",
+        "ER8",
+        "PL5",
+        "PL6",
+        "PL7",
+        "PL8",
+        "PR5",
+        "PR6",
+        "PR7",
+        "PR8",
+    ],
+    "sub-05": [
+        "AHL5",
+        "AHL6",
+        "AHL7",
+        "AHL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "ECL5",
+        "ECL6",
+        "ECL7",
+        "ECL8",
+        "ECR5",
+        "ECR6",
+        "ECR7",
+        "ECR8",
+        "PHL5",
+        "PHL6",
+        "PHL7",
+        "PHL8",
+        "PHR5",
+        "PHR6",
+        "PHR7",
+        "PHR8",
+    ],
+    "sub-06": [
+        "AHL5",
+        "AHL6",
+        "AHL7",
+        "AHL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "ECL5",
+        "ECL6",
+        "ECL7",
+        "ECL8",
+        "ECR5",
+        "ECR6",
+        "ECR7",
+        "ECR8",
+        "PHL5",
+        "PHL6",
+        "PHL7",
+        "PHL8",
+        "PHR5",
+        "PHR6",
+        "PHR7",
+        "PHR8",
+    ],
+    "sub-07": [
+        "AHL5",
+        "AHL6",
+        "AHL7",
+        "AHL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "ECL5",
+        "ECL6",
+        "ECL7",
+        "ECL8",
+        "ECR5",
+        "ECR6",
+        "ECR7",
+        "ECR8",
+        "PHL5",
+        "PHL6",
+        "PHL7",
+        "PHL8",
+        "PHR5",
+        "PHR6",
+        "PHR7",
+        "PHR8",
+    ],
+    "sub-08": [
+        "AHL5",
+        "AHL6",
+        "AHL7",
+        "AHL8",
+        "AHR5",
+        "AHR6",
+        "AHR7",
+        "AHR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "ECL5",
+        "ECL6",
+        "ECL7",
+        "ECL8",
+        "ECR5",
+        "ECR6",
+        "ECR7",
+        "ECR8",
+        "PHL5",
+        "PHL6",
+        "PHL7",
+        "PHL8",
+        "PHR5",
+        "PHR6",
+        "PHR7",
+        "PHR8",
+    ],
+    "sub-09": [
+        "HL5",
+        "HL6",
+        "HL7",
+        "HL8",
+        "HR5",
+        "HR6",
+        "HR7",
+        "HR8",
+        "AL5",
+        "AL6",
+        "AL7",
+        "AL8",
+        "AR5",
+        "AR6",
+        "AR7",
+        "AR8",
+        "EL5",
+        "EL6",
+        "EL7",
+        "EL8",
+        "ER5",
+        "ER6",
+        "ER7",
+        "ER8",
+        "PL5",
+        "PL6",
+        "PL7",
+        "PL8",
+        "PR5",
+        "PR6",
+        "PR7",
+        "PR8",
+    ],
+    "sub-13": ["GR5", "GR6", "GR7", "GR13", "GR14", "GR15", "GR21", "GR22", "GR23"],
+    "sub-15": ["TLL7", "TLL15", "TLL23", "TLL32"],
+    "sub-18": ["PML2"],
+    "sub-20": ["OTL1"],
+}
+
+
 def _zurich_ieeg_subject_key(filename: str) -> str | None:
     """Parse subject ID from a Zurich iEEG filename.
 
@@ -2356,6 +2679,29 @@ def _zurich_ieeg_spec() -> RemoteDatasetSpec:
     )
 
 
+def _zurich_ieeg_clean_spec() -> RemoteDatasetSpec:
+    """A 'clean' variant of zurich_ieeg that shares the same download.
+
+    Same files and local directory as ``zurich_ieeg`` (so the raw download is
+    reused, never duplicated); only the loader differs, dropping the per-subject
+    channels flagged in columns C+D of the electrode sheet.
+    """
+    from .dataset_loader import _load_zurich_ieeg_clean
+
+    return replace(
+        _zurich_ieeg_spec(),
+        identifier="zurich_ieeg_clean",
+        loader=_load_zurich_ieeg_clean,
+        description=(
+            "Zurich iEEG HFO Dataset, cleaned: identical to 'zurich_ieeg' but with "
+            "per-subject electrodes removed — channels lacking metadata and channels "
+            "that produced motor/language responses under electrical stimulation "
+            "(columns C+D of the Zurich electrode sheet). Shares the 'zurich_ieeg' "
+            "download; no extra data is fetched."
+        ),
+    )
+
+
 REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "swiss_eeg_short": _swiss_eeg_short_spec(),
     "swiss_eeg_long": _swiss_eeg_long_spec(),
@@ -2364,6 +2710,7 @@ REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
     "siena_eeg": _siena_eeg_spec(),
     "sleep_ieeg": _sleep_ieeg_spec(),
     "zurich_ieeg": _zurich_ieeg_spec(),
+    "zurich_ieeg_clean": _zurich_ieeg_clean_spec(),
 }
 
 

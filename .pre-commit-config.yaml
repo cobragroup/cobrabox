@@ -8,7 +8,10 @@ repos:
       entry: uv run python scripts/gen_stubs.py
       language: system
       pass_filenames: false
-      files: ^src/cobrabox/features/.*\.py$
+      # `src/cobrabox/features/` was removed by the #107 catalog restructure, so this
+      # hook had stopped matching anything. Features now live in domain packages
+      # directly under src/cobrabox/.
+      files: ^src/cobrabox/.*\.py$
 
     - id: ty-check
       name: ty check

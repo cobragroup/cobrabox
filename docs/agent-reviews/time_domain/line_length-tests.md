@@ -39,7 +39,7 @@ def test_line_length_missing_time_raises() -> None:
     arr = np.random.default_rng(42).standard_normal((100, 10))
     data = cb.Data.from_numpy(arr, dims=["t", "space"])
     with pytest.raises(ValueError, match="time"):
-        cb.feature.LineLength()(data)
+        cb.LineLength()(data)
 ```
 
 ## Add

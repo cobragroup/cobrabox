@@ -16,7 +16,7 @@ def test_max_reduces_extra_dimension() -> None:
     xr_data = xr.DataArray(arr, dims=["run_index", "time", "space"])
     data = cb.SignalData(xr_data, sampling_rate=100.0, subjectID="sub-01")
 
-    out = cb.feature.Max(dim="run_index").apply(data)
+    out = cb.Max(dim="run_index").apply(data)
 
     assert isinstance(out, cb.Data)
     assert "run_index" not in out.data.dims
@@ -30,7 +30,7 @@ def test_max_raises_for_unknown_dimension() -> None:
     """Max raises a clear error when dim is missing."""
     data = cb.SignalData.from_numpy(np.ones((5, 3)), dims=["time", "space"], sampling_rate=100.0)
     with pytest.raises(ValueError, match="dim 'band_index' not found"):
-        cb.feature.Max(dim="band_index").apply(data)
+        cb.Max(dim="band_index").apply(data)
 
 
 def test_max_single_channel_timeseries_returns_single_value() -> None:
@@ -38,7 +38,7 @@ def test_max_single_channel_timeseries_returns_single_value() -> None:
     arr = np.array([[1.0], [2.0], [3.0], [4.0]])
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Max(dim="time").apply(data)
+    out = cb.Max(dim="time").apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space",)
@@ -61,7 +61,7 @@ def test_max_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Max(dim="time").apply(data)
+    _ = cb.Max(dim="time").apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -78,7 +78,7 @@ def test_max_preserves_metadata() -> None:
         groupID="control",
         condition="task",
     )
-    result = cb.feature.Max(dim="time").apply(data)
+    result = cb.Max(dim="time").apply(data)
     assert result.subjectID == "s42"
     assert result.groupID == "control"
     assert result.condition == "task"
@@ -94,7 +94,7 @@ def test_max_sampling_rate_preserved_when_time_kept() -> None:
     xr_data = xr.DataArray(arr, dims=["run_index", "time", "space"])
     data = cb.SignalData(xr_data, sampling_rate=100.0, subjectID="s1")
 
-    result = cb.feature.Max(dim="run_index").apply(data)
+    result = cb.Max(dim="run_index").apply(data)
 
     # Time dimension is preserved, so sampling_rate should be kept
     assert result.sampling_rate == 100.0

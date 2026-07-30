@@ -32,7 +32,7 @@ def test_correlation_output_dims_and_shape() -> None:
     rng = np.random.default_rng(0)
     data = _make_data(rng.standard_normal((4, 300)))
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("space_to", "space_from")
@@ -46,7 +46,7 @@ def test_correlation_output_is_square() -> None:
     n = 6
     data = _make_data(rng.standard_normal((n, 200)))
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     assert out.data.shape == (n, n)
 
@@ -60,7 +60,7 @@ def test_correlation_channel_coords_preserved() -> None:
     )
     data = cb.Data.from_xarray(arr)
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     np.testing.assert_array_equal(out.data.coords["space_to"].values, labels)
     np.testing.assert_array_equal(out.data.coords["space_from"].values, labels)
@@ -77,7 +77,7 @@ def test_correlation_pearson_matches_numpy_corrcoef() -> None:
     arr = rng.standard_normal((5, 400))
     data = _make_data(arr)
 
-    out = cb.feature.Correlation(method="pearson").apply(data)
+    out = cb.Correlation(method="pearson").apply(data)
 
     expected = np.corrcoef(arr)
     np.testing.assert_allclose(out.data.values, expected, atol=1e-12)
@@ -88,7 +88,7 @@ def test_correlation_pearson_diagonal_is_one() -> None:
     rng = np.random.default_rng(4)
     data = _make_data(rng.standard_normal((4, 300)))
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     np.testing.assert_array_equal(np.diag(out.data.values), np.ones(4))
 
@@ -98,7 +98,7 @@ def test_correlation_pearson_matrix_is_symmetric() -> None:
     rng = np.random.default_rng(5)
     data = _make_data(rng.standard_normal((5, 300)))
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
     mat = out.data.values
 
     np.testing.assert_allclose(mat, mat.T, atol=1e-12)
@@ -109,7 +109,7 @@ def test_correlation_pearson_values_in_minus_one_to_one() -> None:
     rng = np.random.default_rng(6)
     data = _make_data(rng.standard_normal((8, 500)))
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
     mat = out.data.values
 
     assert np.all(mat >= -1.0 - 1e-10)
@@ -123,7 +123,7 @@ def test_correlation_pearson_identical_channels_give_one() -> None:
     arr = np.stack([sig, sig, sig], axis=0)
     data = _make_data(arr)
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
     mat = out.data.values
 
     np.testing.assert_allclose(mat, np.ones((3, 3)), atol=1e-10)
@@ -136,7 +136,7 @@ def test_correlation_pearson_anti_correlated_gives_minus_one() -> None:
     arr = np.stack([sig, -sig], axis=0)
     data = _make_data(arr)
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     np.testing.assert_allclose(out.data.values[0, 1], -1.0, atol=1e-10)
     np.testing.assert_allclose(out.data.values[1, 0], -1.0, atol=1e-10)
@@ -155,7 +155,7 @@ def test_correlation_spearman_matches_scipy() -> None:
     arr = rng.standard_normal((4, 300))
     data = _make_data(arr)
 
-    out = cb.feature.Correlation(method="spearman").apply(data)
+    out = cb.Correlation(method="spearman").apply(data)
 
     # spearmanr returns (n_samples, n_channels) convention — transpose arr
     expected = spearmanr(arr.T).statistic
@@ -168,7 +168,7 @@ def test_correlation_spearman_diagonal_is_one() -> None:
     rng = np.random.default_rng(10)
     data = _make_data(rng.standard_normal((4, 300)))
 
-    out = cb.feature.Correlation(method="spearman").apply(data)
+    out = cb.Correlation(method="spearman").apply(data)
 
     np.testing.assert_array_equal(np.diag(out.data.values), np.ones(4))
 
@@ -178,7 +178,7 @@ def test_correlation_spearman_matrix_is_symmetric() -> None:
     rng = np.random.default_rng(11)
     data = _make_data(rng.standard_normal((5, 300)))
 
-    out = cb.feature.Correlation(method="spearman").apply(data)
+    out = cb.Correlation(method="spearman").apply(data)
     mat = out.data.values
 
     np.testing.assert_allclose(mat, mat.T, atol=1e-12)
@@ -192,8 +192,8 @@ def test_pearson_and_spearman_differ_on_nonlinear_data() -> None:
     arr = np.stack([x, y], axis=0)
     data = _make_data(arr)
 
-    pearson = cb.feature.Correlation(method="pearson").apply(data)
-    spearman = cb.feature.Correlation(method="spearman").apply(data)
+    pearson = cb.Correlation(method="pearson").apply(data)
+    spearman = cb.Correlation(method="spearman").apply(data)
 
     assert not np.allclose(pearson.data.values, spearman.data.values)
 
@@ -215,7 +215,7 @@ def test_correlation_preserves_metadata_and_history() -> None:
         extra={"session": 2},
     )
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     assert out.subjectID == "sub-01"
     assert out.groupID == "control"
@@ -230,7 +230,7 @@ def test_correlation_history_appends_to_existing() -> None:
     rng = np.random.default_rng(14)
     data = cb.Data.from_numpy(rng.standard_normal((3, 200)), dims=["space", "time"])
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     assert "Correlation" in out.history
     assert out.history[-1] == "Correlation"
@@ -248,7 +248,7 @@ def test_correlation_custom_dim_name() -> None:
     arr = rng.standard_normal((4, 100))
     data = _make_data(arr, dims=["electrode", "frequency"])
 
-    out = cb.feature.Correlation(dim="frequency").apply(data)
+    out = cb.Correlation(dim="frequency").apply(data)
 
     assert out.data.dims == ("electrode_to", "electrode_from")
     assert out.data.shape == (4, 4)
@@ -261,7 +261,7 @@ def test_correlation_correlates_along_non_default_dim() -> None:
     arr = rng.standard_normal((300, 5))
     data = _make_data(arr, dims=["time", "space"])
 
-    out = cb.feature.Correlation(dim="time").apply(data)
+    out = cb.Correlation(dim="time").apply(data)
 
     assert out.data.dims == ("space_to", "space_from")
     assert out.data.shape == (5, 5)
@@ -279,7 +279,7 @@ def test_correlation_raises_on_3d_input() -> None:
     data = cb.Data.from_xarray(arr)
 
     with pytest.raises(ValueError, match="exactly 2-dimensional"):
-        cb.feature.Correlation().apply(data)
+        cb.Correlation().apply(data)
 
 
 def test_correlation_raises_on_1d_input() -> None:
@@ -289,7 +289,7 @@ def test_correlation_raises_on_1d_input() -> None:
     data = cb.Data.from_xarray(arr)
 
     with pytest.raises(ValueError, match="exactly 2-dimensional"):
-        cb.feature.Correlation().apply(data)
+        cb.Correlation().apply(data)
 
 
 def test_correlation_raises_when_dim_missing() -> None:
@@ -298,7 +298,7 @@ def test_correlation_raises_when_dim_missing() -> None:
     data = _make_data(rng.standard_normal((4, 300)), dims=["space", "frequency"])
 
     with pytest.raises(ValueError, match="'time'"):
-        cb.feature.Correlation(dim="time").apply(data)
+        cb.Correlation(dim="time").apply(data)
 
 
 def test_correlation_raises_when_dim_missing_includes_hint() -> None:
@@ -307,19 +307,19 @@ def test_correlation_raises_when_dim_missing_includes_hint() -> None:
     data = _make_data(rng.standard_normal((4, 300)), dims=["electrode", "frequency"])
 
     with pytest.raises(ValueError, match="dim="):
-        cb.feature.Correlation(dim="time").apply(data)
+        cb.Correlation(dim="time").apply(data)
 
 
 def test_correlation_raises_on_invalid_method() -> None:
     """Correlation raises ValueError for an unknown method at construction time."""
     with pytest.raises(ValueError, match="'kendall'"):
-        cb.feature.Correlation(method="kendall")
+        cb.Correlation(method="kendall")
 
 
 def test_correlation_raises_on_invalid_method_pearson_typo() -> None:
     """Typo in method name raises ValueError."""
     with pytest.raises(ValueError, match="pearson"):
-        cb.feature.Correlation(method="Pearson")
+        cb.Correlation(method="Pearson")
 
 
 # ---------------------------------------------------------------------------
@@ -335,7 +335,7 @@ def test_correlation_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Correlation().apply(data)
+    _ = cb.Correlation().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
@@ -348,8 +348,8 @@ def test_correlation_does_not_mutate_input() -> None:
 
 
 def test_correlation_accessible_via_feature_module() -> None:
-    """Correlation is accessible as cb.feature.Correlation."""
-    assert callable(cb.feature.Correlation)
+    """Correlation is accessible as cb.Correlation."""
+    assert callable(cb.Correlation)
 
 
 def test_correlation_is_data_instance() -> None:
@@ -357,6 +357,6 @@ def test_correlation_is_data_instance() -> None:
     rng = np.random.default_rng(22)
     data = _make_data(rng.standard_normal((3, 200)))
 
-    out = cb.feature.Correlation().apply(data)
+    out = cb.Correlation().apply(data)
 
     assert isinstance(out, cb.Data)

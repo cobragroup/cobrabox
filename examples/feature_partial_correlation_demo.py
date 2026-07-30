@@ -6,7 +6,7 @@ import cobrabox as cb
 
 rng = np.random.default_rng(42)
 
-data = cb.data.SignalData.from_numpy(
+data = cb.SignalData.from_numpy(
     rng.normal(size=(100, 4)), dims=["time", "space"], sampling_rate=100.0
 )
 
@@ -19,7 +19,7 @@ print("Example 1: Single partial correlation")
 print("=" * 60)
 # PartialCorrelation always returns a (space_to, space_from) matrix; restrict the
 # output to the pair with coords= and condition on channel 2 via control_vars=.
-r = cb.feature.PartialCorrelation(coords=[0, 1], control_vars=[2]).apply(data)
+r = cb.PartialCorrelation(coords=[0, 1], control_vars=[2]).apply(data)
 pair = r.data.sel(space_to=0, space_from=1)
 print(f"Partial correlation (electrode 0 vs 1, controlling for 2): {pair.values.item():.4f}")
 print(f"History: {r.history}")
@@ -28,7 +28,7 @@ print()
 print("=" * 60)
 print("Example 2: Partial correlation matrix")
 print("=" * 60)
-m = cb.feature.PartialCorrelation(coords=[0, 1, 2], control_vars=[3]).apply(data)
+m = cb.PartialCorrelation(coords=[0, 1, 2], control_vars=[3]).apply(data)
 print("Pairwise partial correlations (controlling for electrode 3):")
 print(m.data.values)
 print()
@@ -36,7 +36,7 @@ print()
 print("=" * 60)
 print("Example 3: Default coordinates (full matrix over all channels)")
 print("=" * 60)
-m_all = cb.feature.PartialCorrelation().apply(data)
+m_all = cb.PartialCorrelation().apply(data)
 print("Pairwise partial correlations (all coordinates condition on each other):")
 print(m_all.data.values)
 print(f"Shape: {m_all.data.shape}")
@@ -49,13 +49,13 @@ print("=" * 60)
 
 print("\nInvalid coordinate:")
 try:
-    cb.feature.PartialCorrelation(coords=[99, 1], control_vars=[2]).apply(data)
+    cb.PartialCorrelation(coords=[99, 1], control_vars=[2]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 
 print("\nEmpty coords:")
 try:
-    cb.feature.PartialCorrelation(coords=[], control_vars=[3]).apply(data)
+    cb.PartialCorrelation(coords=[], control_vars=[3]).apply(data)
 except ValueError as e:
     print(f"  Error: {e}")
 

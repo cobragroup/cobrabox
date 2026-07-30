@@ -1,267 +1,272 @@
 # Contributing a Feature
 
-This guide shows the recommended workflow for adding a new feature to CobraBox.
+Everything you need to add a feature to CobraBox, in order.
 
-## Quick Checklist
+## The checklist
 
-1. Make a new branch
-2. Create `src/cobrabox/features/<domain>/my_feature.py`
-3. Create `tests/test_feature_my_feature.py`
-4. Implement, test, lint
-5. Open a pull request
+Copy this into your PR description and tick it off.
 
-### Choose the Right Domain
+- [ ] **1.** Branch off `main`
+- [ ] **2.** Pick a domain → [table below](#1-pick-a-domain)
+- [ ] **3.** Create `src/cobrabox/<domain>/_my_feature.py` — **note the leading underscore**
+- [ ] **4.** Write the `@dataclass`, inheriting the right base class
+- [ ] **5.** Add `_tags` so it appears in the docs' tag filter
+- [ ] **6.** Seed the one-shot function: `uv run python scripts/gen_functional_wrappers.py`
+- [ ] **7.** Tune the seeded function's docstring
+- [ ] **8.** Re-export the class **and** function from `src/cobrabox/__init__.py`
+- [ ] **9.** Write tests in `tests/features/<domain>/test_feature_my_feature.py`
+- [ ] **10.** Regenerate stubs and docs
+- [ ] **11.** Lint, format, run the suite, open a PR
 
-| Domain | Features |
-| ------ | -------- |
-| `time_domain/` | Morphological & temporal statistics (LineLength, AmplitudeVariation, SampleEntropy, LempelZiv, FractalDimHiguchi, FractalDimKatz, SpikeCount, Autocorr, EnvelopeCorrelation, RecurrenceMatrix, Nonreversibility) |
-| `frequency_domain/` | Spectral analysis (Bandpower, BandFilter, Cordance, Spectrogram, EpileptogenicityIndex) |
-| `time_frequency/` | Joint time-frequency methods (Hilbert, ContinuousWaveletTransform, DiscreteWaveletTransform, EMD, AmplitudeEntropy) |
-| `connectivity/` | Inter-channel relationships (Correlation, PartialCorrelation, PartialCorrelationMatrix, Covariance, Coherence, GrangerCausality, GrangerCausalityMatrix, PartialDirectedCoherence, PhaseLockingValue, PhaseLockingValueMatrix, MutualInformation, ReciprocalConnectivity) |
-| `decomposition/` | Signal decomposition methods (FourierTransformSurrogates) |
-| `windowing/` | Windowing & aggregation (SlidingWindow, SlidingWindowReduce, MeanAggregate, ConcatAggregate) |
-| `reductions/` | Basic statistical reductions (Mean, Max, Min) |
+Step 8 is the one people forget — the domain `__init__.py` is written for you by
+step 6, but the root re-export is by hand. `tests/test_public_api.py` and
+`tests/test_functional_api.py` fail loudly if you skip it.
 
-## 1. Create a Branch
+---
 
-```bash
-git checkout main
-git pull
-git checkout -b feature/add-variance
-```
+## 1. Pick a domain
 
-## 2. Choose the Right Base Class and Type
+Each domain answers one question about the signal.
 
-| You want to…                                | Inherit from                  | Type Parameter |
-| ------------------------------------------- | ----------------------------- | -------------- |
-| Transform any `Data` → `Data`               | `BaseFeature[Data]`           | Generic        |
-| Transform time-series `SignalData` → `Data` | `BaseFeature[SignalData]`     | Time-series    |
-| Split time-series into windows              | `SplitterFeature[SignalData]` | Time-series    |
-| Fold a stream back into one `Data`          | `AggregatorFeature`           | (not generic)  |
+| Domain | Question it answers | Examples |
+| ------ | ------------------- | -------- |
+| `signalstats/` | What are the basic properties of my signal? | `LineLength`, `Mean`, `Autocorrelation`, `SpikeCount` |
+| `infometrics/` | How complex or irregular is my signal? | `SampleEntropy`, `LempelZiv`, `FractalDimension` |
+| `spectral/` | What is happening in frequency space? | `BandPower`, `Spectrogram`, `Cordance` |
+| `connectivity/` | Which channels interact? | `Correlation`, `Coherence`, `GrangerCausality` |
+| `transforms/` | Convert to another representation | `AnalyticSignal`, `BandpassFilter`, `FourierTransform` |
+| `decompositions/` | Break into components | `EMD`, `SVD` |
+| `surrogates/` | Test statistical significance | `FourierTransformSurrogates` |
+| `windowing/` | Analyse temporal dynamics | `SlidingWindow`, `MeanAggregate` |
 
-## 3. Implement the Feature
+## 2. Pick a base class
 
-### Generic feature (`BaseFeature[Data]`)
+| You want to… | Inherit from | Returns |
+| ------------ | ------------ | ------- |
+| Transform any `Data` → `Data` | `BaseFeature[Data]` | `xr.DataArray` or `Data` |
+| Transform time-series → `Data` | `BaseFeature[SignalData]` | `xr.DataArray` or `Data` |
+| Split into a stream of windows | `SplitterFeature[SignalData]` | `Iterator[Data]` |
+| Fold a stream back into one `Data` | `AggregatorFeature` | `Data` |
 
-Use for features that work with any data container:
+Use `[SignalData]` when the algorithm **inherently** needs time-series structure —
+it reads `sampling_rate`, or applies an FFT or Hilbert transform along time. Use
+`[Data]` when the dimension is just a parameter the caller chooses, even if every
+caller happens to pass time-series.
+
+## 3. Write the file
+
+The filename is **private** (leading underscore) and the class is public:
 
 ```python
-# src/cobrabox/features/reductions/variance.py
+# src/cobrabox/signalstats/_variance.py
 from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import ClassVar
+
 import xarray as xr
+
 from ..base_feature import BaseFeature
 from ..data import Data
+
 
 @dataclass
 class Variance(BaseFeature[Data]):
     """Compute variance over a dimension.
 
     Args:
-        dim: Dimension to reduce over.
+        dim: Dimension to reduce over. Defaults to ``"time"``.
+
+    Returns:
+        :class:`~cobrabox.Data` with ``dim`` removed.
 
     Example:
-        >>> result = cb.feature.Variance(dim="time").apply(data)
+        >>> result = cb.Variance(dim="time").apply(data)
     """
 
-    dim: str
+    _tags: ClassVar[list[str]] = ["variability", "eeg", "io:scalar-per-channel"]
+    output_type: ClassVar[type[Data]] = Data
+
+    dim: str = "time"
 
     def __call__(self, data: Data) -> xr.DataArray:
         if self.dim not in data.data.dims:
-            raise ValueError(f"dim '{self.dim}' not found in {data.data.dims}")
+            raise ValueError(f"dim {self.dim!r} not found in {data.data.dims}")
         return data.data.var(dim=self.dim)
 ```
 
-**Key points:**
+### Why the underscore
 
-- `@dataclass` on the class, not `@feature` on a function
-- Store parameters as dataclass fields (with defaults where sensible)
-- Use `BaseFeature[Data]` for generic features or `BaseFeature[SignalData]` for time-series
-- Implement `__call__(self, data: DataT)` — no `apply()` needed, that's inherited
-- Return `xr.DataArray` or `Data`
-- Validate inputs and raise `ValueError` with clear messages
-- Write a Google-style docstring with an `Example:` block
+`Variance` in `variance.py` would make `cb.signalstats.variance` resolve to the
+*module*, squatting on the name the one-shot function needs. Private
+implementation modules are the convention scipy and scikit-learn use
+(`scipy.stats.entropy` lives in `scipy.stats._entropy`). See
+[GH #116](https://github.com/cobragroup/cobrabox/issues/116).
 
-### Time-series feature (`BaseFeature[SignalData]`)
+### Things worth getting right
 
-Use for features that require time-series data:
+- **`output_type`** — set `ClassVar[type[Data]] = Data` when your feature *removes*
+  the time dimension (scalars, matrices, frequency-only output). Without it
+  `apply()` tries to keep the input container type and will fail.
+- **`_tags`** — drives the tag filter on the docs home page. Reuse existing tags
+  where you can; see [Features by Tag](../tags.md). `io:*` describes the output
+  shape, `req:*` an input requirement.
+- **Validate and raise `ValueError`** with a message naming the offending value.
+- **Docstring** — Google style with an `Example:`. It is the single source for the
+  API docs *and* the domain pages, so write it for a reader.
+- **Never mutate** — `Data` is immutable; return new objects.
 
-```python
-# src/cobrabox/features/frequency_domain/spectral_power.py
-from __future__ import annotations
-from dataclasses import dataclass
-import xarray as xr
-from ..base_feature import BaseFeature
-from ..data import SignalData
+## 4. Seed the one-shot function
 
-@dataclass
-class SpectralPower(BaseFeature[SignalData]):
-    """Compute power in a frequency band.
+Every feature has a companion function — `cb.variance(data, dim="time")` beside
+`cb.Variance(dim="time").apply(data)`. You don't hand-write it; a generator seeds
+it into your feature file, below the class:
 
-    Args:
-        fmin: Lower frequency bound in Hz.
-        fmax: Upper frequency bound in Hz.
-
-    Example:
-        >>> result = cb.feature.SpectralPower(fmin=8, fmax=12).apply(data)
-    """
-
-    fmin: float
-    fmax: float
-
-    def __call__(self, data: SignalData) -> xr.DataArray:
-        # SignalData guarantees 'time' dimension exists
-        # No need to check: if "time" not in data.data.dims
-        xr_data = data.data
-        # ... compute spectral power
-        return result
+```bash
+uv run python scripts/gen_functional_wrappers.py
 ```
 
-**Key points for time-series features:**
+This appends a `@functional(Variance)`-decorated `def variance(data, dim="time")`
+to `_variance.py` and re-exports it from the domain `__init__.py`. The name is
+your filename minus the underscore, so `_variance.py` → `cb.variance`. The
+generator is **non-destructive** — it only seeds features that lack a wrapper, so
+re-running it never touches a wrapper you've since edited. Aggregators get no
+function (they fold a splitter's stream, so a standalone call is meaningless).
 
-- Import `SignalData` instead of `Data`
-- Use `BaseFeature[SignalData]` (not just `BaseFeature`)
-- Type hint `data: SignalData` in `__call__`
-- SignalData validates 'time' dimension at construction — no need to check in feature
-- SignalData guarantees time is the last dimension
+**Then tune the seeded docstring.** It starts as a copy of your class docstring
+with the `Example:` rewritten to the functional call — a full starting point, but
+give it a read and adjust anything that reads oddly out of the class's context.
 
-### Splitter feature (`SplitterFeature[SignalData]`)
+Because the wrapper is ordinary source in your file, `cb.variance?` in IPython
+points straight at `_variance.py`, and type-checkers see its real signature.
+
+## 5. Re-export from the root
+
+Auto-discovery already gives you `cb.feature.Variance` / `cb.feature.variance`,
+and step 4 wrote the domain `__init__.py`. The **root** namespace is by hand — add
+the class *and* function to `src/cobrabox/__init__.py`:
 
 ```python
-# src/cobrabox/features/windowing/trial_split.py
-from __future__ import annotations
-from collections.abc import Iterator
-from dataclasses import dataclass
-from ..base_feature import SplitterFeature
-from ..data import Data, SignalData
+from .signalstats import (
+    ...,
+    Variance,
+    ...,
+    variance,
+)
 
-@dataclass
-class TrialSplit(SplitterFeature[SignalData]):
-    """Yield one Data per fixed-length trial block."""
-
-    trial_length: int
-
-    def __call__(self, data: SignalData) -> Iterator[Data]:
-        n = data.data.sizes["time"]
-        for start in range(0, n - self.trial_length + 1, self.trial_length):
-            window = data.data.isel(time=slice(start, start + self.trial_length))
-            yield data._copy_with_new_data(new_data=window, operation_name="TrialSplit")
+__all__ = [..., "Variance", ..., "variance", ...]
 ```
 
-### Aggregator feature (`AggregatorFeature`)
+## 6. Write tests
+
+Location mirrors the source: `tests/features/<domain>/test_feature_<name>.py`.
 
 ```python
-# src/cobrabox/features/windowing/max_aggregate.py
+# tests/features/signalstats/test_feature_variance.py
 from __future__ import annotations
-from collections.abc import Iterator
-from dataclasses import dataclass
-import xarray as xr
-from ..base_feature import AggregatorFeature
-from ..data import Data
 
-@dataclass
-class MaxAggregate(AggregatorFeature):
-    """Take element-wise max across a stream of per-window Data."""
-
-    def __call__(self, data: Data, stream: Iterator[Data]) -> Data:
-        items = list(stream)
-        if not items:
-            raise ValueError("MaxAggregate received an empty stream")
-        stacked = xr.concat([w.data for w in items], dim="window", join="override")
-        result = stacked.max(dim="window")
-        window_history = [op for op in items[0].history if op not in data.history]
-        return Data(
-            data=result,
-            subjectID=data.subjectID,
-            groupID=data.groupID,
-            condition=data.condition,
-            history=list(data.history) + window_history + ["MaxAggregate"],
-            extra=data.extra,
-        )
-```
-
-Note: `AggregatorFeature` is responsible for building history manually — include the per-window pipeline ops and the aggregator's own name.
-
-## 4. Add Tests
-
-```python
-# tests/test_feature_variance.py
-from __future__ import annotations
 import numpy as np
 import pytest
+
 import cobrabox as cb
-from cobrabox.features.reductions.mean import Mean
 
 
-def test_variance_reduces_time_dimension() -> None:
-    """Test with SignalData for time-series features."""
+def test_variance_reduces_the_time_dimension() -> None:
     arr = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
 
-    out = cb.feature.Variance(dim="time").apply(data)
+    out = cb.Variance(dim="time").apply(data)
 
-    assert isinstance(out, cb.Data)
     assert "time" not in out.data.dims
-    np.testing.assert_allclose(out.to_numpy().flatten(), np.var([[1,3,5],[2,4,6]], axis=1))
+    np.testing.assert_allclose(out.to_numpy(), np.var(arr, axis=0))
     assert out.history == ["Variance"]
 
 
-def test_variance_raises_for_unknown_dimension() -> None:
-    """Test error handling with SignalData."""
+def test_variance_rejects_an_unknown_dimension() -> None:
     data = cb.SignalData.from_numpy(np.ones((5, 3)), dims=["time", "space"])
-    with pytest.raises(ValueError, match="dim 'band_index' not found"):
-        cb.feature.Variance(dim="band_index").apply(data)
+    with pytest.raises(ValueError, match="band_index"):
+        cb.Variance(dim="band_index").apply(data)
 ```
 
-**Cover at minimum:**
+Cover at minimum:
 
-- Correct values on known input
+- correct values on input you can verify by hand
 - `history` contains the class name
-- Metadata (`subjectID`, `sampling_rate`) is preserved
-- `ValueError` on invalid dimension/parameters
-- Use `SignalData` for time-series features, `Data` for generic features
+- metadata (`subjectID`, `sampling_rate`) survives
+- `ValueError` on a bad dimension or parameter
 
-## 5. Auto-discovery
+You do **not** need to test that `cb.variance(data)` matches
+`cb.Variance().apply(data)` — `tests/test_functional_api.py` already does that for
+every feature.
 
-Features are discovered automatically — no registration needed. The discovery looks for classes where:
-
-- `_is_cobrabox_feature` is `True` (inherited from all base classes), **and**
-- `__module__` matches the feature's own file
-
-So just drop the file in `src/cobrabox/features/` and run the tests.
-
-## 6. Lint and Format
+## 7. Regenerate the generated files
 
 ```bash
-uvx ruff check --fix src/ tests/
-uvx ruff format src/ tests/
+uv run python scripts/gen_stubs.py         # .pyi for IDEs and type-checkers
+uv run python scripts/gen_feature_docs.py  # domain pages, tag page, API page
 ```
 
-## 7. Commit and Push
+Both are idempotent and exit `0` when nothing changed. `gen_stubs.py` also runs
+from pre-commit. Commit whatever they touch.
+
+## 8. Check it
 
 ```bash
-git add src/cobrabox/features/variance.py tests/test_feature_variance.py
-git commit -m "feat: add Variance feature"
-git push -u origin feature/add-variance
+uv run pytest -q
+uvx ruff check --fix . && uvx ruff format .
 ```
 
-Pre-commit hooks run ruff automatically on commit.
+Then confirm all the access paths work:
 
-## Reference Implementations
+```python
+import cobrabox as cb
 
-### Time-series Features (use `SignalData`)
+cb.variance(data)  # one-shot function
+cb.Variance().apply(data)  # class
+cb.signalstats.Variance  # domain
+cb.feature.Variance  # flat registry
+```
 
-- `src/cobrabox/features/time_domain/line_length.py` — simple `BaseFeature[SignalData]`
-- `src/cobrabox/features/frequency_domain/bandpower.py` — `BaseFeature[SignalData]` with parameters
-- `src/cobrabox/features/connectivity/coherence.py` — `BaseFeature[SignalData]` with internal helpers
-- `src/cobrabox/features/windowing/sliding_window.py` — `SplitterFeature[SignalData]`
+## 9. Open a PR
 
-### Generic Features (use `Data`)
+```bash
+git add src/cobrabox/signalstats/_variance.py \
+        src/cobrabox/signalstats/__init__.py \
+        src/cobrabox/__init__.py \
+        tests/features/signalstats/test_feature_variance.py \
+        src/cobrabox/**/*.pyi docs/
+git commit -m "Add Variance feature"
+```
 
-- `src/cobrabox/features/reductions/mean.py` — `BaseFeature[Data]` with parameter
-- `src/cobrabox/features/reductions/max.py` — `BaseFeature[Data]` with parameter
-- `src/cobrabox/features/reductions/min.py` — `BaseFeature[Data]` with parameter
+See [Pull Requests](pr.md) for the rest.
 
-### Aggregators
+## When something goes wrong
 
-- `src/cobrabox/features/windowing/mean_aggregate.py` — `AggregatorFeature`
+These are the actual failures, checked by making each mistake on purpose.
+
+| Failure | Cause |
+| ------- | ----- |
+| `test_feature_lives_in_a_private_module` | Your file is missing its leading underscore. Note nothing *breaks* — the generated function quietly overwrites the module attribute — so this test is the only thing that tells you |
+| `test_every_feature_belongs_to_exactly_one_domain` | Same cause; fires alongside the above |
+| `test_feature_is_on_root_namespace` | Class not re-exported from `src/cobrabox/__init__.py` (step 7). Expect `test_root_and_flat_namespace_agree` and `test_domain_namespace_agrees_with_root` to fail with it |
+| `test_function_exists_at_root_and_domain` | The *function* is missing from a re-export, even though the class is there |
+| `test_domain_namespace_exposes_no_modules` | A public `.py` in a domain is exposed as a module attribute — a helper without an underscore, rather than a feature |
+| `test_prose_reference_resolves` | A guide or example mentions a `cb.X` that no longer exists |
+| `apply()` raises about dimensions | You removed a dimension without setting `output_type` |
+| Feature absent from `cb.feature.__all__` | Discovery could not import your module. Import it directly to see the real error — discovery swallows it |
+
+## Reference implementations
+
+Read one close to what you are building.
+
+| Pattern | File |
+| ------- | ---- |
+| Simplest `BaseFeature[SignalData]` | `src/cobrabox/signalstats/_line_length.py` |
+| Parameters and validation | `src/cobrabox/spectral/_band_power.py` |
+| Generic, caller picks the dim | `src/cobrabox/signalstats/_mean.py` |
+| Shared private helpers | `src/cobrabox/connectivity/_coherence.py` (uses `_mvar.py`) |
+| Splitter | `src/cobrabox/windowing/_sliding_window.py` |
+| Aggregator (builds history by hand) | `src/cobrabox/windowing/_mean_aggregate.py` |
+
+`src/cobrabox/_dummy.py` is a deliberate **negative** example — no useful
+docstring, no validation. Do not model anything on it.

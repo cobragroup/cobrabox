@@ -1,10 +1,10 @@
 # Infometric features: complexity, regularity and information content.
-from .amplitude_entropy import AmplitudeEntropy
-from .fractal_dimension import FractalDimension
-from .lempel_ziv import LempelZiv
-from .nonreversibility import Nonreversibility
-from .recurrence_matrix import RecurrenceMatrix
-from .sample_entropy import SampleEntropy
+from ._amplitude_entropy import AmplitudeEntropy, amplitude_entropy
+from ._fractal_dimension import FractalDimension, fractal_dimension
+from ._lempel_ziv import LempelZiv, lempel_ziv
+from ._nonreversibility import Nonreversibility, nonreversibility
+from ._recurrence_matrix import RecurrenceMatrix, recurrence_matrix
+from ._sample_entropy import SampleEntropy, sample_entropy
 
 __all__ = [
     "AmplitudeEntropy",
@@ -13,4 +13,10 @@ __all__ = [
     "Nonreversibility",
     "RecurrenceMatrix",
     "SampleEntropy",
+    "amplitude_entropy",
+    "fractal_dimension",
+    "lempel_ziv",
+    "nonreversibility",
+    "recurrence_matrix",
+    "sample_entropy",
 ]

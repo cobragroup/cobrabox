@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from cobrabox import datasets
+from cobrabox import datasets, downloader
 
 
 def test_dataset_dispatches_structured_identifiers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,6 +141,149 @@ def test_dataset_remote_verify_true_passed_through(
 
 
 # ---------------------------------------------------------------------------
+# large-load guard
+# ---------------------------------------------------------------------------
+
+
+def _large_load_spec(downloader_module: object, **overrides: object) -> object:
+    defaults: dict = {
+        "identifier": "zurich_ieeg",
+        "local_rel_dir": Path("zurich_ieeg"),
+        "files": [],
+        "loader": lambda dataset_dir, subset: [object()],
+        "description": "test",
+        "known_subset_keys": tuple(f"sub-{i:02d}" for i in range(1, 21)),
+        "subset_size_bytes": 3 * 1024**3,  # ~3 GB per subject
+    }
+    defaults.update(overrides)
+    return downloader_module.RemoteDatasetSpec(**defaults)
+
+
+def test_check_large_load_raises_when_prompt_declined(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
+    with pytest.raises(downloader.LargeLoadError, match="20 subjects"):
+        datasets._check_large_load(spec, None, False)
+
+
+def test_check_large_load_passes_when_prompt_confirmed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: True)
+    datasets._check_large_load(spec, None, False)  # should not raise
+
+
+def test_check_large_load_prompt_called_with_resolved_size(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    calls: list = []
+
+    def _fake_prompt(spec_arg: object, n: int, total_bytes: int) -> bool:
+        calls.append((n, total_bytes))
+        return True
+
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", _fake_prompt)
+    datasets._check_large_load(spec, None, False)
+
+    assert calls == [(20, spec.subset_size_bytes * 20)]
+
+
+def test_check_large_load_accept_true_skips_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """accept=True bypasses the check entirely, without even prompting."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    calls: list = []
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: calls.append(1))
+    datasets._check_large_load(spec, None, True)  # should not raise
+
+    assert calls == []
+
+
+def test_check_large_load_small_explicit_subset_skips_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    calls: list = []
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: calls.append(1))
+    datasets._check_large_load(spec, ["sub-01"], False)  # ~3 GB, under threshold
+
+    assert calls == []
+
+
+def test_check_large_load_explicit_subset_covering_everything_still_prompts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Resolved size matters, not whether `subset` was literally omitted."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    all_subjects = list(spec.known_subset_keys)
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
+    with pytest.raises(downloader.LargeLoadError):
+        datasets._check_large_load(spec, all_subjects, False)
+
+
+def test_check_large_load_dict_subset_counted_by_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    # 2 subjects x ~3 GB = ~6 GB > 4 GB threshold
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
+    with pytest.raises(downloader.LargeLoadError, match="2 subjects"):
+        datasets._check_large_load(spec, {"sub-01": None, "sub-02": 2}, False)
+
+
+def test_check_large_load_skipped_when_no_size_estimate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Datasets without subset_size_bytes (only a string hint) are not checked."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader, subset_size_bytes=None)
+    calls: list = []
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: calls.append(1))
+    datasets._check_large_load(spec, None, False)  # should not raise
+
+    assert calls == []
+
+
+def test_load_dataset_raises_before_downloading_when_prompt_declined(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The guard fires before ensure_remote_files, so nothing downloads first."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    ensure_calls: list = []
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: ensure_calls.append(1))
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: False)
+
+    with pytest.raises(downloader.LargeLoadError):
+        datasets.load_dataset("zurich_ieeg", accept=False)
+
+    assert ensure_calls == []
+
+
+def test_load_dataset_proceeds_when_prompt_confirmed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Confirming the large-load prompt lets load_dataset proceed as normal."""
+    from cobrabox import downloader
+
+    spec = _large_load_spec(downloader)
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: Path("zurich_ieeg"))
+    monkeypatch.setattr(datasets, "_prompt_large_load_verify", lambda *a, **kw: True)
+
+    result = datasets.load_dataset("zurich_ieeg", accept=False)
+    assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
 # download()
 # ---------------------------------------------------------------------------
 
@@ -160,6 +303,20 @@ def test_download_returns_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: tmp_path)
 
     result = datasets.download_dataset("bonn_eeg", accept=True)
+    assert result == tmp_path
+
+
+def test_download_dataset_is_not_subject_to_large_load_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """download_dataset() never loads into memory, so the large-load guard must not apply."""
+    from cobrabox import downloader
+
+    fake_spec = _large_load_spec(downloader, local_rel_dir=tmp_path)
+    monkeypatch.setattr(datasets, "get_remote_dataset_spec", lambda _: fake_spec)
+    monkeypatch.setattr(datasets, "ensure_remote_files", lambda *a, **kw: tmp_path)
+
+    result = datasets.download_dataset("zurich_ieeg", accept=False)
     assert result == tmp_path
 
 
@@ -338,7 +495,7 @@ def test_dataset_cache_status_no_when_dir_missing(tmp_path: Path) -> None:
         loader=lambda d, s: [],  # type: ignore[arg-type]
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "no"
 
 
@@ -356,7 +513,7 @@ def test_dataset_cache_status_no_when_dir_empty(tmp_path: Path) -> None:
         loader=lambda d, s: [],  # type: ignore[arg-type]
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "no"
 
 
@@ -375,7 +532,7 @@ def test_dataset_cache_status_no_manifest_only(tmp_path: Path) -> None:
         loader=lambda d, s: [],  # type: ignore[arg-type]
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "no"
 
 
@@ -396,7 +553,7 @@ def test_dataset_cache_status_yes_when_all_present(tmp_path: Path) -> None:
         known_subset_keys=("S",),
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "yes"
 
 
@@ -420,7 +577,7 @@ def test_dataset_cache_status_partial(tmp_path: Path) -> None:
         known_subset_keys=("S", "F"),
     )
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         assert _dataset_cache_status(spec) == "1/2"
 
 
@@ -445,7 +602,7 @@ def test_delete_remote_files_removes_entire_dir(tmp_path: Path) -> None:
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, confirm=False)
 
     assert not dataset_dir.exists()
@@ -463,7 +620,7 @@ def test_delete_remote_files_noop_when_missing(tmp_path: Path) -> None:
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, confirm=False)  # should not raise
 
 
@@ -489,7 +646,7 @@ def test_delete_remote_files_subset_removes_only_matching_files(tmp_path: Path) 
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, subset=["chb01", "chb02"], confirm=False)
 
     assert not (dataset_dir / "chb01.edf").exists()
@@ -518,7 +675,7 @@ def test_delete_remote_files_confirm_cancel_raises(tmp_path: Path) -> None:
     )
 
     with pytest.MonkeyPatch().context() as mp, patch("builtins.input", return_value="n"):
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         with pytest.raises(DownloadCancelled):
             delete_remote_files(spec, confirm=True)
 
@@ -550,7 +707,7 @@ def test_delete_remote_files_updates_manifest_on_subset_delete(tmp_path: Path) -
     )
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("cobrabox.downloader._data_dir", tmp_path)
+        mp.setattr(downloader, "_data_dir", tmp_path)
         delete_remote_files(spec, subset=["chb01"], confirm=False)
 
     manifest = json.loads((dataset_dir / "_manifest.json").read_text(encoding="utf-8"))

@@ -50,15 +50,15 @@ print(item in ds)
 ds1 = cb.load_dataset("dummy_chain")
 ds2 = cb.load_dataset("dummy_random")
 
-combined = ds1 + ds2   # → Dataset[SignalData]
+combined = ds1 + ds2  # → Dataset[SignalData]
 print(len(combined))
 ```
 
 ### Representation
 
 ```python
-repr(ds)    # 'Dataset(3 × SignalData)'
-str(ds)     # multi-line summary with shapes and metadata
+repr(ds)  # 'Dataset(3 × SignalData)'
+str(ds)  # multi-line summary with shapes and metadata
 ds.describe()  # prints str(ds)
 ```
 
@@ -67,14 +67,16 @@ ds.describe()  # prints str(ds)
 Filter by any combination of metadata fields (AND semantics):
 
 ```python
-ds = cb.Dataset([
-    cb.from_numpy(arr, dims=["time", "space"], subjectID="S1", groupID="control"),
-    cb.from_numpy(arr, dims=["time", "space"], subjectID="S2", groupID="patient"),
-    cb.from_numpy(arr, dims=["time", "space"], subjectID="S3", groupID="control"),
-])
+ds = cb.Dataset(
+    [
+        cb.from_numpy(arr, dims=["time", "space"], subjectID="S1", groupID="control"),
+        cb.from_numpy(arr, dims=["time", "space"], subjectID="S2", groupID="patient"),
+        cb.from_numpy(arr, dims=["time", "space"], subjectID="S3", groupID="control"),
+    ]
+)
 
-controls = ds.filter(groupID="control")   # Dataset with S1 and S3
-s1_only  = ds.filter(subjectID="S1", groupID="control")  # Dataset with S1
+controls = ds.filter(groupID="control")  # Dataset with S1 and S3
+s1_only = ds.filter(subjectID="S1", groupID="control")  # Dataset with S1
 
 # Returns empty Dataset (not an error) if nothing matches
 empty = ds.filter(groupID="nonexistent")
@@ -101,12 +103,15 @@ Valid attributes: `"subjectID"`, `"groupID"`, `"condition"`.
 
 ## Available Dummy Datasets
 
+<!-- local-dataset-table:start -->
 | Identifier | Description |
 | ---------- | ----------- |
-| `dummy_chain` | Chain-like pattern for pipeline testing |
-| `dummy_random` | Random noise for baseline testing |
-| `dummy_star` | Star-shaped pattern for spatial analysis |
-| `dummy_noise` | Pure noise for null hypothesis testing |
+| `dummy_chain` | Synthetic chain-topology VAR time-series (3 subjects). |
+| `dummy_noise` | Synthetic uncorrelated noise time-series (10 subjects). |
+| `dummy_random` | Synthetic random-topology VAR time-series (3 subjects). |
+| `dummy_star` | Synthetic star-topology VAR time-series (3 subjects). |
+| `realistic_swiss` | Simulated realistic Swiss VAR time-series (1 subject). |
+<!-- local-dataset-table:end -->
 
 ## Remote Datasets
 
@@ -169,15 +174,18 @@ ds = cb.load_dataset("bonn_eeg", accept=True)
 
 ### Available remote datasets
 
-| Identifier | Description | Size |
-| ---------- | ----------- | ---- |
-| `bonn_eeg` | Bonn University EEG (Andrzejak et al. 2001) — 5 sets, single-channel, ictal/interictal | ~10 MB |
-| `chb_mit` | CHB-MIT Scalp EEG — 24 pediatric subjects, 256 Hz, 23 channels | ~30 GB |
-| `siena_eeg` | Siena Scalp EEG — 14 adult subjects, 512 Hz, 21+ channels | ~15 GB |
-| `swiss_eeg_short` | BioCAS 2018 short-term scalp EEG — 18 subjects, ictal/interictal | ~11 GB |
-| `swiss_eeg_long` | SWEZ long-term iEEG — 18 subjects, hourly files | >1 TB |
-| `sleep_ieeg` | Sleep iEEG (OpenNeuro ds005398) — 185 subjects, interictal sleep ECoG/sEEG | ~13 GB |
-| `zurich_ieeg` | Zurich iEEG HFO (OpenNeuro ds003498) — 20 epilepsy patients, interictal ECoG, 2000 Hz, with HFO markings | ~60 GB |
+<!-- remote-dataset-table:start -->
+| Identifier | Description | Subsets | Size | License |
+| ---------- | ----------- | ------- | ---- | ------- |
+| `bonn_eeg` | [Bonn University EEG dataset (Andrzejak et al. 2001): 5 sets of 100 single-channel recordings. Sets: Z = healthy eyes open, O = healthy eyes closed, N = interictal (seizure-free zone), F = interictal (epileptogenic zone), S = ictal (seizure). Hosted by Universitat Pompeu Fabra (DOI: 10.34810/data490).](https://repositori.upf.edu/handle/10230/42894) | 5 subsets | ~10 MB | Free for research and education only; commercial and military use prohibited. |
+| `chb_mit` | [CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures (24 subjects, 256 Hz, 23 channels, ictal/interictal). Children's Hospital Boston / MIT.](https://physionet.org/content/chbmit/1.0.0/) | 24 subjects | ~30 GB | Open Data Commons Attribution License v1.0 (ODC-By-1.0) |
+| `siena_eeg` | [Siena Scalp EEG Database: adult epilepsy patients with annotated seizures (14 subjects, 512 Hz, 21+ channels, ictal/interictal). University of Siena.](https://physionet.org/content/siena-scalp-eeg/1.0.0/) | 14 subjects | ~15 GB | Creative Commons Attribution 4.0 International (CC-BY-4.0) |
+| `sleep_ieeg` | [Sleep iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. DOI: 10.18112/openneuro.ds005398.v1.0.1.](https://openneuro.org/datasets/ds005398/versions/1.0.1) | 185 subjects | ~13 GB | CC0 1.0 Universal (public domain) |
+| `swiss_eeg_long` | [Long-term intracranial EEG recordings from the SWEZ dataset (ETH Zurich, 18 subjects, ictal/interictal).](http://ieeg-swez.ethz.ch/) | 18 subjects | >1 TB (hundreds of hourly files per subject) | Free for research and education only; commercial and military use prohibited. |
+| `swiss_eeg_short` | [Short-term scalp EEG recordings from the BioCAS 2018 challenge (18 subjects, ictal/interictal).](https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/) | 18 subjects | ~11 GB | Free for research and education only; commercial and military use prohibited. |
+| `zurich_ieeg` | [Zurich iEEG HFO Dataset: interictal ECoG during slow-wave sleep from 20 epilepsy patients (TLE and extra-temporal), with HFO event markings. 2000 Hz, BrainVision format. DOI: 10.18112/openneuro.ds003498.v1.1.1.](https://openneuro.org/datasets/ds003498/versions/1.1.1) | 20 subjects | ~60 GB | CC0 1.0 Universal (public domain) |
+| `zurich_ieeg_clean` | [Zurich iEEG HFO Dataset, cleaned: identical to 'zurich_ieeg' but with per-subject electrodes removed — channels lacking metadata and channels that produced motor/language responses under electrical stimulation (columns C+D of the Zurich electrode sheet). Shares the 'zurich_ieeg' download; no extra data is fetched.](https://openneuro.org/datasets/ds003498/versions/1.1.1) | 20 subjects | ~60 GB | CC0 1.0 Universal (public domain) |
+<!-- remote-dataset-table:end -->
 
 ### Downloading a subset
 
@@ -188,9 +196,13 @@ Most datasets are large. Use `subset` to download only the subjects you need:
 ds = cb.load_dataset("chb_mit", subset=["chb01", "chb02"], accept=True)
 
 # Dict form — fine-grained file-level control
-ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": 2}, accept=True)          # first 2 files
-ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]}, accept=True)  # specific file
-ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": None, "ID02": 3}, accept=True)  # all of ID01, 3 of ID02
+ds = cb.load_dataset("swiss_eeg_long", subset={"ID01": 2}, accept=True)  # first 2 files
+ds = cb.load_dataset(
+    "swiss_eeg_long", subset={"ID01": ["ID01_1h.mat"]}, accept=True
+)  # specific file
+ds = cb.load_dataset(
+    "swiss_eeg_long", subset={"ID01": None, "ID02": 3}, accept=True
+)  # all of ID01, 3 of ID02
 ```
 
 Call `cb.dataset_info()` to see the available subset keys for a dataset before downloading.
@@ -230,14 +242,16 @@ import numpy as np
 items = []
 for i in range(5):
     arr = np.random.default_rng(i).normal(size=(100, 4))
-    items.append(cb.from_numpy(
-        arr=arr,
-        dims=["time", "space"],
-        sampling_rate=100.0,
-        subjectID=f"S{i+1:02d}",
-        groupID="control" if i < 3 else "patient",
-        condition="rest",
-    ))
+    items.append(
+        cb.from_numpy(
+            arr=arr,
+            dims=["time", "space"],
+            sampling_rate=100.0,
+            subjectID=f"S{i + 1:02d}",
+            groupID="control" if i < 3 else "patient",
+            condition="rest",
+        )
+    )
 
 ds = cb.Dataset(items)
 ds.describe()
@@ -248,11 +262,7 @@ ds.describe()
 ```python
 ds = cb.load_dataset("dummy_chain")
 
-pipeline = (
-    cb.feature.SlidingWindow(window_size=20, step_size=10)
-    | cb.feature.LineLength()
-    | cb.feature.MeanAggregate()
-)
+pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 
 results = cb.Dataset([pipeline.apply(item) for item in ds])
 results.describe()

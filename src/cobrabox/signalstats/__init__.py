@@ -1,12 +1,12 @@
 # Signal-statistics features: basic properties of a signal.
-from .amplitude_variation import AmplitudeVariation
-from .autocorrelation import Autocorrelation
-from .epileptogenicity_index import EpileptogenicityIndex
-from .line_length import LineLength
-from .max import Max
-from .mean import Mean
-from .min import Min
-from .spike_count import SpikeCount
+from ._amplitude_variation import AmplitudeVariation, amplitude_variation
+from ._autocorrelation import Autocorrelation, autocorrelation
+from ._epileptogenicity_index import EpileptogenicityIndex, epileptogenicity_index
+from ._line_length import LineLength, line_length
+from ._max import Max, max
+from ._mean import Mean, mean
+from ._min import Min, min
+from ._spike_count import SpikeCount, spike_count
 
 __all__ = [
     "AmplitudeVariation",
@@ -17,4 +17,12 @@ __all__ = [
     "Mean",
     "Min",
     "SpikeCount",
+    "amplitude_variation",
+    "autocorrelation",
+    "epileptogenicity_index",
+    "line_length",
+    "max",
+    "mean",
+    "min",
+    "spike_count",
 ]

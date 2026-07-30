@@ -18,19 +18,19 @@ def _causal_signal(n: int = 200, seed: int = 0) -> np.ndarray:
 
 
 def _data(arr: np.ndarray) -> cb.SignalData:
-    return cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
+    return cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
 
 
 def test_output_dims_and_shape() -> None:
     data = _data(_causal_signal(n=200))
-    result = cb.feature.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
+    result = cb.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
     assert result.data.dims == ("space_to", "space_from", "frequency")
     assert result.data.shape == (2, 2, 32)
 
 
 def test_values_in_unit_interval() -> None:
     data = _data(_causal_signal(n=200))
-    result = cb.feature.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
+    result = cb.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
     vals = result.data.values
     assert np.all((vals >= 0) & (vals <= 1.0 + 1e-9))
 
@@ -38,7 +38,7 @@ def test_values_in_unit_interval() -> None:
 def test_rows_sum_to_unity() -> None:
     """DTF² sums to 1 across each row (row-normalization invariant)."""
     data = _data(_causal_signal(n=400))
-    result = cb.feature.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
+    result = cb.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
     row_sums = (result.data.values**2).sum(axis=1)
     np.testing.assert_allclose(row_sums, 1.0, atol=1e-9)
 
@@ -46,19 +46,19 @@ def test_rows_sum_to_unity() -> None:
 def test_matrix_is_asymmetric() -> None:
     """DTF differs from its transpose for genuinely directed signals."""
     data = _data(_causal_signal(n=400))
-    result = cb.feature.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
+    result = cb.DirectedTransferFunction(var_order=2, n_freqs=32).apply(data)
     vals = result.data.values
     assert not np.allclose(vals, vals.transpose(1, 0, 2), atol=1e-3)
 
 
 def test_requires_sampling_rate() -> None:
     arr = _causal_signal(n=100)
-    data = cb.data.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=128.0)
     data.data.attrs["sampling_rate"] = None
-    no_sr = cb.data.SignalData.from_numpy(arr, dims=["time", "space"])
+    no_sr = cb.SignalData.from_numpy(arr, dims=["time", "space"])
     no_sr.data.attrs.pop("sampling_rate", None)
     with pytest.raises(ValueError, match="sampling_rate"):
-        cb.feature.DirectedTransferFunction().apply(no_sr)
+        cb.DirectedTransferFunction().apply(no_sr)
 
 
 def test_rejects_single_channel() -> None:
@@ -66,20 +66,20 @@ def test_rejects_single_channel() -> None:
     arr = rng.standard_normal((200, 1))
     data = _data(arr)
     with pytest.raises(ValueError, match="at least 2 channels"):
-        cb.feature.DirectedTransferFunction().apply(data)
+        cb.DirectedTransferFunction().apply(data)
 
 
 def test_invalid_var_order() -> None:
     with pytest.raises(ValueError, match="var_order"):
-        cb.feature.DirectedTransferFunction(var_order=0)
+        cb.DirectedTransferFunction(var_order=0)
 
 
 def test_invalid_n_freqs() -> None:
     with pytest.raises(ValueError, match="n_freqs"):
-        cb.feature.DirectedTransferFunction(n_freqs=0)
+        cb.DirectedTransferFunction(n_freqs=0)
 
 
 def test_history_appended() -> None:
     data = _data(_causal_signal(n=200))
-    result = cb.feature.DirectedTransferFunction(var_order=2, n_freqs=16).apply(data)
+    result = cb.DirectedTransferFunction(var_order=2, n_freqs=16).apply(data)
     assert result.history[-1] == "DirectedTransferFunction"

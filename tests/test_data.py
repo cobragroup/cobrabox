@@ -39,6 +39,23 @@ def test_data_from_numpy_no_time() -> None:
     assert ds.sampling_rate is None  # No time dimension
 
 
+def test_data_xarr_is_alias_for_data() -> None:
+    """Data.xarr returns the exact same xarray DataArray as Data.data."""
+    a = RNG.standard_normal((5, 3))
+    ds = cb.Data.from_numpy(a, dims=["x", "y"])
+    assert ds.xarr is ds.data
+
+
+def test_data_numpy_returns_underlying_array_without_copy() -> None:
+    """Data.numpy exposes the underlying numpy array (no copy), matching .xarr.data."""
+    a = RNG.standard_normal((5, 3))
+    ds = cb.Data.from_numpy(a, dims=["x", "y"])
+    assert isinstance(ds.numpy, np.ndarray)
+    assert ds.numpy is ds.xarr.data
+    assert ds.numpy is ds.data.data
+    np.testing.assert_array_almost_equal(ds.numpy, a)
+
+
 def test_data_from_xarray_basic() -> None:
     """Data.from_xarray wraps a DataArray with arbitrary dimensions."""
     ar = xr.DataArray(
@@ -152,6 +169,21 @@ def test_data_repr_no_sampling_rate() -> None:
     assert "sr=" not in r
 
 
+def test_data_repr_omits_extra_when_empty() -> None:
+    """Data.__repr__ omits the extra field entirely when extra is empty."""
+    ds = cb.Data.from_numpy(np.ones((5, 3)), dims=["x", "y"])
+    assert "extra=" not in repr(ds)
+
+
+def test_data_repr_shows_extra_keys() -> None:
+    """Data.__repr__ lists extra dict keys when extra is non-empty."""
+    ds = cb.Data.from_numpy(
+        np.ones((5, 3)), dims=["x", "y"], extra={"notes": "calibration info", "gain": 2.5}
+    )
+    r = repr(ds)
+    assert "extra=['notes', 'gain']" in r
+
+
 def test_data_str() -> None:
     """Data.__str__ returns multi-line format with all metadata."""
     ds = cb.Data.from_numpy(
@@ -168,6 +200,14 @@ def test_data_str() -> None:
     assert "condition : rest" in s
     assert "sr        : 100.0 Hz" in s
     assert "history   : []" in s
+    assert "extra     : {}" in s
+
+
+def test_data_str_shows_extra_contents() -> None:
+    """Data.__str__ shows the full extra dict, not just its keys."""
+    ds = cb.Data.from_numpy(np.ones((5, 3)), dims=["x", "y"], extra={"notes": "calibration info"})
+    s = str(ds)
+    assert "extra     : {'notes': 'calibration info'}" in s
 
 
 def test_infer_sampling_rate_no_time_dim() -> None:
@@ -291,3 +331,63 @@ def test_copy_preserves_immutability() -> None:
 
     with pytest.raises(AttributeError, match="Cannot modify attribute"):
         d2.subjectID = "hacked"  # type: ignore[misc]
+
+
+def test_shape_size_dims_sizes() -> None:
+    """Shape metadata is reachable on Data itself, with numpy semantics (GH #119)."""
+    d = cb.Data.from_numpy(RNG.standard_normal((4, 200)), dims=["space", "time"])
+
+    assert d.shape == (4, 200)
+    assert d.size == 800  # element count, as numpy defines it — not the per-dim lengths
+    assert d.dims == ("space", "time")
+    assert d.sizes == {"space": 4, "time": 200}
+
+
+def test_shape_metadata_matches_underlying_dataarray() -> None:
+    """The shortcuts never disagree with the xarray they delegate to."""
+    d = cb.Data.from_numpy(RNG.standard_normal((5, 3, 2)), dims=["x", "y", "z"])
+
+    assert d.shape == d.data.shape
+    assert d.size == d.data.size
+    assert d.dims == d.data.dims
+    assert d.sizes == dict(d.data.sizes)
+
+
+def test_shape_metadata_reflects_signaldata_transpose() -> None:
+    """SignalData moves time last; the shortcuts report the stored order, not the input."""
+    s = cb.SignalData.from_numpy(
+        RNG.standard_normal((200, 4)), dims=["time", "space"], sampling_rate=200.0
+    )
+
+    assert s.dims == ("space", "time")
+    assert s.shape == (4, 200)
+    assert s.sizes == {"space": 4, "time": 200}
+
+
+def test_shape_metadata_on_scalar() -> None:
+    """A 0-d DataArray reports empty shape/dims and a size of one."""
+    d = cb.Data.from_xarray(xr.DataArray(3.0))
+
+    assert d.shape == ()
+    assert d.dims == ()
+    assert d.sizes == {}
+    assert d.size == 1
+
+
+def test_sizes_returns_detached_dict() -> None:
+    """Mutating the returned mapping cannot reach into the immutable container."""
+    d = cb.Data.from_numpy(RNG.standard_normal((4, 200)), dims=["space", "time"])
+
+    mapping = d.sizes
+    mapping["space"] = 999
+
+    assert d.sizes == {"space": 4, "time": 200}
+
+
+def test_shape_metadata_is_read_only() -> None:
+    """The new properties respect Data immutability."""
+    d = cb.Data.from_numpy(RNG.standard_normal((4, 200)), dims=["space", "time"])
+
+    for name in ("shape", "size", "dims", "sizes"):
+        with pytest.raises(AttributeError):
+            setattr(d, name, 1)

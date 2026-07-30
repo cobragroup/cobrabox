@@ -61,7 +61,7 @@ def test_spectrogram_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.Spectrogram().apply(data)
+    _ = cb.Spectrogram().apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape

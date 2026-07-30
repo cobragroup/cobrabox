@@ -13,9 +13,9 @@ def test_sliding_window_reduce_basic_mean() -> None:
     arr = np.arange(100).reshape(1, 100)  # 1 channel, 0-99
     data = cb.SignalData.from_numpy(arr, dims=["channel", "time"], sampling_rate=100.0)
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=10, step_size=10, dim="time", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(
+        data
+    )
 
     assert result.data.shape == (1, 10)  # channel, window
     expected_means = np.arange(4.5, 100, 10).reshape(1, 10)
@@ -26,9 +26,9 @@ def test_sliding_window_reduce_returns_data_with_window_dim() -> None:
     """Result has 'window' dimension, not 'time'."""
     data = cb.SignalData.from_numpy(np.ones((3, 50)), dims=["channel", "time"], sampling_rate=100.0)
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=10, step_size=10, dim="time", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(
+        data
+    )
 
     assert "time" not in result.data.dims
     assert "window" in result.data.dims
@@ -42,7 +42,7 @@ def test_sliding_window_reduce_all_aggregations() -> None:
 
     aggs = ["mean", "std", "sum", "min", "max"]
     for agg in aggs:
-        result = cb.feature.SlidingWindowReduce(
+        result = cb.SlidingWindowReduce(
             window_size=5,
             step_size=5,
             dim="time",
@@ -69,9 +69,7 @@ def test_sliding_window_reduce_overlapping_windows() -> None:
     arr = np.arange(20).reshape(1, 20)
     data = cb.SignalData.from_numpy(arr, dims=["channel", "time"], sampling_rate=100.0)
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=5, step_size=2, dim="time", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=5, step_size=2, dim="time", agg="mean").apply(data)
 
     # (20 - 5) // 2 + 1 = 8 windows
     assert result.data.sizes["window"] == 8
@@ -89,9 +87,9 @@ def test_sliding_window_reduce_preserves_metadata() -> None:
         condition="rest",
     )
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=10, step_size=10, dim="time", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(
+        data
+    )
 
     assert result.subjectID == "sub-01"
     assert result.groupID == "patient"
@@ -104,9 +102,9 @@ def test_sliding_window_reduce_updates_history() -> None:
     """History is updated with feature name."""
     data = cb.SignalData.from_numpy(np.ones((2, 50)), dims=["channel", "time"], sampling_rate=100.0)
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=10, step_size=10, dim="time", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(
+        data
+    )
 
     assert result.history == ["SlidingWindowReduce"]
 
@@ -115,9 +113,9 @@ def test_sliding_window_reduce_returns_data_type() -> None:
     """Output type is Data (not SignalData) since time dimension is reduced."""
     data = cb.SignalData.from_numpy(np.ones((2, 50)), dims=["channel", "time"], sampling_rate=100.0)
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=10, step_size=10, dim="time", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(
+        data
+    )
 
     assert isinstance(result, cb.Data)
     assert not isinstance(result, cb.SignalData)
@@ -128,9 +126,9 @@ def test_sliding_window_reduce_other_dimension() -> None:
     arr = np.arange(60).reshape(3, 20)  # 3 channels, 20 timepoints
     data = cb.SignalData.from_numpy(arr, dims=["channel", "time"], sampling_rate=100.0)
 
-    result = cb.feature.SlidingWindowReduce(
-        window_size=2, step_size=2, dim="channel", agg="mean"
-    ).apply(data)
+    result = cb.SlidingWindowReduce(window_size=2, step_size=2, dim="channel", agg="mean").apply(
+        data
+    )
 
     assert "channel" not in result.data.dims
     assert "window" in result.data.dims
@@ -141,19 +139,19 @@ def test_sliding_window_reduce_other_dimension() -> None:
 def test_sliding_window_reduce_raises_when_window_size_less_than_one() -> None:
     """Error when window_size < 1."""
     with pytest.raises(ValueError, match="window_size must be >= 1"):
-        cb.feature.SlidingWindowReduce(window_size=0)
+        cb.SlidingWindowReduce(window_size=0)
 
 
 def test_sliding_window_reduce_raises_when_step_size_less_than_one() -> None:
     """Error when step_size < 1."""
     with pytest.raises(ValueError, match="step_size must be >= 1"):
-        cb.feature.SlidingWindowReduce(step_size=0)
+        cb.SlidingWindowReduce(step_size=0)
 
 
 def test_sliding_window_reduce_raises_for_invalid_agg() -> None:
     """Error when agg is not one of the valid options."""
     with pytest.raises(ValueError, match="agg must be one of"):
-        cb.feature.SlidingWindowReduce(agg="median")  # type: ignore[arg-type]
+        cb.SlidingWindowReduce(agg="median")  # type: ignore[arg-type]
 
 
 def test_sliding_window_reduce_raises_when_window_too_large() -> None:
@@ -161,7 +159,7 @@ def test_sliding_window_reduce_raises_when_window_too_large() -> None:
     data = cb.SignalData.from_numpy(np.ones((5, 10)), dims=["channel", "time"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match=r"window_size.*must be <=.*time"):
-        cb.feature.SlidingWindowReduce(window_size=20, dim="time", agg="mean").apply(data)
+        cb.SlidingWindowReduce(window_size=20, dim="time", agg="mean").apply(data)
 
 
 def test_sliding_window_reduce_raises_for_unknown_dimension() -> None:
@@ -169,7 +167,7 @@ def test_sliding_window_reduce_raises_for_unknown_dimension() -> None:
     data = cb.SignalData.from_numpy(np.ones((5, 10)), dims=["channel", "time"], sampling_rate=100.0)
 
     with pytest.raises(ValueError, match="dim 'frequency' not found"):
-        cb.feature.SlidingWindowReduce(window_size=5, dim="frequency", agg="mean").apply(data)
+        cb.SlidingWindowReduce(window_size=5, dim="frequency", agg="mean").apply(data)
 
 
 def test_sliding_window_reduce_does_not_mutate_input() -> None:
@@ -179,10 +177,56 @@ def test_sliding_window_reduce_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.feature.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(
-        data
-    )
+    _ = cb.SlidingWindowReduce(window_size=10, step_size=10, dim="time", agg="mean").apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
     np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+def test_sliding_window_reduce_labels_window_axis_with_start_times() -> None:
+    """The window axis carries window start times, matching SlidingWindow (issue #118)."""
+    arr = np.arange(100, dtype=float).reshape(1, 100)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+
+    result = cb.feature.SlidingWindowReduce(window_size=20, step_size=10, agg="mean").apply(data)
+
+    np.testing.assert_allclose(
+        result.data.coords["window"].values, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    )
+    np.testing.assert_allclose(
+        result.data.coords["window_end"].values,
+        [0.19, 0.29, 0.39, 0.49, 0.59, 0.69, 0.79, 0.89, 0.99],
+    )
+
+
+def test_sliding_window_reduce_matches_chord_window_axis() -> None:
+    """SlidingWindowReduce and SlidingWindow|...|ConcatAggregate agree on window labels."""
+    arr = np.arange(200, dtype=float).reshape(2, 100)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+
+    reduced = cb.feature.SlidingWindowReduce(window_size=20, step_size=10, agg="mean").apply(data)
+    chord = (
+        cb.feature.SlidingWindow(window_size=20, step_size=10)
+        | cb.feature.Mean(dim="time")
+        | cb.feature.ConcatAggregate()
+    )
+    via_chord = chord.apply(data)
+
+    np.testing.assert_allclose(
+        reduced.data.coords["window"].values, via_chord.data.coords["window"].values
+    )
+    np.testing.assert_allclose(
+        reduced.data.coords["window_end"].values, via_chord.data.coords["window_end"].values
+    )
+
+
+def test_sliding_window_reduce_window_labels_without_sampling_rate() -> None:
+    """Without a time coordinate in seconds, window labels are sample indices."""
+    arr = np.arange(50, dtype=float).reshape(1, 50)
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"])
+
+    result = cb.feature.SlidingWindowReduce(window_size=10, step_size=10, agg="mean").apply(data)
+
+    np.testing.assert_allclose(result.data.coords["window"].values, [0, 10, 20, 30, 40])
+    np.testing.assert_allclose(result.data.coords["window_end"].values, [9, 19, 29, 39, 49])

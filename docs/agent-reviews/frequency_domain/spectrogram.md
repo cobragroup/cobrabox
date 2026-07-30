@@ -78,6 +78,7 @@ from typing import Literal, get_args
 
 Scaling = Literal["log", "density", "spectrum", "magnitude"]
 
+
 @dataclass
 class Spectrogram(BaseFeature[SignalData]):
     scaling: Scaling = "log"
