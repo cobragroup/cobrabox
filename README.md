@@ -1,10 +1,10 @@
 > **WARNING:** cobrabox is currently in *alpha* development phase. We still do not encourage its use for scientific research. Suggestions, requests, criticism, implementation of new features, or help for validation are welcome. Feel free to open issues, pull-requests or contact us via e-mail.
 > 
-> [COBRA group](https://cobra.cs.cas.cz), Insitute of Computer Science, The Czech Academy of Sciences. 
+> [COBRA group](https://cobra.cs.cas.cz), Institute of Computer Science, The Czech Academy of Sciences. 
 
 # CobraBox
 
-CobraBox is a python toolbox for the analysis of brain signals featuring classical and novel metrics. It aims at handling (i)EEG, MEG, LFP and fRMI signals in a unified package. 
+A python toolbox for the analysis of brain signals featuring (i)EEG and epilepsy.. 
 
 ## Documentation
 
