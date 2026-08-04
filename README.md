@@ -4,7 +4,7 @@
 
 # CobraBox
 
-A python toolbox for the analysis of brain signals featuring (i)EEG and epilepsy.. 
+A python toolbox for the analysis of brain signals featuring (i)EEG and epilepsy. 
 
 ## Documentation
 
