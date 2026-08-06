@@ -21,6 +21,7 @@ DATA_DIR = PROJECT_DIR / "data"
 SEGMENTS_DIR = DATA_DIR / "segments"
 CONNECTIVITY_DIR = DATA_DIR / "connectivity"
 RC_DIR = DATA_DIR / "rc"
+ANALYSIS_DIR = DATA_DIR / "analysis"
 
 # ---------------------------------------------------------------------------
 # Constants
