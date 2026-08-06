@@ -216,18 +216,23 @@ Requires `sampling_rate` to be set on the data.
 ### `NotchFilter`
 
 ```python
-# Remove 50 Hz power-line noise
+# Remove 50 Hz power-line noise (zero-phase, default)
 cleaned = cb.NotchFilter(freq=50.0).apply(data)
 
-# Tighter notch (higher quality factor)
-cleaned = cb.NotchFilter(freq=50.0, q=30.0).apply(data)
+# Causal filtering (forward-only, introduces phase distortion)
+cleaned = cb.NotchFilter(freq=50.0, zero_phase=False).apply(data)
 ```
 
 Applies a notch filter using :func:`scipy.signal.iirnotch` to attenuate a specific
 frequency (e.g. power-line noise at 50 or 60 Hz). ``freq`` must be positive and less
 than the Nyquist frequency (``sampling_rate / 2``). The optional ``q`` parameter
 controls notch width — higher values create narrower notches (default 30.0).
-Returns a :class:`~cobrabox.SignalData` of the same shape and metadata as the input.
+
+By default uses :func:`scipy.signal.filtfilt` for zero-phase filtering (``zero_phase=True``),
+which avoids phase distortion — the standard EEG preprocessing choice (e.g. MNE). Set
+``zero_phase=False`` for causal forward-only filtering via :func:`scipy.signal.lfilter`
+(useful for online or streaming applications). Returns a :class:`~cobrabox.SignalData`
+of the same shape and metadata as the input.
 
 ### `AnalyticSignal`
 

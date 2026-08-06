@@ -16,13 +16,18 @@ class NotchFilter(BaseFeature[SignalData]):
     """Apply a notch filter to remove a specific frequency.
 
     Attenuates a narrow band centered on ``freq`` using :func:`scipy.signal.iirnotch`
-    followed by :func:`scipy.signal.lfilter` along the time axis. All channels
-    are filtered independently.
+    followed by filtering along the time axis. All channels are filtered independently.
 
     Args:
         freq: Center frequency in Hz to remove (e.g. 50 or 60 Hz for power-line noise).
         q: Quality factor controlling the notch width. Higher values create
             narrower notches. Defaults to 30.0.
+        zero_phase: If ``True`` (default), uses :func:`scipy.signal.filtfilt` for
+            zero-phase (forward-backward) filtering with no phase distortion —
+            the MNE-style default for EEG preprocessing. If ``False``, uses
+            :func:`scipy.signal.lfilter`, a causal forward-only IIR filter that
+            introduces phase distortion but may be preferable for causal or
+            online processing.
 
     Raises:
         ValueError: If ``freq`` is not positive, ``q`` is not positive,
@@ -36,12 +41,14 @@ class NotchFilter(BaseFeature[SignalData]):
     Example:
         >>> result = cb.NotchFilter(freq=50.0).apply(data)
         >>> result = cb.NotchFilter(freq=60.0, q=30.0).apply(data)
+        >>> result = cb.NotchFilter(freq=50.0, zero_phase=False).apply(data)
     """
 
     _tags: ClassVar[list[str]] = ["filtering", "preprocessing", "notch", "eeg", "io:preserves-time"]
 
     freq: float
     q: float = 30.0
+    zero_phase: bool = True
 
     def __post_init__(self) -> None:
         if self.freq <= 0.0:
@@ -60,8 +67,9 @@ class NotchFilter(BaseFeature[SignalData]):
             )
 
         b, a = signal.iirnotch(self.freq, self.q, fs=data.sampling_rate)
+        func = signal.filtfilt if self.zero_phase else signal.lfilter
         return xr.apply_ufunc(
-            signal.lfilter,
+            func,
             b,
             a,
             data.data,
@@ -72,12 +80,11 @@ class NotchFilter(BaseFeature[SignalData]):
 
 
 @functional(NotchFilter)
-def notch_filter(data: SignalData, freq: float, q: float = 30.0) -> Data:
+def notch_filter(data: SignalData, freq: float, q: float = 30.0, zero_phase: bool = True) -> Data:
     """Apply a notch filter to remove a specific frequency.
 
     Attenuates a narrow band centered on ``freq`` using :func:`scipy.signal.iirnotch`
-    followed by :func:`scipy.signal.lfilter` along the time axis. All channels
-    are filtered independently.
+    followed by filtering along the time axis. All channels are filtered independently.
 
     Args:
         data: The input time-series signal to process, as a
@@ -86,6 +93,12 @@ def notch_filter(data: SignalData, freq: float, q: float = 30.0) -> Data:
         freq: Center frequency in Hz to remove (e.g. 50 or 60 Hz for power-line noise).
         q: Quality factor controlling the notch width. Higher values create
             narrower notches. Defaults to 30.0.
+        zero_phase: If ``True`` (default), uses :func:`scipy.signal.filtfilt` for
+            zero-phase (forward-backward) filtering with no phase distortion —
+            the MNE-style default for EEG preprocessing. If ``False``, uses
+            :func:`scipy.signal.lfilter`, a causal forward-only IIR filter that
+            introduces phase distortion but may be preferable for causal or
+            online processing.
 
     Raises:
         ValueError: If ``freq`` is not positive, ``q`` is not positive,
@@ -99,5 +112,6 @@ def notch_filter(data: SignalData, freq: float, q: float = 30.0) -> Data:
     Example:
         >>> result = cb.notch_filter(data, freq=50.0)
         >>> result = cb.notch_filter(data, freq=60.0, q=30.0)
+        >>> result = cb.notch_filter(data, freq=50.0, zero_phase=False)
     """
-    return NotchFilter(freq=freq, q=q).apply(data)
+    return NotchFilter(freq=freq, q=q, zero_phase=zero_phase).apply(data)

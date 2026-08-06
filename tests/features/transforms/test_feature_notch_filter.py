@@ -158,16 +158,18 @@ def test_notchfilter_preserves_other_frequencies() -> None:
     )
 
 
-def test_notchfilter_matches_manual_scipy() -> None:
+@pytest.mark.parametrize("zero_phase", [True, False])
+def test_notchfilter_matches_manual_scipy(zero_phase: bool) -> None:
     sr = 250.0
     data = _make_data(n_time=500, n_space=2, sampling_rate=sr)
     freq = 50.0
     q = 30.0
 
-    out = cb.NotchFilter(freq=freq, q=q).apply(data)
+    out = cb.NotchFilter(freq=freq, q=q, zero_phase=zero_phase).apply(data)
 
     b, a = signal.iirnotch(freq, q, fs=sr)
-    expected = signal.lfilter(b, a, data.to_numpy(), axis=-1)
+    scipy_func = signal.filtfilt if zero_phase else signal.lfilter
+    expected = scipy_func(b, a, data.to_numpy(), axis=-1)
 
     np.testing.assert_allclose(out.to_numpy(), expected, atol=1e-12)
 
@@ -180,7 +182,7 @@ def test_notchfilter_mixed_sine_attenuation() -> None:
     data = _make_sine_data(freqs_hz=[5.0, 50.0], sampling_rate=sr, duration=duration)
     out = cb.NotchFilter(freq=50.0, q=30.0).apply(data)
 
-    out_5hz = signal.lfilter(
+    out_5hz = signal.filtfilt(
         *signal.iirnotch(50.0, 30.0, fs=sr),
         _make_sine_data(freqs_hz=[5.0], sampling_rate=sr, duration=duration).to_numpy(),
         axis=-1,
@@ -191,6 +193,16 @@ def test_notchfilter_mixed_sine_attenuation() -> None:
     assert rms_out == pytest.approx(rms_5hz, rel=0.05), (
         f"Notch output RMS ({rms_out:.4f}) should approx 5 Hz-only RMS ({rms_5hz:.4f})"
     )
+
+
+def test_notchfilter_zero_phase_flag_changes_output() -> None:
+    sr = 250.0
+    data = _make_data(n_time=500, n_space=2, sampling_rate=sr)
+
+    out_zp = cb.NotchFilter(freq=50.0, zero_phase=True).apply(data)
+    out_causal = cb.NotchFilter(freq=50.0, zero_phase=False).apply(data)
+
+    assert not np.allclose(out_zp.to_numpy(), out_causal.to_numpy())
 
 
 # ---------------------------------------------------------------------------
@@ -250,3 +262,12 @@ def test_notchfilter_serialization_round_trip() -> None:
     assert isinstance(nf, cb.NotchFilter)
     assert nf.freq == 50.0
     assert nf.q == 30.0
+    assert nf.zero_phase is True
+
+
+def test_notchfilter_serialization_round_trip_causal() -> None:
+    feature = cb.NotchFilter(freq=50.0, q=30.0, zero_phase=False)
+    yaml_str = feature.to_yaml()
+    reloaded = cb.deserialize(yaml_str)
+    nf = reloaded.features[0]
+    assert nf.zero_phase is False
