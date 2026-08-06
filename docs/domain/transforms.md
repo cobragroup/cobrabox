@@ -35,3 +35,13 @@ cb.InverseFourierTransform(...).apply(data)  # composable, for pipelines
 ```
 
 **Tags:** [`ifft`](../tags.md#tag-ifft), [`time-domain`](../tags.md#tag-time-domain), [`io:time-output`](../tags.md#tag-io-time-output), [`req:frequency-input`](../tags.md#tag-req-frequency-input)
+
+### NotchFilter
+Apply a notch filter to remove a specific frequency.
+
+```python
+cb.notch_filter(data, ...)  # one-shot
+cb.NotchFilter(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`filtering`](../tags.md#tag-filtering), [`preprocessing`](../tags.md#tag-preprocessing), [`notch`](../tags.md#tag-notch), [`eeg`](../tags.md#tag-eeg), [`io:preserves-time`](../tags.md#tag-io-preserves-time)

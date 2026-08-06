@@ -199,6 +199,23 @@ a single `"full"` band. Pass `bands="eeg"` to decompose into the five classic EE
 `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
 
+### `NotchFilter`
+
+```python
+# Remove 50 Hz power-line noise
+cleaned = cb.NotchFilter(freq=50.0).apply(data)
+
+# Custom quality factor (narrower notch)
+cleaned = cb.NotchFilter(freq=60.0, q=30.0).apply(data)
+```
+
+Applies a notch filter using `scipy.signal.iirnotch` to attenuate a specific
+frequency (e.g. power-line noise at 50 or 60 Hz). `freq` must be positive and less
+than the Nyquist frequency (`sampling_rate / 2`). The optional `q` parameter
+controls notch width — higher values create narrower notches (default 30.0).
+Returns a `SignalData` of the same shape and metadata as the input.
+
+
 ### `AnalyticSignal`
 
 ```python

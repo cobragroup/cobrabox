@@ -155,6 +155,11 @@ Auto-generated documentation for all feature classes.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.transforms.NotchFilter
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.connectivity.PartialCorrelation
     options:
         show_root_heading: true

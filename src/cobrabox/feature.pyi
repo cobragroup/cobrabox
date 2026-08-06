@@ -103,6 +103,8 @@ from .transforms._inverse_fourier_transform import (
 from .transforms._inverse_fourier_transform import (
     inverse_fourier_transform as inverse_fourier_transform,
 )
+from .transforms._notch_filter import NotchFilter as NotchFilter
+from .transforms._notch_filter import notch_filter as notch_filter
 from .windowing._concat_aggregate import ConcatAggregate as ConcatAggregate
 from .windowing._mean_aggregate import MeanAggregate as MeanAggregate
 from .windowing._sliding_window import SlidingWindow as SlidingWindow
@@ -169,6 +171,8 @@ __all__ = [
     "MutualInformation",
     "Nonreversibility",
     "nonreversibility",
+    "notch_filter",
+    "NotchFilter",
     "partial_correlation",
     "partial_directed_coherence",
     "PartialCorrelation",

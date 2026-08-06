@@ -114,9 +114,11 @@ from .transforms import (
     AnalyticSignal,
     FourierTransform,
     InverseFourierTransform,
+    NotchFilter,
     analytic_signal,
     fourier_transform,
     inverse_fourier_transform,
+    notch_filter,
 )
 from .windowing import (
     ConcatAggregate,
@@ -194,6 +196,7 @@ __all__ = [
     "Min",
     "MutualInformation",
     "Nonreversibility",
+    "NotchFilter",
     "PartialCorrelation",
     "PartialDirectedCoherence",
     "PhaseLockingValue",
@@ -252,6 +255,7 @@ __all__ = [
     "min",
     "mutual_information",
     "nonreversibility",
+    "notch_filter",
     "partial_correlation",
     "partial_directed_coherence",
     "phase_locking_value",
