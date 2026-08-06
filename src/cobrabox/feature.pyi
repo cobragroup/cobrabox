@@ -33,6 +33,8 @@ from .connectivity._reciprocal_connectivity import ReciprocalConnectivity as Rec
 from .connectivity._reciprocal_connectivity import (
     reciprocal_connectivity as reciprocal_connectivity,
 )
+from .decompositions._bandpass_filter import BandpassFilter as BandpassFilter
+from .decompositions._bandpass_filter import bandpass_filter as bandpass_filter
 from .decompositions._emd import EMD as EMD
 from .decompositions._emd import emd as emd
 from .decompositions._svd import SVD as SVD
@@ -93,8 +95,6 @@ from .surrogates._fourier_transform_surrogates import (
 )
 from .transforms._analytic_signal import AnalyticSignal as AnalyticSignal
 from .transforms._analytic_signal import analytic_signal as analytic_signal
-from .transforms._bandpass_filter import BandpassFilter as BandpassFilter
-from .transforms._bandpass_filter import bandpass_filter as bandpass_filter
 from .transforms._fourier_transform import FourierTransform as FourierTransform
 from .transforms._fourier_transform import fourier_transform as fourier_transform
 from .transforms._inverse_fourier_transform import (
@@ -103,6 +103,8 @@ from .transforms._inverse_fourier_transform import (
 from .transforms._inverse_fourier_transform import (
     inverse_fourier_transform as inverse_fourier_transform,
 )
+from .transforms._notch_filter import NotchFilter as NotchFilter
+from .transforms._notch_filter import notch_filter as notch_filter
 from .windowing._concat_aggregate import ConcatAggregate as ConcatAggregate
 from .windowing._mean_aggregate import MeanAggregate as MeanAggregate
 from .windowing._sliding_window import SlidingWindow as SlidingWindow
@@ -169,6 +171,8 @@ __all__ = [
     "MutualInformation",
     "Nonreversibility",
     "nonreversibility",
+    "notch_filter",
+    "NotchFilter",
     "partial_correlation",
     "partial_directed_coherence",
     "PartialCorrelation",

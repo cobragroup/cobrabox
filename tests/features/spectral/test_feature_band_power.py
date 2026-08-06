@@ -26,27 +26,80 @@ def _sine_data(
 
 
 # ---------------------------------------------------------------------------
-# Dims, shape and coordinates
+# Default: full-signal band
 # ---------------------------------------------------------------------------
 
 
-def test_bandpower_default_dims_and_shape() -> None:
-    """Default bands produce (band_index, space, time=1) output."""
+def test_bandpower_default_gives_full_band() -> None:
+    """Default produces a single 'full' band (0 to Nyquist)."""
     data = _sine_data(freq_hz=10.0)
     out = cb.BandPower().apply(data)
+
+    assert isinstance(out, cb.Data)
+    assert out.data.dims == ("band_index", "space", "time")
+    assert out.data.shape == (1, 2, 1)
+    assert out.data.coords["band_index"].values.tolist() == ["full"]
+    assert (out.to_numpy() > 0).all()
+
+
+def test_bandpower_default_equals_none() -> None:
+    """BandPower() must produce the same output as BandPower(bands=None)."""
+    data = _sine_data(freq_hz=10.0)
+
+    out_default = cb.BandPower().apply(data)
+    out_none = cb.BandPower(bands=None).apply(data)
+
+    np.testing.assert_allclose(out_default.to_numpy(), out_none.to_numpy())
+
+
+def test_bandpower_none_gives_full_band() -> None:
+    """bands=None produces a single 'full' band (0 to Nyquist)."""
+    data = _sine_data(freq_hz=10.0)
+    out = cb.BandPower(bands=None).apply(data)
+
+    assert out.data.shape == (1, 2, 1)
+    assert out.data.coords["band_index"].values.tolist() == ["full"]
+
+
+def test_bandpower_empty_equals_none() -> None:
+    """bands={} and bands=None must produce identical results."""
+    data = _sine_data(freq_hz=10.0)
+
+    out_none = cb.BandPower(bands=None).apply(data)
+    out_empty = cb.BandPower(bands={}).apply(data)
+
+    np.testing.assert_allclose(out_none.to_numpy(), out_empty.to_numpy())
+    assert out_none.data.coords["band_index"].values.tolist() == ["full"]
+    assert out_empty.data.coords["band_index"].values.tolist() == ["full"]
+
+
+# ---------------------------------------------------------------------------
+# EEG preset: five standard EEG bands
+# ---------------------------------------------------------------------------
+
+
+def test_bandpower_eeg_dims_and_shape() -> None:
+    """bands='eeg' produces (band_index=5, space, time=1) output."""
+    data = _sine_data(freq_hz=10.0)
+    out = cb.BandPower(bands="eeg").apply(data)
 
     assert isinstance(out, cb.Data)
     assert out.data.dims == ("band_index", "space", "time")
     assert out.data.shape == (5, 2, 1)
 
 
-def test_bandpower_default_band_index_coords() -> None:
+def test_bandpower_eeg_band_index_coords() -> None:
     """band_index coordinate matches the five default band names in order."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.BandPower().apply(data)
+    out = cb.BandPower(bands="eeg").apply(data)
 
     expected_names = ["delta", "theta", "alpha", "beta", "gamma"]
     assert out.data.coords["band_index"].values.tolist() == expected_names
+
+
+# ---------------------------------------------------------------------------
+# Custom range: shapes and coordinates
+# ---------------------------------------------------------------------------
 
 
 def test_bandpower_custom_range_shape() -> None:
@@ -75,7 +128,7 @@ def test_bandpower_mixed_spec_shape() -> None:
 def test_bandpower_alpha_dominates_for_10hz_sine() -> None:
     """10 Hz sine should have highest power in the alpha band [8, 12]."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.BandPower().apply(data)
+    out = cb.BandPower(bands="eeg").apply(data)
 
     band_names = out.data.coords["band_index"].values.tolist()
     alpha_idx = band_names.index("alpha")
@@ -104,19 +157,9 @@ def test_bandpower_all_positive_values() -> None:
     rng = np.random.default_rng(0)
     arr = rng.standard_normal((512, 4))
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=256.0)
-    out = cb.BandPower().apply(data)
+    out = cb.BandPower(bands="eeg").apply(data)
 
     assert (out.data.values >= 0).all()
-
-
-def test_bandpower_empty_bands_equals_none() -> None:
-    """bands={} and bands=None must produce identical results."""
-    data = _sine_data(freq_hz=10.0)
-
-    out_none = cb.BandPower(bands=None).apply(data)
-    out_empty = cb.BandPower(bands={}).apply(data)
-
-    np.testing.assert_allclose(out_none.to_numpy(), out_empty.to_numpy())
 
 
 # ---------------------------------------------------------------------------
@@ -128,9 +171,9 @@ def test_bandpower_nperseg_changes_nothing_in_shape() -> None:
     """nperseg only affects estimation quality, not output shape."""
     data = _sine_data(freq_hz=10.0)
 
-    out_default = cb.BandPower().apply(data)
-    out_128 = cb.BandPower(nperseg=128).apply(data)
-    out_512 = cb.BandPower(nperseg=512).apply(data)
+    out_default = cb.BandPower(bands="eeg").apply(data)
+    out_128 = cb.BandPower(bands="eeg", nperseg=128).apply(data)
+    out_512 = cb.BandPower(bands="eeg", nperseg=512).apply(data)
 
     assert out_default.data.shape == out_128.data.shape == out_512.data.shape
 
@@ -143,7 +186,7 @@ def test_bandpower_nperseg_changes_nothing_in_shape() -> None:
 def test_bandpower_history_appended() -> None:
     """'Bandpower' must appear as the last entry in history."""
     data = _sine_data(freq_hz=10.0)
-    out = cb.BandPower().apply(data)
+    out = cb.BandPower(bands="eeg").apply(data)
 
     assert out.history[-1] == "BandPower"
 
@@ -158,7 +201,7 @@ def test_bandpower_metadata_preserved() -> None:
         groupID="group-A",
         condition="rest",
     )
-    out = cb.BandPower().apply(data)
+    out = cb.BandPower(bands="eeg").apply(data)
 
     assert out.subjectID == "sub-42"
     assert out.groupID == "group-A"
@@ -173,11 +216,22 @@ def test_bandpower_does_not_mutate_input() -> None:
     original_shape = data.data.shape
     original_values = data.to_numpy().copy()
 
-    _ = cb.BandPower().apply(data)
+    _ = cb.BandPower(bands="eeg").apply(data)
 
     assert data.history == original_history
     assert data.data.shape == original_shape
     np.testing.assert_array_equal(data.to_numpy(), original_values)
+
+
+# ---------------------------------------------------------------------------
+# Preset validation
+# ---------------------------------------------------------------------------
+
+
+def test_bandpower_raises_for_unknown_preset() -> None:
+    """BandPower raises ValueError for an unknown bands preset string."""
+    with pytest.raises(ValueError, match="Unknown bands preset"):
+        cb.BandPower(bands="foo")
 
 
 # ---------------------------------------------------------------------------

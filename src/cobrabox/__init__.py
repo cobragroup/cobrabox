@@ -59,7 +59,7 @@ from .datasets import (
     load_dataset,
     show_datasets,
 )
-from .decompositions import EMD, SVD, emd, svd
+from .decompositions import EMD, SVD, BandpassFilter, bandpass_filter, emd, svd
 from .downloader import DownloadCancelled, LargeLoadError, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
 from .infometrics import (
@@ -112,13 +112,13 @@ from .spectral import (
 from .surrogates import FourierTransformSurrogates, fourier_transform_surrogates
 from .transforms import (
     AnalyticSignal,
-    BandpassFilter,
     FourierTransform,
     InverseFourierTransform,
+    NotchFilter,
     analytic_signal,
-    bandpass_filter,
     fourier_transform,
     inverse_fourier_transform,
+    notch_filter,
 )
 from .windowing import (
     ConcatAggregate,
@@ -196,6 +196,7 @@ __all__ = [
     "Min",
     "MutualInformation",
     "Nonreversibility",
+    "NotchFilter",
     "PartialCorrelation",
     "PartialDirectedCoherence",
     "PhaseLockingValue",
@@ -254,6 +255,7 @@ __all__ = [
     "min",
     "mutual_information",
     "nonreversibility",
+    "notch_filter",
     "partial_correlation",
     "partial_directed_coherence",
     "phase_locking_value",

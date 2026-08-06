@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 import numpy as np
 import xarray as xr
@@ -19,6 +19,8 @@ _DEFAULTS: dict[str, tuple[float, float]] = {
     "gamma": (30.0, 45.0),
 }
 
+_BAND_PRESETS: dict[str, dict[str, tuple[float, float]]] = {"eeg": _DEFAULTS}
+
 
 @dataclass
 class BandPower(BaseFeature[SignalData]):
@@ -30,9 +32,11 @@ class BandPower(BaseFeature[SignalData]):
     (space, band) pair.
 
     Args:
-        bands: Mapping of band name to frequency range ``[f_low, f_high]``
-            in Hz, or ``True`` to use the default range for that band name.
-            If ``None`` or empty, all five default bands are computed:
+        bands: ``None`` (the default) computes a single ``"full"`` band
+            integrating power over the entire spectrum (0 to Nyquist).
+            ``"eeg"`` computes the five standard EEG bands, or pass a
+            mapping of band name to frequency range ``[f_low, f_high]``
+            in Hz (``True`` to use the default range for that band name):
 
             - ``delta``:  1 - 4 Hz
             - ``theta``:  4 - 8 Hz
@@ -40,6 +44,7 @@ class BandPower(BaseFeature[SignalData]):
             - ``beta``:  12 - 30 Hz
             - ``gamma``: 30 - 45 Hz
 
+            An empty dict ``{}`` behaves like ``None``.
         nperseg: Number of samples per Welch segment. Controls the trade-off
             between frequency resolution (larger → finer bins) and variance
             reduction (smaller → more segments to average). Defaults to
@@ -47,6 +52,8 @@ class BandPower(BaseFeature[SignalData]):
 
     Example:
         >>> bp = cb.BandPower().apply(data)
+        >>> bp_full = cb.BandPower(bands=None).apply(data)
+        >>> bp_eeg = cb.BandPower(bands="eeg").apply(data)
         >>> bp_custom = cb.BandPower(bands={"alpha": True, "ripple": [45, 80]}).apply(data)
         >>> bp_fine = cb.BandPower(nperseg=512).apply(data)
 
@@ -60,6 +67,7 @@ class BandPower(BaseFeature[SignalData]):
         ValueError: If sampling_rate is not set on the input data.
         ValueError: If nperseg is less than 2.
         ValueError: If an unknown band name is provided or band spec is False.
+        ValueError: If an unknown bands preset string is provided.
     """
 
     _tags: ClassVar[list[str]] = [
@@ -80,12 +88,16 @@ class BandPower(BaseFeature[SignalData]):
         "io:scalar-per-channel-per-band",
     ]
 
-    bands: dict[str, list[float] | bool] | None = field(default=None)
+    bands: Literal["eeg"] | dict[str, list[float] | bool] | None = field(default=None)
     nperseg: int | None = field(default=None)
 
     def __post_init__(self) -> None:
         if self.nperseg is not None and self.nperseg < 2:
             raise ValueError(f"nperseg must be >= 2, got {self.nperseg}")
+        if isinstance(self.bands, str) and self.bands not in _BAND_PRESETS:
+            raise ValueError(
+                f"Unknown bands preset {self.bands!r}. Available presets: {list(_BAND_PRESETS)}."
+            )
 
     def __call__(self, data: SignalData) -> xr.DataArray:
         xr_data = data.data
@@ -96,9 +108,11 @@ class BandPower(BaseFeature[SignalData]):
                 "pass sampling_rate when constructing the Data object"
             )
 
-        # Resolve bands: None / empty → all defaults
+        # Resolve bands: None / empty → full-signal, string preset, or dict
         if not self.bands:
-            resolved: dict[str, tuple[float, float]] = dict(_DEFAULTS)
+            resolved: dict[str, tuple[float, float]] = {"full": (0.0, sampling_rate / 2.0)}
+        elif isinstance(self.bands, str):
+            resolved = dict(_BAND_PRESETS[self.bands])
         else:
             resolved = {}
             for name, spec in self.bands.items():
@@ -146,7 +160,9 @@ class BandPower(BaseFeature[SignalData]):
 
 @functional(BandPower)
 def band_power(
-    data: SignalData, bands: dict[str, list[float] | bool] | None = None, nperseg: int | None = None
+    data: SignalData,
+    bands: Literal["eeg"] | dict[str, list[float] | bool] | None = None,
+    nperseg: int | None = None,
 ) -> Data:
     """Compute band power for specified frequency bands using Welch's method.
 
@@ -159,9 +175,11 @@ def band_power(
         data: The input time-series signal to process, as a
             :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
             carrying a ``time`` dimension).
-        bands: Mapping of band name to frequency range ``[f_low, f_high]``
-            in Hz, or ``True`` to use the default range for that band name.
-            If ``None`` or empty, all five default bands are computed:
+        bands: ``None`` (the default) computes a single ``"full"`` band
+            integrating power over the entire spectrum (0 to Nyquist).
+            ``"eeg"`` computes the five standard EEG bands, or pass a
+            mapping of band name to frequency range ``[f_low, f_high]``
+            in Hz (``True`` to use the default range for that band name):
 
             - ``delta``:  1 - 4 Hz
             - ``theta``:  4 - 8 Hz
@@ -169,6 +187,7 @@ def band_power(
             - ``beta``:  12 - 30 Hz
             - ``gamma``: 30 - 45 Hz
 
+            An empty dict ``{}`` behaves like ``None``.
         nperseg: Number of samples per Welch segment. Controls the trade-off
             between frequency resolution (larger → finer bins) and variance
             reduction (smaller → more segments to average). Defaults to
@@ -176,6 +195,8 @@ def band_power(
 
     Example:
         >>> bp = cb.band_power(data)
+        >>> bp_full = cb.band_power(data, bands=None)
+        >>> bp_eeg = cb.band_power(data, bands="eeg")
         >>> bp_custom = cb.band_power(data, bands={"alpha": True, "ripple": [45, 80]})
         >>> bp_fine = cb.band_power(data, nperseg=512)
 
@@ -189,5 +210,6 @@ def band_power(
         ValueError: If sampling_rate is not set on the input data.
         ValueError: If nperseg is less than 2.
         ValueError: If an unknown band name is provided or band spec is False.
+        ValueError: If an unknown bands preset string is provided.
     """
     return BandPower(bands=bands, nperseg=nperseg).apply(data)

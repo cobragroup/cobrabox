@@ -405,7 +405,7 @@ def test_describe_all_includes_header(
     cb.show_datasets()
     output = capsys.readouterr().out
     assert "Dataset" in output
-    assert "Type" in output
+    assert "Source" in output
     assert "Data type" in output
     assert "Seizures" in output
     assert "Size" in output
@@ -438,7 +438,7 @@ def test_describe_all_returns_list_of_dicts(capsys: pytest.CaptureFixture[str]) 
     assert len(rows) > 0
     for row in rows:
         assert "identifier" in row
-        assert "type" in row
+        assert "source" in row
         assert "cached" in row
         assert "size" in row
         assert "subsets" in row
@@ -452,7 +452,7 @@ def test_describe_all_local_datasets_have_null_cached(capsys: pytest.CaptureFixt
     rows = cb.show_datasets()
     capsys.readouterr()
 
-    local_rows = [r for r in rows if r["type"] == "local"]
+    local_rows = [r for r in rows if r["source"] == "local"]
     assert local_rows, "expected at least one local dataset"
     for row in local_rows:
         assert row["cached"] is None
@@ -469,7 +469,7 @@ def test_describe_all_remote_datasets_have_string_cached(
     rows = cb.show_datasets()
     capsys.readouterr()
 
-    remote_rows = [r for r in rows if r["type"] == "remote"]
+    remote_rows = [r for r in rows if r["source"] == "remote"]
     assert remote_rows, "expected at least one remote dataset"
     for row in remote_rows:
         cached = row["cached"]
