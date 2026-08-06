@@ -119,6 +119,47 @@ def dtf_from_A(A_f: np.ndarray) -> np.ndarray:
     return H_abs / row_norm
 
 
+def ddtf_from_A(A_f: np.ndarray, resid_cov: np.ndarray) -> np.ndarray:
+    """Compute the direct Directed Transfer Function (dDTF).
+
+    ``dDTF[i, j, f] = DTF[i, j, f] * C[i, j, f]`` where ``C`` is the
+    partial coherence derived from the inverse of the spectral matrix
+    ``S(f) = H(f) Σ H(f)*``.
+
+    Args:
+        A_f: Frequency-domain VAR coefficient matrix, shape ``(n_freqs, K, K)``.
+        resid_cov: Residual covariance matrix, shape ``(K, K)``.
+
+    Returns:
+        Array of shape ``(n_freqs, K, K)`` with dDTF values in ``[0, 1]``.
+
+    References:
+        Korzeniewska, A., Mańczak, M., Kamiński, M., Blinowska, K. J., &
+        Kasicki, S. (2003). Determination of information flow direction among
+        brain structures by a modified directed transfer function (dDTF) method.
+        Journal of Neuroscience Methods, 125(1-2), 195-207.
+    """
+    H_f = np.linalg.inv(A_f)  # (n_freqs, K, K)
+
+    # DTF: row-normalized H(f)
+    H_abs = np.abs(H_f)
+    row_norm = np.sqrt((H_abs**2).sum(axis=2, keepdims=True))
+    row_norm = np.where(row_norm == 0.0, 1.0, row_norm)
+    dtf = H_abs / row_norm
+
+    # Partial coherence from inverse spectral matrix
+    # S(f) = H(f) @ Σ @ H(f)^H
+    S_f = H_f @ resid_cov[np.newaxis, :, :] @ np.conj(H_f).transpose(0, 2, 1)
+    S_inv = np.linalg.inv(S_f)
+    # C²(i,j,f) = |S⁻¹(i,j)|² / (S⁻¹(i,i) * S⁻¹(j,j))
+    diag = np.real(np.diagonal(S_inv, axis1=1, axis2=2))  # (n_freqs, K)
+    denom = np.sqrt(diag[:, :, np.newaxis] * diag[:, np.newaxis, :])  # (n_freqs, K, K)
+    denom = np.where(denom == 0.0, 1.0, denom)
+    partial_coh = np.abs(S_inv) / denom
+
+    return dtf * partial_coh
+
+
 def granger_log_ratio(x: np.ndarray, y: np.ndarray, lag: int) -> tuple[float, float, float, float]:
     """Compute log-ratio Granger causality from y to x at the given lag.
 
