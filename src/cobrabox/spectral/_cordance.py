@@ -132,7 +132,7 @@ class Cordance(BaseFeature[SignalData]):
             )
 
         # ── Absolute power via BandPower ─────────────────────────────
-        ap = BandPower(bands=self.bands, nperseg=self.nperseg)(data)
+        ap = BandPower(bands="eeg" if not self.bands else self.bands, nperseg=self.nperseg)(data)
 
         # ── Relative power ───────────────────────────────────────────
         total = ap.sum(dim="band_index")

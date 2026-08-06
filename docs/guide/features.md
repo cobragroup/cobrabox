@@ -183,7 +183,9 @@ Combines windowing and aggregation in one step — simpler than a Chord for basi
 ### `BandPower`
 
 ```python
-bp = cb.BandPower().apply(data)  # all five default bands
+bp = cb.BandPower().apply(data)  # default: full-signal power (0 to Nyquist)
+bp = cb.BandPower(bands=None).apply(data)  # explicit full-signal
+bp = cb.BandPower(bands="eeg").apply(data)  # five standard EEG bands
 bp = cb.BandPower(bands={"alpha": True}).apply(data)  # single default band
 bp = cb.BandPower(bands={"ripple": [45, 80]}).apply(data)  # custom range
 ```
@@ -192,7 +194,9 @@ Computes band power using Welch's method for each requested frequency band. Retu
 `(band_index, space)` array (plus a singleton `time` dimension). Requires `sampling_rate`
 to be set on the `Data` object.
 
-Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
+The default (`bands=None`) integrates power over the whole spectrum (0 to Nyquist) as
+a single `"full"` band. Pass `bands="eeg"` to decompose into the five classic EEG bands:
+`delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
 
 ### `BandpassFilter`
