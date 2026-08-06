@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
 from warnings import warn
 
 import numpy as np
@@ -15,6 +15,7 @@ from ..data import Data, SignalData
 def _rfft_1d(signal: np.ndarray, *, axis: int = -1) -> np.ndarray:
     """Real-input FFT along ``axis``. Wraps :func:`numpy.fft.rfft`."""
     return np.fft.rfft(signal, axis=axis)
+
 
 def _rfftfreq(n: int, d: float = 1.0) -> np.ndarray:
     """Return the frequency bins for an ``_rfft_1d`` output of length ``n``."""
@@ -67,18 +68,27 @@ class FourierTransform(BaseFeature[SignalData]):
             raise ValueError("norm must be one of [None, 'real', 'psd']")
 
     def __call__(self, data: SignalData) -> xr.DataArray:
-        try:
-            _sr = float(data.sampling_rate)
-        except (TypeError, ValueError):
-            _sr = 1.0
-            _warn_msg1 = "Fourier transform requires 'sampling_rate' on input Data. None found, setting to 1.0"
-            warn( _warn_msg1, category=UserWarning )
+        if data.sampling_rate is not None:
+            sr = float(data.sampling_rate)
+        else:
+            sr = 1.0
+            warn(
+                "Fourier transform requires 'sampling_rate' on input Data. "
+                "None found, setting to 1.0",
+                category=UserWarning,
+                stacklevel=2,
+            )
 
-        _nyq = _sr / 2
-        if self.cutoff is not None and self.cutoff > _nyq:
-            _warn_msg2 = f"cutoff ({self.cutoff} Hz) larger than Nyquist frequency ({_nyq} Hz) for present data. \nIgnoring cutoff and using Nyquist."
-            warn( _warn_msg2 ,category=UserWarning)
-            self.cutoff = None
+        cutoff = self.cutoff
+        nyq = sr / 2
+        if cutoff is not None and cutoff > nyq:
+            warn(
+                f"cutoff ({cutoff} Hz) larger than Nyquist frequency ({nyq} Hz) "
+                "for present data. Ignoring cutoff and using Nyquist.",
+                category=UserWarning,
+                stacklevel=2,
+            )
+            cutoff = None
 
         xr_data = data.data
         if "time" not in xr_data.dims:
@@ -88,21 +98,22 @@ class FourierTransform(BaseFeature[SignalData]):
         n_time = ordered.sizes["time"]
 
         coeffs = _rfft_1d(ordered.values, axis=-1)
-        if self.norm == 'real':
+        if self.norm == "real":
             coeffs = np.abs(coeffs)
         elif self.norm == "psd":
-            ## TODO: Double-check this is the correct normalization
-            coeffs = np.abs(coeffs)**2
+            coeffs = np.abs(coeffs) ** 2 / (n_time * sr)
+            # Double non-DC, non-Nyquist bins for one-sided spectrum
+            coeffs[..., 1:-1] *= 2
 
-        freqs = _rfftfreq(n_time, d=1.0 / _sr)
+        freqs = _rfftfreq(n_time, d=1.0 / sr)
         non_time_dims = [d for d in ordered.dims if d != "time"]
         coords = {d: ordered.coords[d] for d in non_time_dims if d in ordered.coords}
 
-        if self.cutoff is not None:
-            mask = freqs <= self.cutoff
-            maxidx = mask.sum() + 1
+        if cutoff is not None:
+            mask = freqs <= cutoff
+            maxidx = mask.sum()
             freqs = freqs[:maxidx]
-            coeffs = coeffs[:,:maxidx]
+            coeffs = coeffs[..., :maxidx]
 
         coords["frequency"] = freqs
         return xr.DataArray(coeffs, dims=(*non_time_dims, "frequency"), coords=coords)
@@ -110,9 +121,7 @@ class FourierTransform(BaseFeature[SignalData]):
 
 @functional(FourierTransform)
 def fourier_transform(
-    data: SignalData,
-    norm: Literal["real", "psd"] | None = None,
-    cutoff: float | None = None
+    data: SignalData, norm: Literal["real", "psd"] | None = None, cutoff: float | None = None
 ) -> Data:
     """Real-valued FFT along the time axis.
 
@@ -144,4 +153,4 @@ def fourier_transform(
         UserWarning: If ``data`` does not have ``sampling_rate`` defined.
         UserWarning: If ``cutoff`` larger than Nyquist frequency given.
     """
-    return FourierTransform(norm=norm,cutoff=cutoff).apply(data)
+    return FourierTransform(norm=norm, cutoff=cutoff).apply(data)
