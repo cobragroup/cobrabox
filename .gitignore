@@ -58,5 +58,6 @@ data/raw/*
 data/processed/*
 !data/processed/README.md
 data/remote/
+Pipelines/data/*
 #data/synthetic/*
 #!data/synthetic/README.md
