@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import ClassVar, Literal
 
@@ -10,15 +11,15 @@ from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data, SignalData
 
-_DEFAULTS: dict[str, list[float]] = {
-    "delta": [1.0, 4.0],
-    "theta": [4.0, 8.0],
-    "alpha": [8.0, 12.0],
-    "beta": [12.0, 30.0],
-    "gamma": [30.0, 45.0],
+_DEFAULTS: dict[str, tuple[float, float]] = {
+    "delta": (1.0, 4.0),
+    "theta": (4.0, 8.0),
+    "alpha": (8.0, 12.0),
+    "beta": (12.0, 30.0),
+    "gamma": (30.0, 45.0),
 }
 
-_BAND_PRESETS: dict[str, dict[str, list[float]]] = {"eeg": _DEFAULTS}
+_BAND_PRESETS: dict[str, dict[str, tuple[float, float]]] = {"eeg": _DEFAULTS}
 
 
 @dataclass
@@ -85,7 +86,7 @@ class BandpassFilter(BaseFeature[SignalData]):
                     f"Unknown bands preset {self.bands!r}. "
                     f"Available presets: {list(_BAND_PRESETS)}."
                 )
-            resolved: dict[str, list[float]] = dict(_BAND_PRESETS[self.bands])
+            resolved: Mapping[str, Sequence[float]] = dict(_BAND_PRESETS[self.bands])
         else:
             resolved = self.bands
         if not resolved:
@@ -109,7 +110,7 @@ class BandpassFilter(BaseFeature[SignalData]):
                 "BandpassFilter requires a known sampling_rate on the input Data object"
             )
 
-        resolved: dict[str, list[float]] = (
+        resolved: Mapping[str, Sequence[float]] = (
             dict(_BAND_PRESETS[self.bands]) if isinstance(self.bands, str) else self.bands
         )
 
