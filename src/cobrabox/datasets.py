@@ -426,13 +426,13 @@ def show_datasets() -> list[dict[str, str | None]]:
     Example::
 
         cb.show_datasets()
-        # Dataset        Type    Data type         Cached  Seizures  Size     Subsets  License
+        # Dataset        Source  Data type         Cached  Seizures  Size     Subsets  License
         # bonn_eeg       remote  ictal/interictal  yes     100       ~10 MB   5 sets   ...
         # chb_mit        remote  ictal/interictal  3/24    200       ~30 GB   24 subj  ...
         # dummy_chain    local   —                 —       —         —        —        —
 
     Returns:
-        List of dicts with keys ``"identifier"``, ``"type"``, ``"data_type"``,
+        List of dicts with keys ``"identifier"``, ``"source"``, ``"data_type"``,
         ``"cached"``, ``"seizures"``, ``"size"``, ``"subsets"``, and
         ``"license"``.  Suitable for programmatic use in notebooks or scripts.
         ``"cached"`` is ``"yes"``/``"no"``/``"N/M"`` for remote datasets and
@@ -443,7 +443,7 @@ def show_datasets() -> list[dict[str, str | None]]:
 
     table = Table(title="Available Datasets", show_lines=False)
     table.add_column("Dataset", style="bold", no_wrap=True)
-    table.add_column("Type", style="dim")
+    table.add_column("Source", style="dim")
     table.add_column("Data type")
     table.add_column("Cached")
     table.add_column("Seizures", justify="right")
@@ -460,7 +460,7 @@ def show_datasets() -> list[dict[str, str | None]]:
             rows.append(
                 {
                     "identifier": ident,
-                    "type": "local",
+                    "source": "local",
                     "data_type": None,
                     "cached": None,
                     "seizures": None,
@@ -495,7 +495,7 @@ def show_datasets() -> list[dict[str, str | None]]:
             rows.append(
                 {
                     "identifier": ident,
-                    "type": "remote",
+                    "source": "remote",
                     "data_type": None if data_type_str == "\u2014" else data_type_str,
                     "cached": cached_val,
                     "seizures": None if seizures_str == "\u2014" else seizures_str,
