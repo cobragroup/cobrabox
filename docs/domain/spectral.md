@@ -46,6 +46,16 @@ cb.DiscreteWaveletTransform(...).apply(data)  # composable, for pipelines
 
 **Tags:** [`wavelet`](../tags.md#tag-wavelet), [`sub-band`](../tags.md#tag-sub-band), [`dyadic`](../tags.md#tag-dyadic), [`decomposition`](../tags.md#tag-decomposition), [`denoising`](../tags.md#tag-denoising), [`compression`](../tags.md#tag-compression), [`eeg`](../tags.md#tag-eeg), [`io:adds-dimension`](../tags.md#tag-io-adds-dimension)
 
+### PowerSpectralDensity
+Power spectral density via FFT.
+
+```python
+cb.power_spectral_density(data, ...)  # one-shot
+cb.PowerSpectralDensity(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`psd`](../tags.md#tag-psd), [`power-spectrum`](../tags.md#tag-power-spectrum), [`frequency-domain`](../tags.md#tag-frequency-domain), [`eeg`](../tags.md#tag-eeg), [`fmri`](../tags.md#tag-fmri)
+
 ### Spectrogram
 Compute the power spectrogram for each spatial channel.
 

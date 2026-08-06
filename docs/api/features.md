@@ -30,7 +30,7 @@ Auto-generated documentation for all feature classes.
         show_root_heading: true
         show_source: true
 
-::: cobrabox.transforms.BandpassFilter
+::: cobrabox.decompositions.BandpassFilter
     options:
         show_root_heading: true
         show_source: true
@@ -166,6 +166,11 @@ Auto-generated documentation for all feature classes.
         show_source: true
 
 ::: cobrabox.connectivity.PhaseLockingValue
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.spectral.PowerSpectralDensity
     options:
         show_root_heading: true
         show_source: true

@@ -195,24 +195,6 @@ to be set on the `Data` object.
 Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
 
-### `BandpassFilter`
-
-```python
-# Filter into all five default EEG bands
-filtered = cb.BandpassFilter().apply(data)
-
-# Filter into specific bands only
-filtered = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
-
-# Custom filter order and keep original signal
-filtered = cb.BandpassFilter(ord=4, keep_orig=True).apply(data)
-```
-
-Applies Butterworth bandpass filters to separate the signal into frequency bands.
-Returns a DataArray with a new `band` dimension containing the filtered signals.
-By default includes the five standard EEG bands (delta, theta, alpha, beta, gamma).
-Requires `sampling_rate` to be set on the data.
-
 ### `AnalyticSignal`
 
 ```python
@@ -288,6 +270,26 @@ Continuous wavelet transform for time-frequency analysis.
 Provides better frequency resolution than DWT but is computationally more expensive.
 Returns a DataArray with dims `(space, frequency, time)`.
 Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
+
+### `BandpassFilter`
+
+```python
+# Filter into the five standard EEG bands
+filtered = cb.BandpassFilter(bands="eeg").apply(data)
+
+# Filter into specific bands only
+filtered = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+
+# Custom filter order and keep original signal
+filtered = cb.BandpassFilter(bands="eeg", ord=4, keep_orig=True).apply(data)
+```
+
+Applies Butterworth bandpass filters to separate the signal into frequency bands.
+Returns a DataArray with a new `band` dimension containing the filtered signals.
+The ``bands`` parameter is required — pass ``"eeg"`` for the five standard EEG
+bands (delta, theta, alpha, beta, gamma) or a mapping of band name to
+``[low_hz, high_hz]`` frequency edges.
+Requires ``sampling_rate`` to be set on the data.
 
 ### `EMD`
 
