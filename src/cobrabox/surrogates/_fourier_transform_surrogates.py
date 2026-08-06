@@ -10,7 +10,8 @@ import xarray as xr
 from .._functional import functional
 from ..base_feature import SplitterFeature
 from ..data import Data, SignalData
-from ..transforms._fourier_transform import _irfft_1d, _rfft_1d
+from ..transforms._fourier_transform import _rfft_1d
+from ..transforms._inverse_fourier_transform import _irfft_1d
 
 
 @dataclass
@@ -54,10 +55,9 @@ class FourierTransformSurrogates(SplitterFeature[SignalData]):
         ...     dims=["time", "space"],
         ...     sampling_rate=100.0
         ... )
-        >>> feature = cb.FourierTransformSurrogates(
+        >>> surrogates = list(cb.FourierTransformSurrogates(
         ...     n_surrogates=5, random_state=42
-        ... )
-        >>> surrogates = list(feature(data))
+        ... )(data))
     """
 
     _tags: ClassVar[list[str]] = [
@@ -157,10 +157,9 @@ def fourier_transform_surrogates(
         ...     dims=["time", "space"],
         ...     sampling_rate=100.0
         ... )
-        >>> feature = cb.fourier_transform_surrogates(
+        >>> surrogates = list(cb.fourier_transform_surrogates(data,
         ...     n_surrogates=5, random_state=42
-        ... )
-        >>> surrogates = list(feature(data))
+        ... ))
     """
     return FourierTransformSurrogates(
         n_surrogates=n_surrogates,

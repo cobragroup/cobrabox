@@ -12,7 +12,7 @@ Copy this into your PR description and tick it off.
 - [ ] **4.** Write the `@dataclass`, inheriting the right base class
 - [ ] **5.** Add `_tags` so it appears in the docs' tag filter
 - [ ] **6.** Seed the one-shot function: `uv run python scripts/gen_functional_wrappers.py`
-- [ ] **7.** Tune the seeded function's docstring
+- [ ] **7.** Functional docstring auto-syncs — edit the class docstring, not the wrapper (see §4)
 - [ ] **8.** Re-export the class **and** function from `src/cobrabox/__init__.py`
 - [ ] **9.** Write tests in `tests/features/<domain>/test_feature_my_feature.py`
 - [ ] **10.** Regenerate stubs and docs
@@ -34,8 +34,8 @@ Each domain answers one question about the signal.
 | `infometrics/` | How complex or irregular is my signal? | `SampleEntropy`, `LempelZiv`, `FractalDimension` |
 | `spectral/` | What is happening in frequency space? | `BandPower`, `Spectrogram`, `Cordance` |
 | `connectivity/` | Which channels interact? | `Correlation`, `Coherence`, `GrangerCausality` |
-| `transforms/` | Convert to another representation | `AnalyticSignal`, `BandpassFilter`, `FourierTransform` |
-| `decompositions/` | Break into components | `EMD`, `SVD` |
+| `transforms/` | Convert to another representation | `AnalyticSignal`, `FourierTransform` |
+| `decompositions/` | Break into components | `BandpassFilter`, `EMD`, `SVD` |
 | `surrogates/` | Test statistical significance | `FourierTransformSurrogates` |
 | `windowing/` | Analyse temporal dynamics | `SlidingWindow`, `MeanAggregate` |
 
@@ -129,13 +129,16 @@ uv run python scripts/gen_functional_wrappers.py
 This appends a `@functional(Variance)`-decorated `def variance(data, dim="time")`
 to `_variance.py` and re-exports it from the domain `__init__.py`. The name is
 your filename minus the underscore, so `_variance.py` → `cb.variance`. The
-generator is **non-destructive** — it only seeds features that lack a wrapper, so
-re-running it never touches a wrapper you've since edited. Aggregators get no
-function (they fold a splitter's stream, so a standalone call is meaningless).
+generator is **non-destructive** — it only seeds features that lack a wrapper.
+Aggregators get no function (they fold a splitter's stream, so a standalone call
+is meaningless).
 
-**Then tune the seeded docstring.** It starts as a copy of your class docstring
-with the `Example:` rewritten to the functional call — a full starting point, but
-give it a read and adjust anything that reads oddly out of the class's context.
+**Don't hand-edit the wrapper docstring.** The `gen-feature-docstrings` pre-commit
+hook regenerates every `@functional` wrapper's docstring from its class docstring
+on each commit — the class docstring is the single source of truth.  The
+`Example:` is rewritten to the functional call automatically.  To change the
+wrapper's docs, edit the class docstring; the wrapper picks it up on the next
+commit.
 
 Because the wrapper is ordinary source in your file, `cb.variance?` in IPython
 points straight at `_variance.py`, and type-checkers see its real signature.

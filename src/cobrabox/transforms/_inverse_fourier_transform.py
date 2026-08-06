@@ -9,7 +9,11 @@ import xarray as xr
 from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
-from ._fourier_transform import _irfft_1d
+
+
+def _irfft_1d(coeffs: np.ndarray, *, n: int | None = None, axis: int = -1) -> np.ndarray:
+    """Inverse of :func:`_rfft_1d`. Wraps :func:`numpy.fft.irfft`."""
+    return np.fft.irfft(coeffs, n=n, axis=axis)
 
 
 @dataclass

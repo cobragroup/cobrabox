@@ -1,7 +1,10 @@
+> **WARNING:** cobrabox is currently in *alpha* development phase. We still do not encourage its use for scientific research. Suggestions, requests, criticism, implementation of new features, or help for validation are welcome. Feel free to open issues, pull-requests or contact us via e-mail.
+> 
+> [COBRA group](https://cobra.cs.cas.cz), Institute of Computer Science, The Czech Academy of Sciences. 
+
 # CobraBox
 
-CobraBox is a lightweight toolbox for feature extraction from EEG and fMRI
-time-series data.
+A python toolbox for the analysis of brain signals featuring (i)EEG and epilepsy. 
 
 ## Documentation
 
@@ -143,6 +146,7 @@ The full catalog is browsable and **filterable by tag** in the
 - `ContinuousWaveletTransform` / `DiscreteWaveletTransform` - Wavelet time-frequency / sub-band analysis
 - `AnalyticSignal` - Analytic signal: envelope, phase, or instantaneous frequency
 - `BandpassFilter` - Butterworth bandpass filter into frequency bands
+- `NotchFilter` - Notch filter to remove power-line noise (50/60 Hz)
 - `FourierTransform` / `InverseFourierTransform` - FFT to and from the frequency domain
 
 ### Connectivity
