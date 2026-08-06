@@ -182,13 +182,12 @@ def test_parameters_actually_reach_the_feature(data: cb.SignalData) -> None:
     )
 
 
-def test_factory_default_uses_the_class_default(data: cb.SignalData) -> None:
-    """A ``default_factory`` field takes ``None`` in the function; the class then
-    supplies its own default (the five EEG bands here)."""
-    assert inspect.signature(cb.bandpass_filter).parameters["bands"].default is None
-    np.testing.assert_allclose(
-        cb.bandpass_filter(data).data.values, cb.BandpassFilter().apply(data).data.values
-    )
+def test_bandpass_filter_bands_is_required(data: cb.SignalData) -> None:
+    """The ``bands`` parameter is required — no default, no None fallback."""
+    sig = inspect.signature(cb.bandpass_filter)
+    assert sig.parameters["bands"].default is inspect.Parameter.empty
+    with pytest.raises(ValueError, match="bands cannot be None"):
+        cb.bandpass_filter(data, bands=None)  # type: ignore[arg-type]
 
 
 def test_splitter_returns_a_stream(data: cb.SignalData) -> None:

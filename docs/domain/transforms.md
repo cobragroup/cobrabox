@@ -16,16 +16,6 @@ cb.AnalyticSignal(...).apply(data)  # composable, for pipelines
 
 **Tags:** [`hilbert`](../tags.md#tag-hilbert), [`instantaneous-phase`](../tags.md#tag-instantaneous-phase), [`envelope`](../tags.md#tag-envelope), [`instantaneous-frequency`](../tags.md#tag-instantaneous-frequency), [`time-frequency`](../tags.md#tag-time-frequency), [`eeg`](../tags.md#tag-eeg), [`fmri`](../tags.md#tag-fmri), [`io:preserves-time`](../tags.md#tag-io-preserves-time)
 
-### BandpassFilter
-Filter a signal into frequency bands.
-
-```python
-cb.bandpass_filter(data, ...)  # one-shot
-cb.BandpassFilter(...).apply(data)  # composable, for pipelines
-```
-
-**Tags:** [`filtering`](../tags.md#tag-filtering), [`butterworth`](../tags.md#tag-butterworth), [`frequency-band`](../tags.md#tag-frequency-band), [`preprocessing`](../tags.md#tag-preprocessing), [`eeg`](../tags.md#tag-eeg), [`io:preserves-time`](../tags.md#tag-io-preserves-time), [`io:adds-dimension`](../tags.md#tag-io-adds-dimension)
-
 ### FourierTransform
 Real-valued FFT along the time axis.
 

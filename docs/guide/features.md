@@ -183,7 +183,9 @@ Combines windowing and aggregation in one step — simpler than a Chord for basi
 ### `BandPower`
 
 ```python
-bp = cb.BandPower().apply(data)  # all five default bands
+bp = cb.BandPower().apply(data)  # default: full-signal power (0 to Nyquist)
+bp = cb.BandPower(bands=None).apply(data)  # explicit full-signal
+bp = cb.BandPower(bands="eeg").apply(data)  # five standard EEG bands
 bp = cb.BandPower(bands={"alpha": True}).apply(data)  # single default band
 bp = cb.BandPower(bands={"ripple": [45, 80]}).apply(data)  # custom range
 ```
@@ -192,47 +194,27 @@ Computes band power using Welch's method for each requested frequency band. Retu
 `(band_index, space)` array (plus a singleton `time` dimension). Requires `sampling_rate`
 to be set on the `Data` object.
 
-Default bands: `delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
+The default (`bands=None`) integrates power over the whole spectrum (0 to Nyquist) as
+a single `"full"` band. Pass `bands="eeg"` to decompose into the five classic EEG bands:
+`delta` (1–4 Hz), `theta` (4–8 Hz), `alpha` (8–12 Hz), `beta` (12–30 Hz),
 `gamma` (30–45 Hz).
-
-### `BandpassFilter`
-
-```python
-# Filter into all five default EEG bands
-filtered = cb.BandpassFilter().apply(data)
-
-# Filter into specific bands only
-filtered = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
-
-# Custom filter order and keep original signal
-filtered = cb.BandpassFilter(ord=4, keep_orig=True).apply(data)
-```
-
-Applies Butterworth bandpass filters to separate the signal into frequency bands.
-Returns a DataArray with a new `band` dimension containing the filtered signals.
-By default includes the five standard EEG bands (delta, theta, alpha, beta, gamma).
-Requires `sampling_rate` to be set on the data.
 
 ### `NotchFilter`
 
 ```python
-# Remove 50 Hz power-line noise (zero-phase, default)
+# Remove 50 Hz power-line noise
 cleaned = cb.NotchFilter(freq=50.0).apply(data)
 
-# Causal filtering (forward-only, introduces phase distortion)
-cleaned = cb.NotchFilter(freq=50.0, zero_phase=False).apply(data)
+# Custom quality factor (narrower notch)
+cleaned = cb.NotchFilter(freq=60.0, q=30.0).apply(data)
 ```
 
-Applies a notch filter using :func:`scipy.signal.iirnotch` to attenuate a specific
-frequency (e.g. power-line noise at 50 or 60 Hz). ``freq`` must be positive and less
-than the Nyquist frequency (``sampling_rate / 2``). The optional ``q`` parameter
+Applies a notch filter using `scipy.signal.iirnotch` to attenuate a specific
+frequency (e.g. power-line noise at 50 or 60 Hz). `freq` must be positive and less
+than the Nyquist frequency (`sampling_rate / 2`). The optional `q` parameter
 controls notch width — higher values create narrower notches (default 30.0).
+Returns a `SignalData` of the same shape and metadata as the input.
 
-By default uses :func:`scipy.signal.filtfilt` for zero-phase filtering (``zero_phase=True``),
-which avoids phase distortion — the standard EEG preprocessing choice (e.g. MNE). Set
-``zero_phase=False`` for causal forward-only filtering via :func:`scipy.signal.lfilter`
-(useful for online or streaming applications). Returns a :class:`~cobrabox.SignalData`
-of the same shape and metadata as the input.
 
 ### `AnalyticSignal`
 
@@ -309,6 +291,26 @@ Continuous wavelet transform for time-frequency analysis.
 Provides better frequency resolution than DWT but is computationally more expensive.
 Returns a DataArray with dims `(space, frequency, time)`.
 Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
+
+### `BandpassFilter`
+
+```python
+# Filter into the five standard EEG bands
+filtered = cb.BandpassFilter(bands="eeg").apply(data)
+
+# Filter into specific bands only
+filtered = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+
+# Custom filter order and keep original signal
+filtered = cb.BandpassFilter(bands="eeg", ord=4, keep_orig=True).apply(data)
+```
+
+Applies Butterworth bandpass filters to separate the signal into frequency bands.
+Returns a DataArray with a new `band` dimension containing the filtered signals.
+The ``bands`` parameter is required — pass ``"eeg"`` for the five standard EEG
+bands (delta, theta, alpha, beta, gamma) or a mapping of band name to
+``[low_hz, high_hz]`` frequency edges.
+Requires ``sampling_rate`` to be set on the data.
 
 ### `EMD`
 

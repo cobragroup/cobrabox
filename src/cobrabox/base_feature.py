@@ -189,7 +189,7 @@ class _ChordBuilder(Generic[DataT]):
     Continue piping to extend the inner pipeline, or pipe into an
     AggregatorFeature to finalise the Chord:
 
-        SlidingWindow(10, 5) | LineLength() | BandpassFilter() | MeanAggregate()
+        SlidingWindow(10, 5) | LineLength() | BandpassFilter(bands="eeg") | MeanAggregate()
         #                                                        ↑ finalises here
     """
 
@@ -237,7 +237,7 @@ class Chord(BaseFeature[DataT]):
         SlidingWindow(10, 5) | LineLength() | MeanAggregate()
 
     Example:
-        >>> chord = SlidingWindow(100, 50) | BandpassFilter() | MeanAggregate()
+        >>> chord = SlidingWindow(100, 50) | BandpassFilter(bands="eeg") | MeanAggregate()
         >>> result = chord.apply(data)
 
     Type Parameters:

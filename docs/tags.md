@@ -8,7 +8,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `ecg` (1) — [SampleEntropy](domain/infometrics.md)
 
 <a id="tag-eeg"></a>
-`eeg` (34) — [AmplitudeEntropy](domain/infometrics.md), [AmplitudeVariation](domain/signalstats.md), [AnalyticSignal](domain/transforms.md), [Autocorrelation](domain/signalstats.md), [BandPower](domain/spectral.md), [BandpassFilter](domain/transforms.md), [Coherence](domain/connectivity.md), [ContinuousWaveletTransform](domain/spectral.md), [Cordance](domain/spectral.md), [Correlation](domain/connectivity.md), [Covariance](domain/connectivity.md), [DirectedTransferFunction](domain/connectivity.md), [DiscreteWaveletTransform](domain/spectral.md), [EMD](domain/decompositions.md), [EnvelopeCorrelation](domain/connectivity.md), [EpileptogenicityIndex](domain/signalstats.md), [FourierTransform](domain/transforms.md), [FractalDimension](domain/infometrics.md), [GrangerCausality](domain/connectivity.md), [LempelZiv](domain/infometrics.md), [LineLength](domain/signalstats.md), [MutualInformation](domain/connectivity.md), [Nonreversibility](domain/infometrics.md), [NotchFilter](domain/transforms.md), [PartialCorrelation](domain/connectivity.md), [PartialDirectedCoherence](domain/connectivity.md), [PhaseLockingValue](domain/connectivity.md), [PowerSpectralDensity](domain/spectral.md), [ReciprocalConnectivity](domain/connectivity.md), [RecurrenceMatrix](domain/infometrics.md), [SVD](domain/decompositions.md), [SampleEntropy](domain/infometrics.md), [Spectrogram](domain/spectral.md), [SpikeCount](domain/signalstats.md)
+`eeg` (33) — [AmplitudeEntropy](domain/infometrics.md), [AmplitudeVariation](domain/signalstats.md), [AnalyticSignal](domain/transforms.md), [Autocorrelation](domain/signalstats.md), [BandPower](domain/spectral.md), [BandpassFilter](domain/decompositions.md), [Coherence](domain/connectivity.md), [ContinuousWaveletTransform](domain/spectral.md), [Cordance](domain/spectral.md), [Correlation](domain/connectivity.md), [Covariance](domain/connectivity.md), [DirectedTransferFunction](domain/connectivity.md), [DiscreteWaveletTransform](domain/spectral.md), [EMD](domain/decompositions.md), [EnvelopeCorrelation](domain/connectivity.md), [EpileptogenicityIndex](domain/signalstats.md), [FourierTransform](domain/transforms.md), [FractalDimension](domain/infometrics.md), [GrangerCausality](domain/connectivity.md), [LempelZiv](domain/infometrics.md), [LineLength](domain/signalstats.md), [MutualInformation](domain/connectivity.md), [Nonreversibility](domain/infometrics.md), [PartialCorrelation](domain/connectivity.md), [PartialDirectedCoherence](domain/connectivity.md), [PhaseLockingValue](domain/connectivity.md), [PowerSpectralDensity](domain/spectral.md), [ReciprocalConnectivity](domain/connectivity.md), [RecurrenceMatrix](domain/infometrics.md), [SVD](domain/decompositions.md), [SampleEntropy](domain/infometrics.md), [Spectrogram](domain/spectral.md), [SpikeCount](domain/signalstats.md)
 
 <a id="tag-fmri"></a>
 `fmri` (9) — [AnalyticSignal](domain/transforms.md), [Autocorrelation](domain/signalstats.md), [BandPower](domain/spectral.md), [Correlation](domain/connectivity.md), [Covariance](domain/connectivity.md), [FourierTransform](domain/transforms.md), [PartialCorrelation](domain/connectivity.md), [PowerSpectralDensity](domain/spectral.md), [Spectrogram](domain/spectral.md)
@@ -133,7 +133,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `box-counting` (1) — [FractalDimension](domain/infometrics.md)
 
 <a id="tag-butterworth"></a>
-`butterworth` (1) — [BandpassFilter](domain/transforms.md)
+`butterworth` (1) — [BandpassFilter](domain/decompositions.md)
 
 <a id="tag-compression"></a>
 `compression` (2) — [DiscreteWaveletTransform](domain/spectral.md), [LempelZiv](domain/infometrics.md)
@@ -240,7 +240,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `envelope` (1) — [AnalyticSignal](domain/transforms.md)
 
 <a id="tag-frequency-band"></a>
-`frequency-band` (2) — [BandPower](domain/spectral.md), [BandpassFilter](domain/transforms.md)
+`frequency-band` (2) — [BandPower](domain/spectral.md), [BandpassFilter](domain/decompositions.md)
 
 <a id="tag-frequency-domain"></a>
 `frequency-domain` (5) — [Coherence](domain/connectivity.md), [DirectedTransferFunction](domain/connectivity.md), [FourierTransform](domain/transforms.md), [PartialDirectedCoherence](domain/connectivity.md), [PowerSpectralDensity](domain/spectral.md)
@@ -364,7 +364,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `dimensionality-reduction` (1) — [SVD](domain/decompositions.md)
 
 <a id="tag-filtering"></a>
-`filtering` (2) — [BandpassFilter](domain/transforms.md), [NotchFilter](domain/transforms.md)
+`filtering` (1) — [BandpassFilter](domain/decompositions.md)
 
 <a id="tag-null-hypothesis"></a>
 `null-hypothesis` (1) — [FourierTransformSurrogates](domain/surrogates.md)
@@ -376,7 +376,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `post-processing` (1) — [ReciprocalConnectivity](domain/connectivity.md)
 
 <a id="tag-preprocessing"></a>
-`preprocessing` (2) — [BandpassFilter](domain/transforms.md), [NotchFilter](domain/transforms.md)
+`preprocessing` (1) — [BandpassFilter](domain/decompositions.md)
 
 <a id="tag-reduction"></a>
 `reduction` (4) — [Max](domain/signalstats.md), [Mean](domain/signalstats.md), [Min](domain/signalstats.md), [SlidingWindowReduce](domain/windowing.md)
@@ -390,7 +390,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 ## IO shape
 
 <a id="tag-io-adds-dimension"></a>
-`io:adds-dimension` (3) — [BandpassFilter](domain/transforms.md), [DiscreteWaveletTransform](domain/spectral.md), [EMD](domain/decompositions.md)
+`io:adds-dimension` (3) — [BandpassFilter](domain/decompositions.md), [DiscreteWaveletTransform](domain/spectral.md), [EMD](domain/decompositions.md)
 
 <a id="tag-io-frequency-output"></a>
 `io:frequency-output` (1) — [FourierTransform](domain/transforms.md)
@@ -408,7 +408,7 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `io:matrix-frequency` (2) — [DirectedTransferFunction](domain/connectivity.md), [PartialDirectedCoherence](domain/connectivity.md)
 
 <a id="tag-io-preserves-time"></a>
-`io:preserves-time` (5) — [AnalyticSignal](domain/transforms.md), [BandpassFilter](domain/transforms.md), [ConcatAggregate](domain/windowing.md), [NotchFilter](domain/transforms.md), [SlidingWindowReduce](domain/windowing.md)
+`io:preserves-time` (4) — [AnalyticSignal](domain/transforms.md), [BandpassFilter](domain/decompositions.md), [ConcatAggregate](domain/windowing.md), [SlidingWindowReduce](domain/windowing.md)
 
 <a id="tag-io-scalar"></a>
 `io:scalar` (3) — [Max](domain/signalstats.md), [Mean](domain/signalstats.md), [Min](domain/signalstats.md)
@@ -440,9 +440,6 @@ Cross-cutting discovery across domain boundaries. Every feature is tagged by met
 `req:sampling-rate` (5) — [Coherence](domain/connectivity.md), [DirectedTransferFunction](domain/connectivity.md), [GrangerCausality](domain/connectivity.md), [PartialDirectedCoherence](domain/connectivity.md), [PhaseLockingValue](domain/connectivity.md)
 
 ## Other
-
-<a id="tag-notch"></a>
-`notch` (1) — [NotchFilter](domain/transforms.md)
 
 <a id="tag-psd"></a>
 `psd` (1) — [PowerSpectralDensity](domain/spectral.md)
