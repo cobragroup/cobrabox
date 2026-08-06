@@ -1,3 +1,11 @@
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
+
+try:
+    __version__ = _version("cobrabox")
+except PackageNotFoundError:
+    __version__ = "unknown"
+
 # Domain subpackages, plus the flat `feature` convenience namespace
 from . import (
     connectivity,
@@ -199,6 +207,7 @@ __all__ = [
     "Spectrogram",
     "SpikeCount",
     "SplitterFeature",
+    "__version__",
     "amplitude_entropy",
     "amplitude_variation",
     "analytic_signal",
