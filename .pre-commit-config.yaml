@@ -13,6 +13,13 @@ repos:
       # directly under src/cobrabox/.
       files: ^src/cobrabox/.*\.py$
 
+    - id: gen-feature-docstrings
+      name: sync functional docstrings
+      entry: uv run python scripts/gen_functional_docstrings.py
+      language: system
+      pass_filenames: false
+      files: ^src/cobrabox/.*\.py$
+
     - id: ty-check
       name: ty check
       entry: uv run ty check src

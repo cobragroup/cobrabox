@@ -49,7 +49,7 @@ class PowerSpectralDensity(BaseFeature[SignalData]):
 def power_spectral_density(data: SignalData, cutoff: float | None = None) -> Data:
     """Power spectral density via FFT.
 
-    Convenience wrapper around :func:`~cobrabox.fourier_transform` with
+    Convenience wrapper around :class:`~cobrabox.FourierTransform` with
     ``norm="psd"``.  Computes the one-sided PSD as
     ``|FFT|^2 / (N * sampling_rate)`` with the interior bins doubled to
     account for the discarded negative frequencies.
