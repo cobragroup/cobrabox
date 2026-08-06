@@ -112,11 +112,6 @@ class BandPower(BaseFeature[SignalData]):
         if not self.bands:
             resolved: dict[str, tuple[float, float]] = {"full": (0.0, sampling_rate / 2.0)}
         elif isinstance(self.bands, str):
-            if self.bands not in _BAND_PRESETS:
-                raise ValueError(
-                    f"Unknown bands preset {self.bands!r}. "
-                    f"Available presets: {list(_BAND_PRESETS)}."
-                )
             resolved = dict(_BAND_PRESETS[self.bands])
         else:
             resolved = {}
