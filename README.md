@@ -146,6 +146,7 @@ The full catalog is browsable and **filterable by tag** in the
 - `ContinuousWaveletTransform` / `DiscreteWaveletTransform` - Wavelet time-frequency / sub-band analysis
 - `AnalyticSignal` - Analytic signal: envelope, phase, or instantaneous frequency
 - `BandpassFilter` - Butterworth bandpass filter into frequency bands
+- `NotchFilter` - Notch filter to remove power-line noise (50/60 Hz)
 - `FourierTransform` / `InverseFourierTransform` - FFT to and from the frequency domain
 
 ### Connectivity

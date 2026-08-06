@@ -51,7 +51,7 @@ def data() -> cb.SignalData:
 def test_the_split_is_what_we_expect() -> None:
     """Aggregators are the deliberate gap; everything else gets a function."""
     assert sorted(CLASS_ONLY) == ["ConcatAggregate", "MeanAggregate"]
-    assert len(FUNCTIONAL) == 40
+    assert len(FUNCTIONAL) == 41
 
 
 @pytest.mark.parametrize("name", FUNCTIONAL)

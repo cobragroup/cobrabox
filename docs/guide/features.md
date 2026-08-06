@@ -213,6 +213,22 @@ Returns a DataArray with a new `band` dimension containing the filtered signals.
 By default includes the five standard EEG bands (delta, theta, alpha, beta, gamma).
 Requires `sampling_rate` to be set on the data.
 
+### `NotchFilter`
+
+```python
+# Remove 50 Hz power-line noise
+cleaned = cb.NotchFilter(freq=50.0).apply(data)
+
+# Tighter notch (higher quality factor)
+cleaned = cb.NotchFilter(freq=50.0, q=30.0).apply(data)
+```
+
+Applies a notch filter using :func:`scipy.signal.iirnotch` to attenuate a specific
+frequency (e.g. power-line noise at 50 or 60 Hz). ``freq`` must be positive and less
+than the Nyquist frequency (``sampling_rate / 2``). The optional ``q`` parameter
+controls notch width — higher values create narrower notches (default 30.0).
+Returns a :class:`~cobrabox.SignalData` of the same shape and metadata as the input.
+
 ### `AnalyticSignal`
 
 ```python
