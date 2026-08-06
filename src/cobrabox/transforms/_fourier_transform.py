@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
+from warnings import warn
 
 import numpy as np
 import xarray as xr
@@ -14,11 +15,6 @@ from ..data import Data, SignalData
 def _rfft_1d(signal: np.ndarray, *, axis: int = -1) -> np.ndarray:
     """Real-input FFT along ``axis``. Wraps :func:`numpy.fft.rfft`."""
     return np.fft.rfft(signal, axis=axis)
-
-
-def _irfft_1d(coeffs: np.ndarray, *, n: int | None = None, axis: int = -1) -> np.ndarray:
-    """Inverse of :func:`_rfft_1d`. Wraps :func:`numpy.fft.irfft`."""
-    return np.fft.irfft(coeffs, n=n, axis=axis)
 
 
 def _rfftfreq(n: int, d: float = 1.0) -> np.ndarray:
@@ -36,43 +32,100 @@ class FourierTransform(BaseFeature[SignalData]):
     otherwise it falls back to cycles-per-sample.
 
     Args:
-        return_magnitude: If ``True`` (default), return ``|FFT|`` as a
-            real-valued array. If ``False``, return the raw complex
-            coefficients.
+        norm: If ``None`` (default), returns the raw complex coefficients.
+            If ``"real"`` returns ``|FFT|`` as a real-valued array.
+            If ``"psd"`` returns the power spectral density ``|FFT|^2``.
+        cutoff: None (default) or ``float`` (in Hz). Largest frequency returned.
+            If ``None`` or ``cutoff`` > Nyquist freq, parameter is ignored and
+            output contains frequencies up to Nyquist frequency ``self.sampling_rate // 2``.
+            Given value must be positive.
 
     Returns:
         :class:`~cobrabox.Data` with dims ``(*non_time_dims, "frequency")``. Dtype is
-        ``complex128`` when ``return_magnitude=False`` and ``float64``
-        otherwise.
+        ``complex128`` when ``norm=None`` and ``float64`` otherwise.
+
+    Raises:
+        ValueError: If the input ``Data`` has no known ``sampling_rate``.
+        ValueError: If ``norm`` is not one of [None, 'real', 'psd'].
+        ValueError: If negative ``cutoff`` is given.
+        UserWarning: If ``data`` does not have ``sampling_rate`` defined.
+        UserWarning: If ``cutoff`` larger than Nyquist frequency given.
     """
 
     _tags: ClassVar[list[str]] = ["fft", "frequency-domain", "eeg", "fmri", "io:frequency-output"]
 
-    return_magnitude: bool = True
+    norm: Literal["real", "psd"] | None = None
+    cutoff: float | None = None
 
     output_type: ClassVar[type[Data]] = Data
 
+    def __post_init__(self) -> None:
+        """Validate parameters after initialization."""
+        if self.cutoff is not None and self.cutoff < 0:
+            raise ValueError(f"cutoff must be positive, got {self.cutoff}")
+
+        if self.norm not in [None, "real", "psd"]:
+            raise ValueError("norm must be one of [None, 'real', 'psd']")
+
     def __call__(self, data: SignalData) -> xr.DataArray:
+        if data.sampling_rate is not None:
+            sr = float(data.sampling_rate)
+        else:
+            sr = 1.0
+            warn(
+                "Fourier transform requires 'sampling_rate' on input Data. "
+                "None found, setting to 1.0",
+                category=UserWarning,
+                stacklevel=2,
+            )
+
+        cutoff = self.cutoff
+        nyq = sr / 2
+        if cutoff is not None and cutoff > nyq:
+            warn(
+                f"cutoff ({cutoff} Hz) larger than Nyquist frequency ({nyq} Hz) "
+                "for present data. Ignoring cutoff and using Nyquist.",
+                category=UserWarning,
+                stacklevel=2,
+            )
+            cutoff = None
+
         xr_data = data.data
         if "time" not in xr_data.dims:
             raise ValueError("FourierTransform requires a 'time' dimension")
 
         ordered = xr_data.transpose(..., "time")
         n_time = ordered.sizes["time"]
-        sr = float(data.sampling_rate) if data.sampling_rate is not None else 1.0
 
         coeffs = _rfft_1d(ordered.values, axis=-1)
-        result = np.abs(coeffs) if self.return_magnitude else coeffs
+        if self.norm == "real":
+            coeffs = np.abs(coeffs)
+        elif self.norm == "psd":
+            # TODO: have someone with DSP experience verify this normalization
+            # and the ordering (normalize before cutoff, not after — see the
+            # one-sided doubling comment below for why).
+            coeffs = np.abs(coeffs) ** 2 / (n_time * sr)
+            # Double non-DC, non-Nyquist bins for one-sided spectrum
+            coeffs[..., 1:-1] *= 2
 
         freqs = _rfftfreq(n_time, d=1.0 / sr)
         non_time_dims = [d for d in ordered.dims if d != "time"]
         coords = {d: ordered.coords[d] for d in non_time_dims if d in ordered.coords}
+
+        if cutoff is not None:
+            mask = freqs <= cutoff
+            maxidx = mask.sum()
+            freqs = freqs[:maxidx]
+            coeffs = coeffs[..., :maxidx]
+
         coords["frequency"] = freqs
-        return xr.DataArray(result, dims=(*non_time_dims, "frequency"), coords=coords)
+        return xr.DataArray(coeffs, dims=(*non_time_dims, "frequency"), coords=coords)
 
 
 @functional(FourierTransform)
-def fourier_transform(data: SignalData, return_magnitude: bool = True) -> Data:
+def fourier_transform(
+    data: SignalData, norm: Literal["real", "psd"] | None = None, cutoff: float | None = None
+) -> Data:
     """Real-valued FFT along the time axis.
 
     Produces a frequency-domain representation of every channel. Output dims
@@ -84,13 +137,23 @@ def fourier_transform(data: SignalData, return_magnitude: bool = True) -> Data:
         data: The input time-series signal to process, as a
             :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
             carrying a ``time`` dimension).
-        return_magnitude: If ``True`` (default), return ``|FFT|`` as a
-            real-valued array. If ``False``, return the raw complex
-            coefficients.
+        norm: If ``None`` (default), returns the raw complex coefficients.
+            If ``"real"`` returns ``|FFT|`` as a real-valued array.
+            If ``"psd"`` returns the power spectral density ``|FFT|^2``.
+        cutoff: None (default) or ``float`` (in Hz). Largest frequency returned.
+            If ``None`` or ``cutoff`` > Nyquist freq, parameter is ignored and
+            output contains frequencies up to Nyquist frequency ``self.sampling_rate // 2``.
+            Given value must be positive.
 
     Returns:
         :class:`~cobrabox.Data` with dims ``(*non_time_dims, "frequency")``. Dtype is
-        ``complex128`` when ``return_magnitude=False`` and ``float64``
-        otherwise.
+        ``complex128`` when ``norm=None`` and ``float64`` otherwise.
+
+    Raises:
+        ValueError: If the input ``Data`` has no known ``sampling_rate``.
+        ValueError: If ``norm`` is not one of [None, 'real', 'psd'].
+        ValueError: If negative ``cutoff`` is given.
+        UserWarning: If ``data`` does not have ``sampling_rate`` defined.
+        UserWarning: If ``cutoff`` larger than Nyquist frequency given.
     """
-    return FourierTransform(return_magnitude=return_magnitude).apply(data)
+    return FourierTransform(norm=norm, cutoff=cutoff).apply(data)

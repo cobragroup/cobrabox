@@ -81,6 +81,8 @@ from .spectral._discrete_wavelet_transform import (
 from .spectral._discrete_wavelet_transform import (
     discrete_wavelet_transform as discrete_wavelet_transform,
 )
+from .spectral._power_spectral_density import PowerSpectralDensity as PowerSpectralDensity
+from .spectral._power_spectral_density import power_spectral_density as power_spectral_density
 from .spectral._spectrogram import Spectrogram as Spectrogram
 from .spectral._spectrogram import spectrogram as spectrogram
 from .surrogates._fourier_transform_surrogates import (
@@ -173,6 +175,8 @@ __all__ = [
     "PartialDirectedCoherence",
     "phase_locking_value",
     "PhaseLockingValue",
+    "power_spectral_density",
+    "PowerSpectralDensity",
     "reciprocal_connectivity",
     "ReciprocalConnectivity",
     "recurrence_matrix",
