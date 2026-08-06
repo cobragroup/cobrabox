@@ -27,8 +27,16 @@ from pathlib import Path
 
 from gen_functional_wrappers import _rewrite_calls
 
-import cobrabox as cb
-from cobrabox._functional import function_name, has_functional_form
+try:
+    import cobrabox as cb
+    from cobrabox._functional import function_name, has_functional_form
+except ImportError:
+    print(
+        "error: cannot import cobrabox — fix the import error first.\n"
+        "  hint: run `uv sync` or check for syntax errors in src/cobrabox/",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = REPO_ROOT / "src" / "cobrabox"
@@ -205,8 +213,8 @@ def _write_if_changed(path: Path, content: str) -> bool:
     return True
 
 
-def main() -> int:
-    updated: list[str] = []
+def main(check: bool = False) -> int:
+    stale: list[str] = []
 
     for name in sorted(cb.feature.__all__):
         obj = getattr(cb.feature, name)
@@ -225,14 +233,18 @@ def main() -> int:
         new_doc = _func_docstring(cls, func_name)
         new_source = _replace_docstring(source, func_node, new_doc)
 
-        if _write_if_changed(path, new_source):
-            updated.append(func_name)
-            print(f"  Updated {path.name}::{func_name}", file=sys.stderr)
+        if new_source != source:
+            stale.append(func_name)
+            if check:
+                print(f"  Out of sync: {path.name}::{func_name}", file=sys.stderr)
+            elif _write_if_changed(path, new_source):
+                print(f"  Updated {path.name}::{func_name}", file=sys.stderr)
 
-    if updated:
-        print(f"Synced {len(updated)} docstring(s).", file=sys.stderr)
-    return 1 if updated else 0
+    if stale:
+        action = "out of sync" if check else "synced"
+        print(f"{len(stale)} docstring(s) {action}.", file=sys.stderr)
+    return 1 if stale else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(check="--check" in sys.argv))
