@@ -101,6 +101,9 @@ class FourierTransform(BaseFeature[SignalData]):
         if self.norm == "real":
             coeffs = np.abs(coeffs)
         elif self.norm == "psd":
+            # TODO: have someone with DSP experience verify this normalization
+            # and the ordering (normalize before cutoff, not after — see the
+            # one-sided doubling comment below for why).
             coeffs = np.abs(coeffs) ** 2 / (n_time * sr)
             # Double non-DC, non-Nyquist bins for one-sided spectrum
             coeffs[..., 1:-1] *= 2
