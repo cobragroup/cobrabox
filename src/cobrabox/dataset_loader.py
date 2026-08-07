@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import warnings
 import zipfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -520,6 +521,18 @@ def _load_zurich_ieeg(
     The ``.eeg`` and ``.vmrk`` sidecar files must be present in the same
     directory.
 
+    .. note:: Upstream data issue (OpenNeuro ds003498 v1.1.1)
+
+       Several ``.vmrk`` marker files in the source dataset reference sample
+       positions beyond the length of their corresponding ``.eeg`` data files.
+       Sub-15 is the most affected: 8 of its 28 runs have truncated data files
+       (65-183 s instead of the expected 300 s) while the marker files still
+       reference the full 300 s range, resulting in MNE warnings about thousands
+       of omitted annotations. A handful of other subjects have a single
+       annotation that extends slightly past the recording end. These warnings
+       are suppressed here because they are harmless — no sample data is lost,
+       only out-of-range HFO event markers are discarded by MNE.
+
     Args:
         dataset_dir: Directory containing the downloaded BrainVision files.
         subset: If given, only load files whose subject ID (e.g. ``"sub-01"``)
@@ -552,7 +565,9 @@ def _load_zurich_ieeg(
     for path in vhdr_paths:
         subject_id = path.stem.split("_", 1)[0]
         try:
-            raw = mne.io.read_raw_brainvision(str(path), preload=True, verbose=False)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message=r".*annotation.*outside.*data range")
+                raw = mne.io.read_raw_brainvision(str(path), preload=True, verbose=False)
         except Exception:
             continue
         arr = raw.get_data().T  # (n_channels, n_samples) → (n_samples, n_channels)

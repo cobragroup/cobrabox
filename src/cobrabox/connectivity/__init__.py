@@ -2,6 +2,10 @@
 from ._coherence import Coherence, coherence
 from ._correlation import Correlation, correlation
 from ._covariance import Covariance, covariance
+from ._direct_directed_transfer_function import (
+    DirectDirectedTransferFunction,
+    direct_directed_transfer_function,
+)
 from ._directed_transfer_function import DirectedTransferFunction, directed_transfer_function
 from ._envelope_correlation import EnvelopeCorrelation, envelope_correlation
 from ._granger_causality import GrangerCausality, granger_causality
@@ -17,6 +21,7 @@ __all__ = [
     "Coherence",
     "Correlation",
     "Covariance",
+    "DirectDirectedTransferFunction",
     "DirectedTransferFunction",
     "EnvelopeCorrelation",
     "GrangerCausality",
@@ -30,6 +35,7 @@ __all__ = [
     "coherence",
     "correlation",
     "covariance",
+    "direct_directed_transfer_function",
     "directed_transfer_function",
     "envelope_correlation",
     "granger_causality",
