@@ -23,8 +23,12 @@ from .connectivity._envelope_correlation import EnvelopeCorrelation as EnvelopeC
 from .connectivity._envelope_correlation import envelope_correlation as envelope_correlation
 from .connectivity._granger_causality import GrangerCausality as GrangerCausality
 from .connectivity._granger_causality import granger_causality as granger_causality
+from .connectivity._inward_strength import InwardStrength as InwardStrength
+from .connectivity._inward_strength import inward_strength as inward_strength
 from .connectivity._mutual_information import MutualInformation as MutualInformation
 from .connectivity._mutual_information import mutual_information as mutual_information
+from .connectivity._outward_strength import OutwardStrength as OutwardStrength
+from .connectivity._outward_strength import outward_strength as outward_strength
 from .connectivity._partial_correlation import PartialCorrelation as PartialCorrelation
 from .connectivity._partial_correlation import partial_correlation as partial_correlation
 from .connectivity._partial_directed_coherence import (
@@ -109,6 +113,8 @@ from .transforms._inverse_fourier_transform import (
 from .transforms._inverse_fourier_transform import (
     inverse_fourier_transform as inverse_fourier_transform,
 )
+from .transforms._normalize import Normalize as Normalize
+from .transforms._normalize import normalize as normalize
 from .transforms._notch_filter import NotchFilter as NotchFilter
 from .transforms._notch_filter import notch_filter as notch_filter
 from .windowing._concat_aggregate import ConcatAggregate as ConcatAggregate
@@ -164,6 +170,8 @@ __all__ = [
     "GrangerCausality",
     "inverse_fourier_transform",
     "InverseFourierTransform",
+    "inward_strength",
+    "InwardStrength",
     "lempel_ziv",
     "LempelZiv",
     "line_length",
@@ -179,8 +187,12 @@ __all__ = [
     "MutualInformation",
     "Nonreversibility",
     "nonreversibility",
+    "Normalize",
+    "normalize",
     "notch_filter",
     "NotchFilter",
+    "outward_strength",
+    "OutwardStrength",
     "partial_correlation",
     "partial_directed_coherence",
     "PartialCorrelation",

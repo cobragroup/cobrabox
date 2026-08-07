@@ -10,6 +10,8 @@ import xarray as xr
 from .._functional import functional
 from ..base_feature import BaseFeature
 from ..data import Data
+from ._inward_strength import InwardStrength
+from ._outward_strength import OutwardStrength
 
 
 @dataclass
@@ -133,27 +135,23 @@ class ReciprocalConnectivity(BaseFeature[Data]):
                 "freq_band=None. Set freq_band to (fmin, fmax) to select a band."
             )
 
-        mat_vals = mat.values.copy().astype(float)
-        n_ch = mat_vals.shape[0]
-
         if self.normalize:
+            mat_vals = mat.values.copy().astype(float)
+            n_ch = mat_vals.shape[0]
             mask = ~np.eye(n_ch, dtype=bool)
             off_diag = mat_vals[mask]
             mu, sigma = off_diag.mean(), off_diag.std()
             if sigma > 0:
                 mat_vals = (mat_vals - mu) / sigma
+            mat = xr.DataArray(mat_vals, dims=mat.dims, coords=mat.coords)
 
-        np.fill_diagonal(mat_vals, np.nan)
-        in_strength = np.nanmean(mat_vals, axis=1)
-        out_strength = np.nanmean(mat_vals, axis=0)
-        rc = in_strength - out_strength
+        # Delegate to InwardStrength / OutwardStrength (freq_band already
+        # resolved above, so pass None to avoid double-averaging).
+        prepped = Data(mat)
+        inward = InwardStrength(freq_band=None)(prepped)
+        outward = OutwardStrength(freq_band=None)(prepped)
 
-        if "space_to" in mat.coords:
-            space_vals = mat.coords["space_to"].values
-        else:
-            space_vals = np.arange(n_ch)
-
-        return xr.DataArray(rc, dims=["space"], coords={"space": space_vals})
+        return inward - outward
 
 
 @functional(ReciprocalConnectivity)

@@ -88,9 +88,25 @@ def test_freq_band_outside_range_raises() -> None:
         cb.ReciprocalConnectivity(freq_band=(500.0, 600.0)).apply(mat)
 
 
+def test_freq_band_without_frequency_raises() -> None:
+    mat = _asymmetric_matrix(n=3)
+    with pytest.raises(ValueError, match="freq_band"):
+        cb.ReciprocalConnectivity(freq_band=(1.0, 40.0)).apply(mat)
+
+
 def test_invalid_freq_band_raises() -> None:
     with pytest.raises(ValueError, match="fmin < fmax"):
         cb.ReciprocalConnectivity(freq_band=(50.0, 10.0))
+
+
+def test_normalize_true() -> None:
+    """normalize=True z-scores the matrix off-diagonal before strength."""
+    mat = _asymmetric_matrix(n=4, with_frequency=True)
+    result = cb.ReciprocalConnectivity(freq_band=(20.0, 60.0), normalize=True).apply(mat)
+
+    assert result.data.dims == ("space",)
+    assert result.data.shape == (4,)
+    assert np.all(np.isfinite(result.data.values))
 
 
 def test_history_appended() -> None:
