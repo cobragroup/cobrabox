@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
 from typing import ClassVar
 
@@ -99,11 +98,9 @@ class OutwardStrength(BaseFeature[Data]):
                 )
             mat = mat.sel(frequency=slice(fmin, fmax)).mean("frequency")
         elif self.freq_band is not None:
-            warnings.warn(
+            raise ValueError(
                 f"freq_band={self.freq_band} is set but the connectivity matrix "
-                "has no 'frequency' dimension. Ignoring freq_band.",
-                UserWarning,
-                stacklevel=2,
+                "has no 'frequency' dimension. Pass freq_band=None to skip band averaging."
             )
 
         mat_vals = mat.values.astype(float).copy()

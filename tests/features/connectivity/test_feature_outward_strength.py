@@ -157,6 +157,21 @@ def test_invalid_freq_band_raises() -> None:
         cb.OutwardStrength(freq_band=(50.0, 10.0))
 
 
+def test_freq_band_without_frequency_raises() -> None:
+    mat = _asymmetric_matrix(n=3)
+    with pytest.raises(ValueError, match="freq_band"):
+        cb.OutwardStrength(freq_band=(1.0, 40.0)).apply(mat)
+
+
+def test_coords_fallback_uses_arange() -> None:
+    arr = np.random.default_rng(0).standard_normal((3, 3))
+    da = xr.DataArray(arr, dims=("space_to", "space_from"))
+    mat = cb.Data(da)
+    result = cb.OutwardStrength().apply(mat)
+
+    np.testing.assert_array_equal(result.data.coords["space"].values, np.arange(3))
+
+
 # ---------------------------------------------------------------------------
 # Pipeline composability
 # ---------------------------------------------------------------------------
