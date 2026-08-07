@@ -7,6 +7,12 @@ from .connectivity._correlation import Correlation as Correlation
 from .connectivity._correlation import correlation as correlation
 from .connectivity._covariance import Covariance as Covariance
 from .connectivity._covariance import covariance as covariance
+from .connectivity._direct_directed_transfer_function import (
+    DirectDirectedTransferFunction as DirectDirectedTransferFunction,
+)
+from .connectivity._direct_directed_transfer_function import (
+    direct_directed_transfer_function as direct_directed_transfer_function,
+)
 from .connectivity._directed_transfer_function import (
     DirectedTransferFunction as DirectedTransferFunction,
 )
@@ -136,6 +142,8 @@ __all__ = [
     "correlation",
     "Covariance",
     "covariance",
+    "direct_directed_transfer_function",
+    "DirectDirectedTransferFunction",
     "directed_transfer_function",
     "DirectedTransferFunction",
     "discrete_wavelet_transform",
