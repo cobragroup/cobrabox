@@ -1,8 +1,9 @@
 """Shared multivariate-autoregressive (MVAR) utilities.
 
 Used by GrangerCausality, PartialDirectedCoherence, DirectedTransferFunction,
-and (indirectly) Nonreversibility. Centralizes VAR fitting and frequency-domain
-derivations so the connectivity domain has one canonical implementation.
+DirectDirectedTransferFunction, and (indirectly) Nonreversibility. Centralizes
+VAR fitting and frequency-domain derivations so the connectivity domain has one
+canonical implementation.
 """
 
 from __future__ import annotations

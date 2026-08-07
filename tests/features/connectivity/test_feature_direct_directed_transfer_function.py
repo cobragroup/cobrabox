@@ -83,6 +83,24 @@ def test_matrix_is_asymmetric() -> None:
     assert not np.allclose(vals, vals.transpose(1, 0, 2), atol=1e-3)
 
 
+def test_space_coords_preserved() -> None:
+    """Space coordinates are used to label the output when the input has them."""
+    import xarray as xr
+
+    rng = np.random.default_rng(0)
+    arr = rng.standard_normal((200, 3))
+    xr_da = xr.DataArray(
+        arr,
+        dims=["time", "space"],
+        coords={"time": np.arange(200) / 128.0, "space": ["Fp1", "Fp2", "C3"]},
+    )
+    data = cb.SignalData.from_xarray(xr_da, sampling_rate=128.0, subjectID="s1")
+    result = cb.DirectDirectedTransferFunction(var_order=2, n_freqs=16).apply(data)
+
+    assert list(result.data.coords["space_to"].values) == ["Fp1", "Fp2", "C3"]
+    assert list(result.data.coords["space_from"].values) == ["Fp1", "Fp2", "C3"]
+
+
 def test_requires_sampling_rate() -> None:
     arr = _causal_pair(n=100)
     no_sr = cb.SignalData.from_numpy(arr, dims=["time", "space"])
@@ -96,6 +114,14 @@ def test_rejects_single_channel() -> None:
     arr = rng.standard_normal((200, 1))
     data = _data(arr)
     with pytest.raises(ValueError, match="at least 2 channels"):
+        cb.DirectDirectedTransferFunction().apply(data)
+
+
+def test_rejects_3d_input() -> None:
+    rng = np.random.default_rng(0)
+    arr = rng.standard_normal((2, 200, 5))
+    data = cb.SignalData.from_numpy(arr, dims=["time", "space", "trial"], sampling_rate=128.0)
+    with pytest.raises(ValueError, match="2-D"):
         cb.DirectDirectedTransferFunction().apply(data)
 
 
