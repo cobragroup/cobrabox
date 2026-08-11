@@ -190,6 +190,14 @@ def test_bandpass_filter_bands_is_required(data: cb.SignalData) -> None:
         cb.bandpass_filter(data, bands=None)  # type: ignore[arg-type]
 
 
+def test_band_decomposition_bands_is_required(data: cb.SignalData) -> None:
+    """The ``bands`` parameter is required — no default, no None fallback."""
+    sig = inspect.signature(cb.band_decomposition)
+    assert sig.parameters["bands"].default is inspect.Parameter.empty
+    with pytest.raises(ValueError, match="bands"):
+        cb.band_decomposition(data, bands=None)  # type: ignore[arg-type]
+
+
 def test_splitter_returns_a_stream(data: cb.SignalData) -> None:
     windows = list(cb.sliding_window(data, window_size=64, step_size=32))
     assert len(windows) > 1
