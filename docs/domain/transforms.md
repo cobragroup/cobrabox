@@ -16,6 +16,16 @@ cb.AnalyticSignal(...).apply(data)  # composable, for pipelines
 
 **Tags:** [`hilbert`](../tags.md#tag-hilbert), [`instantaneous-phase`](../tags.md#tag-instantaneous-phase), [`envelope`](../tags.md#tag-envelope), [`instantaneous-frequency`](../tags.md#tag-instantaneous-frequency), [`time-frequency`](../tags.md#tag-time-frequency), [`eeg`](../tags.md#tag-eeg), [`fmri`](../tags.md#tag-fmri), [`io:preserves-time`](../tags.md#tag-io-preserves-time)
 
+### BandpassFilter
+Filter a signal to keep one or more frequency ranges.
+
+```python
+cb.bandpass_filter(data, ...)  # one-shot
+cb.BandpassFilter(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`filtering`](../tags.md#tag-filtering), [`butterworth`](../tags.md#tag-butterworth), [`preprocessing`](../tags.md#tag-preprocessing), [`eeg`](../tags.md#tag-eeg), [`io:preserves-time`](../tags.md#tag-io-preserves-time)
+
 ### FourierTransform
 Real-valued FFT along the time axis.
 
@@ -35,6 +45,16 @@ cb.InverseFourierTransform(...).apply(data)  # composable, for pipelines
 ```
 
 **Tags:** [`ifft`](../tags.md#tag-ifft), [`time-domain`](../tags.md#tag-time-domain), [`io:time-output`](../tags.md#tag-io-time-output), [`req:frequency-input`](../tags.md#tag-req-frequency-input)
+
+### Normalize
+Normalize data values along a dimension.
+
+```python
+cb.normalize(data, ...)  # one-shot
+cb.Normalize(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`normalization`](../tags.md#tag-normalization), [`preprocessing`](../tags.md#tag-preprocessing), [`scaling`](../tags.md#tag-scaling), [`io:preserves-shape`](../tags.md#tag-io-preserves-shape)
 
 ### NotchFilter
 Apply a notch filter to remove a specific frequency.

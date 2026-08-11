@@ -25,12 +25,17 @@ Auto-generated documentation for all feature classes.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.decompositions.BandDecomposition
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.spectral.BandPower
     options:
         show_root_heading: true
         show_source: true
 
-::: cobrabox.decompositions.BandpassFilter
+::: cobrabox.transforms.BandpassFilter
     options:
         show_root_heading: true
         show_source: true
@@ -61,6 +66,11 @@ Auto-generated documentation for all feature classes.
         show_source: true
 
 ::: cobrabox.connectivity.Covariance
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.connectivity.DirectDirectedTransferFunction
     options:
         show_root_heading: true
         show_source: true
@@ -115,6 +125,11 @@ Auto-generated documentation for all feature classes.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.connectivity.InwardStrength
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.infometrics.LempelZiv
     options:
         show_root_heading: true
@@ -155,7 +170,17 @@ Auto-generated documentation for all feature classes.
         show_root_heading: true
         show_source: true
 
+::: cobrabox.transforms.Normalize
+    options:
+        show_root_heading: true
+        show_source: true
+
 ::: cobrabox.transforms.NotchFilter
+    options:
+        show_root_heading: true
+        show_source: true
+
+::: cobrabox.connectivity.OutwardStrength
     options:
         show_root_heading: true
         show_source: true
