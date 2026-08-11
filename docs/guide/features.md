@@ -295,14 +295,38 @@ Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
 ### `BandpassFilter`
 
 ```python
-# Filter into the five standard EEG bands
-filtered = cb.BandpassFilter(bands="eeg").apply(data)
+# Keep a single frequency range (alpha)
+filtered = cb.BandpassFilter(bands=[[8, 12]]).apply(data)
 
-# Filter into specific bands only
-filtered = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+# Keep several ranges; output is the sum of the band-filtered signals
+filtered = cb.BandpassFilter(bands=[[1, 4], [8, 12]]).apply(data)
+
+# Custom filter order
+filtered = cb.BandpassFilter(bands=[[8, 12]], ord=4).apply(data)
+```
+
+Applies Butterworth bandpass filters to keep one or more frequency ranges and
+sums the filtered signals into a **single output** — no `band` dimension is
+added, so the output has the same shape as the input. When more than one range
+is given, the result is the sum of the individual band-filtered signals (a
+reconstruction of the signal from its selected frequency components).
+The ``bands`` parameter is a required list of ``[low_hz, high_hz]`` ranges.
+Requires ``sampling_rate`` to be set on the data.
+
+To instead keep each band *separately* along a new `band` dimension, use
+`BandDecomposition` (below).
+
+### `BandDecomposition`
+
+```python
+# Decompose into the five standard EEG bands
+decomp = cb.BandDecomposition(bands="eeg").apply(data)
+
+# Decompose into specific bands only
+decomp = cb.BandDecomposition(bands={"alpha": [8, 12]}).apply(data)
 
 # Custom filter order and keep original signal
-filtered = cb.BandpassFilter(bands="eeg", ord=4, keep_orig=True).apply(data)
+decomp = cb.BandDecomposition(bands="eeg", ord=4, keep_orig=True).apply(data)
 ```
 
 Applies Butterworth bandpass filters to separate the signal into frequency bands.

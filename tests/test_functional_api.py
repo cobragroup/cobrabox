@@ -51,7 +51,7 @@ def data() -> cb.SignalData:
 def test_the_split_is_what_we_expect() -> None:
     """Aggregators are the deliberate gap; everything else gets a function."""
     assert sorted(CLASS_ONLY) == ["ConcatAggregate", "MeanAggregate"]
-    assert len(FUNCTIONAL) == 45
+    assert len(FUNCTIONAL) == 46
 
 
 @pytest.mark.parametrize("name", FUNCTIONAL)
@@ -186,7 +186,7 @@ def test_bandpass_filter_bands_is_required(data: cb.SignalData) -> None:
     """The ``bands`` parameter is required — no default, no None fallback."""
     sig = inspect.signature(cb.bandpass_filter)
     assert sig.parameters["bands"].default is inspect.Parameter.empty
-    with pytest.raises(ValueError, match="bands cannot be None"):
+    with pytest.raises(ValueError, match="bands"):
         cb.bandpass_filter(data, bands=None)  # type: ignore[arg-type]
 
 
