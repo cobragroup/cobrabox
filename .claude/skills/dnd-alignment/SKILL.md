@@ -87,27 +87,32 @@ for each axis before committing to a score.
 
 | Score      | Meaning                              | Indicators                                                                                          |
 | ---------- | ------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| +1 Lawful  | **Actively imposes** structure       | Creates segments (windowing), hard threshold classification (IQR), named category ontology (frequency bands), strict published-protocol adherence |
+| +1 Lawful  | **Actively imposes** structure       | Creates segments (windowing), hard threshold classification (IQR), named category ontology (frequency bands), fixed basis (Fourier, dyadic wavelets), fitted model assumption (VAR), fixed bins or binarisation, strict published-protocol adherence |
 | 0 Neutral  | **Passively describes** existing patterns | Correlation/synchrony measures, spectral descriptions, statistical summaries — even with fixed formulas |
-| -1 Chaotic | Disrupts or ignores conventions      | `print` statements, missing validation, unpredictable output shape                                  |
+| -1 Chaotic | Disrupts or ignores conventions      | Randomisation (surrogates), data-adaptive heuristics with no fixed basis (EMD), `print` statements, missing validation, unpredictable output shape |
 
 > **Common trap:** A fixed, deterministic formula does **not** make a feature Lawful — almost all
 > signal processing is deterministic. Ask instead: does this feature *impose* structure onto the
 > data, or *describe* structure already present in it?
 >
 > Lawful examples: `SlidingWindow` (creates window segments), `BandPower` (names frequency
-> categories), `SpikeCount` (classifies by IQR rule).
+> categories), `SpikeCount` (classifies by IQR rule), `PartialDirectedCoherence` (imposes a VAR
+> model), `LempelZiv` (binarises at the mean).
 >
 > Neutral examples: `Coherence`, `PhaseLockingValue`, `Autocorrelation`, `Spectrogram`, `EnvelopeCorrelation`,
 > `PartialCorrelation` — all use precise formulas but measure existing patterns without imposing.
 
 #### Good axis rubric
 
+> **Common trap:** "describes faithfully" is not enough for Good — every measure describes.
+> Reducing a signal to a summary number is Neutral unless it isolates structure a naive
+> measure would miss.
+
 | Score     | Meaning                               | Indicators                                                                 |
 | --------- | ------------------------------------- | -------------------------------------------------------------------------- |
-| +1 Good   | Preserves or enhances signal meaning  | Increases interpretability, faithful to data, good metadata practice       |
-| 0 Neutral | Indifferent to meaning                | Mechanical reduction with no semantic intent (pure aggregation)            |
-| -1 Evil   | Discards or distorts signal meaning   | Selects extremes ruthlessly, drops metadata, lossy without documentation   |
+| +1 Good   | Preserves or enhances signal meaning  | Lossless or invertible (FFT, DWT, EMD, windowing), isolates real structure (removes confounds, zero-lag leakage, mains noise) |
+| 0 Neutral | Indifferent to meaning                | Lossy summary with no semantic intent: mean, std, line length, power without phase, node strength |
+| -1 Evil   | Discards or distorts signal meaning   | Selects extremes ruthlessly, binarises amplitude away, nets out opposing information, fabricates data |
 
 ### 4. Write one lore sentence
 
