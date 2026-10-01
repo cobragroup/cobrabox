@@ -86,13 +86,6 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "ll",
         "lore":  "Measures without judgement, in service of signal",
     },
-    "Dummy": {
-        "law":  -1,
-        "good":  0,
-        "label": "Chaotic Neutral",
-        "abbrev": "du",
-        "lore":  "Print statements, no validation — chaos without malice, just bad practice",
-    },
     "DiscreteWaveletTransform": {
         "law":   0,
         "good":  1,
@@ -170,21 +163,21 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "cd",
         "lore":  "Classifies channels by Leuchter's law — absolute and relative power united",
     },
-    "BandFilter": {
+    "BandpassFilter": {
         "law":   1,
         "good":  1,
         "label": "Lawful Good",
         "abbrev": "bf",
         "lore":  "Imposes the classical order of brain rhythms upon chaotic oscillations",
     },
-    "Bandpower": {
+    "BandPower": {
         "law":   1,
         "good":  1,
         "label": "Lawful Good",
         "abbrev": "bp",
         "lore":  "Integrates the spectrum with precision and purpose — a scholar of oscillations",
     },
-    "Hilbert": {
+    "AnalyticSignal": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
@@ -198,7 +191,7 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "co",
         "lore":  "Seeks channel connection without imposing structure — empathic, unbiased",
     },
-    "Autocorr": {
+    "Autocorrelation": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
@@ -219,19 +212,12 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "ec",
         "lore":  "Exorcises zero-lag phantoms, revealing genuine kinship between channels",
     },
-    "FractalDimHiguchi": {
+    "FractalDimension": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
-        "abbrev": "fh",
+        "abbrev": "fd",
         "lore":  "Reads the roughness of the signal through the lens of fractal geometry",
-    },
-    "FractalDimKatz": {
-        "law":   1,
-        "good":  0,
-        "label": "Lawful Neutral",
-        "abbrev": "fk",
-        "lore":  "Obeys the law of the fixed formula, discards everything else",
     },
     "FourierTransformSurrogates": {
         "law":   1,
@@ -247,13 +233,6 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "gc",
         "lore":  "Tests if the past of one channel predicts another — honest temporal judge",
     },
-    "GrangerCausalityMatrix": {
-        "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
-        "abbrev": "gm",
-        "lore":  "Maps the web of temporal influence — thorough and without prejudice",
-    },
     "EpileptogenicityIndex": {
         "law":   1,
         "good":  0,
@@ -268,26 +247,12 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "pc",
         "lore":  "Controls for the guilty bystanders, exonerating the true connection",
     },
-    "PartialCorrelationMatrix": {
-        "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
-        "abbrev": "pm",
-        "lore":  "Maps every conditional bond between channels — thorough and without prejudice",
-    },
     "PhaseLockingValue": {
         "law":   0,
         "good":  1,
         "label": "Neutral Good",
         "abbrev": "pl",
         "lore":  "Listens for rhythmic sympathy between channels — neither judge nor jailer",
-    },
-    "PhaseLockingValueMatrix": {
-        "law":   0,
-        "good":  1,
-        "label": "Neutral Good",
-        "abbrev": "pv",
-        "lore":  "Charts the web of phase consent, pair by tireless pair",
     },
     "PartialDirectedCoherence": {
         "law":   0,
@@ -319,6 +284,69 @@ ALIGNMENTS: dict[str, dict] = {
             "Imposes the rigid geometry of linear subspaces — "
             "order from chaos, without malice"
         ),
+    },
+    "DirectDirectedTransferFunction": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "dd",
+        "lore":  "Strips away the middlemen, naming only who speaks directly to whom",
+    },
+    "DirectedTransferFunction": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "dt",
+        "lore":  "Traces every whisper of influence, direct or relayed, without prejudice",
+    },
+    "FourierTransform": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "ft",
+        "lore":  "Translates time into frequency, losing not a single coefficient",
+    },
+    "InverseFourierTransform": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "if",
+        "lore":  "Returns the frequencies home to time, faithful to every phase",
+    },
+    "InwardStrength": {
+        "law":   0,
+        "good":  0,
+        "label": "True Neutral",
+        "abbrev": "is",
+        "lore":  "Tallies what each channel receives, then forgets from whom",
+    },
+    "OutwardStrength": {
+        "law":   0,
+        "good":  0,
+        "label": "True Neutral",
+        "abbrev": "os",
+        "lore":  "Tallies what each channel sends, then forgets to whom",
+    },
+    "Normalize": {
+        "law":   1,
+        "good":  0,
+        "label": "Lawful Neutral",
+        "abbrev": "no",
+        "lore":  "Forces every slice onto the same scale, indifferent to its magnitude",
+    },
+    "NotchFilter": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "nf",
+        "lore":  "Silences the mains hum with surgical precision, sparing all else",
+    },
+    "PowerSpectralDensity": {
+        "law":   0,
+        "good":  1,
+        "label": "Neutral Good",
+        "abbrev": "ps",
+        "lore":  "Weighs the power of each frequency honestly, phase set aside",
     },
 }
 # fmt: on

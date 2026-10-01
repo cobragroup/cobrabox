@@ -12,7 +12,8 @@ Determine the D&D 9-alignment of a cobrabox feature and append it to the canonic
 ## Invocation
 
 ```text
-/dnd-alignment <FeatureName>
+/dnd-alignment <FeatureName>   # rank one feature
+/dnd-alignment                 # sync: rank every unranked feature, drop stale entries
 ```
 
 ---
@@ -53,15 +54,29 @@ EVIL  (-1)   Lawful Evil       Neutral Evil       Chaotic Evil
 
 ## Procedure
 
+### 0. Check drift
+
+```bash
+uv run pytest tests/test_egg_alignments.py --no-cov
+```
+
+The assertion diff lists registered features missing from the table and table
+entries with no matching feature. With no arguments, run steps 1–7 for every
+missing feature and delete every stale entry.
+
 ### 1. Read the alignment table
 
 Read `src/cobrabox/egg/alignments.py`. Check whether the feature is already present
 in `ALIGNMENTS`. If it is, print its existing entry and stop — do not re-rank.
 
+If a stale entry covers the same algorithm under an old name (a rename, or a
+merge of several classes into one), rename that key instead of re-ranking.
+
 ### 2. Read the feature file
 
-Read `src/cobrabox/features/<feature_snake_case>.py` to understand what the feature
-actually does before assigning an alignment.
+Find the file with `grep -rl 'class <FeatureName>(' src/cobrabox/` (features live in
+`src/cobrabox/<domain>/_<feature_snake_case>.py`). Read it to understand what the
+feature actually does before assigning an alignment.
 
 ### 3. Assign scores
 
@@ -80,10 +95,10 @@ for each axis before committing to a score.
 > signal processing is deterministic. Ask instead: does this feature *impose* structure onto the
 > data, or *describe* structure already present in it?
 >
-> Lawful examples: `SlidingWindow` (creates window segments), `Bandpower` (names frequency
-> categories), `SpikesCalc` (classifies by IQR rule).
+> Lawful examples: `SlidingWindow` (creates window segments), `BandPower` (names frequency
+> categories), `SpikeCount` (classifies by IQR rule).
 >
-> Neutral examples: `Coherence`, `PLV`, `Autocorr`, `Spectrogram`, `EnvelopeCorrelation`,
+> Neutral examples: `Coherence`, `PhaseLockingValue`, `Autocorrelation`, `Spectrogram`, `EnvelopeCorrelation`,
 > `PartialCorrelation` — all use precise formulas but measure existing patterns without imposing.
 
 #### Good axis rubric
@@ -113,23 +128,25 @@ following the existing format exactly:
 
 ```python
 "FeatureName": {
-    "law":    <+1|0|-1>,
-    "good":   <+1|0|-1>,
-    "label":  "<Alignment Label>",
+    "law":   <1|0|-1>,
+    "good":  <1|0|-1>,
+    "label": "<Alignment Label>",
     "abbrev": "<2-char>",
-    "lore":   "<lore sentence>",
+    "lore":  "<lore sentence>",
 },
 ```
 
 Place it alphabetically by key, or at the end if alphabetical order is not obvious.
 
-### 7. Run the roster to confirm
+### 7. Run the roster and drift test to confirm
 
 ```bash
 uv run python -m cobrabox.egg.dnd_alignment --roster
+uv run pytest tests/test_egg_alignments.py --no-cov
 ```
 
-Confirm the new feature appears correctly in the output.
+Confirm the new feature appears correctly in the output. The test passes once
+every registered feature is ranked.
 
 ### 8. Report to conversation
 
