@@ -80,8 +80,8 @@ Items that carry identifying metadata can also be looked up by name. A label joi
 
 ```python
 ds = cb.load_dataset("dummy_chain")
-ds.keys()        # ('sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05')
-ds["sub-02"]     # the matching item
+ds.keys()  # ('sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05')
+ds["sub-02"]  # the matching item
 ```
 
 Labels are an index derived from the items, not a replacement for positional
@@ -110,11 +110,11 @@ subject `ID1`, two seizures, and three replicates:
 
 ```python
 sw = cb.load_dataset("realistic_swiss")
-sw.keys()            # ('ID1/sz13/1', 'ID1/sz13/2', 'ID1/sz7/3')
+sw.keys()  # ('ID1/sz13/1', 'ID1/sz13/2', 'ID1/sz7/3')
 
-sw["ID1/sz13/2"]     # a SignalData — exact match
+sw["ID1/sz13/2"]  # a SignalData — exact match
 len(sw["ID1/sz13"])  # 2  → both replicates of that seizure
-len(sw["ID1"])       # 3  → everything for that subject
+len(sw["ID1"])  # 3  → everything for that subject
 ```
 
 This matters most on the long-monitoring datasets. Zurich subject `sub-01` has 39
@@ -136,9 +136,9 @@ ds["sub-99"]
 ### Discovering what is there
 
 ```python
-ds.keys()              # labels available for lookup
-ds.fields()            # every name filter() and groupby() accept
-ds.unique("condition") # the distinct values of one field
+ds.keys()  # labels available for lookup
+ds.fields()  # every name filter() and groupby() accept
+ds.unique("condition")  # the distinct values of one field
 ```
 
 `fields()` includes the three standard metadata fields plus whatever the items
@@ -188,8 +188,8 @@ print(len(empty))  # 0
 A criterion may also be a list, tuple, or set, matching any of the values:
 
 ```python
-ds.filter(subjectID=["S1", "S2"])        # either subject
-ds.filter(condition={"pre", "post"})     # either condition
+ds.filter(subjectID=["S1", "S2"])  # either subject
+ds.filter(condition={"pre", "post"})  # either condition
 ```
 
 Anything in an item's `extra` dict is filterable too — `fields()` lists what is
@@ -208,7 +208,7 @@ matching nothing, so misspellings surface immediately.
 you expect a single item — and want a miss to be an error — use `one()`:
 
 ```python
-sig = ds.one(subjectID="milan", condition="rest")   # the Data itself
+sig = ds.one(subjectID="milan", condition="rest")  # the Data itself
 ```
 
 It raises `ValueError` if nothing matches, and also if several do, so it can't
