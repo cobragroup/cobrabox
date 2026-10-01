@@ -12,7 +12,8 @@ Determine the D&D 9-alignment of a cobrabox feature and append it to the canonic
 ## Invocation
 
 ```text
-/dnd-alignment <FeatureName>
+/dnd-alignment <FeatureName>   # rank one feature
+/dnd-alignment                 # sync: rank every unranked feature, drop stale entries
 ```
 
 ---
@@ -53,15 +54,29 @@ EVIL  (-1)   Lawful Evil       Neutral Evil       Chaotic Evil
 
 ## Procedure
 
+### 0. Check drift
+
+```bash
+uv run pytest tests/test_egg_alignments.py --no-cov
+```
+
+The assertion diff lists registered features missing from the table and table
+entries with no matching feature. With no arguments, run steps 1–7 for every
+missing feature and delete every stale entry.
+
 ### 1. Read the alignment table
 
 Read `src/cobrabox/egg/alignments.py`. Check whether the feature is already present
 in `ALIGNMENTS`. If it is, print its existing entry and stop — do not re-rank.
 
+If a stale entry covers the same algorithm under an old name (a rename, or a
+merge of several classes into one), rename that key instead of re-ranking.
+
 ### 2. Read the feature file
 
-Read `src/cobrabox/features/<feature_snake_case>.py` to understand what the feature
-actually does before assigning an alignment.
+Find the file with `grep -rl 'class <FeatureName>(' src/cobrabox/` (features live in
+`src/cobrabox/<domain>/_<feature_snake_case>.py`). Read it to understand what the
+feature actually does before assigning an alignment.
 
 ### 3. Assign scores
 
@@ -72,27 +87,32 @@ for each axis before committing to a score.
 
 | Score      | Meaning                              | Indicators                                                                                          |
 | ---------- | ------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| +1 Lawful  | **Actively imposes** structure       | Creates segments (windowing), hard threshold classification (IQR), named category ontology (frequency bands), strict published-protocol adherence |
+| +1 Lawful  | **Actively imposes** structure       | Creates segments (windowing), hard threshold classification (IQR), named category ontology (frequency bands), fixed basis (Fourier, dyadic wavelets), fitted model assumption (VAR), fixed bins or binarisation, strict published-protocol adherence |
 | 0 Neutral  | **Passively describes** existing patterns | Correlation/synchrony measures, spectral descriptions, statistical summaries — even with fixed formulas |
-| -1 Chaotic | Disrupts or ignores conventions      | `print` statements, missing validation, unpredictable output shape                                  |
+| -1 Chaotic | Disrupts or ignores conventions      | Randomisation (surrogates), data-adaptive heuristics with no fixed basis (EMD), `print` statements, missing validation, unpredictable output shape |
 
 > **Common trap:** A fixed, deterministic formula does **not** make a feature Lawful — almost all
 > signal processing is deterministic. Ask instead: does this feature *impose* structure onto the
 > data, or *describe* structure already present in it?
 >
-> Lawful examples: `SlidingWindow` (creates window segments), `Bandpower` (names frequency
-> categories), `SpikesCalc` (classifies by IQR rule).
+> Lawful examples: `SlidingWindow` (creates window segments), `BandPower` (names frequency
+> categories), `SpikeCount` (classifies by IQR rule), `PartialDirectedCoherence` (imposes a VAR
+> model), `LempelZiv` (binarises at the mean).
 >
-> Neutral examples: `Coherence`, `PLV`, `Autocorr`, `Spectrogram`, `EnvelopeCorrelation`,
+> Neutral examples: `Coherence`, `PhaseLockingValue`, `Autocorrelation`, `Spectrogram`, `EnvelopeCorrelation`,
 > `PartialCorrelation` — all use precise formulas but measure existing patterns without imposing.
 
 #### Good axis rubric
 
+> **Common trap:** "describes faithfully" is not enough for Good — every measure describes.
+> Reducing a signal to a summary number is Neutral unless it isolates structure a naive
+> measure would miss.
+
 | Score     | Meaning                               | Indicators                                                                 |
 | --------- | ------------------------------------- | -------------------------------------------------------------------------- |
-| +1 Good   | Preserves or enhances signal meaning  | Increases interpretability, faithful to data, good metadata practice       |
-| 0 Neutral | Indifferent to meaning                | Mechanical reduction with no semantic intent (pure aggregation)            |
-| -1 Evil   | Discards or distorts signal meaning   | Selects extremes ruthlessly, drops metadata, lossy without documentation   |
+| +1 Good   | Preserves or enhances signal meaning  | Lossless or invertible (FFT, DWT, EMD, windowing), isolates real structure (removes confounds, zero-lag leakage, mains noise) |
+| 0 Neutral | Indifferent to meaning                | Lossy summary with no semantic intent: mean, std, line length, power without phase, node strength |
+| -1 Evil   | Discards or distorts signal meaning   | Selects extremes ruthlessly, binarises amplitude away, nets out opposing information, fabricates data |
 
 ### 4. Write one lore sentence
 
@@ -113,23 +133,25 @@ following the existing format exactly:
 
 ```python
 "FeatureName": {
-    "law":    <+1|0|-1>,
-    "good":   <+1|0|-1>,
-    "label":  "<Alignment Label>",
+    "law":   <1|0|-1>,
+    "good":  <1|0|-1>,
+    "label": "<Alignment Label>",
     "abbrev": "<2-char>",
-    "lore":   "<lore sentence>",
+    "lore":  "<lore sentence>",
 },
 ```
 
 Place it alphabetically by key, or at the end if alphabetical order is not obvious.
 
-### 7. Run the roster to confirm
+### 7. Run the roster and drift test to confirm
 
 ```bash
 uv run python -m cobrabox.egg.dnd_alignment --roster
+uv run pytest tests/test_egg_alignments.py --no-cov
 ```
 
-Confirm the new feature appears correctly in the output.
+Confirm the new feature appears correctly in the output. The test passes once
+every registered feature is ranked.
 
 ### 8. Report to conversation
 
