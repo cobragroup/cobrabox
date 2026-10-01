@@ -14,6 +14,8 @@ import pytest
 from cobrabox import datasets
 from cobrabox.dataset import Dataset
 from cobrabox.dataset_loader import (
+    _run_from_bids_stem,
+    _run_from_suffix,
     _sampling_rate_from_info,
     _sidecar_json_for_csv,
     load_noise_dummy,
@@ -231,6 +233,139 @@ def test_load_realistic_swiss_ignores_malformed_json_sidecar(tmp_path: Path) -> 
     out = load_realistic_swiss(repo_root=tmp_path)
     assert len(out) == 1
     assert out[0].sampling_rate is None
+
+
+# ----------------------------------------------------------------------
+# Metadata derived from filenames
+# ----------------------------------------------------------------------
+
+
+def test_structured_dummy_labels_subjects_and_groups_by_topology(tmp_path: Path) -> None:
+    """Each replicate becomes a subject; the VAR topology becomes the groupID."""
+    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
+    struct_dir.mkdir(parents=True)
+    for n in (1, 2):
+        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+            struct_dir / f"dummy_struct_VAR_star_{n}.csv.xz", index=False, compression="xz"
+        )
+
+    out = load_structured_dummy("dummy_star", repo_root=tmp_path)
+
+    assert out.keys() == ("sub-01", "sub-02")
+    assert {d.groupID for d in out} == {"star"}
+    assert out["sub-02"].subjectID == "sub-02"
+
+
+def test_noise_dummy_labels_subjects(tmp_path: Path) -> None:
+    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
+    noise_dir.mkdir(parents=True)
+    for n in (1, 2):
+        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+            noise_dir / f"dummy_noise_simulated_data_{n}.csv.xz", index=False, compression="xz"
+        )
+
+    out = load_noise_dummy(repo_root=tmp_path)
+
+    assert out.keys() == ("sub-01", "sub-02")
+    assert {d.groupID for d in out} == {"noise"}
+
+
+def test_realistic_swiss_takes_subject_and_seizure_from_filename(tmp_path: Path) -> None:
+    """Two replicates of one seizure share a label; a different seizure gets its own."""
+    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
+    realistic_dir.mkdir(parents=True)
+    for name in (
+        "fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv.xz",
+        "fit_Swiss_VAR_ID1_sz13_simulated_data_2.csv.xz",
+        "fit_Swiss_VAR_ID1_sz7_simulated_data_3.csv.xz",
+    ):
+        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+            realistic_dir / name, index=False, compression="xz"
+        )
+
+    out = load_realistic_swiss(repo_root=tmp_path)
+
+    assert len(out) == 3
+    assert {d.subjectID for d in out} == {"ID1"}
+    assert out.unique("condition") == ("sz13", "sz7")
+    assert out.unique("runID") == ("1", "2", "3")
+
+
+def test_realistic_swiss_leaves_metadata_unset_for_unparsable_names(tmp_path: Path) -> None:
+    """A filename that does not match the convention yields no subject or condition."""
+    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
+    realistic_dir.mkdir(parents=True)
+    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+        realistic_dir / "fit_Swiss_VAR_ID1_unexpected.csv.xz", index=False, compression="xz"
+    )
+
+    out = load_realistic_swiss(repo_root=tmp_path)
+
+    assert out[0].subjectID is None
+    assert out[0].condition is None
+    assert out.keys() == ()
+
+
+@pytest.mark.parametrize(
+    ("stem", "expected"),
+    [
+        ("sub-01_ses-interictalsleep_run-03_ieeg", "03"),  # zurich_ieeg
+        ("sub-Detroit001_ses-01_task-sleep_ieeg", None),  # sleep_ieeg: one per subject
+        ("sub-01_ses-01", None),  # BIDS without a run entity
+    ],
+)
+def test_run_from_bids_stem(stem: str, expected: str | None) -> None:
+    assert _run_from_bids_stem(stem) == expected
+
+
+@pytest.mark.parametrize(
+    ("stem", "separator", "expected"),
+    [
+        ("chb01_03", "_", "03"),  # chb_mit
+        ("PN00-1", "-", "1"),  # siena_eeg
+        ("ID01_7h", "_", "7h"),  # swiss_eeg_long: hourly segment
+        ("fit_Swiss_VAR_ID1_sz13_simulated_data_2", "_", "2"),  # realistic_swiss
+        ("single", "_", None),  # no separator at all
+        ("_leading", "_", None),  # separator with nothing before it
+    ],
+)
+def test_run_from_suffix(stem: str, separator: str, expected: str | None) -> None:
+    assert _run_from_suffix(stem, separator) == expected
+
+
+def test_realistic_swiss_run_disambiguates_repeated_seizures(tmp_path: Path) -> None:
+    """With runID, the two sz13 replicates stop sharing a label."""
+    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
+    realistic_dir.mkdir(parents=True)
+    for name in (
+        "fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv.xz",
+        "fit_Swiss_VAR_ID1_sz13_simulated_data_2.csv.xz",
+        "fit_Swiss_VAR_ID1_sz7_simulated_data_3.csv.xz",
+    ):
+        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+            realistic_dir / name, index=False, compression="xz"
+        )
+
+    out = load_realistic_swiss(repo_root=tmp_path)
+
+    assert out.keys() == ("ID1/sz13/1", "ID1/sz13/2", "ID1/sz7/3")
+    assert out.one(subjectID="ID1", condition="sz13", runID="2").runID == "2"
+    # the coarser names still resolve, via prefix match
+    assert len(out["ID1/sz13"]) == 2
+    assert len(out["ID1"]) == 3
+
+
+def test_subject_label_falls_back_to_non_numeric_suffix(tmp_path: Path) -> None:
+    """A non-numeric trailing token is used verbatim rather than crashing on int()."""
+    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
+    noise_dir.mkdir(parents=True)
+    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
+        noise_dir / "dummy_noise_simulated_data_pilot.csv.xz", index=False, compression="xz"
+    )
+
+    out = load_noise_dummy(repo_root=tmp_path)
+
+    assert out.keys() == ("sub-pilot",)
 
 
 @pytest.mark.slow

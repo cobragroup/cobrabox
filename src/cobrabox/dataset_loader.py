@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import warnings
 import zipfile
 from collections.abc import Callable, Sequence
@@ -44,7 +45,50 @@ def _sampling_rate_from_info(info: dict) -> float | None:
         raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
 
 
-def _load_one_csv_xz(path: Path, identifier: str) -> SignalData | None:
+def _run_from_bids_stem(stem: str) -> str | None:
+    """Extract the BIDS ``run-`` entity from a filename stem, if present.
+
+    ``sub-01_ses-interictalsleep_run-03_ieeg`` -> ``"03"``.
+    """
+    match = re.search(r"_run-([A-Za-z0-9]+)", stem)
+    return match[1] if match else None
+
+
+def _run_from_suffix(stem: str, separator: str = "_") -> str | None:
+    """Extract the trailing token a dataset uses to number a subject's recordings.
+
+    ``chb01_03`` -> ``"03"``; ``PN00-1`` (separator ``"-"``) -> ``"1"``;
+    ``ID01_7h`` -> ``"7h"``. Returns None when the stem has no such token, which
+    is the case for datasets recording each subject exactly once.
+
+    These tokens are not always runs in the strict BIDS sense — for long-term
+    monitoring they index consecutive segments of one continuous recording — but
+    they are what distinguishes recordings of the same subject.
+    """
+    head, found, tail = stem.rpartition(separator)
+    return tail if found and head else None
+
+
+def _subject_from_index(path: Path) -> str:
+    """Build a subject label from the trailing replicate number of a filename.
+
+    ``dummy_struct_VAR_chain_3.csv.xz`` -> ``"sub-03"``. Each synthetic replicate
+    stands in for one subject. The ``sub-`` prefix keeps labels clearly distinct
+    from positions, so ``ds[0]`` and ``ds["sub-01"]`` can never be confused.
+    """
+    tail = path.name.split(".", 1)[0].rsplit("_", 1)[-1]
+    return f"sub-{int(tail):02d}" if tail.isdigit() else f"sub-{tail}"
+
+
+def _load_one_csv_xz(
+    path: Path,
+    identifier: str,
+    *,
+    subjectID: str | None = None,
+    groupID: str | None = None,
+    condition: str | None = None,
+    runID: str | None = None,
+) -> SignalData | None:
     """Load a single .csv.xz file into a SignalData, or return None if empty."""
     df = pd.read_csv(path, compression="xz")
     if df.empty:
@@ -73,7 +117,15 @@ def _load_one_csv_xz(path: Path, identifier: str) -> SignalData | None:
         except Exception:
             pass
     sampling_rate = _sampling_rate_from_info(info) if info else None
-    return SignalData.from_xarray(da, sampling_rate=sampling_rate, extra=extra or None)
+    return SignalData.from_xarray(
+        da,
+        sampling_rate=sampling_rate,
+        subjectID=subjectID,
+        groupID=groupID,
+        condition=condition,
+        runID=runID,
+        extra=extra or None,
+    )
 
 
 def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dataset[SignalData]:
@@ -90,7 +142,17 @@ def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dat
             f"(expected: dummy_struct_VAR_{variant}_*.csv.xz)."
         )
 
-    items = [item for path in candidates if (item := _load_one_csv_xz(path, identifier))]
+    # Each replicate is one subject; the VAR topology is shared by the whole set, so
+    # it becomes the groupID — concatenating two topologies then groups cleanly.
+    items = [
+        item
+        for path in candidates
+        if (
+            item := _load_one_csv_xz(
+                path, identifier, subjectID=_subject_from_index(path), groupID=variant
+            )
+        )
+    ]
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return Dataset(items)
@@ -108,7 +170,15 @@ def load_noise_dummy(
     if not candidates:
         raise FileNotFoundError(f"No .csv.xz files found for '{identifier}' in {noise_dir}.")
 
-    items = [item for path in candidates if (item := _load_one_csv_xz(path, identifier))]
+    items = [
+        item
+        for path in candidates
+        if (
+            item := _load_one_csv_xz(
+                path, identifier, subjectID=_subject_from_index(path), groupID="noise"
+            )
+        )
+    ]
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return Dataset(items)
@@ -129,7 +199,23 @@ def load_realistic_swiss(
             "matching pattern 'fit_Swiss_VAR_ID1_*.csv.xz'."
         )
 
-    items = [item for path in candidates if (item := _load_one_csv_xz(path, identifier))]
+    # Filenames carry the source subject and the seizure the VAR was fit to, e.g.
+    # fit_Swiss_VAR_ID1_sz13_simulated_data_2 -> subject ID1, seizure sz13. Two
+    # replicates share sz13, so this dataset deliberately has a repeated label.
+    items = []
+    for path in candidates:
+        match = re.match(r"fit_Swiss_VAR_(?P<subject>[^_]+)_(?P<seizure>sz\d+)_", path.name)
+        item = _load_one_csv_xz(
+            path,
+            identifier,
+            subjectID=match["subject"] if match else None,
+            condition=match["seizure"] if match else None,
+            # Tied to the same match: a name that does not follow the convention
+            # gets no metadata at all, rather than a bare run with no subject.
+            runID=_run_from_suffix(path.name.split(".", 1)[0]) if match else None,
+        )
+        if item:
+            items.append(item)
     if not items:
         raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
     return Dataset(items)
@@ -258,6 +344,7 @@ def _load_swiss_eeg_long(
     items: list[SignalData] = []
     for path in mat_paths:
         subject_id = path.stem.rsplit("_", 1)[0]  # "ID01_1h" -> "ID01"
+        run_id = _run_from_suffix(path.stem)  # "ID01_1h" -> "1h"
 
         if subject_id not in fs_cache:
             fs_cache[subject_id] = _load_swez_sampling_rate(dataset_dir, subject_id)
@@ -294,7 +381,11 @@ def _load_swiss_eeg_long(
             coords={"time": time, "space": channels},
             attrs={"identifier": "swiss_eeg_long", "source_file": path.name},
         )
-        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, subjectID=subject_id))
+        items.append(
+            SignalData.from_xarray(
+                da, sampling_rate=sampling_rate, subjectID=subject_id, runID=run_id
+            )
+        )
 
     if not items:
         raise ValueError("All swiss_eeg_long files were empty or unparsable.")
@@ -396,6 +487,7 @@ def _load_edf_dataset(
     identifier: str,
     subject_key_fn: Callable[[str], str],
     subset: Sequence[str] | None,
+    run_key_fn: Callable[[str], str | None] = _run_from_bids_stem,
 ) -> Dataset[SignalData]:
     """Shared EDF loading logic for scalp EEG datasets.
 
@@ -408,6 +500,8 @@ def _load_edf_dataset(
         identifier: Dataset identifier string (used in error messages and attrs).
         subject_key_fn: Maps a file stem to a subject ID string.
         subset: If given, only load files whose subject ID is in this list.
+        run_key_fn: Maps a file stem to a run ID distinguishing recordings of the
+            same subject, or None when the dataset records each subject once.
     """
     try:
         import mne
@@ -428,6 +522,7 @@ def _load_edf_dataset(
     items: list[SignalData] = []
     for path in edf_paths:
         subject_id = subject_key_fn(path.stem)
+        run_id = run_key_fn(path.stem)
         try:
             raw = mne.io.read_raw_edf(str(path), preload=True, verbose=False)
         except Exception:
@@ -443,7 +538,9 @@ def _load_edf_dataset(
             coords={"time": time, "space": list(raw.ch_names)},
             attrs={"identifier": identifier, "source_file": path.name},
         )
-        items.append(SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id))
+        items.append(
+            SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id, runID=run_id)
+        )
 
     if not items:
         raise ValueError(f"All {identifier!r} files were empty or unparsable.")
@@ -467,6 +564,7 @@ def _load_chb_mit(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dat
         identifier="chb_mit",
         subject_key_fn=lambda stem: stem.split("_", 1)[0],
         subset=subset,
+        run_key_fn=lambda stem: _run_from_suffix(stem, "_"),
     )
 
 
@@ -487,6 +585,7 @@ def _load_siena_eeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> D
         identifier="siena_eeg",
         subject_key_fn=lambda stem: stem.split("-", 1)[0],
         subset=subset,
+        run_key_fn=lambda stem: _run_from_suffix(stem, "-"),
     )
 
 
@@ -564,6 +663,7 @@ def _load_zurich_ieeg(
     items: list[SignalData] = []
     for path in vhdr_paths:
         subject_id = path.stem.split("_", 1)[0]
+        run_id = _run_from_bids_stem(path.stem)
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message=r".*annotation.*outside.*data range")
@@ -588,7 +688,9 @@ def _load_zurich_ieeg(
             "all_channels": _ZURICH_ALL_CHANNELS_PER_SUBJECT.get(subject_id, []),
         }
         items.append(
-            SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id, extra=extra)
+            SignalData.from_xarray(
+                da, sampling_rate=fs, subjectID=subject_id, runID=run_id, extra=extra
+            )
         )
 
     if not items:
