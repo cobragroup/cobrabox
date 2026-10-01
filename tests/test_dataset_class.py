@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cobrabox.data import Data
+from cobrabox.data import METADATA_FIELDS, Data
 from cobrabox.dataset import Dataset
 
 
@@ -179,7 +179,7 @@ def test_dataset_add_non_dataset_returns_not_implemented() -> None:
 
 def test_dataset_groupby_invalid_attr_raises() -> None:
     ds = Dataset([_make_data()])
-    with pytest.raises(ValueError, match="attr must be one of"):
+    with pytest.raises(ValueError, match="Unknown field"):
         ds.groupby("history")  # type: ignore[arg-type]
 
 
@@ -208,3 +208,193 @@ def test_dataset_importable_from_cobrabox() -> None:
     d = Data(da)
     ds = cb.Dataset([d])
     assert len(ds) == 1
+
+
+# ----------------------------------------------------------------------
+# Label-based access
+# ----------------------------------------------------------------------
+
+
+def _labelled(subjectID: str, condition: str | None = None, **extra: object) -> Data:
+    import xarray as xr
+
+    da = xr.DataArray(np.zeros((3, 10)), dims=["space", "time"])
+    return Data(da, subjectID=subjectID, condition=condition, extra=extra or None)
+
+
+def test_keys_lists_subject_labels() -> None:
+    ds = Dataset([_labelled("milan"), _labelled("paris")])
+    assert ds.keys() == ("milan", "paris")
+
+
+def test_keys_are_composite_when_condition_present() -> None:
+    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")])
+    assert ds.keys() == ("milan/pre", "milan/rest")
+
+
+def test_keys_empty_when_items_carry_no_metadata() -> None:
+    assert Dataset([_make_data(), _make_data()]).keys() == ()
+
+
+def test_getitem_by_label_returns_the_item() -> None:
+    milan = _labelled("milan")
+    ds = Dataset([_labelled("paris"), milan])
+    assert ds["milan"] is milan
+
+
+def test_getitem_by_label_resolves_same_item_as_position() -> None:
+    ds = Dataset([_labelled("paris"), _labelled("milan")])
+    assert ds[1] is ds["milan"]
+
+
+def test_getitem_by_duplicate_label_returns_all_matches() -> None:
+    ds = Dataset([_labelled("ID01"), _labelled("ID01"), _labelled("ID02")])
+    matches = ds["ID01"]
+    assert isinstance(matches, Dataset)
+    assert len(matches) == 2
+
+
+def test_getitem_unknown_label_lists_available_ones() -> None:
+    ds = Dataset([_labelled("milan"), _labelled("paris")])
+    with pytest.raises(KeyError, match="milan, paris"):
+        ds["milna"]
+
+
+def test_getitem_unknown_label_explains_when_dataset_is_unlabelled() -> None:
+    ds = Dataset([_make_data()])
+    with pytest.raises(KeyError, match="no labels"):
+        ds["milan"]
+
+
+def test_getitem_int_still_works_alongside_labels() -> None:
+    ds = Dataset([_labelled("milan"), _labelled("paris")])
+    assert ds[0].subjectID == "milan"
+    assert isinstance(ds[0:2], Dataset)
+
+
+def test_integer_like_labels_do_not_collide_with_positions() -> None:
+    ds = Dataset([_labelled("2"), _labelled("0")])
+    assert ds[0].subjectID == "2"  # positional
+    assert ds["0"].subjectID == "0"  # labelled
+
+
+# ----------------------------------------------------------------------
+# Discovery helpers
+# ----------------------------------------------------------------------
+
+
+def test_fields_includes_metadata_and_extra_keys() -> None:
+    ds = Dataset([_labelled("milan", ilae=2)])
+    assert ds.fields() == (*METADATA_FIELDS, "ilae")
+
+
+def test_fields_accepts_every_metadata_field_data_defines() -> None:
+    """Dataset's filterable fields stay in step with Data's — one list, not two."""
+    assert set(METADATA_FIELDS) <= set(Dataset([_labelled("milan")]).fields())
+
+
+def test_unique_returns_distinct_values_in_order() -> None:
+    ds = Dataset([_labelled("a", "pre"), _labelled("b", "rest"), _labelled("c", "pre")])
+    assert ds.unique("condition") == ("pre", "rest")
+
+
+def test_unique_handles_unhashable_extra_values() -> None:
+    ds = Dataset([_labelled("a", channels=["c1", "c2"]), _labelled("b", channels=["c1", "c2"])])
+    assert ds.unique("channels") == ("['c1', 'c2']",)
+
+
+def test_unique_rejects_unknown_field() -> None:
+    with pytest.raises(ValueError, match="Unknown field"):
+        Dataset([_labelled("a")]).unique("nope")
+
+
+def test_describe_rows_mention_labels_and_filterable_fields() -> None:
+    ds = Dataset([_labelled("milan", "rest", ilae=2)])
+    text = str(ds)
+    assert "milan/rest" in text
+    assert "ilae" in text
+
+
+def test_describe_says_positional_only_when_unlabelled() -> None:
+    text = str(Dataset([_make_data()]))
+    assert "positional access only" in text
+    assert "not reachable by filter on subjectID, groupID, condition" in text
+
+
+def test_describe_only_names_identity_fields_that_are_actually_unset() -> None:
+    # groupID is set, so it stays filterable and must not be listed as unreachable.
+    ds = Dataset([_make_data(groupID="control")])
+    assert "not reachable by filter on subjectID, condition" in str(ds)
+
+
+def test_describe_elides_the_tail_of_a_long_label_list() -> None:
+    ds = Dataset([_labelled(f"S{i:02d}") for i in range(25)])
+    text = str(ds)
+    assert "S19" in text  # 20th label, the last one shown
+    assert "S20" not in text
+    assert "(+5 more)" in text
+
+
+# ----------------------------------------------------------------------
+# filter / one / groupby
+# ----------------------------------------------------------------------
+
+
+def test_filter_accepts_a_list_of_values() -> None:
+    ds = Dataset([_labelled("a"), _labelled("b"), _labelled("c")])
+    assert len(ds.filter(subjectID=["a", "c"])) == 2
+
+
+def test_filter_matches_against_extra() -> None:
+    ds = Dataset([_labelled("a", ilae=2), _labelled("b", ilae=4)])
+    assert ds.filter(ilae=2).keys() == ("a",)
+
+
+def test_filter_rejects_unknown_keyword() -> None:
+    ds = Dataset([_labelled("a")])
+    with pytest.raises(ValueError, match="Unknown field"):
+        ds.filter(nonsense="x")
+
+
+def test_filter_on_empty_dataset_returns_empty_rather_than_raising() -> None:
+    assert len(Dataset([]).filter(anything="x")) == 0
+
+
+def test_one_returns_the_single_match() -> None:
+    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")])
+    assert ds.one(subjectID="milan", condition="rest").condition == "rest"
+
+
+def test_one_raises_when_nothing_matches() -> None:
+    ds = Dataset([_labelled("milan")])
+    with pytest.raises(ValueError, match="No item matches"):
+        ds.one(subjectID="paris")
+
+
+def test_one_raises_when_several_match() -> None:
+    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")])
+    with pytest.raises(ValueError, match="found 2"):
+        ds.one(subjectID="milan")
+
+
+def test_groupby_single_attr_keeps_string_keys() -> None:
+    ds = Dataset([_labelled("a", "pre"), _labelled("b", "pre")])
+    groups = ds.groupby("condition")
+    assert set(groups) == {"pre"}
+    assert len(groups["pre"]) == 2
+
+
+def test_groupby_multiple_attrs_uses_tuple_keys() -> None:
+    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")])
+    groups = ds.groupby("subjectID", "condition")
+    assert set(groups) == {("milan", "pre"), ("milan", "rest")}
+
+
+def test_groupby_works_on_extra_keys() -> None:
+    ds = Dataset([_labelled("a", ilae=2), _labelled("b", ilae=2), _labelled("c", ilae=4)])
+    assert len(ds.groupby("ilae")["2"]) == 2
+
+
+def test_groupby_requires_at_least_one_attr() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        Dataset([_labelled("a")]).groupby()

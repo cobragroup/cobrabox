@@ -118,10 +118,72 @@ fmri = cb.FMRI.from_numpy(
 data.subjectID  # Subject identifier
 data.groupID  # Group identifier
 data.condition  # Experimental condition
+data.runID  # Recording identifier within a subject
 data.sampling_rate  # Sampling rate in Hz (None if no time dimension)
 data.history  # List of applied operations
 data.extra  # Custom metadata dict
 ```
+
+### Metadata fields
+
+Four fields identify a recording. All are optional and default to `None`.
+
+| Field | Means | Example |
+| ----- | ----- | ------- |
+| `subjectID` | The participant. One person. | `"sub-01"`, `"ID1"` |
+| `groupID` | How the item is classified — a cohort, or a generative condition for synthetic data. Classifies rather than identifies. | `"control"`, `"chain"` |
+| `condition` | The state the recording was made in, or the experimental manipulation. | `"rest"`, `"sz13"` |
+| `runID` | Which recording this is, when a subject has several. | `"03"`, `"7h"` |
+
+The field names follow [BIDS](https://bids.neuroimaging.io/) entity conventions,
+because several bundled datasets are already named that way.
+
+#### Why `runID` exists
+
+`subjectID` alone does not identify a recording. Long-term monitoring produces many
+recordings per subject — 39 for one Zurich subject, 295 hourly segments for Swiss
+`ID01` — so without `runID` those collapse into a single ambiguous label.
+
+#### Run versus session versus split
+
+BIDS distinguishes several things that all look like "another recording":
+
+- **session** (`ses`) — a visit. The subject left and came back; the setup was
+  re-established in between.
+- **run** — a repetition of the *same* acquisition within one session. You ran the
+  identical protocol again.
+- **split** — one continuous acquisition divided across files, usually for file-size
+  reasons. The signal is contiguous across the boundary.
+
+CobraBox has no `sessionID`, deliberately. In every bundled dataset the session is
+either absent or single-valued — Zurich is all `ses-interictalsleep`, `sleep_ieeg`
+is all `ses-01` — so the field would discriminate nothing. Where a "session" value
+describes a clinical state rather than a visit, as Zurich's does, it belongs in
+`condition`.
+
+`runID` therefore carries both true runs and splits. For `chb_mit`, `siena_eeg` and
+`swiss_eeg_long` the repeated token is strictly a split — consecutive segments of
+continuous monitoring — but it is what distinguishes those recordings, and a
+separate field for the distinction would not change how anyone queries them.
+
+#### How the bundled datasets map on
+
+| Dataset | Filename | → fields |
+| ------- | -------- | -------- |
+| `zurich_ieeg` | `sub-01_ses-interictalsleep_run-03_ieeg.vhdr` | `subjectID="sub-01"`, `runID="03"` |
+| `sleep_ieeg` | `sub-Detroit001_ses-01_task-sleep_ieeg.edf` | `subjectID="sub-Detroit001"` (one recording per subject) |
+| `chb_mit` | `chb01_03.edf` | `subjectID="chb01"`, `runID="03"` |
+| `siena_eeg` | `PN00-1.edf` | `subjectID="PN00"`, `runID="1"` |
+| `swiss_eeg_long` | `ID01_7h.mat` | `subjectID="ID01"`, `runID="7h"` |
+| `realistic_swiss` | `fit_Swiss_VAR_ID1_sz13_simulated_data_2.csv.xz` | `subjectID="ID1"`, `condition="sz13"`, `runID="2"` |
+| `dummy_*` | `dummy_struct_VAR_chain_3.csv.xz` | `subjectID="sub-03"`, `groupID="chain"` |
+
+`subjectID`, `condition` and `runID` compose into a `Dataset` label — see
+[Working with Datasets](datasets.md#labels). `groupID` does not, since it classifies
+items rather than identifying them.
+
+Anything a dataset carries beyond these goes in `extra`, which `filter()` and
+`groupby()` also accept.
 
 ### Data Access
 

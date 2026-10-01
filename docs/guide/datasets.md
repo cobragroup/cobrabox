@@ -12,12 +12,40 @@ ds = cb.load_dataset("dummy_chain")
 
 # Inspect at a glance
 ds.describe()
-# Dataset  3 items  [SignalData]
-#   subjectIDs : None, None, None
-#   groupIDs   : None, None, None
-#   conditions : None, None, None
-#   shapes     : (4, 200) × 3
+# Dataset  5 items  [SignalData]
+#   subjectIDs : sub-01, sub-02, sub-03, sub-04, sub-05
+#   groupIDs   : chain, chain, chain, chain, chain
+#   conditions : None, None, None, None, None
+#   shapes     : (10, 5000) × 5
+#   labels     : sub-01, sub-02, sub-03, sub-04, sub-05
+#   filter on  : subjectID, groupID, condition, runID, Description, Num_Samples
 ```
+
+The last two rows tell you how to reach into the dataset: which labels are
+available for lookup, and which fields `filter()` and `groupby()` will accept. The
+`filter on` row is dataset-specific — it includes whatever the items carry in
+`extra`, so `dummy_chain` lets you filter on `Description` and `Num_Samples` from
+its sidecar metadata.
+
+Each synthetic replicate stands in for one subject (`sub-01`, `sub-02`, …), and the
+VAR topology becomes the `groupID`, which makes concatenated datasets group
+cleanly:
+
+```python
+both = cb.load_dataset("dummy_chain") + cb.load_dataset("dummy_star")
+{k: len(v) for k, v in both.groupby("groupID").items()}  # {'chain': 5, 'star': 4}
+```
+
+If the items carry no identifying metadata at all — as in a `Dataset` you build
+yourself from bare arrays — the `labels` row says so, and names the fields that
+will never match:
+
+```text
+  labels     : none — positional access only, not reachable by filter on subjectID, groupID, condition, runID
+```
+
+Only fields unset on *every* item are listed, so the row stays accurate as
+metadata gets filled in.
 
 ## The `Dataset[T]` Class
 
@@ -43,6 +71,80 @@ for item in ds:
 print(len(ds))
 print(item in ds)
 ```
+
+### Labels
+
+Items that carry identifying metadata can also be looked up by name. A label joins
+`subjectID`, `condition` and `runID` with `/`, skipping whichever are unset — see
+[Metadata fields](data-containers.md#metadata-fields) for what each means:
+
+```python
+ds = cb.load_dataset("dummy_chain")
+ds.keys()  # ('sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05')
+ds["sub-02"]  # the matching item
+```
+
+Labels are an index derived from the items, not a replacement for positional
+storage — both reach the same object:
+
+```python
+ds[1] is ds["sub-02"]  # True
+```
+
+The two forms coexist without interfering, because positions stay integers and
+labels stay strings. Even a subject literally named `"0"` is unambiguous: `ds[0]`
+is the first item, `ds["0"]` is that subject.
+
+Two consequences worth knowing:
+
+- **Items without metadata contribute no label.** `keys()` may be shorter than
+  `len(ds)`, and those items remain reachable by position.
+- **Labels need not be unique.** Where several items share one, the lookup returns
+  a `Dataset` of all of them rather than silently picking one.
+
+### Reaching a whole subject
+
+Labels get longer as metadata gets richer, but a lookup also accepts any *leading
+part* of a label, so the coarser names keep working. `realistic_swiss` has one
+subject `ID1`, two seizures, and three replicates:
+
+```python
+sw = cb.load_dataset("realistic_swiss")
+sw.keys()  # ('ID1/sz13/1', 'ID1/sz13/2', 'ID1/sz7/3')
+
+sw["ID1/sz13/2"]  # a SignalData — exact match
+len(sw["ID1/sz13"])  # 2  → both replicates of that seizure
+len(sw["ID1"])  # 3  → everything for that subject
+```
+
+This matters most on the long-monitoring datasets. Zurich subject `sub-01` has 39
+recordings labelled `sub-01/01 … sub-01/39`; `ds["sub-01"]` still returns all 39 as
+a `Dataset` rather than raising.
+
+Matching is on `/` boundaries, so `ds["sub-0"]` matches nothing — it is a prefix of
+the string but not of the label.
+
+An unknown label raises `KeyError` listing what is available, so a typo is
+reported rather than silently returning nothing:
+
+```python
+ds["sub-99"]
+# KeyError: 'sub-99' is not a label in this Dataset.
+#           Available: sub-01, sub-02, sub-03, sub-04, sub-05
+```
+
+### Discovering what is there
+
+```python
+ds.keys()  # labels available for lookup
+ds.fields()  # every name filter() and groupby() accept
+ds.unique("condition")  # the distinct values of one field
+```
+
+`fields()` includes the three standard metadata fields plus whatever the items
+carry in `extra`, which varies by dataset — Zurich recordings add `ilae` and
+`resected_zone`, for instance. `unique()` is the quickest way to see what a filter
+could match before writing it.
 
 ### Combining datasets
 
@@ -83,6 +185,35 @@ empty = ds.filter(groupID="nonexistent")
 print(len(empty))  # 0
 ```
 
+A criterion may also be a list, tuple, or set, matching any of the values:
+
+```python
+ds.filter(subjectID=["S1", "S2"])  # either subject
+ds.filter(condition={"pre", "post"})  # either condition
+```
+
+Anything in an item's `extra` dict is filterable too — `fields()` lists what is
+available for a given dataset:
+
+```python
+ds.filter(ilae=2)
+```
+
+A keyword that names no known field raises `ValueError` rather than quietly
+matching nothing, so misspellings surface immediately.
+
+### Expecting exactly one item
+
+`filter()` always returns a `Dataset`, and an empty one when nothing matches. When
+you expect a single item — and want a miss to be an error — use `one()`:
+
+```python
+sig = ds.one(subjectID="milan", condition="rest")  # the Data itself
+```
+
+It raises `ValueError` if nothing matches, and also if several do, so it can't
+silently hand you the wrong recording when labels turn out not to be unique.
+
 ## Grouping
 
 Split a `Dataset` into sub-datasets keyed by a metadata attribute:
@@ -99,18 +230,27 @@ groups_with_none = ds.groupby("condition")
 print("None" in groups_with_none)
 ```
 
-Valid attributes: `"subjectID"`, `"groupID"`, `"condition"`.
+Group by several attributes at once to get one bucket per combination. With a
+single attribute the keys are strings; with several they are tuples:
+
+```python
+by_both = ds.groupby("subjectID", "condition")
+by_both[("milan", "rest")]
+```
+
+Valid attributes are anything `fields()` reports — the three standard metadata
+fields, plus any key the items carry in `extra`.
 
 ## Available Dummy Datasets
 
 <!-- local-dataset-table:start -->
 | Identifier | Description |
 | ---------- | ----------- |
-| `dummy_chain` | Synthetic chain-topology VAR time-series (3 subjects). |
-| `dummy_noise` | Synthetic uncorrelated noise time-series (10 subjects). |
+| `dummy_chain` | Synthetic chain-topology VAR time-series (5 subjects). |
+| `dummy_noise` | Synthetic uncorrelated noise time-series (5 subjects). |
 | `dummy_random` | Synthetic random-topology VAR time-series (3 subjects). |
-| `dummy_star` | Synthetic star-topology VAR time-series (3 subjects). |
-| `realistic_swiss` | Simulated realistic Swiss VAR time-series (1 subject). |
+| `dummy_star` | Synthetic star-topology VAR time-series (4 subjects). |
+| `realistic_swiss` | Simulated realistic Swiss VAR time-series (1 subject, 3 recordings). |
 <!-- local-dataset-table:end -->
 
 ## Remote Datasets

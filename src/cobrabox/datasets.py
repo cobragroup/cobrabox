@@ -32,11 +32,11 @@ from .downloader import (
 # ---------------------------------------------------------------------------
 
 _LOCAL_DATASET_INFO: dict[str, str] = {
-    "dummy_chain": "Synthetic chain-topology VAR time-series (3 subjects).",
+    "dummy_chain": "Synthetic chain-topology VAR time-series (5 subjects).",
     "dummy_random": "Synthetic random-topology VAR time-series (3 subjects).",
-    "dummy_star": "Synthetic star-topology VAR time-series (3 subjects).",
-    "dummy_noise": "Synthetic uncorrelated noise time-series (10 subjects).",
-    "realistic_swiss": "Simulated realistic Swiss VAR time-series (1 subject).",
+    "dummy_star": "Synthetic star-topology VAR time-series (4 subjects).",
+    "dummy_noise": "Synthetic uncorrelated noise time-series (5 subjects).",
+    "realistic_swiss": "Simulated realistic Swiss VAR time-series (1 subject, 3 recordings).",
 }
 
 
