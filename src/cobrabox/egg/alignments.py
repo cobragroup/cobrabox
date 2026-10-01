@@ -163,12 +163,19 @@ ALIGNMENTS: dict[str, dict] = {
         "abbrev": "cd",
         "lore":  "Classifies channels by Leuchter's law — absolute and relative power united",
     },
+    "BandDecomposition": {
+        "law":   1,
+        "good":  1,
+        "label": "Lawful Good",
+        "abbrev": "bd",
+        "lore":  "Imposes the classical order of brain rhythms, granting each band its own estate",
+    },
     "BandpassFilter": {
         "law":   1,
         "good":  1,
         "label": "Lawful Good",
         "abbrev": "bf",
-        "lore":  "Imposes the classical order of brain rhythms upon chaotic oscillations",
+        "lore":  "Declares one band lawful and the rest outlaw, returning a single purified signal",
     },
     "BandPower": {
         "law":   1,

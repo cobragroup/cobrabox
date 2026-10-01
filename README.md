@@ -145,7 +145,8 @@ The full catalog is browsable and **filterable by tag** in the
 - `Cordance` - Quantitative EEG cordance (Leuchter et al., 1994)
 - `ContinuousWaveletTransform` / `DiscreteWaveletTransform` - Wavelet time-frequency / sub-band analysis
 - `AnalyticSignal` - Analytic signal: envelope, phase, or instantaneous frequency
-- `BandpassFilter` - Butterworth bandpass filter into frequency bands
+- `BandpassFilter` - Butterworth bandpass filter keeping one or more frequency ranges (single output)
+- `BandDecomposition` - Butterworth decomposition into frequency bands (per-band output)
 - `NotchFilter` - Notch filter to remove power-line noise (50/60 Hz)
 - `FourierTransform` / `InverseFourierTransform` - FFT to and from the frequency domain
 

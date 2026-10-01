@@ -294,15 +294,68 @@ Supports various wavelets including Morlet, Mexican hat, and complex Gaussian.
 
 ### `BandpassFilter`
 
-```python
-# Filter into the five standard EEG bands
-filtered = cb.BandpassFilter(bands="eeg").apply(data)
+!!! warning "Renamed behaviour"
+    `BandpassFilter` used to stack each band along a new `band` dimension. That
+    feature is now called [`BandDecomposition`](#banddecomposition) and is
+    unchanged. `BandpassFilter` is now a single-output filter, so a pipeline
+    written against the old name will behave differently — switch it to
+    `BandDecomposition` to keep the previous output. Passing the old ``"eeg"``
+    preset or a band mapping to `BandpassFilter` raises a `TypeError` pointing
+    at the replacement rather than filtering silently.
 
-# Filter into specific bands only
-filtered = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+```python
+# Keep a single frequency range (alpha)
+filtered = cb.BandpassFilter(bands=[[8, 12]]).apply(data)
+
+# A single range may be given unnested
+filtered = cb.BandpassFilter(bands=[8, 12]).apply(data)
+
+# Keep several ranges; output is the sum of the band-filtered signals
+filtered = cb.BandpassFilter(bands=[[1, 4], [8, 12]]).apply(data)
+
+# Custom filter order
+filtered = cb.BandpassFilter(bands=[[8, 12]], ord=4).apply(data)
+
+# Causal forward-only filtering instead of the zero-phase default
+filtered = cb.BandpassFilter(bands=[[8, 12]], zero_phase=False).apply(data)
+```
+
+Applies Butterworth bandpass filters to keep one or more frequency ranges and
+sums the filtered signals into a **single output** — no `band` dimension is
+added, so the output has the same shape as the input. When more than one range
+is given, the result is the sum of the individual band-filtered signals (a
+reconstruction of the signal from its selected frequency components).
+The ``bands`` parameter is a required list of ``[low_hz, high_hz]`` ranges; a
+single range may also be passed unnested as ``[8, 12]``. Each edge must be
+positive and below the Nyquist frequency.
+Requires ``sampling_rate`` to be set on the data.
+
+``zero_phase`` defaults to ``True``, which filters forward and backward
+(`scipy.signal.filtfilt`) so no phase distortion is introduced — the
+MNE-style default for EEG preprocessing, and what makes summing several ranges
+a faithful reconstruction. Set ``zero_phase=False`` for causal forward-only
+filtering (`scipy.signal.lfilter`) when you need it: real-time or
+streaming work, onset-timing analyses where the backward pass would smear an
+event earlier, or directed-connectivity measures such as `GrangerCausality`
+and `DirectedTransferFunction` that infer direction from temporal precedence.
+Note that causal filtering delays each range by a different amount, so
+summing several ranges with ``zero_phase=False`` does not reconstruct the
+signal.
+
+To instead keep each band *separately* along a new `band` dimension, use
+`BandDecomposition` (below).
+
+### `BandDecomposition`
+
+```python
+# Decompose into the five standard EEG bands
+decomp = cb.BandDecomposition(bands="eeg").apply(data)
+
+# Decompose into specific bands only
+decomp = cb.BandDecomposition(bands={"alpha": [8, 12]}).apply(data)
 
 # Custom filter order and keep original signal
-filtered = cb.BandpassFilter(bands="eeg", ord=4, keep_orig=True).apply(data)
+decomp = cb.BandDecomposition(bands="eeg", ord=4, keep_orig=True).apply(data)
 ```
 
 Applies Butterworth bandpass filters to separate the signal into frequency bands.
