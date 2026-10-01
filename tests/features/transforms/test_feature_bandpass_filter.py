@@ -142,9 +142,41 @@ def test_bandpass_single_band_matches_manual_scipy() -> None:
     out = cb.BandpassFilter(bands=[[8, 12]]).apply(data)
 
     b, a = signal.butter(3, [8, 12], btype="band", fs=sr)
+    expected = signal.filtfilt(b, a, data.to_numpy(), axis=-1)
+
+    np.testing.assert_allclose(out.to_numpy(), expected, atol=1e-12)
+
+
+def test_bandpass_causal_matches_manual_lfilter() -> None:
+    """``zero_phase=False`` falls back to the causal forward-only filter."""
+    sr = 250.0
+    data = _make_data(n_time=500, n_space=2, sampling_rate=sr)
+
+    out = cb.BandpassFilter(bands=[[8, 12]], zero_phase=False).apply(data)
+
+    b, a = signal.butter(3, [8, 12], btype="band", fs=sr)
     expected = signal.lfilter(b, a, data.to_numpy(), axis=-1)
 
     np.testing.assert_allclose(out.to_numpy(), expected, atol=1e-12)
+
+
+def test_bandpass_zero_phase_has_no_group_delay() -> None:
+    """Zero-phase filtering keeps the filtered sine aligned with the input."""
+    sr = 250.0
+    data = _make_sine_data(freqs_hz=[10.0], sampling_rate=sr, duration=4.0)
+
+    zp = cb.BandpassFilter(bands=[[8, 12]]).apply(data).to_numpy()[0]
+    causal = cb.BandpassFilter(bands=[[8, 12]], zero_phase=False).apply(data).to_numpy()[0]
+    ref = data.to_numpy()[:, 0]
+
+    seg = slice(int(1.5 * sr), int(3.5 * sr))
+
+    def lag_samples(y: np.ndarray) -> int:
+        xc = np.correlate(y[seg] - y[seg].mean(), ref[seg] - ref[seg].mean(), "full")
+        return int(abs(xc.argmax() - (len(ref[seg]) - 1)))
+
+    assert lag_samples(zp) == 0
+    assert lag_samples(causal) > 0
 
 
 def test_bandpass_multi_band_equals_sum() -> None:
@@ -158,7 +190,7 @@ def test_bandpass_multi_band_equals_sum() -> None:
     total = None
     for low, high in bands:
         b, a = signal.butter(3, [low, high], btype="band", fs=sr)
-        filtered = signal.lfilter(b, a, data.to_numpy(), axis=-1)
+        filtered = signal.filtfilt(b, a, data.to_numpy(), axis=-1)
         total = filtered if total is None else total + filtered
 
     np.testing.assert_allclose(out.to_numpy(), total, atol=1e-12)
@@ -247,8 +279,14 @@ def test_bandpass_invalid_band_range_raises() -> None:
 
 
 def test_bandpass_negative_frequency_raises() -> None:
-    with pytest.raises(ValueError, match="non-negative"):
+    with pytest.raises(ValueError, match="positive"):
         cb.BandpassFilter(bands=[[-5, 10]])
+
+
+def test_bandpass_zero_low_frequency_raises() -> None:
+    """0 Hz is not a valid bandpass edge — reject it rather than letting scipy fail."""
+    with pytest.raises(ValueError, match="positive"):
+        cb.BandpassFilter(bands=[[0, 10]])
 
 
 def test_bandpass_band_wrong_number_of_frequencies_raises() -> None:
@@ -260,6 +298,56 @@ def test_bandpass_band_exceeds_nyquist_raises() -> None:
     data = _make_data(sampling_rate=100.0)
     with pytest.raises(ValueError, match="Nyquist"):
         cb.BandpassFilter(bands=[[40, 60]]).apply(data)
+
+
+def test_bandpass_band_at_exactly_nyquist_raises() -> None:
+    """The Nyquist frequency itself is not representable — reject it clearly."""
+    data = _make_data(sampling_rate=100.0)
+    with pytest.raises(ValueError, match="Nyquist"):
+        cb.BandpassFilter(bands=[[10, 50.0]]).apply(data)
+
+
+def test_bandpass_unnested_single_range_accepted() -> None:
+    """``bands=[8, 12]`` is treated as the single range ``[[8, 12]]``."""
+    data = _make_data(n_time=300, n_space=2)
+
+    flat = cb.BandpassFilter(bands=[8, 12]).apply(data)
+    nested = cb.BandpassFilter(bands=[[8, 12]]).apply(data)
+
+    np.testing.assert_allclose(flat.to_numpy(), nested.to_numpy())
+
+
+@pytest.mark.parametrize(
+    "bands",
+    [[[8, 12]], [8, 12], ((8, 12),), (8, 12), np.array([[8, 12]]), np.array([8, 12])],
+    ids=["list-of-lists", "flat-list", "tuple-of-tuples", "flat-tuple", "np-2d", "np-1d"],
+)
+def test_bandpass_accepts_equivalent_band_spellings(bands: object) -> None:
+    """Nested/unnested, list/tuple/ndarray all normalise to the same filter."""
+    data = _make_data(n_time=300, n_space=2)
+
+    out = cb.BandpassFilter(bands=bands)  # type: ignore[arg-type]
+    assert out.bands == [[8.0, 12.0]]
+    np.testing.assert_allclose(
+        out.apply(data).to_numpy(), cb.BandpassFilter(bands=[[8, 12]]).apply(data).to_numpy()
+    )
+
+
+def test_bandpass_non_sequence_band_raises() -> None:
+    with pytest.raises(TypeError, match="sequence"):
+        cb.BandpassFilter(bands=8)  # type: ignore[arg-type]
+
+
+def test_bandpass_unnested_wrong_length_raises() -> None:
+    with pytest.raises(ValueError, match="single unnested range"):
+        cb.BandpassFilter(bands=[8, 12, 20])
+
+
+@pytest.mark.parametrize("bands", ["eeg", {"alpha": [8, 12]}])
+def test_bandpass_old_band_mapping_raises_with_migration_hint(bands: object) -> None:
+    """The pre-rename dict/preset API must point users at BandDecomposition."""
+    with pytest.raises(TypeError, match="BandDecomposition"):
+        cb.BandpassFilter(bands=bands)  # type: ignore[arg-type]
 
 
 def test_bandpass_missing_sampling_rate_raises() -> None:
