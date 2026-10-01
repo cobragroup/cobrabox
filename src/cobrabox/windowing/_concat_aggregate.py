@@ -7,7 +7,7 @@ from typing import ClassVar
 import xarray as xr
 
 from ..base_feature import AggregatorFeature
-from ..data import Data
+from ..data import Data, _metadata_of
 
 
 @dataclass
@@ -66,9 +66,7 @@ class ConcatAggregate(AggregatorFeature):
         window_history = [op for op in items[0].history if op not in data.history]
         return Data(
             data=stacked,
-            subjectID=data.subjectID,
-            groupID=data.groupID,
-            condition=data.condition,
+            **_metadata_of(data),
             sampling_rate=data.sampling_rate,
             history=list(data.history) + window_history + ["ConcatAggregate"],
             extra=data.extra,
