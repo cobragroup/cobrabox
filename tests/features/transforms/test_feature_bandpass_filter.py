@@ -294,6 +294,26 @@ def test_bandpass_band_wrong_number_of_frequencies_raises() -> None:
         cb.BandpassFilter(bands=[[1, 10, 20]])
 
 
+def test_bandpass_nested_non_pair_element_raises() -> None:
+    """A non-pair element inside a nested list is rejected with its index."""
+    with pytest.raises(TypeError, match="Range 0 must be a"):
+        cb.BandpassFilter(bands=[8, [12, 30]])  # type: ignore[list-item]
+
+
+def test_bandpass_non_numeric_frequency_raises() -> None:
+    """Non-numeric frequencies fail validation naming the range, not deep in scipy."""
+    with pytest.raises(ValueError, match="Range 0 frequencies must be numbers"):
+        cb.BandpassFilter(bands=[[8, "a"]])  # type: ignore[list-item]
+
+
+def test_bandpass_non_finite_frequency_raises() -> None:
+    """NaN/inf edges are rejected up front instead of failing inside scipy."""
+    with pytest.raises(ValueError, match="finite"):
+        cb.BandpassFilter(bands=[[float("nan"), 12]])
+    with pytest.raises(ValueError, match="finite"):
+        cb.BandpassFilter(bands=[[8, float("inf")]])
+
+
 def test_bandpass_band_exceeds_nyquist_raises() -> None:
     data = _make_data(sampling_rate=100.0)
     with pytest.raises(ValueError, match="Nyquist"):

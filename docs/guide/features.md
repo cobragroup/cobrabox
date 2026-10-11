@@ -328,6 +328,12 @@ reconstruction of the signal from its selected frequency components).
 The ``bands`` parameter is a required list of ``[low_hz, high_hz]`` ranges; a
 single range may also be passed unnested as ``[8, 12]``. Each edge must be
 positive and below the Nyquist frequency.
+Ranges are summed, not unioned: overlapping or adjacent ranges (e.g.
+`[[8, 12], [12, 30]]`) each pass content near the shared edge, so it is
+counted twice in the sum.
+With the default ``zero_phase=True``, `filtfilt` needs the time dimension to
+be longer than the filter's pad length — ``6 * ord`` samples (18 at the
+default ``ord=3``); shorter signals raise a scipy error.
 Requires ``sampling_rate`` to be set on the data.
 
 ``zero_phase`` defaults to ``True``, which filters forward and backward

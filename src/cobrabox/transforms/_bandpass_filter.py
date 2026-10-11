@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
@@ -24,6 +25,15 @@ class BandpassFilter(BaseFeature[SignalData]):
     The output has the same shape and dimensions as the input (no
     ``band`` dimension is added).
 
+    Ranges are summed, not unioned: overlapping or adjacent ranges
+    (e.g. ``[[8, 12], [12, 30]]``) each pass content near the shared
+    edge, so it is counted twice in the sum.
+
+    When ``zero_phase=True``, :func:`scipy.signal.filtfilt` requires the
+    time dimension to be longer than the filter's pad length — ``6 * ord``
+    samples for a Butterworth bandpass (18 samples at the default
+    ``ord=3``). Shorter signals raise a scipy error.
+
     Args:
         bands: One or more ``[low_hz, high_hz]`` frequency ranges to keep,
             e.g. ``[[8, 12]]`` or ``[[1, 4], [8, 12]]``. A single range may
@@ -42,9 +52,10 @@ class BandpassFilter(BaseFeature[SignalData]):
 
     Raises:
         ValueError: If ``bands`` is ``None`` or empty, a range does not have
-            exactly 2 frequencies, a frequency is not positive, ``low >= high``,
-            a range reaches or exceeds the Nyquist frequency, or the input has
-            no known ``sampling_rate``.
+            exactly 2 frequencies, a frequency is not a number or not finite,
+            a frequency is not positive, ``low >= high``, a range reaches or
+            exceeds the Nyquist frequency, or the input has no known
+            ``sampling_rate``.
         TypeError: If ``bands`` is not a sequence of ``[low, high]`` pairs.
 
     Returns:
@@ -108,7 +119,14 @@ class BandpassFilter(BaseFeature[SignalData]):
                 )
             if len(freqs) != 2:
                 raise ValueError(f"Range {range_i} must have exactly 2 frequencies [low, high]")
-            low, high = (float(freq) for freq in freqs)
+            try:
+                low, high = (float(freq) for freq in freqs)
+            except (TypeError, ValueError):  # fmt: skip
+                raise ValueError(
+                    f"Range {range_i} frequencies must be numbers, got {list(freqs)!r}"
+                ) from None
+            if not (math.isfinite(low) and math.isfinite(high)):
+                raise ValueError(f"Range {range_i} frequencies must be finite, got [{low}, {high}]")
             if low <= 0 or high <= 0:
                 raise ValueError(
                     f"Range {range_i} frequencies must be positive, got [{low}, {high}]"
@@ -168,6 +186,15 @@ def bandpass_filter(
     The output has the same shape and dimensions as the input (no
     ``band`` dimension is added).
 
+    Ranges are summed, not unioned: overlapping or adjacent ranges
+    (e.g. ``[[8, 12], [12, 30]]``) each pass content near the shared
+    edge, so it is counted twice in the sum.
+
+    When ``zero_phase=True``, :func:`scipy.signal.filtfilt` requires the
+    time dimension to be longer than the filter's pad length — ``6 * ord``
+    samples for a Butterworth bandpass (18 samples at the default
+    ``ord=3``). Shorter signals raise a scipy error.
+
     Args:
         data: The input time-series signal to process, as a
             :class:`~cobrabox.SignalData` (or any :class:`~cobrabox.Data`
@@ -189,9 +216,10 @@ def bandpass_filter(
 
     Raises:
         ValueError: If ``bands`` is ``None`` or empty, a range does not have
-            exactly 2 frequencies, a frequency is not positive, ``low >= high``,
-            a range reaches or exceeds the Nyquist frequency, or the input has
-            no known ``sampling_rate``.
+            exactly 2 frequencies, a frequency is not a number or not finite,
+            a frequency is not positive, ``low >= high``, a range reaches or
+            exceeds the Nyquist frequency, or the input has no known
+            ``sampling_rate``.
         TypeError: If ``bands`` is not a sequence of ``[low, high]`` pairs.
 
     Returns:
