@@ -34,8 +34,8 @@ Each domain answers one question about the signal.
 | `infometrics/` | How complex or irregular is my signal? | `SampleEntropy`, `LempelZiv`, `FractalDimension` |
 | `spectral/` | What is happening in frequency space? | `BandPower`, `Spectrogram`, `Cordance` |
 | `connectivity/` | Which channels interact? | `Correlation`, `Coherence`, `GrangerCausality` |
-| `transforms/` | Convert to another representation | `AnalyticSignal`, `FourierTransform` |
-| `decompositions/` | Break into components | `BandpassFilter`, `EMD`, `SVD` |
+| `transforms/` | Convert to another representation | `AnalyticSignal`, `BandpassFilter`, `FourierTransform` |
+| `decompositions/` | Break into components | `BandDecomposition`, `EMD`, `SVD` |
 | `surrogates/` | Test statistical significance | `FourierTransformSurrogates` |
 | `windowing/` | Analyse temporal dynamics | `SlidingWindow`, `MeanAggregate` |
 

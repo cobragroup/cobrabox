@@ -132,7 +132,7 @@ To apply a second time-domain feature *per window*, put it inside the chord rath
 ```python
 chord = (
     cb.feature.SlidingWindow(window_size=100, step_size=50)
-    | cb.feature.BandpassFilter(bands={"alpha": [8.0, 12.0]})
+    | cb.feature.BandDecomposition(bands={"alpha": [8.0, 12.0]})
     | cb.feature.LineLength()
     | cb.feature.ConcatAggregate()
 )

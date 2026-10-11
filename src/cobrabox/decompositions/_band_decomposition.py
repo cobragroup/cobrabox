@@ -23,8 +23,8 @@ _BAND_PRESETS: dict[str, dict[str, tuple[float, float]]] = {"eeg": _DEFAULTS}
 
 
 @dataclass
-class BandpassFilter(BaseFeature[SignalData]):
-    """Filter a signal into frequency bands.
+class BandDecomposition(BaseFeature[SignalData]):
+    """Decompose a signal into frequency bands.
 
     Applies a Butterworth bandpass filter for each band and stacks
     the results along a new ``band`` dimension.
@@ -50,14 +50,14 @@ class BandpassFilter(BaseFeature[SignalData]):
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
 
     Returns:
-        :class:`~cobrabox.SignalData`: The bandpass-filtered signals stacked along a new
+        :class:`~cobrabox.SignalData`: The band-filtered signals stacked along a new
             ``band`` dimension. The ``band`` coordinate contains the band names
             (and "original" if ``keep_orig=True``). The shape is the same as
             the input data with an additional ``band`` dimension.
 
     Example:
-        >>> result = cb.BandpassFilter(bands="eeg").apply(data)
-        >>> result = cb.BandpassFilter(bands={"alpha": [8, 12]}).apply(data)
+        >>> result = cb.BandDecomposition(bands="eeg").apply(data)
+        >>> result = cb.BandDecomposition(bands={"alpha": [8, 12]}).apply(data)
     """
 
     _tags: ClassVar[list[str]] = [
@@ -107,7 +107,7 @@ class BandpassFilter(BaseFeature[SignalData]):
     def __call__(self, data: SignalData) -> xr.DataArray:
         if data.sampling_rate is None:
             raise ValueError(
-                "BandpassFilter requires a known sampling_rate on the input Data object"
+                "BandDecomposition requires a known sampling_rate on the input Data object"
             )
 
         resolved: Mapping[str, Sequence[float]] = (
@@ -133,14 +133,14 @@ class BandpassFilter(BaseFeature[SignalData]):
         return xr.concat(band_arrays, dim="band")
 
 
-@functional(BandpassFilter)
-def bandpass_filter(
+@functional(BandDecomposition)
+def band_decomposition(
     data: SignalData,
     bands: Literal["eeg"] | dict[str, list[float]],
     ord: int = 3,
     keep_orig: bool = False,
 ) -> Data:
-    """Filter a signal into frequency bands.
+    """Decompose a signal into frequency bands.
 
     Applies a Butterworth bandpass filter for each band and stacks
     the results along a new ``band`` dimension.
@@ -169,13 +169,13 @@ def bandpass_filter(
         ValueError: If the input ``Data`` has no known ``sampling_rate``.
 
     Returns:
-        :class:`~cobrabox.SignalData`: The bandpass-filtered signals stacked along a new
+        :class:`~cobrabox.SignalData`: The band-filtered signals stacked along a new
             ``band`` dimension. The ``band`` coordinate contains the band names
             (and "original" if ``keep_orig=True``). The shape is the same as
             the input data with an additional ``band`` dimension.
 
     Example:
-        >>> result = cb.bandpass_filter(data, bands="eeg")
-        >>> result = cb.bandpass_filter(data, bands={"alpha": [8, 12]})
+        >>> result = cb.band_decomposition(data, bands="eeg")
+        >>> result = cb.band_decomposition(data, bands={"alpha": [8, 12]})
     """
-    return BandpassFilter(bands=bands, ord=ord, keep_orig=keep_orig).apply(data)
+    return BandDecomposition(bands=bands, ord=ord, keep_orig=keep_orig).apply(data)

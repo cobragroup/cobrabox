@@ -1,0 +1,13 @@
+# Pre-rename BandpassFilter: the band-stacking feature that is now
+# BandDecomposition. Loading this must fail with a pointer to the new name
+# rather than silently filtering with the new single-output semantics.
+cobrabox_version: "0.4.5"
+schema_version: "1.0.0"
+
+pipeline:
+  - class: "BandpassFilter"
+    module: "cobrabox.decompositions._bandpass_filter"
+    params:
+      bands: "eeg"
+      ord: 3
+      keep_orig: false

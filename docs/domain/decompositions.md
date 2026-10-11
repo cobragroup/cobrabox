@@ -6,12 +6,12 @@ Features in the `cobrabox.decompositions` domain. Access them as `cb.<Feature>` 
 
 Each feature has two forms: a **class** for building pipelines, and a one-shot **function** for a single call.
 
-### BandpassFilter
-Filter a signal into frequency bands.
+### BandDecomposition
+Decompose a signal into frequency bands.
 
 ```python
-cb.bandpass_filter(data, ...)  # one-shot
-cb.BandpassFilter(...).apply(data)  # composable, for pipelines
+cb.band_decomposition(data, ...)  # one-shot
+cb.BandDecomposition(...).apply(data)  # composable, for pipelines
 ```
 
 **Tags:** [`filtering`](../tags.md#tag-filtering), [`butterworth`](../tags.md#tag-butterworth), [`frequency-band`](../tags.md#tag-frequency-band), [`preprocessing`](../tags.md#tag-preprocessing), [`eeg`](../tags.md#tag-eeg), [`io:preserves-time`](../tags.md#tag-io-preserves-time), [`io:adds-dimension`](../tags.md#tag-io-adds-dimension)

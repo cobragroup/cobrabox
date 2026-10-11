@@ -65,7 +65,7 @@ from .datasets import (
     load_dataset,
     show_datasets,
 )
-from .decompositions import EMD, SVD, BandpassFilter, bandpass_filter, emd, svd
+from .decompositions import EMD, SVD, BandDecomposition, band_decomposition, emd, svd
 from .downloader import DownloadCancelled, LargeLoadError, get_dataset_dir, set_dataset_dir
 from .egg.gorkastyle import gorkastyle
 from .infometrics import (
@@ -118,11 +118,13 @@ from .spectral import (
 from .surrogates import FourierTransformSurrogates, fourier_transform_surrogates
 from .transforms import (
     AnalyticSignal,
+    BandpassFilter,
     FourierTransform,
     InverseFourierTransform,
     Normalize,
     NotchFilter,
     analytic_signal,
+    bandpass_filter,
     fourier_transform,
     inverse_fourier_transform,
     normalize,
@@ -173,6 +175,7 @@ __all__ = [
     "AmplitudeVariation",
     "AnalyticSignal",
     "Autocorrelation",
+    "BandDecomposition",
     "BandPower",
     "BandpassFilter",
     "BaseFeature",
@@ -228,6 +231,7 @@ __all__ = [
     "amplitude_variation",
     "analytic_signal",
     "autocorrelation",
+    "band_decomposition",
     "band_power",
     "bandpass_filter",
     "coherence",
