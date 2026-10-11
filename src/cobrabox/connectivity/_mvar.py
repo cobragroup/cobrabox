@@ -22,9 +22,12 @@ def fit_mvar(
     """Fit a vector-autoregressive (VAR) model of order *p* to multichannel data.
 
     Args:
-        X: Array of shape ``(K, T)`` — K channels by T samples — or ``(T, K)``
-            if K < T. The function auto-orients so the longer axis is treated
-            as time.
+        X: Array of shape ``(K, T)`` — K channels by T samples. The first
+            axis must not be longer than the second: a longer first axis is
+            ambiguous (either ``(samples, channels)`` input that must be
+            transposed before calling, or more channels than samples, for
+            which a VAR fit is degenerate) and raises instead of being
+            silently re-oriented.
         order: Lag order p. If ``None``, statsmodels selects the optimal lag
             using AIC.
         method: Which fitting routine to use.
@@ -45,7 +48,13 @@ def fit_mvar(
         raise ValueError(f"fit_mvar requires a 2-D array, got shape {X.shape}")
 
     if X.shape[0] > X.shape[1]:
-        X = X.T
+        raise ValueError(
+            f"fit_mvar expects X with shape (channels, samples), got {X.shape}: "
+            f"the first axis is longer than the second, which is ambiguous — "
+            f"either the array is (samples, channels) and must be transposed "
+            f"before calling, or there are more channels than samples and the "
+            f"VAR fit is degenerate."
+        )
     K, T = X.shape
 
     use_statsmodels = (method == "statsmodels") or (method == "auto" and (K > 1 or order is None))

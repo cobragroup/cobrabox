@@ -254,3 +254,59 @@ def test_pdc_invalid_ndim_raises() -> None:
 
     with pytest.raises(ValueError, match="2-D input"):
         cb.PartialDirectedCoherence().apply(data)
+
+
+def test_pdc_time_space_order_transposed_internally() -> None:
+    """Plain Data with dims (time, space) gives the same result as (space, time).
+
+    Regression test for #167: PDC used to assume axis 0 was space, so a Data
+    object with time first was processed silently with wrong results.
+    """
+    rng = np.random.default_rng(14)
+    arr = rng.standard_normal((3, 400))
+
+    space_first = _make_data(arr, space=["Fz", "Cz", "Pz"])
+    time_first = cb.Data.from_xarray(
+        xr.DataArray(arr.T, dims=["time", "space"], coords={"space": ["Fz", "Cz", "Pz"]}),
+        sampling_rate=250.0,
+    )
+
+    out_expected = cb.PartialDirectedCoherence().apply(space_first)
+    out_swapped = cb.PartialDirectedCoherence().apply(time_first)
+
+    np.testing.assert_allclose(out_swapped.data.values, out_expected.data.values)
+    assert list(out_swapped.data.coords["space_to"].values) == ["Fz", "Cz", "Pz"]
+
+
+def test_pdc_time_space_order_without_coords_labels_channels() -> None:
+    """Swapped order without space coords labels channels 0..n_ch-1, not 0..n_time-1."""
+    rng = np.random.default_rng(15)
+    arr = rng.standard_normal((3, 400))
+    time_first = cb.Data.from_xarray(
+        xr.DataArray(arr.T, dims=["time", "space"]), sampling_rate=250.0
+    )
+
+    out = cb.PartialDirectedCoherence().apply(time_first)
+
+    np.testing.assert_array_equal(
+        out.data.coords["space_to"].values, np.arange(3)
+    )  # channel count, not 400
+
+
+def test_pdc_missing_space_dim_raises() -> None:
+    """Input lacking named 'space'/'time' dims is rejected with an actionable error."""
+    rng = np.random.default_rng(16)
+    xr_arr = xr.DataArray(rng.standard_normal((3, 400)), dims=["time", "electrode"])
+    data = cb.Data.from_xarray(xr_arr, sampling_rate=250.0)
+
+    with pytest.raises(ValueError, match="'space' and 'time' dimensions"):
+        cb.PartialDirectedCoherence().apply(data)
+
+
+def test_pdc_more_channels_than_samples_raises() -> None:
+    """A degenerate VAR input (channels > samples) fails loudly, not silently."""
+    rng = np.random.default_rng(17)
+    data = _make_data(rng.standard_normal((8, 5)))
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        cb.PartialDirectedCoherence().apply(data)
