@@ -85,7 +85,7 @@ class ContinuousWaveletTransform(BaseFeature[SignalData]):
             options.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> cwt = cb.ContinuousWaveletTransform(n_scales=32).apply(data)
         >>> cwt.data.dims
         ('space', 'scale', 'time')
@@ -248,7 +248,7 @@ def continuous_wavelet_transform(
             options.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> cwt = cb.continuous_wavelet_transform(data, n_scales=32)
         >>> cwt.data.dims
         ('space', 'scale', 'time')

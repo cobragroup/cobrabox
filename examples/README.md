@@ -4,10 +4,9 @@ Minimal runnable scripts. Run from the project root with `uv run python examples
 
 | Script | What it shows |
 | ------ | ------------- |
-| `data_basics.py` | Loading datasets, accessing dimensions and coordinates, creating Data from numpy, filtering and grouping |
+| `data_basics.py` | Datasets, accessing dimensions and coordinates, creating Data from numpy, filtering and grouping |
 | `creating_dummy_data.py` | Creating EEG data from numpy and running a feature pipeline |
-| `dataset_loader_demo.py` | Loading a dataset and inspecting shapes and metadata |
-| `realistic_dataset_loader_demo.py` | Loading a realistic dataset with subject metadata |
+| `dataset_loader_demo.py` | Loading the `swiss_demo` dataset by subject subset, and filtering and grouping it by condition |
 | `feature_pipeline_demo.py` | Building and running feature pipelines |
 | `feature_phase_locking_value_demo.py` | Phase locking value connectivity feature |
 | `partial_correlation_demo.py` | Partial correlation connectivity feature |

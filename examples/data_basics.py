@@ -1,4 +1,4 @@
-"""Basics: loading datasets, accessing data, working with coordinates.
+"""Basics: datasets, accessing data, working with coordinates.
 
 Run from the project root:
     uv run python examples/data_basics.py
@@ -13,10 +13,26 @@ import xarray as xr
 import cobrabox as cb
 
 # ---------------------------------------------------------------------------
-# 1. Load a built-in dataset
+# 1. Get a dataset
 # ---------------------------------------------------------------------------
 
-ds = cb.load_dataset("dummy_chain")
+# Real datasets come from cb.load_dataset(), e.g. the demo dataset:
+#     ds = cb.load_dataset("swiss_demo", subset=["ID1"])
+# They are downloaded on first use, so to keep this example offline we build a
+# small synthetic one instead: 3 subjects, 8 channels, 2 s at 100 Hz each.
+_rng = np.random.default_rng(1)
+ds = cb.Dataset(
+    [
+        cb.SignalData.from_numpy(
+            _rng.standard_normal((200, 8)),
+            dims=["time", "space"],
+            sampling_rate=100.0,
+            subjectID=f"sub-{i:02d}",
+            condition="rest",
+        )
+        for i in range(1, 4)
+    ]
+)
 
 print("--- Dataset overview ---")
 ds.describe()

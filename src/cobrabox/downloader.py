@@ -2702,7 +2702,36 @@ def _zurich_ieeg_clean_spec() -> RemoteDatasetSpec:
     )
 
 
+_SWISS_DEMO_SUBJECTS: tuple[str, ...] = ("ID1", "ID4", "ID5", "ID9", "ID12")
+
+
+def _swiss_demo_spec() -> RemoteDatasetSpec:
+    from .dataset_loader import _load_swiss_demo  # avoid circular import at module level
+
+    return RemoteDatasetSpec(
+        identifier="swiss_demo",
+        local_rel_dir=Path("swiss_demo"),
+        # Not hosted yet: with no file list nothing is downloaded, and the loader
+        # reads whatever is already in <data_dir>/swiss_demo/. Fill this in once
+        # the files are uploaded.
+        files=None,
+        loader=_load_swiss_demo,
+        description=(
+            "Demo dataset: simulated iEEG from VAR models fitted to the SWEC-ETHZ "
+            f"short-term recordings ({len(_SWISS_DEMO_SUBJECTS)} subjects, one seizure "
+            "each, as preictal, ictal and postictal segments at 512 Hz)."
+        ),
+        subset_key_name="subsets (subjects)",
+        known_subset_keys=_SWISS_DEMO_SUBJECTS,
+        size_hint="~320 MB",
+        subset_size_hint="~65 MB per subject",
+        seizures_per_subject=dict.fromkeys(_SWISS_DEMO_SUBJECTS, 1),
+        data_type="simulated preictal/ictal/postictal",
+    )
+
+
 REMOTE_DATASETS: dict[str, RemoteDatasetSpec] = {
+    "swiss_demo": _swiss_demo_spec(),
     "swiss_eeg_short": _swiss_eeg_short_spec(),
     "swiss_eeg_long": _swiss_eeg_long_spec(),
     "bonn_eeg": _bonn_eeg_spec(),

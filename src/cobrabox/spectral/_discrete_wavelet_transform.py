@@ -73,7 +73,7 @@ class DiscreteWaveletTransform(BaseFeature[SignalData]):
             the signal length.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> dwt = cb.DiscreteWaveletTransform(wavelet="db4", level=4).apply(data)
         >>> dwt.data.dims
         ('space', 'wavelet_level', 'coef_index')
@@ -212,7 +212,7 @@ def discrete_wavelet_transform(
             the signal length.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> dwt = cb.discrete_wavelet_transform(data, wavelet="db4", level=4)
         >>> dwt.data.dims
         ('space', 'wavelet_level', 'coef_index')

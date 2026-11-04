@@ -60,9 +60,9 @@ A `Chord` is itself a `BaseFeature`, so it composes with `|` like any other step
 `cb.load_dataset()` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
 
 ```python
-ds = cb.load_dataset("dummy_chain")
+ds = cb.load_dataset("swiss_demo", subset=["ID1", "ID4"])  # downloaded on first use
 ds.describe()  # print shapes, metadata summary
-ds.filter(groupID="A")  # subset by metadata
+ds.filter(condition="ictal")  # subset by metadata
 ds.groupby("condition")  # dict[str, Dataset]
 
 pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()

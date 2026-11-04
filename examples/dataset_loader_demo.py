@@ -1,25 +1,34 @@
-"""Run the structured dummy dataset loader demo."""
+"""Load the swiss_demo dataset: whole, by subject, and by condition.
+
+Run from the project root:
+    uv run python examples/dataset_loader_demo.py
+
+swiss_demo is simulated iEEG fitted to five subjects of the SWEC-ETHZ
+short-term recordings. Each subject has one seizure, recorded as three
+segments: preictal, ictal and postictal. Like every cobrabox dataset it is
+downloaded on first use and cached under cb.get_dataset_dir().
+"""
 
 import cobrabox as cb
 
+# What is in the dataset, and which subjects can be loaded on their own?
+print(cb.dataset_info("swiss_demo"))
 
-def main() -> None:
-    # Load a dataset that has "fs" in the JSON sidecar (realistic_swiss or dummy_noise)
-    try:
-        datasets = cb.load_dataset("realistic_swiss")
-    except FileNotFoundError:
-        datasets = cb.load_dataset("dummy_noise")
-    print(datasets)
-    print(f"Loaded parts: {len(datasets)}")
-    print(f"First part shape: {datasets[0].data.shape}")
-    print(datasets[0].to_pandas("custom_name").head())
-    data = datasets[0]
-    print(f"Sampling rate (from Settings['fs']): {data.sampling_rate} Hz")
-    # Preview: first 2 time steps, first 4 space dims (to_pandas needs named DataArray)
-    print("First part preview (2 time x 4 space):", data.to_numpy()[:2, :4].tolist())
-    first_subject = data.subjectID
-    print(f"First subject: {first_subject}")
+# Load only the subjects you need. Nothing else is read from disk.
+ds = cb.load_dataset("swiss_demo", subset=["ID1", "ID4"])
+ds.describe()
 
+# Every recording carries its metadata.
+for item in ds:
+    print(
+        f"{item.subjectID:>4}  {item.extra['seizureID']:>4}  {item.condition:<9}  "
+        f"{item.data.sizes['space']} channels  {item.data.sizes['time'] / item.sampling_rate:.0f} s"
+    )
 
-if __name__ == "__main__":
-    main()
+# Slice by condition after loading.
+ictal = ds.filter(condition="ictal")
+print(f"\nIctal segments: {len(ictal)}")
+
+# Group to compare states across subjects.
+for condition, group in ds.groupby("condition").items():
+    print(f"  {condition:<9}: {[item.subjectID for item in group]}")

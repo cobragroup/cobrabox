@@ -148,7 +148,7 @@ from_xarray = Data.from_xarray
 # modules stay in `sys.modules`, so `from cobrabox.data import Data` and
 # `importlib.import_module` are unaffected — only the `cb.<module>` shortcut goes.
 #
-# `cb.dataset` is the one with teeth: it made `cb.dataset("dummy_chain")` fail with
+# `cb.dataset` is the one with teeth: it made `cb.dataset("swiss_demo")` fail with
 # "'module' object is not callable", which reads like a broken function rather than
 # a name that never existed. The loader is `cb.load_dataset`.
 for _leaked in (

@@ -184,10 +184,10 @@ Dimension names and lengths come straight off the container — see
 [Data Access](#data-access) above for the full set:
 
 ```python
-item = cb.load_dataset("dummy_chain")[0]
+item = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
 
 item.dims  # e.g. ('space', 'time')
-item.sizes  # e.g. {'space': 4, 'time': 200}
+item.sizes  # e.g. {'space': 47, 'time': 46080}
 
 # Which coordinates have labels attached? (still via the DataArray)
 coords = list(item.data.coords)  # e.g. ['time'] or ['time', 'space']

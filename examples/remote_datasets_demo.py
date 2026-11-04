@@ -13,9 +13,7 @@ cb.show_datasets()
 print()
 
 # 2. List identifiers programmatically
-datasets = cb.list_datasets()
-print("Local :", datasets["local"])
-print("Remote:", datasets["remote"])
+print("Datasets:", cb.list_datasets())
 print()
 
 # 3. Inspect a dataset before downloading — shows subset keys, size, seizures, license.

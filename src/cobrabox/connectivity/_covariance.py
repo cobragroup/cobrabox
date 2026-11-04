@@ -35,7 +35,7 @@ class Covariance(BaseFeature[Data]):
         ValueError: If ``dim`` is not present in the input data's dimensions.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> cov = cb.Covariance().apply(data)
         >>> cov.data.dims
         ('space_to', 'space_from')
@@ -121,7 +121,7 @@ def covariance(data: Data, dim: str = "time") -> Data:
         ValueError: If ``dim`` is not present in the input data's dimensions.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> cov = cb.covariance(data)
         >>> cov.data.dims
         ('space_to', 'space_from')
