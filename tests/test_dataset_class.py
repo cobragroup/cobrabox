@@ -254,6 +254,15 @@ def test_getitem_by_duplicate_label_returns_all_matches() -> None:
     assert len(matches) == 2
 
 
+def test_getitem_label_unions_exact_and_prefix_matches() -> None:
+    """Mixed metadata completeness: ds["milan"] reaches both "milan" and "milan/rest"."""
+    bare, rest = _labelled("milan"), _labelled("milan", "rest")
+    ds = Dataset([bare, _labelled("paris"), rest])
+    matches = ds["milan"]
+    assert isinstance(matches, Dataset)
+    assert list(matches) == [bare, rest]
+
+
 def test_getitem_unknown_label_lists_available_ones() -> None:
     ds = Dataset([_labelled("milan"), _labelled("paris")])
     with pytest.raises(KeyError, match="milan, paris"):

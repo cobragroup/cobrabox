@@ -101,6 +101,9 @@ Two consequences worth knowing:
   `len(ds)`, and those items remain reachable by position.
 - **Labels need not be unique.** Where several items share one, the lookup returns
   a `Dataset` of all of them rather than silently picking one.
+- **Labels do not record which field a part came from.** Unset fields are skipped,
+  so `subjectID="S1", runID="2"` and `subjectID="S1", condition="2"` both label as
+  `"S1/2"` and a lookup returns both. Use `filter()` to name a field explicitly.
 
 ### Reaching a whole subject
 

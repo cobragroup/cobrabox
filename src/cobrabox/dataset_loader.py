@@ -200,8 +200,9 @@ def load_realistic_swiss(
         )
 
     # Filenames carry the source subject and the seizure the VAR was fit to, e.g.
-    # fit_Swiss_VAR_ID1_sz13_simulated_data_2 -> subject ID1, seizure sz13. Two
-    # replicates share sz13, so this dataset deliberately has a repeated label.
+    # fit_Swiss_VAR_ID1_sz13_simulated_data_2 -> subject ID1, seizure sz13, run 2.
+    # Two replicates share sz13; the trailing run number keeps their labels distinct
+    # (ID1/sz13/1, ID1/sz13/2).
     items = []
     for path in candidates:
         match = re.match(r"fit_Swiss_VAR_(?P<subject>[^_]+)_(?P<seizure>sz\d+)_", path.name)

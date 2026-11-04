@@ -27,6 +27,11 @@ def _label_of(item: Data) -> str | None:
     Joins the non-None values of :data:`_LABEL_FIELDS` with ``/``, so an item with
     only a subjectID labels as ``"milan"`` and one that also has a condition labels
     as ``"milan/rest"``. Returns None when the item carries neither.
+
+    Because unset fields are skipped rather than marked, a label does not record
+    which field each part came from: ``subjectID="S1", runID="2"`` and
+    ``subjectID="S1", condition="2"`` both label as ``"S1/2"``, and a lookup returns
+    both. Use :meth:`Dataset.filter` to address a field unambiguously.
     """
     parts = [value for field in _LABEL_FIELDS if (value := getattr(item, field)) is not None]
     return "/".join(parts) if parts else None
@@ -118,17 +123,16 @@ class Dataset(Generic[T]):
         return self._items[index]
 
     def _by_label(self, label: str) -> T | Dataset[T]:
-        positions = self._index.get(label)
-        if positions is None:
-            # Fall back to a prefix match on segment boundaries, so a subject can be
-            # named even when labels carry a condition or run below it: ds["sub-01"]
-            # reaches all of sub-01's recordings. "sub-0" matches nothing.
-            positions = tuple(
-                position
-                for key, group in self._index.items()
-                if key.startswith(f"{label}/")
-                for position in group
-            )
+        # Exact matches plus prefix matches on segment boundaries, so a subject can
+        # be named even when labels carry a condition or run below it: ds["sub-01"]
+        # reaches all of sub-01's recordings — including when some items stop at
+        # "sub-01" and others run to "sub-01/rest". "sub-0" matches nothing.
+        positions = tuple(
+            position
+            for key, group in self._index.items()
+            if key == label or key.startswith(f"{label}/")
+            for position in group
+        )
         if not positions:
             if not self._index:
                 raise KeyError(
