@@ -407,3 +407,56 @@ def test_groupby_works_on_extra_keys() -> None:
 def test_groupby_requires_at_least_one_attr() -> None:
     with pytest.raises(ValueError, match="at least one"):
         Dataset([_labelled("a")]).groupby()
+
+
+# ----------------------------------------------------------------------
+# Source and info() (GH #174)
+# ----------------------------------------------------------------------
+
+
+def test_source_defaults_to_none() -> None:
+    assert Dataset([_labelled("milan")]).source is None
+
+
+def test_source_kept_by_slice_label_filter_and_groupby() -> None:
+    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")], source="dummy_chain")
+    assert ds[0:1].source == "dummy_chain"
+    assert ds["milan"].source == "dummy_chain"
+    assert ds.filter(condition="rest").source == "dummy_chain"
+    assert all(g.source == "dummy_chain" for g in ds.groupby("condition").values())
+
+
+def test_add_keeps_shared_source_and_drops_mixed_one() -> None:
+    a = Dataset([_labelled("milan")], source="dummy_chain")
+    b = Dataset([_labelled("paris")], source="dummy_chain")
+    c = Dataset([_labelled("rome")], source="dummy_star")
+    assert (a + b).source == "dummy_chain"
+    assert (a + c).source is None
+
+
+def test_source_shown_in_repr_and_summary() -> None:
+    ds = Dataset([_labelled("milan")], source="dummy_chain")
+    assert "source='dummy_chain'" in repr(ds)
+    assert "source" in str(ds)
+    assert "dummy_chain" in str(ds)
+    assert "source" not in str(Dataset([_labelled("milan")]))
+
+
+def test_info_returns_catalogue_entry_of_source() -> None:
+    from cobrabox.datasets import dataset_info
+
+    ds = Dataset([_labelled("milan")], source="dummy_chain")
+    assert ds.info() == dataset_info("dummy_chain")
+
+
+def test_info_without_source_raises_with_pointer_to_describe() -> None:
+    with pytest.raises(ValueError, match=r"no source.*describe\(\)"):
+        Dataset([_labelled("milan")]).info()
+
+
+def test_load_dataset_stamps_source() -> None:
+    import cobrabox as cb
+
+    ds = cb.load_dataset("dummy_chain")
+    assert ds.source == "dummy_chain"
+    assert ds.info().identifier == "dummy_chain"

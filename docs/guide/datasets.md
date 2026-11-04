@@ -290,6 +290,20 @@ print(info)
 #   license url : https://physionet.org/content/chbmit/1.0.0/
 ```
 
+Once a dataset is loaded, `ds.info()` recalls the same entry without repeating
+its name — the `Dataset` remembers where it came from in `ds.source`:
+
+```python
+ds = cb.load_dataset("bonn_eeg")
+ds.info()  # same as cb.dataset_info("bonn_eeg")
+ds.source  # 'bonn_eeg'
+```
+
+The source survives slicing, label lookup, `filter()` and `groupby()`, and `+`
+when both sides came from the same dataset. A `Dataset` you build yourself, or one
+concatenated from different datasets, has no source, and `info()` raises — use
+`ds.describe()` to summarise the items themselves.
+
 ### Downloading a dataset
 
 By default, CobraBox shows a confirmation prompt before downloading anything. It displays

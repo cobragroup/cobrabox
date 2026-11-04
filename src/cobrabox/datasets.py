@@ -303,6 +303,15 @@ def load_dataset(
             the files without loading them into memory.
         DownloadCancelled: If ``accept=False`` and the user declines the download.
     """
+    # Record where the items came from, so ds.info() can recall the catalogue entry.
+    loaded = _load_items(identifier, subset=subset, accept=accept, force=force)
+    return Dataset(loaded, source=identifier)
+
+
+def _load_items(
+    identifier: str, *, subset: SubsetSpec | None, accept: bool, force: bool
+) -> Dataset[SignalData]:
+    """Dispatch *identifier* to its loader; the body of :func:`load_dataset`."""
     if identifier in {"dummy_chain", "dummy_random", "dummy_star"}:
         return load_structured_dummy(identifier)
     if identifier == "dummy_noise":

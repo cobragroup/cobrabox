@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar, final, overload
 if TYPE_CHECKING:
     from rich.console import Console, ConsoleOptions, RenderResult
 
+    from .datasets import DatasetInfo
+
 from .data import METADATA_FIELDS as _METADATA_FIELDS
 from .data import Data
 
@@ -73,6 +75,10 @@ class Dataset(Generic[T]):
 
     Args:
         items: Sequence of Data objects (list, tuple, or another Dataset).
+        source: Name of the catalogue dataset the items were loaded from, e.g.
+            ``"bonn_eeg"``. Set by :func:`~cobrabox.load_dataset`; kept by slicing,
+            label lookup, :meth:`filter` and :meth:`groupby`, and by ``+`` when both
+            sides share it. Enables :meth:`info`.
 
     Example:
         >>> ds = cb.load_dataset("dummy_chain")
@@ -82,12 +88,14 @@ class Dataset(Generic[T]):
         >>> ds.filter(groupID="A")            # returns new Dataset
         >>> ds.groupby("subjectID")           # returns dict[str, Dataset]
         >>> ds.describe()                     # prints summary
+        >>> ds.info()                         # catalogue entry it was loaded from
     """
 
-    __slots__ = ("_index", "_items")
+    __slots__ = ("_index", "_items", "_source")
 
-    def __init__(self, items: Iterable[T]) -> None:
+    def __init__(self, items: Iterable[T], *, source: str | None = None) -> None:
         self._items: tuple[T, ...] = tuple(items)
+        self._source: str | None = source
         index: dict[str, tuple[int, ...]] = {}
         for position, item in enumerate(self._items):
             if (label := _label_of(item)) is not None:
@@ -119,7 +127,7 @@ class Dataset(Generic[T]):
         if isinstance(index, str):
             return self._by_label(index)
         if isinstance(index, slice):
-            return Dataset(self._items[index])
+            return Dataset(self._items[index], source=self._source)
         return self._items[index]
 
     def _by_label(self, label: str) -> T | Dataset[T]:
@@ -145,7 +153,9 @@ class Dataset(Generic[T]):
             )
         if len(positions) == 1:
             return self._items[positions[0]]
-        return Dataset(self._items[position] for position in sorted(positions))
+        return Dataset(
+            (self._items[position] for position in sorted(positions)), source=self._source
+        )
 
     def __iter__(self) -> Iterator[T]:
         return iter(self._items)
@@ -156,11 +166,46 @@ class Dataset(Generic[T]):
     def __add__(self, other: Dataset[T]) -> Dataset[T]:
         if not isinstance(other, Dataset):
             return NotImplemented
-        return Dataset(self._items + other._items)
+        source = self._source if self._source == other._source else None
+        return Dataset(self._items + other._items, source=source)
 
     # ------------------------------------------------------------------
     # Discovery
     # ------------------------------------------------------------------
+
+    @property
+    def source(self) -> str | None:
+        """Name of the catalogue dataset these items were loaded from, or None."""
+        return self._source
+
+    def info(self) -> DatasetInfo:
+        """Return the catalogue entry of the dataset these items were loaded from.
+
+        Same as ``cb.dataset_info(ds.source)``: the description, available subset
+        keys and download details — not a summary of the loaded items, for which
+        see :meth:`describe`.
+
+        Returns:
+            :class:`~cobrabox.datasets.DatasetInfo` for :attr:`source`.
+
+        Raises:
+            ValueError: If the Dataset has no :attr:`source` — it was built by hand,
+                or concatenated from different datasets.
+
+        Example:
+            >>> ds = cb.load_dataset("bonn_eeg")
+            >>> ds.info()
+        """
+        if self._source is None:
+            raise ValueError(
+                "This Dataset has no source, so there is no catalogue entry to show: it "
+                "was built directly or concatenated from different datasets. Only "
+                "Datasets from cb.load_dataset() carry one. Use ds.describe() to "
+                "summarise the items themselves."
+            )
+        from .datasets import dataset_info
+
+        return dataset_info(self._source)
 
     def keys(self) -> tuple[str, ...]:
         """Return the labels available for lookup, in item order.
@@ -254,7 +299,8 @@ class Dataset(Generic[T]):
 
     def _summary_rows(self) -> list[tuple[str, str]]:
         """Build the (name, value) rows shared by __str__ and the rich rendering."""
-        rows = [
+        rows = [("source", self._source)] if self._source is not None else []
+        rows += [
             ("subjectIDs", _truncate([item.subjectID for item in self._items])),
             ("groupIDs", _truncate([item.groupID for item in self._items])),
             ("conditions", _truncate([item.condition for item in self._items])),
@@ -292,7 +338,8 @@ class Dataset(Generic[T]):
         return rows
 
     def __repr__(self) -> str:
-        return f"Dataset({len(self._items)} \u00d7 {self._item_type_name()})"
+        source = f", source={self._source!r}" if self._source is not None else ""
+        return f"Dataset({len(self._items)} \u00d7 {self._item_type_name()}{source})"
 
     def __str__(self) -> str:
         lines = [f"Dataset  {len(self._items)} items  [{self._item_type_name()}]"]
@@ -356,9 +403,12 @@ class Dataset(Generic[T]):
         criteria = {"subjectID": subjectID, "groupID": groupID, "condition": condition, **extra}
         active = {attr: value for attr, value in criteria.items() if value is not None}
         return Dataset(
-            item
-            for item in self._items
-            if all(_matches(_value_of(item, attr), value) for attr, value in active.items())
+            (
+                item
+                for item in self._items
+                if all(_matches(_value_of(item, attr), value) for attr, value in active.items())
+            ),
+            source=self._source,
         )
 
     def one(self, **criteria: Any) -> T:
@@ -421,4 +471,4 @@ class Dataset(Generic[T]):
             values = tuple(str(_value_of(item, attr)) for attr in attrs)
             key = values[0] if len(attrs) == 1 else values
             groups.setdefault(key, []).append(item)
-        return {key: Dataset(items) for key, items in groups.items()}
+        return {key: Dataset(items, source=self._source) for key, items in groups.items()}

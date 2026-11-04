@@ -5,18 +5,26 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
+import xarray as xr
 
 from cobrabox import datasets, downloader
+from cobrabox.data import Data
+
+
+def _item() -> Data:
+    """A minimal real Data item for fake loaders — load_dataset wraps their output."""
+    return Data(xr.DataArray(np.zeros((1, 2)), dims=["space", "time"]))
 
 
 def test_dataset_dispatches_structured_identifiers(monkeypatch: pytest.MonkeyPatch) -> None:
     """dataset() routes structured IDs to load_structured_dummy."""
     captured: list[str] = []
 
-    def _fake(identifier: str) -> list[object]:
+    def _fake(identifier: str) -> list[Data]:
         captured.append(identifier)
-        return [object()]
+        return [_item()]
 
     monkeypatch.setattr(datasets, "load_structured_dummy", _fake)
 
@@ -30,9 +38,9 @@ def test_dataset_dispatches_noise_identifier(monkeypatch: pytest.MonkeyPatch) ->
     """dataset() routes dummy_noise to load_noise_dummy."""
     captured: list[str] = []
 
-    def _fake(identifier: str) -> list[object]:
+    def _fake(identifier: str) -> list[Data]:
         captured.append(identifier)
-        return [object()]
+        return [_item()]
 
     monkeypatch.setattr(datasets, "load_noise_dummy", _fake)
 
@@ -46,9 +54,9 @@ def test_dataset_dispatches_realistic_identifier(monkeypatch: pytest.MonkeyPatch
     """dataset() routes realistic_swiss to load_realistic_swiss."""
     captured: list[str] = []
 
-    def _fake(identifier: str) -> list[object]:
+    def _fake(identifier: str) -> list[Data]:
         captured.append(identifier)
-        return [object()]
+        return [_item()]
 
     monkeypatch.setattr(datasets, "load_realistic_swiss", _fake)
 
@@ -84,8 +92,8 @@ def test_dataset_remote_verify_false_skips_prompt(
         ensure_calls.append({"accept": accept})
         return tmp_path  # type: ignore[return-value]
 
-    def _fake_loader(dataset_dir: Path, subset: object) -> list[object]:
-        return [object()]
+    def _fake_loader(dataset_dir: Path, subset: object) -> list[Data]:
+        return [_item()]
 
     fake_spec = downloader.RemoteDatasetSpec(
         identifier="swiss_eeg_short",
@@ -122,8 +130,8 @@ def test_dataset_remote_verify_true_passed_through(
         ensure_calls.append({"accept": accept})
         return tmp_path  # type: ignore[return-value]
 
-    def _fake_loader(dataset_dir: Path, subset: object) -> list[object]:
-        return [object()]
+    def _fake_loader(dataset_dir: Path, subset: object) -> list[Data]:
+        return [_item()]
 
     fake_spec = downloader.RemoteDatasetSpec(
         identifier="swiss_eeg_short",
@@ -150,7 +158,7 @@ def _large_load_spec(downloader_module: object, **overrides: object) -> object:
         "identifier": "zurich_ieeg",
         "local_rel_dir": Path("zurich_ieeg"),
         "files": [],
-        "loader": lambda dataset_dir, subset: [object()],
+        "loader": lambda dataset_dir, subset: [_item()],
         "description": "test",
         "known_subset_keys": tuple(f"sub-{i:02d}" for i in range(1, 21)),
         "subset_size_bytes": 3 * 1024**3,  # ~3 GB per subject
