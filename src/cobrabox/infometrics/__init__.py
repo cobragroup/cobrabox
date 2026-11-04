@@ -1,4 +1,15 @@
-# Infometric features: complexity, regularity and information content.
+"""Infometrics: How complex/irregular is my signal?
+
+Measures of complexity, regularity and information content: entropies,
+Lempel-Ziv complexity, fractal dimension, time-reversal asymmetry, and
+recurrence analysis.
+
+Every feature here comes in two forms, both also exported at the top level:
+the class (``cb.SampleEntropy()``), which composes into pipelines with ``|``, and a
+one-shot function (``cb.sample_entropy(data)``). ``cb.infometrics.__all__`` lists
+them, and ``help()`` on any of them gives its parameters.
+"""
+
 from ._amplitude_entropy import AmplitudeEntropy, amplitude_entropy
 from ._fractal_dimension import FractalDimension, fractal_dimension
 from ._lempel_ziv import LempelZiv, lempel_ziv
