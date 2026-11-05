@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import pytest
 import xarray as xr
@@ -312,26 +310,3 @@ def test_pdc_more_channels_than_samples_raises() -> None:
 
     with pytest.raises(ValueError, match="ambiguous"):
         cb.PartialDirectedCoherence().apply(data)
-
-
-def test_pdc_mislabelled_dims_with_few_samples_warns() -> None:
-    """Swapped labels that pass the shape check still warn instead of running silently.
-
-    A 50-channel, 5-sample array labelled (space, time) looks like 5 channels by
-    50 samples, so only the samples-per-parameter check can flag it.
-    """
-    arr = np.random.default_rng(18).standard_normal((5, 50))
-    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=250.0)
-
-    with pytest.warns(UserWarning, match="dims may be swapped"):
-        cb.PartialDirectedCoherence(var_order=2).apply(data)
-
-
-def test_pdc_enough_samples_does_not_warn() -> None:
-    """Correctly labelled data with plenty of samples fits without the warning."""
-    arr = np.random.default_rng(19).standard_normal((3, 400))
-    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=250.0)
-
-    with warnings.catch_warnings():
-        warnings.filterwarnings("error", message=".*dims may be swapped.*")
-        cb.PartialDirectedCoherence(var_order=2).apply(data)

@@ -8,34 +8,10 @@ canonical implementation.
 
 from __future__ import annotations
 
-import warnings
 from typing import Literal
 
 import numpy as np
 from statsmodels.tsa.api import VAR
-
-# A common rule of thumb asks for about 10 observations per estimated VAR
-# parameter, i.e. n_samples >= 10 * n_channels * order.
-_MIN_SAMPLES_PER_CHANNEL_LAG = 10
-
-
-def _warn_if_too_few_samples(n_channels: int, n_samples: int, order: int) -> None:
-    """Warn when a VAR fit has too few samples, which often means swapped dim labels.
-
-    Shape alone cannot prove labels are right: a 50-channel, 5-sample array
-    labelled the other way round looks like valid 5-channel data. This is the
-    only signal available for that case, so it warns rather than raises, since
-    short windows of correctly labelled data also land here.
-    """
-    required = _MIN_SAMPLES_PER_CHANNEL_LAG * n_channels * order
-    if n_samples < required:
-        warnings.warn(
-            f"VAR fit of order {order} on {n_channels} channels uses only {n_samples} "
-            f"samples (rule of thumb: at least {required}), so the estimate may be "
-            f"unreliable. If this is unexpected, check the input's dimension labels: "
-            f"the 'space' and 'time' dims may be swapped.",
-            stacklevel=3,
-        )
 
 
 def fit_mvar(
@@ -89,9 +65,7 @@ def fit_mvar(
             fit = var_model.fit(ic="aic")
         else:
             fit = var_model.fit(maxlags=order)
-        fitted_order = fit.coefs.shape[0]
-        _warn_if_too_few_samples(K, T, fitted_order)
-        return fit.coefs, np.asarray(fit.sigma_u), fitted_order
+        return fit.coefs, np.asarray(fit.sigma_u), fit.coefs.shape[0]
 
     if order is None:
         raise ValueError("method='lstsq' requires an explicit order")
@@ -99,7 +73,6 @@ def fit_mvar(
     p = int(order)
     if p < 1:
         raise ValueError(f"order must be >= 1, got {p}")
-    _warn_if_too_few_samples(K, T, p)
 
     Y = X[:, p:].T  # (T - p, K)
     Z = np.column_stack([X[:, p - k - 1 : T - k - 1].T for k in range(p)])  # (T-p, p*K)
