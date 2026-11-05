@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import io
+
 import numpy as np
 import pytest
 import xarray as xr
 
 import cobrabox as cb
+from cobrabox.data import METADATA_FIELDS
 
 RNG = np.random.default_rng(seed=42)
 
@@ -391,3 +394,22 @@ def test_shape_metadata_is_read_only() -> None:
     for name in ("shape", "size", "dims", "sizes"):
         with pytest.raises(AttributeError):
             setattr(d, name, 1)
+
+
+@pytest.mark.parametrize("field", METADATA_FIELDS)
+def test_renderings_show_every_metadata_field(field: str) -> None:
+    """Both the plain and rich summaries list each identity field and its value."""
+    from rich.console import Console
+
+    d = cb.Data.from_numpy(
+        RNG.standard_normal((4, 200)), dims=["space", "time"], **{field: "value-x"}
+    )
+
+    assert field in str(d)
+    assert "value-x" in str(d)
+
+    console = Console(file=io.StringIO(), width=100)
+    console.print(d)
+    rendered = console.file.getvalue()
+    assert field in rendered
+    assert "value-x" in rendered

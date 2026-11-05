@@ -15,6 +15,24 @@ TIME_PLACEHOLDER_ATTR = "cobrabox_time_placeholder"
 """Marks a singleton 'time' axis fabricated by :meth:`SignalData._copy_with_new_data`
 after a feature consumed the real one. Not a time axis you can compute over."""
 
+METADATA_FIELDS: tuple[str, ...] = ("subjectID", "groupID", "condition", "runID")
+"""Identity metadata carried by every :class:`Data`, in display order.
+
+The single source of truth for this list. Every site that rebuilds a ``Data`` — the
+two branches of :meth:`Data._copy_with_new_data` and the aggregators in
+``windowing/`` — derives the fields it must carry from here, so adding a field does
+not mean hunting down each of them. ``Dataset`` also reads it to decide what
+:meth:`~cobrabox.Dataset.filter` and :meth:`~cobrabox.Dataset.groupby` accept.
+
+``sampling_rate``, ``history`` and ``extra`` are deliberately excluded: they are not
+identity, and each is merged by its own rule.
+"""
+
+
+def _metadata_of(data: Data) -> dict[str, Any]:
+    """Return *data*'s identity metadata as constructor keyword arguments."""
+    return {field: getattr(data, field) for field in METADATA_FIELDS}
+
 
 def has_placeholder_time(data: Data) -> bool:
     """True if ``data``'s time axis is a fabricated placeholder, not real time.
@@ -50,6 +68,7 @@ class Data:
         - subjectID: Subject identifier
         - groupID: Group identifier
         - condition: Experimental condition
+        - runID: Recording identifier, distinguishing repeats within a subject
         - history: List of operations applied (automatically maintained)
         - extra: User-defined dict for additional fields and arrays (any values)
 
@@ -71,6 +90,7 @@ class Data:
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ) -> None:
@@ -82,6 +102,7 @@ class Data:
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
+            runID: Recording identifier within a subject
             history: List of operation names applied (default: empty list)
             extra: Optional dict for additional fields and arrays (e.g. xr.DataArray, scalars)
         """
@@ -106,6 +127,8 @@ class Data:
             attrs["groupID"] = groupID
         if condition is not None:
             attrs["condition"] = condition
+        if runID is not None:
+            attrs["runID"] = runID
 
         # Initialize history if not provided
         if history is None:
@@ -140,6 +163,7 @@ class Data:
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> Data:
         """Create a Data object from a numpy array.
@@ -154,6 +178,7 @@ class Data:
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
+            runID: Recording identifier within a subject
             extra: Optional extra dict
 
         Returns:
@@ -184,6 +209,7 @@ class Data:
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
+            runID=runID,
             extra=extra,
         )
 
@@ -196,6 +222,7 @@ class Data:
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ) -> Data:
@@ -211,6 +238,7 @@ class Data:
             subjectID: Subject identifier.
             groupID: Group identifier.
             condition: Experimental condition.
+            runID: Recording identifier within a subject.
             history: List of operation names applied.
             extra: Optional extra dict.
 
@@ -227,6 +255,7 @@ class Data:
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
+            runID=runID,
             history=history,
             extra=extra,
         )
@@ -395,6 +424,18 @@ class Data:
         return self._data.attrs.get("condition")
 
     @property
+    def runID(self) -> str | None:
+        """Recording identifier, distinguishing repeated recordings of one subject.
+
+        Long-term monitoring datasets yield many recordings per subject — 39 for one
+        Zurich subject, 295 hourly segments for Swiss ID01 — so ``subjectID`` alone
+        does not identify a recording. BIDS calls this ``run``; where a dataset is
+        really splitting one continuous recording into segments, this holds the
+        segment index.
+        """
+        return self._data.attrs.get("runID")
+
+    @property
     def history(self) -> list[str]:
         """List of operations applied to this dataset."""
         return self._data.attrs.get("history", [])
@@ -471,6 +512,7 @@ class Data:
         lines.append(f"  subjectID : {self.subjectID}")
         lines.append(f"  groupID   : {self.groupID}")
         lines.append(f"  condition : {self.condition}")
+        lines.append(f"  runID     : {self.runID}")
         if self.sampling_rate is not None:
             lines.append(f"  sr        : {self.sampling_rate} Hz")
         lines.append(f"  history   : {self.history}")
@@ -491,6 +533,7 @@ class Data:
         table.add_row("subjectID", str(self.subjectID))
         table.add_row("groupID", str(self.groupID))
         table.add_row("condition", str(self.condition))
+        table.add_row("runID", str(self.runID))
         if self.sampling_rate is not None:
             table.add_row("sr", f"{self.sampling_rate} Hz")
         table.add_row("history", str(self.history))
@@ -571,13 +614,10 @@ class Data:
 
             # Merge metadata: use values from returned Data only if they're defined
             # (not None), otherwise keep original values
-            merged_subjectID = (
-                new_data.subjectID if new_data.subjectID is not None else self.subjectID
-            )
-            merged_groupID = new_data.groupID if new_data.groupID is not None else self.groupID
-            merged_condition = (
-                new_data.condition if new_data.condition is not None else self.condition
-            )
+            merged_metadata = {}
+            for field in METADATA_FIELDS:
+                returned = getattr(new_data, field)
+                merged_metadata[field] = returned if returned is not None else getattr(self, field)
 
             # Merge history: combine both histories, then append operation name
             merged_history = list(self.history) + list(new_data.history)
@@ -593,9 +633,7 @@ class Data:
             result_data = new_data
 
             # Preserve all metadata from self
-            merged_subjectID = self.subjectID
-            merged_groupID = self.groupID
-            merged_condition = self.condition
+            merged_metadata = _metadata_of(self)
 
             # Update history
             merged_history = list(self.history)
@@ -614,14 +652,7 @@ class Data:
             result_data = result_data.copy()
             result_data.attrs = {k: v for k, v in result_data.attrs.items() if k != "sampling_rate"}
 
-        return Data(
-            data=result_data,
-            subjectID=merged_subjectID,
-            groupID=merged_groupID,
-            condition=merged_condition,
-            history=merged_history,
-            extra=merged_extra,
-        )
+        return Data(data=result_data, **merged_metadata, history=merged_history, extra=merged_extra)
 
 
 class SignalData(Data):
@@ -646,6 +677,7 @@ class SignalData(Data):
         - sampling_rate: Sampling rate in Hz (inferred from time coordinates when possible)
         - groupID: Group identifier
         - condition: Experimental condition
+        - runID: Recording identifier, distinguishing repeats within a subject
         - history: List of operations applied (automatically maintained)
         - extra: User-defined dict for additional fields and arrays (any values)
 
@@ -661,6 +693,7 @@ class SignalData(Data):
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ) -> None:
@@ -673,6 +706,7 @@ class SignalData(Data):
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
+            runID: Recording identifier within a subject
             history: List of operation names applied (default: empty list)
             extra: Optional dict for additional fields and arrays
 
@@ -692,6 +726,7 @@ class SignalData(Data):
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
+            runID=runID,
             history=history,
             extra=extra,
         )
@@ -706,6 +741,7 @@ class SignalData(Data):
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> SignalData:
         """Create a SignalData object from a numpy array.
@@ -719,6 +755,7 @@ class SignalData(Data):
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
+            runID: Recording identifier within a subject
             extra: Optional extra dict
 
         Returns:
@@ -747,6 +784,7 @@ class SignalData(Data):
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
+            runID=runID,
             extra=extra,
         )
 
@@ -759,6 +797,7 @@ class SignalData(Data):
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ) -> SignalData:
@@ -774,6 +813,7 @@ class SignalData(Data):
             subjectID: Subject identifier
             groupID: Group identifier
             condition: Experimental condition
+            runID: Recording identifier within a subject
             history: List of operation names applied
             extra: Optional extra dict
 
@@ -793,6 +833,7 @@ class SignalData(Data):
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
+            runID=runID,
             history=history,
             extra=extra,
         )
@@ -824,9 +865,7 @@ class SignalData(Data):
             return SignalData(
                 data=result_data,
                 sampling_rate=result.sampling_rate,
-                subjectID=result.subjectID,
-                groupID=result.groupID,
-                condition=result.condition,
+                **_metadata_of(result),
                 history=result.history,
                 extra=result.extra,
             )
@@ -857,9 +896,7 @@ class SignalData(Data):
         return SignalData(
             data=result_data,
             sampling_rate=result.sampling_rate,
-            subjectID=result.subjectID,
-            groupID=result.groupID,
-            condition=result.condition,
+            **_metadata_of(result),
             history=result.history,
             extra=result.extra,
         )
@@ -893,6 +930,7 @@ class EEG(SignalData):
         subjectID: str | None = None,
         groupID: str | None = None,
         condition: str | None = None,
+        runID: str | None = None,
         history: list[str] | None = None,
         extra: dict[str, Any] | None = None,
         ref_channel: str | None = None,
@@ -903,6 +941,7 @@ class EEG(SignalData):
             subjectID=subjectID,
             groupID=groupID,
             condition=condition,
+            runID=runID,
             history=history,
             extra=extra,
         )

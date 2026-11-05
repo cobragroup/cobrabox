@@ -7,6 +7,7 @@ import pytest
 import xarray as xr
 
 import cobrabox as cb
+from cobrabox.data import METADATA_FIELDS
 
 
 def test_copy_with_new_data_from_dataarray_preserves_metadata_and_adds_time() -> None:
@@ -117,3 +118,54 @@ def test_copy_strips_sampling_rate_when_no_time_dim() -> None:
     assert "time" not in out.data.dims
     assert "sampling_rate" not in out.data.attrs
     assert out.sampling_rate is None
+
+
+# ----------------------------------------------------------------------
+# Every METADATA_FIELDS entry must survive every rebuild site
+# ----------------------------------------------------------------------
+#
+# These are parametrised over METADATA_FIELDS rather than over a hardcoded list, so
+# adding a field (e.g. runID) automatically extends the checks. A new field dropped
+# at any rebuild site fails here instead of silently going None mid-pipeline.
+
+
+def _with_field(field: str, value: str) -> cb.SignalData:
+    return cb.SignalData.from_numpy(
+        np.arange(40, dtype=float).reshape(20, 2),
+        dims=["time", "space"],
+        sampling_rate=100.0,
+        **{field: value},
+    )
+
+
+@pytest.mark.parametrize("field", METADATA_FIELDS)
+def test_metadata_field_survives_copy_from_dataarray(field: str) -> None:
+    base = _with_field(field, "value-x")
+    out = base._copy_with_new_data(xr.DataArray(np.array([1.0, 2.0]), dims=["space"]))
+    assert getattr(out, field) == "value-x"
+
+
+@pytest.mark.parametrize("field", METADATA_FIELDS)
+def test_metadata_field_survives_copy_from_data(field: str) -> None:
+    base = _with_field(field, "value-x")
+    returned = cb.Data(xr.DataArray(np.array([1.0, 2.0]), dims=["space"]))
+    out = base._copy_with_new_data(returned)
+    assert getattr(out, field) == "value-x"
+
+
+@pytest.mark.parametrize("field", METADATA_FIELDS)
+def test_metadata_field_survives_a_feature(field: str) -> None:
+    base = _with_field(field, "value-x")
+    assert getattr(cb.LineLength().apply(base), field) == "value-x"
+
+
+@pytest.mark.parametrize("field", METADATA_FIELDS)
+@pytest.mark.parametrize("aggregator", [cb.MeanAggregate, cb.ConcatAggregate])
+def test_metadata_field_survives_aggregators(field: str, aggregator: type) -> None:
+    base = _with_field(field, "value-x")
+    chord = cb.Chord(
+        split=cb.SlidingWindow(window_size=10, step_size=5),
+        pipeline=cb.LineLength(),
+        aggregate=aggregator(),
+    )
+    assert getattr(chord.apply(base), field) == "value-x"
