@@ -136,3 +136,36 @@ def test_nonreversibility_public_api() -> None:
     data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
     out = cb.Nonreversibility().apply(data)
     assert isinstance(out, cb.Data)
+
+
+def test_nonreversibility_time_space_order_transposed_internally() -> None:
+    """Plain Data with dims (time, space) matches SignalData (regression, issue #167).
+
+    Plain Data keeps its input order, so without a transpose the reverse-time
+    fit flipped channels instead of time and silently returned a wrong value.
+    """
+    arr = np.random.default_rng(seed=7).standard_normal((400, 3))
+    signal_data = cb.SignalData.from_numpy(arr, dims=["time", "space"], sampling_rate=100.0)
+    plain_data = cb.Data.from_xarray(xr.DataArray(arr, dims=["time", "space"]), sampling_rate=100.0)
+
+    out_expected = cb.Nonreversibility().apply(signal_data)
+    out_swapped = cb.Nonreversibility().apply(plain_data)
+
+    np.testing.assert_allclose(out_swapped.data.values, out_expected.data.values)
+
+
+def test_nonreversibility_raises_on_missing_time_dim() -> None:
+    """Input without a 'time' dimension is rejected with a clear message."""
+    data = cb.Data.from_xarray(xr.DataArray(np.ones((3, 4)), dims=["space", "freq"]))
+
+    with pytest.raises(ValueError, match="'time' dimension"):
+        cb.Nonreversibility().apply(data)
+
+
+def test_nonreversibility_more_channels_than_samples_raises() -> None:
+    """A degenerate VAR input (channels > samples) fails loudly, not silently."""
+    arr = np.random.default_rng(seed=8).standard_normal((8, 5))
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=100.0)
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        cb.Nonreversibility().apply(data)
