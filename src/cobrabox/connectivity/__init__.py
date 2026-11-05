@@ -1,4 +1,17 @@
-# Connectivity features: which regions are synchronized/interacting.
+"""Connectivity: Which regions are synchronized/interacting?
+
+Pairwise and multivariate coupling between channels or regions. It covers
+undirected measures (correlation, coherence, phase locking, mutual
+information), directed ones (Granger causality and the MVAR-based measures such
+as DTF and PDC), and node-level summaries of a connectivity matrix such as
+inward and outward strength.
+
+Every feature here comes in two forms, both also exported at the top level:
+the class (``cb.Coherence()``), which composes into pipelines with ``|``, and a
+one-shot function (``cb.coherence(data)``). ``cb.connectivity.__all__`` lists
+them, and ``help()`` on any of them gives its parameters.
+"""
+
 from ._coherence import Coherence, coherence
 from ._correlation import Correlation, correlation
 from ._covariance import Covariance, covariance

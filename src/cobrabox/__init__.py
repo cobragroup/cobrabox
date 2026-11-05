@@ -1,3 +1,40 @@
+"""cobrabox: composable feature extraction for EEG, fMRI and other neural time series.
+
+Data lives in immutable containers that wrap an ``xarray.DataArray`` with its
+metadata (subject, group, condition, sampling rate, processing history):
+``cb.Data`` for arrays of any shape, ``cb.SignalData`` for anything with a
+``time`` dimension, and the ``cb.EEG`` / ``cb.FMRI`` markers. Build one with
+``cb.from_numpy`` or ``cb.from_xarray``, or load a whole ``cb.Dataset`` with
+``cb.load_dataset``.
+
+Every feature comes in two forms:
+
+* a class, ``cb.LineLength()``, which you compose into pipelines with ``|`` and
+  can save and reload with ``cb.save`` / ``cb.load``;
+* a one-shot function, ``cb.line_length(data)``, for a single call.
+
+Features are grouped into domain subpackages by the question they answer:
+``signalstats``, ``spectral``, ``connectivity``, ``infometrics``,
+``transforms``, ``decompositions``, ``surrogates`` and ``windowing``. Each
+domain's features are also reachable at the top level, so ``cb.LineLength`` and
+``cb.signalstats.LineLength`` are the same class. Use ``help()`` on a domain to
+see what it covers.
+
+Example:
+    >>> import numpy as np
+    >>> import cobrabox as cb
+    >>> data = cb.from_numpy(
+    ...     np.random.randn(1000, 4), dims=["time", "space"], sampling_rate=250.0
+    ... )
+    >>> per_channel = cb.line_length(data)  # one-shot
+    >>> chord = (
+    ...     cb.SlidingWindow(window_size=250, step_size=125)
+    ...     | cb.LineLength()
+    ...     | cb.MeanAggregate()
+    ... )
+    >>> averaged = chord.apply(data)  # composed: windowed, then averaged
+"""
+
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _version
 
