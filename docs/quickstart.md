@@ -61,8 +61,14 @@ A `Chord` is itself a `BaseFeature`, so it composes with `|` like any other step
 
 ```python
 ds = cb.load_dataset("swiss_demo", subset=["ID1", "ID4"])  # downloaded on first use
-ds.describe()  # print shapes, metadata summary
+ds.describe()  # print shapes, metadata summary, labels, filterable fields
+
+ds.keys()  # ('ID1/preictal', 'ID1/ictal', ...) — labels you can look up
+ds["ID1/ictal"]  # one item, by label
+ds.fields()  # every name filter() and groupby() accept
+
 ds.filter(condition="ictal")  # subset by metadata
+ds.one(subjectID="ID4", condition="ictal")  # exactly one item, or raise
 ds.groupby("condition")  # dict[str, Dataset]
 
 pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()

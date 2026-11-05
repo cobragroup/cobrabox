@@ -17,7 +17,11 @@
             - __repr__
             - __str__
             - describe
+            - keys
+            - fields
+            - unique
             - filter
+            - one
             - groupby
 
 ## `load_dataset()`

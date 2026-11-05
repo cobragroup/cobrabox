@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import warnings
 import zipfile
 from collections.abc import Callable, Sequence
@@ -124,6 +125,30 @@ def _load_swiss_demo(dataset_dir: Path, subset: Sequence[str] | None = None) -> 
 # ---------------------------------------------------------------------------
 
 
+def _run_from_bids_stem(stem: str) -> str | None:
+    """Extract the BIDS ``run-`` entity from a filename stem, if present.
+
+    ``sub-01_ses-interictalsleep_run-03_ieeg`` -> ``"03"``.
+    """
+    match = re.search(r"_run-([A-Za-z0-9]+)", stem)
+    return match[1] if match else None
+
+
+def _run_from_suffix(stem: str, separator: str = "_") -> str | None:
+    """Extract the trailing token a dataset uses to number a subject's recordings.
+
+    ``chb01_03`` -> ``"03"``; ``PN00-1`` (separator ``"-"``) -> ``"1"``;
+    ``ID01_7h`` -> ``"7h"``. Returns None when the stem has no such token, which
+    is the case for datasets recording each subject exactly once.
+
+    These tokens are not always runs in the strict BIDS sense — for long-term
+    monitoring they index consecutive segments of one continuous recording — but
+    they are what distinguishes recordings of the same subject.
+    """
+    head, found, tail = stem.rpartition(separator)
+    return tail if found and head else None
+
+
 def _extract_numeric_from_csv_bytes(raw: bytes) -> tuple[np.ndarray, list[str]]:
     """Parse a CSV-like payload and return numeric values plus channel names."""
     df = pd.read_csv(io.BytesIO(raw), sep=None, engine="python")
@@ -242,6 +267,7 @@ def _load_swiss_eeg_long(
     items: list[SignalData] = []
     for path in mat_paths:
         subject_id = path.stem.rsplit("_", 1)[0]  # "ID01_1h" -> "ID01"
+        run_id = _run_from_suffix(path.stem)  # "ID01_1h" -> "1h"
 
         if subject_id not in fs_cache:
             fs_cache[subject_id] = _load_swez_sampling_rate(dataset_dir, subject_id)
@@ -278,7 +304,11 @@ def _load_swiss_eeg_long(
             coords={"time": time, "space": channels},
             attrs={"identifier": "swiss_eeg_long", "source_file": path.name},
         )
-        items.append(SignalData.from_xarray(da, sampling_rate=sampling_rate, subjectID=subject_id))
+        items.append(
+            SignalData.from_xarray(
+                da, sampling_rate=sampling_rate, subjectID=subject_id, runID=run_id
+            )
+        )
 
     if not items:
         raise ValueError("All swiss_eeg_long files were empty or unparsable.")
@@ -380,6 +410,7 @@ def _load_edf_dataset(
     identifier: str,
     subject_key_fn: Callable[[str], str],
     subset: Sequence[str] | None,
+    run_key_fn: Callable[[str], str | None] = _run_from_bids_stem,
 ) -> Dataset[SignalData]:
     """Shared EDF loading logic for scalp EEG datasets.
 
@@ -392,6 +423,8 @@ def _load_edf_dataset(
         identifier: Dataset identifier string (used in error messages and attrs).
         subject_key_fn: Maps a file stem to a subject ID string.
         subset: If given, only load files whose subject ID is in this list.
+        run_key_fn: Maps a file stem to a run ID distinguishing recordings of the
+            same subject, or None when the dataset records each subject once.
     """
     try:
         import mne
@@ -412,6 +445,7 @@ def _load_edf_dataset(
     items: list[SignalData] = []
     for path in edf_paths:
         subject_id = subject_key_fn(path.stem)
+        run_id = run_key_fn(path.stem)
         try:
             raw = mne.io.read_raw_edf(str(path), preload=True, verbose=False)
         except Exception:
@@ -427,7 +461,9 @@ def _load_edf_dataset(
             coords={"time": time, "space": list(raw.ch_names)},
             attrs={"identifier": identifier, "source_file": path.name},
         )
-        items.append(SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id))
+        items.append(
+            SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id, runID=run_id)
+        )
 
     if not items:
         raise ValueError(f"All {identifier!r} files were empty or unparsable.")
@@ -451,6 +487,7 @@ def _load_chb_mit(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dat
         identifier="chb_mit",
         subject_key_fn=lambda stem: stem.split("_", 1)[0],
         subset=subset,
+        run_key_fn=lambda stem: _run_from_suffix(stem, "_"),
     )
 
 
@@ -471,6 +508,7 @@ def _load_siena_eeg(dataset_dir: Path, subset: Sequence[str] | None = None) -> D
         identifier="siena_eeg",
         subject_key_fn=lambda stem: stem.split("-", 1)[0],
         subset=subset,
+        run_key_fn=lambda stem: _run_from_suffix(stem, "-"),
     )
 
 
@@ -548,6 +586,7 @@ def _load_zurich_ieeg(
     items: list[SignalData] = []
     for path in vhdr_paths:
         subject_id = path.stem.split("_", 1)[0]
+        run_id = _run_from_bids_stem(path.stem)
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message=r".*annotation.*outside.*data range")
@@ -572,7 +611,9 @@ def _load_zurich_ieeg(
             "all_channels": _ZURICH_ALL_CHANNELS_PER_SUBJECT.get(subject_id, []),
         }
         items.append(
-            SignalData.from_xarray(da, sampling_rate=fs, subjectID=subject_id, extra=extra)
+            SignalData.from_xarray(
+                da, sampling_rate=fs, subjectID=subject_id, runID=run_id, extra=extra
+            )
         )
 
     if not items:

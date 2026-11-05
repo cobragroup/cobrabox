@@ -13,13 +13,40 @@ import pytest
 
 from cobrabox import datasets, downloader
 from cobrabox.dataset import Dataset
-from cobrabox.dataset_loader import _load_swiss_demo
+from cobrabox.dataset_loader import _load_swiss_demo, _run_from_bids_stem, _run_from_suffix
 from cobrabox.downloader import (
     RemoteDatasetSpec,
     RemoteFile,
     ensure_remote_files,
     get_remote_dataset_spec,
 )
+
+
+@pytest.mark.parametrize(
+    ("stem", "expected"),
+    [
+        ("sub-01_ses-interictalsleep_run-03_ieeg", "03"),  # zurich_ieeg
+        ("sub-Detroit001_ses-01_task-sleep_ieeg", None),  # sleep_ieeg: one per subject
+        ("sub-01_ses-01", None),  # BIDS without a run entity
+    ],
+)
+def test_run_from_bids_stem(stem: str, expected: str | None) -> None:
+    assert _run_from_bids_stem(stem) == expected
+
+
+@pytest.mark.parametrize(
+    ("stem", "separator", "expected"),
+    [
+        ("chb01_03", "_", "03"),  # chb_mit
+        ("PN00-1", "-", "1"),  # siena_eeg
+        ("ID01_7h", "_", "7h"),  # swiss_eeg_long: hourly segment
+        ("fit_Swiss_VAR_ID1_sz13_simulated_data_2", "_", "2"),  # trailing replicate number
+        ("single", "_", None),  # no separator at all
+        ("_leading", "_", None),  # separator with nothing before it
+    ],
+)
+def test_run_from_suffix(stem: str, separator: str, expected: str | None) -> None:
+    assert _run_from_suffix(stem, separator) == expected
 
 
 class _NoOpProgress:

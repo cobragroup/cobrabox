@@ -13,10 +13,13 @@ ds = cb.load_dataset("swiss_demo", subset=["ID1"])
 # Inspect at a glance
 ds.describe()
 # Dataset  3 × SignalData
+#   source      swiss_demo
 #   subjectIDs  ID1, ID1, ID1
 #   groupIDs    None, None, None
 #   conditions  preictal, ictal, postictal
-#   shapes      (47, 46080), (47, 64000), (47, 46080)
+#   shapes      (47, 46080) × 2, (47, 64000)
+#   labels      ID1/preictal, ID1/ictal, ID1/postictal
+#   filter on   subjectID, groupID, condition, runID, seizureID, Project, Description
 ```
 
 `swiss_demo` is the demo dataset: simulated iEEG from VAR models fitted to five
@@ -25,6 +28,23 @@ subjects of the SWEC-ETHZ short-term recordings (`ID1`, `ID4`, `ID5`, `ID9`,
 `"preictal"`, `"ictal"` or `"postictal"`; the seizure ID, project and a short
 description are in `extra`. `subset=` takes a list of subject IDs and loads only
 those.
+
+The last two rows tell you how to reach into the dataset: which labels are
+available for lookup, and which fields `filter()` and `groupby()` will accept. The
+`filter on` row is dataset-specific — it includes whatever the items carry in
+`extra`, so `swiss_demo` lets you filter on `seizureID`, `Project` and
+`Description` from its sidecar metadata.
+
+If the items carry no identifying metadata at all — as in a `Dataset` you build
+yourself from bare arrays — the `labels` row says so, and names the fields that
+will never match:
+
+```text
+  labels     : none — positional access only, not reachable by filter on subjectID, groupID, condition, runID
+```
+
+Only fields unset on *every* item are listed, so the row stays accurate as
+metadata gets filled in.
 
 ## The `Dataset[T]` Class
 
@@ -50,6 +70,80 @@ for item in ds:
 print(len(ds))
 print(item in ds)
 ```
+
+### Labels
+
+Items that carry identifying metadata can also be looked up by name. A label joins
+`subjectID`, `condition` and `runID` with `/`, skipping whichever are unset — see
+[Metadata fields](data-containers.md#metadata-fields) for what each means:
+
+```python
+ds = cb.load_dataset("swiss_demo", subset=["ID1", "ID4"])
+ds.keys()
+# ('ID1/preictal', 'ID1/ictal', 'ID1/postictal',
+#  'ID4/preictal', 'ID4/ictal', 'ID4/postictal')
+ds["ID1/ictal"]  # the matching item
+```
+
+Labels are an index derived from the items, not a replacement for positional
+storage — both reach the same object:
+
+```python
+ds[1] is ds["ID1/ictal"]  # True
+```
+
+The two forms coexist without interfering, because positions stay integers and
+labels stay strings. Even a subject literally named `"0"` is unambiguous: `ds[0]`
+is the first item, `ds["0"]` is that subject.
+
+Two consequences worth knowing:
+
+- **Items without metadata contribute no label.** `keys()` may be shorter than
+  `len(ds)`, and those items remain reachable by position.
+- **Labels need not be unique.** Where several items share one, the lookup returns
+  a `Dataset` of all of them rather than silently picking one.
+- **Labels do not record which field a part came from.** Unset fields are skipped,
+  so `subjectID="S1", runID="2"` and `subjectID="S1", condition="2"` both label as
+  `"S1/2"` and a lookup returns both. Use `filter()` to name a field explicitly.
+
+### Reaching a whole subject
+
+Labels get longer as metadata gets richer, but a lookup also accepts any *leading
+part* of a label, so the coarser names keep working:
+
+```python
+ds["ID1/ictal"]  # a SignalData — exact match
+len(ds["ID1"])  # 3  → preictal, ictal and postictal for that subject
+```
+
+This matters most on the long-monitoring datasets. Zurich subject `sub-01` has 39
+recordings labelled `sub-01/01 … sub-01/39`; `ds["sub-01"]` still returns all 39 as
+a `Dataset` rather than raising.
+
+Matching is on `/` boundaries, so `ds["ID"]` matches nothing — it is a prefix of
+the string but not of the label.
+
+An unknown label raises `KeyError` listing what is available, so a typo is
+reported rather than silently returning nothing:
+
+```python
+ds["ID99"]
+# KeyError: 'ID99' is not a label in this Dataset.
+#           Available: ID1/preictal, ID1/ictal, ID1/postictal, ID4/preictal, ...
+```
+
+### Discovering what is there
+
+```python
+ds.keys()  # labels available for lookup
+ds.fields()  # every name filter() and groupby() accept
+ds.unique("condition")  # the distinct values of one field
+```
+
+`fields()` includes the three standard metadata fields plus whatever the items
+carry in `extra`, which varies by dataset — Zurich recordings add `ilae` and
+`resected_zone`, for instance. `unique()` is the quickest way to see what a filter
+could match before writing it.
 
 ### Combining datasets
 
@@ -90,6 +184,35 @@ empty = ds.filter(groupID="nonexistent")
 print(len(empty))  # 0
 ```
 
+A criterion may also be a list, tuple, or set, matching any of the values:
+
+```python
+ds.filter(subjectID=["S1", "S2"])  # either subject
+ds.filter(condition={"pre", "post"})  # either condition
+```
+
+Anything in an item's `extra` dict is filterable too — `fields()` lists what is
+available for a given dataset:
+
+```python
+ds.filter(ilae=2)
+```
+
+A keyword that names no known field raises `ValueError` rather than quietly
+matching nothing, so misspellings surface immediately.
+
+### Expecting exactly one item
+
+`filter()` always returns a `Dataset`, and an empty one when nothing matches. When
+you expect a single item — and want a miss to be an error — use `one()`:
+
+```python
+sig = ds.one(subjectID="milan", condition="rest")  # the Data itself
+```
+
+It raises `ValueError` if nothing matches, and also if several do, so it can't
+silently hand you the wrong recording when labels turn out not to be unique.
+
 ## Grouping
 
 Split a `Dataset` into sub-datasets keyed by a metadata attribute:
@@ -106,7 +229,16 @@ groups_with_none = ds.groupby("condition")
 print("None" in groups_with_none)
 ```
 
-Valid attributes: `"subjectID"`, `"groupID"`, `"condition"`.
+Group by several attributes at once to get one bucket per combination. With a
+single attribute the keys are strings; with several they are tuples:
+
+```python
+by_both = ds.groupby("subjectID", "condition")
+by_both[("milan", "rest")]
+```
+
+Valid attributes are anything `fields()` reports — the three standard metadata
+fields, plus any key the items carry in `extra`.
 
 ## Available Datasets
 
@@ -139,6 +271,20 @@ print(info)
 #   license     : Open Data Commons Attribution License v1.0 (ODC-By-1.0)
 #   license url : https://physionet.org/content/chbmit/1.0.0/
 ```
+
+Once a dataset is loaded, `ds.info()` recalls the same entry without repeating
+its name — the `Dataset` remembers where it came from in `ds.source`:
+
+```python
+ds = cb.load_dataset("bonn_eeg")
+ds.info()  # same as cb.dataset_info("bonn_eeg")
+ds.source  # 'bonn_eeg'
+```
+
+The source survives slicing, label lookup, `filter()` and `groupby()`, and `+`
+when both sides came from the same dataset. A `Dataset` you build yourself, or one
+concatenated from different datasets, has no source, and `info()` raises — use
+`ds.describe()` to summarise the items themselves.
 
 ### Downloading a dataset
 
