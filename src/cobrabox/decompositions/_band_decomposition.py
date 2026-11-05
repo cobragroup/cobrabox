@@ -118,13 +118,14 @@ class BandDecomposition(BaseFeature[SignalData]):
         if self.keep_orig:
             band_arrays.append(data.data.assign_coords({"band": "original"}).expand_dims("band"))
         for band_name, freqs in resolved.items():
-            b, a = signal.butter(self.ord, freqs, btype="band", fs=data.sampling_rate)
+            # Second-order sections: the (b, a) form is numerically unstable for
+            # narrow bands relative to Nyquist (e.g. 1-4 Hz at 5 kHz diverges).
+            sos = signal.butter(self.ord, freqs, btype="band", fs=data.sampling_rate, output="sos")
             filtered = xr.apply_ufunc(
-                signal.lfilter,
-                b,
-                a,
+                signal.sosfilt,
+                sos,
                 data.data,
-                input_core_dims=[[], [], ["time"]],
+                input_core_dims=[[], ["time"]],
                 output_core_dims=[["time"]],
                 vectorize=False,
             )

@@ -141,21 +141,21 @@ def test_bandpass_single_band_matches_manual_scipy() -> None:
 
     out = cb.BandpassFilter(bands=[[8, 12]]).apply(data)
 
-    b, a = signal.butter(3, [8, 12], btype="band", fs=sr)
-    expected = signal.filtfilt(b, a, data.to_numpy(), axis=-1)
+    sos = signal.butter(3, [8, 12], btype="band", fs=sr, output="sos")
+    expected = signal.sosfiltfilt(sos, data.to_numpy(), axis=-1)
 
     np.testing.assert_allclose(out.to_numpy(), expected, atol=1e-12)
 
 
-def test_bandpass_causal_matches_manual_lfilter() -> None:
+def test_bandpass_causal_matches_manual_sosfilt() -> None:
     """``zero_phase=False`` falls back to the causal forward-only filter."""
     sr = 250.0
     data = _make_data(n_time=500, n_space=2, sampling_rate=sr)
 
     out = cb.BandpassFilter(bands=[[8, 12]], zero_phase=False).apply(data)
 
-    b, a = signal.butter(3, [8, 12], btype="band", fs=sr)
-    expected = signal.lfilter(b, a, data.to_numpy(), axis=-1)
+    sos = signal.butter(3, [8, 12], btype="band", fs=sr, output="sos")
+    expected = signal.sosfilt(sos, data.to_numpy(), axis=-1)
 
     np.testing.assert_allclose(out.to_numpy(), expected, atol=1e-12)
 
@@ -189,11 +189,47 @@ def test_bandpass_multi_band_equals_sum() -> None:
 
     total = None
     for low, high in bands:
-        b, a = signal.butter(3, [low, high], btype="band", fs=sr)
-        filtered = signal.filtfilt(b, a, data.to_numpy(), axis=-1)
+        sos = signal.butter(3, [low, high], btype="band", fs=sr, output="sos")
+        filtered = signal.sosfiltfilt(sos, data.to_numpy(), axis=-1)
         total = filtered if total is None else total + filtered
 
     np.testing.assert_allclose(out.to_numpy(), total, atol=1e-12)
+
+
+@pytest.mark.parametrize(
+    ("sr", "band", "order"), [(5000.0, [1, 4], 3), (1000.0, [8, 12], 5), (2000.0, [0.5, 4], 4)]
+)
+@pytest.mark.parametrize("zero_phase", [True, False])
+def test_bandpass_stable_for_narrow_band_at_high_sampling_rate(
+    sr: float, band: list[float], order: int, zero_phase: bool
+) -> None:
+    """Narrow bands relative to Nyquist stay stable (regression: (b, a) form diverged).
+
+    With transfer-function coefficients, a 1-4 Hz band at 5 kHz produced values
+    around 1e119 from unit-variance noise. Second-order sections keep the
+    output bounded by the input.
+    """
+    rng = np.random.default_rng(0)
+    arr = rng.standard_normal((2, int(sr * 20)))
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=sr)
+
+    out = cb.BandpassFilter(bands=[band], ord=order, zero_phase=zero_phase).apply(data).to_numpy()
+
+    assert np.all(np.isfinite(out))
+    assert np.max(np.abs(out)) < np.max(np.abs(arr))
+
+
+def test_bandpass_passes_in_band_sine_at_high_sampling_rate() -> None:
+    """A 2 Hz sine at 5 kHz survives a 1-4 Hz zero-phase filter with ~unit gain."""
+    sr = 5000.0
+    t = np.arange(int(sr * 10)) / sr
+    sine = np.sin(2 * np.pi * 2.0 * t)
+    data = cb.SignalData.from_numpy(sine[np.newaxis, :], dims=["space", "time"], sampling_rate=sr)
+
+    out = cb.BandpassFilter(bands=[[1, 4]]).apply(data).to_numpy()[0]
+
+    mid = slice(int(2 * sr), int(8 * sr))  # skip edge transients
+    np.testing.assert_allclose(out[mid], sine[mid], atol=0.05)
 
 
 def test_bandpass_sine_concentrated_in_band() -> None:

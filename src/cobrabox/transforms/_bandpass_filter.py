@@ -29,9 +29,9 @@ class BandpassFilter(BaseFeature[SignalData]):
     (e.g. ``[[8, 12], [12, 30]]``) each pass content near the shared
     edge, so it is counted twice in the sum.
 
-    When ``zero_phase=True``, :func:`scipy.signal.filtfilt` requires the
-    time dimension to be longer than the filter's pad length — ``6 * ord``
-    samples for a Butterworth bandpass (18 samples at the default
+    When ``zero_phase=True``, :func:`scipy.signal.sosfiltfilt` requires the
+    time dimension to be longer than the filter's pad length — ``6 * ord + 3``
+    samples for a Butterworth bandpass (21 samples at the default
     ``ord=3``). Shorter signals raise a scipy error.
 
     Args:
@@ -41,10 +41,10 @@ class BandpassFilter(BaseFeature[SignalData]):
             a Butterworth bandpass filter and the results are summed.
         ord: Order of the filter.
             Defaults to 3.
-        zero_phase: If ``True`` (default), uses :func:`scipy.signal.filtfilt` for
+        zero_phase: If ``True`` (default), uses :func:`scipy.signal.sosfiltfilt` for
             zero-phase (forward-backward) filtering with no phase distortion —
             the MNE-style default for EEG preprocessing. If ``False``, uses
-            :func:`scipy.signal.lfilter`, a causal forward-only IIR filter that
+            :func:`scipy.signal.sosfilt`, a causal forward-only IIR filter that
             introduces phase distortion but may be preferable for causal or
             online processing. Note that each range incurs a different delay
             under causal filtering, so summing several ranges with
@@ -152,16 +152,19 @@ class BandpassFilter(BaseFeature[SignalData]):
                     f"{data.sampling_rate} Hz)"
                 )
 
-        func = signal.filtfilt if self.zero_phase else signal.lfilter
+        func = signal.sosfiltfilt if self.zero_phase else signal.sosfilt
         total = None
         for low, high in self.bands:
-            b, a = signal.butter(self.ord, [low, high], btype="band", fs=data.sampling_rate)
+            # Second-order sections: the (b, a) form is numerically unstable for
+            # narrow bands relative to Nyquist (e.g. 1-4 Hz at 5 kHz diverges).
+            sos = signal.butter(
+                self.ord, [low, high], btype="band", fs=data.sampling_rate, output="sos"
+            )
             filtered = xr.apply_ufunc(
                 func,
-                b,
-                a,
+                sos,
                 data.data,
-                input_core_dims=[[], [], ["time"]],
+                input_core_dims=[[], ["time"]],
                 output_core_dims=[["time"]],
                 vectorize=False,
             )
@@ -190,9 +193,9 @@ def bandpass_filter(
     (e.g. ``[[8, 12], [12, 30]]``) each pass content near the shared
     edge, so it is counted twice in the sum.
 
-    When ``zero_phase=True``, :func:`scipy.signal.filtfilt` requires the
-    time dimension to be longer than the filter's pad length — ``6 * ord``
-    samples for a Butterworth bandpass (18 samples at the default
+    When ``zero_phase=True``, :func:`scipy.signal.sosfiltfilt` requires the
+    time dimension to be longer than the filter's pad length — ``6 * ord + 3``
+    samples for a Butterworth bandpass (21 samples at the default
     ``ord=3``). Shorter signals raise a scipy error.
 
     Args:
@@ -205,10 +208,10 @@ def bandpass_filter(
             a Butterworth bandpass filter and the results are summed.
         ord: Order of the filter.
             Defaults to 3.
-        zero_phase: If ``True`` (default), uses :func:`scipy.signal.filtfilt` for
+        zero_phase: If ``True`` (default), uses :func:`scipy.signal.sosfiltfilt` for
             zero-phase (forward-backward) filtering with no phase distortion —
             the MNE-style default for EEG preprocessing. If ``False``, uses
-            :func:`scipy.signal.lfilter`, a causal forward-only IIR filter that
+            :func:`scipy.signal.sosfilt`, a causal forward-only IIR filter that
             introduces phase distortion but may be preferable for causal or
             online processing. Note that each range incurs a different delay
             under causal filtering, so summing several ranges with

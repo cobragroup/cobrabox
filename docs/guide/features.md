@@ -331,16 +331,16 @@ positive and below the Nyquist frequency.
 Ranges are summed, not unioned: overlapping or adjacent ranges (e.g.
 `[[8, 12], [12, 30]]`) each pass content near the shared edge, so it is
 counted twice in the sum.
-With the default ``zero_phase=True``, `filtfilt` needs the time dimension to
-be longer than the filter's pad length — ``6 * ord`` samples (18 at the
+With the default ``zero_phase=True``, `sosfiltfilt` needs the time dimension to
+be longer than the filter's pad length — ``6 * ord + 3`` samples (21 at the
 default ``ord=3``); shorter signals raise a scipy error.
 Requires ``sampling_rate`` to be set on the data.
 
 ``zero_phase`` defaults to ``True``, which filters forward and backward
-(`scipy.signal.filtfilt`) so no phase distortion is introduced — the
+(`scipy.signal.sosfiltfilt`) so no phase distortion is introduced — the
 MNE-style default for EEG preprocessing, and what makes summing several ranges
 a faithful reconstruction. Set ``zero_phase=False`` for causal forward-only
-filtering (`scipy.signal.lfilter`) when you need it: real-time or
+filtering (`scipy.signal.sosfilt`) when you need it: real-time or
 streaming work, onset-timing analyses where the backward pass would smear an
 event earlier, or directed-connectivity measures such as `GrangerCausality`
 and `DirectedTransferFunction` that infer direction from temporal precedence.

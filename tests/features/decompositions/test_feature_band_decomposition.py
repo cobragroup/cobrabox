@@ -167,17 +167,32 @@ def test_bandfilter_preserves_space_coords_when_present() -> None:
 
 
 def test_bandfilter_matches_manual_scipy_filter() -> None:
-    """Each band slice matches a manual scipy butter+lfilter call."""
+    """Each band slice matches a manual scipy butter+sosfilt call."""
     data = _make_data(n_time=500, n_space=2, sampling_rate=250.0)
     bands = {"alpha": [8, 12], "beta": [12, 30]}
     out = cb.BandDecomposition(bands=bands).apply(data)
 
     arr_in = data.to_numpy()
     for name, freqs in bands.items():
-        b, a = signal.butter(3, freqs, btype="band", fs=250.0)
-        expected = signal.lfilter(b, a, arr_in, axis=-1)
+        sos = signal.butter(3, freqs, btype="band", fs=250.0, output="sos")
+        expected = signal.sosfilt(sos, arr_in, axis=-1)
         actual = out.data.sel(band=name).values
         np.testing.assert_allclose(actual, expected, atol=1e-12)
+
+
+@pytest.mark.parametrize(("sr", "band", "order"), [(5000.0, [1, 4], 3), (1000.0, [8, 12], 5)])
+def test_bandfilter_stable_for_narrow_band_at_high_sampling_rate(
+    sr: float, band: list[float], order: int
+) -> None:
+    """Narrow bands relative to Nyquist stay stable (regression: (b, a) form diverged)."""
+    rng = np.random.default_rng(0)
+    arr = rng.standard_normal((2, int(sr * 20)))
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=sr)
+
+    out = cb.BandDecomposition(bands={"b": band}, ord=order).apply(data).to_numpy()
+
+    assert np.all(np.isfinite(out))
+    assert np.max(np.abs(out)) < np.max(np.abs(arr))
 
 
 def test_bandfilter_output_is_not_all_zeros() -> None:
