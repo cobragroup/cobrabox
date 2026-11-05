@@ -1,6 +1,6 @@
 # Working with Datasets
 
-CobraBox provides built-in dummy datasets and a `Dataset[T]` collection class for working with groups of `Data` objects.
+CobraBox downloads public EEG/iEEG datasets on first use and provides a `Dataset[T]` collection class for working with groups of `Data` objects. No data ships with the package itself.
 
 ## Loading Datasets
 
@@ -8,33 +8,32 @@ CobraBox provides built-in dummy datasets and a `Dataset[T]` collection class fo
 import cobrabox as cb
 
 # Load a dataset — returns Dataset[SignalData]
-ds = cb.load_dataset("dummy_chain")
+ds = cb.load_dataset("swiss_demo", subset=["ID1"])
 
 # Inspect at a glance
 ds.describe()
-# Dataset  5 items  [SignalData]
-#   subjectIDs : sub-01, sub-02, sub-03, sub-04, sub-05
-#   groupIDs   : chain, chain, chain, chain, chain
-#   conditions : None, None, None, None, None
-#   shapes     : (10, 5000) × 5
-#   labels     : sub-01, sub-02, sub-03, sub-04, sub-05
-#   filter on  : subjectID, groupID, condition, runID, Description, Num_Samples
+# Dataset  3 × SignalData
+#   source      swiss_demo
+#   subjectIDs  ID1, ID1, ID1
+#   groupIDs    None, None, None
+#   conditions  preictal, ictal, postictal
+#   shapes      (47, 46080) × 2, (47, 64000)
+#   labels      ID1/preictal, ID1/ictal, ID1/postictal
+#   filter on   subjectID, groupID, condition, runID, seizureID, Project, Description
 ```
+
+`swiss_demo` is the demo dataset: simulated iEEG from VAR models fitted to five
+subjects of the SWEC-ETHZ short-term recordings (`ID1`, `ID4`, `ID5`, `ID9`,
+`ID12`). Each subject has one seizure as three segments, with `condition` set to
+`"preictal"`, `"ictal"` or `"postictal"`; the seizure ID, project and a short
+description are in `extra`. `subset=` takes a list of subject IDs and loads only
+those.
 
 The last two rows tell you how to reach into the dataset: which labels are
 available for lookup, and which fields `filter()` and `groupby()` will accept. The
 `filter on` row is dataset-specific — it includes whatever the items carry in
-`extra`, so `dummy_chain` lets you filter on `Description` and `Num_Samples` from
-its sidecar metadata.
-
-Each synthetic replicate stands in for one subject (`sub-01`, `sub-02`, …), and the
-VAR topology becomes the `groupID`, which makes concatenated datasets group
-cleanly:
-
-```python
-both = cb.load_dataset("dummy_chain") + cb.load_dataset("dummy_star")
-{k: len(v) for k, v in both.groupby("groupID").items()}  # {'chain': 5, 'star': 4}
-```
+`extra`, so `swiss_demo` lets you filter on `seizureID`, `Project` and
+`Description` from its sidecar metadata.
 
 If the items carry no identifying metadata at all — as in a `Dataset` you build
 yourself from bare arrays — the `labels` row says so, and names the fields that
@@ -54,7 +53,7 @@ metadata gets filled in.
 ### Indexing and iteration
 
 ```python
-ds = cb.load_dataset("dummy_chain")
+ds = cb.load_dataset("swiss_demo", subset=["ID1"])
 
 # Integer index → single item
 item = ds[0]
@@ -79,16 +78,18 @@ Items that carry identifying metadata can also be looked up by name. A label joi
 [Metadata fields](data-containers.md#metadata-fields) for what each means:
 
 ```python
-ds = cb.load_dataset("dummy_chain")
-ds.keys()  # ('sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05')
-ds["sub-02"]  # the matching item
+ds = cb.load_dataset("swiss_demo", subset=["ID1", "ID4"])
+ds.keys()
+# ('ID1/preictal', 'ID1/ictal', 'ID1/postictal',
+#  'ID4/preictal', 'ID4/ictal', 'ID4/postictal')
+ds["ID1/ictal"]  # the matching item
 ```
 
 Labels are an index derived from the items, not a replacement for positional
 storage — both reach the same object:
 
 ```python
-ds[1] is ds["sub-02"]  # True
+ds[1] is ds["ID1/ictal"]  # True
 ```
 
 The two forms coexist without interfering, because positions stay integers and
@@ -108,32 +109,27 @@ Two consequences worth knowing:
 ### Reaching a whole subject
 
 Labels get longer as metadata gets richer, but a lookup also accepts any *leading
-part* of a label, so the coarser names keep working. `realistic_swiss` has one
-subject `ID1`, two seizures, and three replicates:
+part* of a label, so the coarser names keep working:
 
 ```python
-sw = cb.load_dataset("realistic_swiss")
-sw.keys()  # ('ID1/sz13/1', 'ID1/sz13/2', 'ID1/sz7/3')
-
-sw["ID1/sz13/2"]  # a SignalData — exact match
-len(sw["ID1/sz13"])  # 2  → both replicates of that seizure
-len(sw["ID1"])  # 3  → everything for that subject
+ds["ID1/ictal"]  # a SignalData — exact match
+len(ds["ID1"])  # 3  → preictal, ictal and postictal for that subject
 ```
 
 This matters most on the long-monitoring datasets. Zurich subject `sub-01` has 39
 recordings labelled `sub-01/01 … sub-01/39`; `ds["sub-01"]` still returns all 39 as
 a `Dataset` rather than raising.
 
-Matching is on `/` boundaries, so `ds["sub-0"]` matches nothing — it is a prefix of
+Matching is on `/` boundaries, so `ds["ID"]` matches nothing — it is a prefix of
 the string but not of the label.
 
 An unknown label raises `KeyError` listing what is available, so a typo is
 reported rather than silently returning nothing:
 
 ```python
-ds["sub-99"]
-# KeyError: 'sub-99' is not a label in this Dataset.
-#           Available: sub-01, sub-02, sub-03, sub-04, sub-05
+ds["ID99"]
+# KeyError: 'ID99' is not a label in this Dataset.
+#           Available: ID1/preictal, ID1/ictal, ID1/postictal, ID4/preictal, ...
 ```
 
 ### Discovering what is there
@@ -152,8 +148,8 @@ could match before writing it.
 ### Combining datasets
 
 ```python
-ds1 = cb.load_dataset("dummy_chain")
-ds2 = cb.load_dataset("dummy_random")
+ds1 = cb.load_dataset("swiss_demo", subset=["ID1"])
+ds2 = cb.load_dataset("swiss_demo", subset=["ID4"])
 
 combined = ds1 + ds2  # → Dataset[SignalData]
 print(len(combined))
@@ -244,31 +240,17 @@ by_both[("milan", "rest")]
 Valid attributes are anything `fields()` reports — the three standard metadata
 fields, plus any key the items carry in `extra`.
 
-## Available Dummy Datasets
+## Available Datasets
 
-<!-- local-dataset-table:start -->
-| Identifier | Description |
-| ---------- | ----------- |
-| `dummy_chain` | Synthetic chain-topology VAR time-series (5 subjects). |
-| `dummy_noise` | Synthetic uncorrelated noise time-series (5 subjects). |
-| `dummy_random` | Synthetic random-topology VAR time-series (3 subjects). |
-| `dummy_star` | Synthetic star-topology VAR time-series (4 subjects). |
-| `realistic_swiss` | Simulated realistic Swiss VAR time-series (1 subject, 3 recordings). |
-<!-- local-dataset-table:end -->
-
-## Remote Datasets
-
-CobraBox can download real EEG datasets from public repositories. Files are stored locally
-under `data/remote/` and reused on subsequent calls — a dataset is only downloaded once.
+CobraBox downloads datasets from public repositories. Files are stored locally
+under `cb.get_dataset_dir()` and reused on subsequent calls — a dataset is only downloaded once.
 
 ### Listing available datasets
 
 ```python
 cb.list_datasets()
-# {
-#   'local':  ['dummy_chain', 'dummy_noise', 'dummy_random', 'dummy_star', 'realistic_swiss'],
-#   'remote': ['bonn_eeg', 'chb_mit', 'siena_eeg', 'sleep_ieeg', 'swiss_eeg_long', 'swiss_eeg_short', 'zurich_ieeg'],
-# }
+# ['bonn_eeg', 'chb_mit', 'siena_eeg', 'sleep_ieeg', 'swiss_demo', 'swiss_eeg_long',
+#  'swiss_eeg_short', 'zurich_ieeg', 'zurich_ieeg_clean']
 ```
 
 ### Inspecting a dataset before downloading
@@ -338,6 +320,7 @@ ds = cb.load_dataset("bonn_eeg", accept=True)
 | `chb_mit` | [CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures (24 subjects, 256 Hz, 23 channels, ictal/interictal). Children's Hospital Boston / MIT.](https://physionet.org/content/chbmit/1.0.0/) | 24 subjects | ~30 GB | Open Data Commons Attribution License v1.0 (ODC-By-1.0) |
 | `siena_eeg` | [Siena Scalp EEG Database: adult epilepsy patients with annotated seizures (14 subjects, 512 Hz, 21+ channels, ictal/interictal). University of Siena.](https://physionet.org/content/siena-scalp-eeg/1.0.0/) | 14 subjects | ~15 GB | Creative Commons Attribution 4.0 International (CC-BY-4.0) |
 | `sleep_ieeg` | [Sleep iEEG Dataset: interictal iEEG during slow-wave sleep from 185 epilepsy patients (135 Detroit at 1000 Hz, 50 UCLA at 2000 Hz). ECoG/sEEG recordings. DOI: 10.18112/openneuro.ds005398.v1.0.1.](https://openneuro.org/datasets/ds005398/versions/1.0.1) | 185 subjects | ~13 GB | CC0 1.0 Universal (public domain) |
+| `swiss_demo` | Demo dataset: simulated iEEG from VAR models fitted to the SWEC-ETHZ short-term recordings (5 subjects, one seizure each, as preictal, ictal and postictal segments at 512 Hz). | 5 subjects | ~320 MB | — |
 | `swiss_eeg_long` | [Long-term intracranial EEG recordings from the SWEZ dataset (ETH Zurich, 18 subjects, ictal/interictal).](http://ieeg-swez.ethz.ch/) | 18 subjects | >1 TB (hundreds of hourly files per subject) | Free for research and education only; commercial and military use prohibited. |
 | `swiss_eeg_short` | [Short-term scalp EEG recordings from the BioCAS 2018 challenge (18 subjects, ictal/interictal).](https://iis-people.ee.ethz.ch/~ieeg/BioCAS2018/) | 18 subjects | ~11 GB | Free for research and education only; commercial and military use prohibited. |
 | `zurich_ieeg` | [Zurich iEEG HFO Dataset: interictal ECoG during slow-wave sleep from 20 epilepsy patients (TLE and extra-temporal), with HFO event markings. 2000 Hz, BrainVision format. DOI: 10.18112/openneuro.ds003498.v1.1.1.](https://openneuro.org/datasets/ds003498/versions/1.1.1) | 20 subjects | ~60 GB | CC0 1.0 Universal (public domain) |
@@ -417,7 +400,7 @@ ds.describe()
 ## Batch Processing
 
 ```python
-ds = cb.load_dataset("dummy_chain")
+ds = cb.load_dataset("swiss_demo", subset=["ID1"])
 
 pipeline = cb.SlidingWindow(window_size=20, step_size=10) | cb.LineLength() | cb.MeanAggregate()
 
@@ -427,4 +410,6 @@ results.describe()
 
 ## Data Location
 
-Dummy datasets are stored in `data/synthetic/dummy/` as compressed CSV files (`.csv.xz`) with optional JSON sidecar files for metadata.
+Downloaded datasets live under `cb.get_dataset_dir()`, one folder per dataset (e.g.
+`~/.cache/cobrabox/swiss_demo/` on Linux). Change it with `cb.set_dataset_dir(path)` or the
+`COBRABOX_DATA_DIR` environment variable.

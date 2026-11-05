@@ -32,7 +32,7 @@ class Coherence(BaseFeature[SignalData]):
             Must be >= 2 and <= n_time.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> coh = cb.Coherence().apply(data)
         >>> coh.data.dims
         ('space_to', 'space_from')
@@ -174,7 +174,7 @@ def coherence(data: SignalData, nperseg: int | None = None) -> Data:
             Must be >= 2 and <= n_time.
 
     Example:
-        >>> data = cb.load_dataset("dummy_random")[0]
+        >>> data = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
         >>> coh = cb.coherence(data)
         >>> coh.data.dims
         ('space_to', 'space_from')

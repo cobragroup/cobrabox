@@ -419,34 +419,34 @@ def test_source_defaults_to_none() -> None:
 
 
 def test_source_kept_by_slice_label_filter_and_groupby() -> None:
-    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")], source="dummy_chain")
-    assert ds[0:1].source == "dummy_chain"
-    assert ds["milan"].source == "dummy_chain"
-    assert ds.filter(condition="rest").source == "dummy_chain"
-    assert all(g.source == "dummy_chain" for g in ds.groupby("condition").values())
+    ds = Dataset([_labelled("milan", "pre"), _labelled("milan", "rest")], source="swiss_demo")
+    assert ds[0:1].source == "swiss_demo"
+    assert ds["milan"].source == "swiss_demo"
+    assert ds.filter(condition="rest").source == "swiss_demo"
+    assert all(g.source == "swiss_demo" for g in ds.groupby("condition").values())
 
 
 def test_add_keeps_shared_source_and_drops_mixed_one() -> None:
-    a = Dataset([_labelled("milan")], source="dummy_chain")
-    b = Dataset([_labelled("paris")], source="dummy_chain")
+    a = Dataset([_labelled("milan")], source="swiss_demo")
+    b = Dataset([_labelled("paris")], source="swiss_demo")
     c = Dataset([_labelled("rome")], source="dummy_star")
-    assert (a + b).source == "dummy_chain"
+    assert (a + b).source == "swiss_demo"
     assert (a + c).source is None
 
 
 def test_source_shown_in_repr_and_summary() -> None:
-    ds = Dataset([_labelled("milan")], source="dummy_chain")
-    assert "source='dummy_chain'" in repr(ds)
+    ds = Dataset([_labelled("milan")], source="swiss_demo")
+    assert "source='swiss_demo'" in repr(ds)
     assert "source" in str(ds)
-    assert "dummy_chain" in str(ds)
+    assert "swiss_demo" in str(ds)
     assert "source" not in str(Dataset([_labelled("milan")]))
 
 
 def test_info_returns_catalogue_entry_of_source() -> None:
     from cobrabox.datasets import dataset_info
 
-    ds = Dataset([_labelled("milan")], source="dummy_chain")
-    assert ds.info() == dataset_info("dummy_chain")
+    ds = Dataset([_labelled("milan")], source="swiss_demo")
+    assert ds.info() == dataset_info("swiss_demo")
 
 
 def test_info_without_source_raises_with_pointer_to_describe() -> None:
@@ -454,9 +454,13 @@ def test_info_without_source_raises_with_pointer_to_describe() -> None:
         Dataset([_labelled("milan")]).info()
 
 
-def test_load_dataset_stamps_source() -> None:
+def test_load_dataset_stamps_source(monkeypatch: pytest.MonkeyPatch) -> None:
     import cobrabox as cb
+    from cobrabox import datasets
 
-    ds = cb.load_dataset("dummy_chain")
-    assert ds.source == "dummy_chain"
-    assert ds.info().identifier == "dummy_chain"
+    # Stub the loader: no dataset ships with the package, and only the stamping is under test.
+    monkeypatch.setattr(datasets, "_load_items", lambda *_, **__: [_labelled("milan")])
+
+    ds = cb.load_dataset("swiss_demo")
+    assert ds.source == "swiss_demo"
+    assert ds.info().identifier == "swiss_demo"

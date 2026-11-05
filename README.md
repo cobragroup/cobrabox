@@ -75,13 +75,13 @@ Every `Data` object wraps an `xarray.DataArray` at `data.data`. You don't need t
 CobraBox, but these one-liners cover the most common needs:
 
 ```python
-item = cb.load_dataset("dummy_chain")[0]
+item = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
 
 # Shape metadata — straight off the Data object
 item.dims  # ('space', 'time')
-item.shape  # (4, 200)                  as numpy has it
-item.size  # 800                       total elements
-item.sizes  # {'space': 4, 'time': 200} as xarray has it
+item.shape  # (47, 46080)                    as numpy has it
+item.size  # 2165760                        total elements
+item.sizes  # {'space': 47, 'time': 46080}  as xarray has it
 
 # Reach the wrapped object without the .data.data double-take
 item.xarr  # the xarray.DataArray
@@ -195,27 +195,26 @@ pipeline = cb.deserialize(yaml_str)
 
 See [`examples/serialization_demo.py`](examples/serialization_demo.py) for a full walkthrough.
 
-## Built-in Dummy Datasets
+## Datasets
 
-`cb.load_dataset(name)` returns a `Dataset[SignalData]` — an immutable, typed collection with helpers:
+`cb.load_dataset(name)` downloads a dataset on first use and returns a `Dataset[SignalData]` —
+an immutable, typed collection with helpers:
 
 ```python
-ds = cb.load_dataset("dummy_chain")
+ds = cb.load_dataset("swiss_demo", subset=["ID1", "ID4"])
 
 ds.describe()  # print summary: shapes, metadata
-ds.filter(groupID="control")  # Dataset[SignalData] with matching items
+ds.filter(condition="ictal")  # Dataset[SignalData] with matching items
 ds.groupby("condition")  # dict[str, Dataset[SignalData]]
 ds[0]  # first item
 ds[1:3]  # slice → Dataset[SignalData]
 ds1 + ds2  # concatenate two Datasets
 ```
 
-Available identifiers:
-
-- `dummy_chain` - Sequential data with known ground truth
-- `dummy_random` - Random Gaussian noise
-- `dummy_star` - Star-shaped pattern with one central channel
-- `dummy_noise` - High-dimensional noise for stress testing
+`swiss_demo` is the demo dataset: simulated iEEG fitted to five subjects of the SWEC-ETHZ
+recordings, each with one seizure split into preictal, ictal and postictal segments.
+`cb.show_datasets()` lists every dataset; `cb.dataset_info(name)` shows its subsets, size and
+license.
 
 ## Coverage
 

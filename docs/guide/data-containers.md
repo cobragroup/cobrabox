@@ -175,8 +175,7 @@ separate field for the distinction would not change how anyone queries them.
 | `chb_mit` | `chb01_03.edf` | `subjectID="chb01"`, `runID="03"` |
 | `siena_eeg` | `PN00-1.edf` | `subjectID="PN00"`, `runID="1"` |
 | `swiss_eeg_long` | `ID01_7h.mat` | `subjectID="ID01"`, `runID="7h"` |
-| `realistic_swiss` | `fit_Swiss_VAR_ID1_sz13_simulated_data_2.csv.xz` | `subjectID="ID1"`, `condition="sz13"`, `runID="2"` |
-| `dummy_*` | `dummy_struct_VAR_chain_3.csv.xz` | `subjectID="sub-03"`, `groupID="chain"` |
+| `swiss_demo` | `fit_Swiss_VAR_ID1_sz1_ictal.csv.xz` + `info_*.json` sidecar | `subjectID="ID1"`, `condition="ictal"`, `seizureID` in `extra` |
 
 `subjectID`, `condition` and `runID` compose into a `Dataset` label — see
 [Working with Datasets](datasets.md#labels). `groupID` does not, since it classifies
@@ -246,10 +245,10 @@ Dimension names and lengths come straight off the container — see
 [Data Access](#data-access) above for the full set:
 
 ```python
-item = cb.load_dataset("dummy_chain")[0]
+item = cb.load_dataset("swiss_demo", subset=["ID1"])[0]
 
 item.dims  # e.g. ('space', 'time')
-item.sizes  # e.g. {'space': 4, 'time': 200}
+item.sizes  # e.g. {'space': 47, 'time': 46080}
 
 # Which coordinates have labels attached? (still via the DataArray)
 coords = list(item.data.coords)  # e.g. ['time'] or ['time', 'space']

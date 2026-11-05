@@ -28,17 +28,31 @@ import pytest
 EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
 
 # Examples that need network access or real dataset files on disk.
-_NETWORK_EXAMPLES = {
-    "dataset_loader_demo.py",
-    "realistic_dataset_loader_demo.py",
-    "remote_datasets_demo.py",
-}
+_NETWORK_EXAMPLES = {"dataset_loader_demo.py", "remote_datasets_demo.py"}
+
+# Examples that need the swiss_demo files already on disk. The dataset is not
+# hosted yet, so it cannot be downloaded; skip rather than fail without it.
+# Drop this once swiss_demo has download URLs.
+_SWISS_DEMO_EXAMPLES = {"dataset_loader_demo.py"}
+
+
+def _swiss_demo_available() -> bool:
+    from cobrabox import downloader
+
+    return any((downloader.get_dataset_dir() / "swiss_demo").glob("fit_Swiss_VAR_*.csv.xz"))
 
 
 def _example_params() -> list:
     params = []
     for path in sorted(EXAMPLES_DIR.glob("*.py")):
         marks = [pytest.mark.slow] if path.name in _NETWORK_EXAMPLES else []
+        if path.name in _SWISS_DEMO_EXAMPLES:
+            marks.append(
+                pytest.mark.skipif(
+                    not _swiss_demo_available(),
+                    reason="swiss_demo files not in the dataset directory (not hosted yet)",
+                )
+            )
         params.append(pytest.param(path, id=path.name, marks=marks))
     return params
 

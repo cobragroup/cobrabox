@@ -81,11 +81,11 @@ class Dataset(Generic[T]):
             sides share it. Enables :meth:`info`.
 
     Example:
-        >>> ds = cb.load_dataset("dummy_chain")
+        >>> ds = cb.load_dataset("swiss_demo")
         >>> ds[0]                             # first item, by position
         >>> ds.keys()                         # labels available for lookup
-        >>> ds["milan/rest"]                  # by label
-        >>> ds.filter(groupID="A")            # returns new Dataset
+        >>> ds["ID1/ictal"]                   # by label
+        >>> ds.filter(condition="ictal")      # returns new Dataset
         >>> ds.groupby("subjectID")           # returns dict[str, Dataset]
         >>> ds.describe()                     # prints summary
         >>> ds.info()                         # catalogue entry it was loaded from

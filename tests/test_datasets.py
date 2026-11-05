@@ -18,54 +18,6 @@ def _item() -> Data:
     return Data(xr.DataArray(np.zeros((1, 2)), dims=["space", "time"]))
 
 
-def test_dataset_dispatches_structured_identifiers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """dataset() routes structured IDs to load_structured_dummy."""
-    captured: list[str] = []
-
-    def _fake(identifier: str) -> list[Data]:
-        captured.append(identifier)
-        return [_item()]
-
-    monkeypatch.setattr(datasets, "load_structured_dummy", _fake)
-
-    out = datasets.load_dataset("dummy_chain")
-
-    assert len(out) == 1
-    assert captured == ["dummy_chain"]
-
-
-def test_dataset_dispatches_noise_identifier(monkeypatch: pytest.MonkeyPatch) -> None:
-    """dataset() routes dummy_noise to load_noise_dummy."""
-    captured: list[str] = []
-
-    def _fake(identifier: str) -> list[Data]:
-        captured.append(identifier)
-        return [_item()]
-
-    monkeypatch.setattr(datasets, "load_noise_dummy", _fake)
-
-    out = datasets.load_dataset("dummy_noise")
-
-    assert len(out) == 1
-    assert captured == ["dummy_noise"]
-
-
-def test_dataset_dispatches_realistic_identifier(monkeypatch: pytest.MonkeyPatch) -> None:
-    """dataset() routes realistic_swiss to load_realistic_swiss."""
-    captured: list[str] = []
-
-    def _fake(identifier: str) -> list[Data]:
-        captured.append(identifier)
-        return [_item()]
-
-    monkeypatch.setattr(datasets, "load_realistic_swiss", _fake)
-
-    out = datasets.load_dataset("realistic_swiss")
-
-    assert len(out) == 1
-    assert captured == ["realistic_swiss"]
-
-
 def test_dataset_raises_for_unknown_identifier() -> None:
     """dataset() rejects unsupported IDs with a clear message."""
     with pytest.raises(ValueError, match="Unknown dataset identifier"):
@@ -328,14 +280,6 @@ def test_download_dataset_is_not_subject_to_large_load_guard(
     assert result == tmp_path
 
 
-def test_download_raises_for_local_dataset() -> None:
-    """download() raises ValueError for local datasets."""
-    import cobrabox as cb
-
-    with pytest.raises(ValueError, match="local dataset"):
-        cb.download_dataset("dummy_chain")
-
-
 def test_download_raises_for_unknown_dataset() -> None:
     """download() raises ValueError for unknown identifiers."""
     import cobrabox as cb
@@ -397,7 +341,7 @@ def test_describe_all_prints_all_datasets(capsys: pytest.CaptureFixture[str]) ->
     cb.show_datasets()
     output = capsys.readouterr().out
 
-    for ident in cb.list_datasets()["local"] + cb.list_datasets()["remote"]:
+    for ident in cb.list_datasets():
         assert ident in output
 
 
@@ -407,13 +351,12 @@ def test_describe_all_includes_header(
     """show_datasets() prints column headers."""
     import cobrabox as cb
 
-    # The rich table now has eight columns; give it enough width so the last
+    # The rich table has seven columns; give it enough width so the last
     # header ("License") is not squeezed away by rich's auto-layout.
     monkeypatch.setenv("COLUMNS", "200")
     cb.show_datasets()
     output = capsys.readouterr().out
     assert "Dataset" in output
-    assert "Source" in output
     assert "Data type" in output
     assert "Seizures" in output
     assert "Size" in output
@@ -426,7 +369,7 @@ def test_describe_all_includes_cached_header(
     """show_datasets() prints a Cached column header."""
     import cobrabox as cb
 
-    # The eight-column rich table collapses its header row at narrow widths
+    # The seven-column rich table collapses its header row at narrow widths
     # (e.g. rich's 80-col fallback on the Windows CI runner); widen it so the
     # "Cached" header is always rendered.
     monkeypatch.setenv("COLUMNS", "200")
@@ -446,24 +389,10 @@ def test_describe_all_returns_list_of_dicts(capsys: pytest.CaptureFixture[str]) 
     assert len(rows) > 0
     for row in rows:
         assert "identifier" in row
-        assert "source" in row
         assert "cached" in row
         assert "size" in row
         assert "subsets" in row
         assert "license" in row
-
-
-def test_describe_all_local_datasets_have_null_cached(capsys: pytest.CaptureFixture[str]) -> None:
-    """Local datasets have cached=None in the returned rows."""
-    import cobrabox as cb
-
-    rows = cb.show_datasets()
-    capsys.readouterr()
-
-    local_rows = [r for r in rows if r["source"] == "local"]
-    assert local_rows, "expected at least one local dataset"
-    for row in local_rows:
-        assert row["cached"] is None
 
 
 def test_describe_all_remote_datasets_have_string_cached(
@@ -477,9 +406,8 @@ def test_describe_all_remote_datasets_have_string_cached(
     rows = cb.show_datasets()
     capsys.readouterr()
 
-    remote_rows = [r for r in rows if r["source"] == "remote"]
-    assert remote_rows, "expected at least one remote dataset"
-    for row in remote_rows:
+    assert rows, "expected at least one dataset"
+    for row in rows:
         cached = row["cached"]
         assert cached is not None
         assert cached in ("yes", "no") or re.fullmatch(r"\d+/\d+", cached), (
@@ -726,14 +654,6 @@ def test_delete_remote_files_updates_manifest_on_subset_delete(tmp_path: Path) -
 # ---------------------------------------------------------------------------
 # delete_dataset
 # ---------------------------------------------------------------------------
-
-
-def test_delete_dataset_raises_for_local(monkeypatch: pytest.MonkeyPatch) -> None:
-    """delete_dataset raises ValueError for local (non-downloadable) datasets."""
-    import cobrabox as cb
-
-    with pytest.raises(ValueError, match="local dataset"):
-        cb.delete_dataset("dummy_chain")
 
 
 def test_delete_dataset_raises_for_unknown(monkeypatch: pytest.MonkeyPatch) -> None:

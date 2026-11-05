@@ -11,299 +11,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cobrabox import datasets
+from cobrabox import datasets, downloader
 from cobrabox.dataset import Dataset
-from cobrabox.dataset_loader import (
-    _run_from_bids_stem,
-    _run_from_suffix,
-    _sampling_rate_from_info,
-    _sidecar_json_for_csv,
-    load_noise_dummy,
-    load_realistic_swiss,
-    load_structured_dummy,
-)
+from cobrabox.dataset_loader import _load_swiss_demo, _run_from_bids_stem, _run_from_suffix
 from cobrabox.downloader import (
     RemoteDatasetSpec,
     RemoteFile,
     ensure_remote_files,
     get_remote_dataset_spec,
 )
-
-
-def test_load_structured_dummy_reads_matching_files(tmp_path: Path) -> None:
-    """Structured loader returns one Data object per matching non-empty file."""
-    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
-    struct_dir.mkdir(parents=True)
-
-    pd.DataFrame({"ch0": [1.0, 2.0], "ch1": [3.0, 4.0]}).to_csv(
-        struct_dir / "dummy_struct_VAR_chain_1.csv.xz", index=False, compression="xz"
-    )
-    pd.DataFrame({"ch0": [5.0], "ch1": [6.0]}).to_csv(
-        struct_dir / "dummy_struct_VAR_chain_2.csv.xz", index=False, compression="xz"
-    )
-
-    out = load_structured_dummy("dummy_chain", repo_root=tmp_path)
-
-    assert len(out) == 2
-    assert out[0].data.dims == ("space", "time")
-    assert list(out[0].data.coords["space"].values) == ["ch0", "ch1"]
-    np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 2.0], [3.0, 4.0]]))
-    assert out[0].data.attrs["identifier"] == "dummy_chain"
-
-
-def test_load_structured_dummy_raises_when_no_files(tmp_path: Path) -> None:
-    """Structured loader raises if no matching files exist."""
-    (tmp_path / "data" / "synthetic" / "dummy" / "struct").mkdir(parents=True)
-
-    with pytest.raises(FileNotFoundError, match="No files found"):
-        load_structured_dummy("dummy_chain", repo_root=tmp_path)
-
-
-def test_load_structured_dummy_raises_when_all_files_empty(tmp_path: Path) -> None:
-    """Structured loader raises if all matching files are empty."""
-    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
-    struct_dir.mkdir(parents=True)
-    pd.DataFrame(columns=["ch0", "ch1"]).to_csv(
-        struct_dir / "dummy_struct_VAR_star_1.csv.xz", index=False, compression="xz"
-    )
-
-    with pytest.raises(ValueError, match="All files for 'dummy_star' are empty"):
-        load_structured_dummy("dummy_star", repo_root=tmp_path)
-
-
-def test_load_noise_dummy_reads_all_noise_files(tmp_path: Path) -> None:
-    """Noise loader returns one Data object per non-empty noise file."""
-    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
-    noise_dir.mkdir(parents=True)
-    a_csv = noise_dir / "a.csv.xz"
-    b_csv = noise_dir / "b.csv.xz"
-    pd.DataFrame({"n0": [0.1, 0.2]}).to_csv(a_csv, index=False, compression="xz")
-    pd.DataFrame({"n0": [0.3, 0.4]}).to_csv(b_csv, index=False, compression="xz")
-
-    # Sidecar JSON with settings metadata
-    a_json = noise_dir / "info_a.json"
-    with open(a_json, "w", encoding="utf-8") as f:
-        json.dump({"Settings": {"Seizure start (sec)": 8, "SOZ": "[1 0 1 0]", "fs": 256}}, f)
-
-    out = load_noise_dummy(repo_root=tmp_path)
-
-    assert len(out) == 2
-    np.testing.assert_allclose(out[0].to_numpy(), np.array([[0.1, 0.2]]))
-    assert out[0].data.attrs["identifier"] == "dummy_noise"
-    assert out[0].sampling_rate == 256.0
-    # Extra metadata propagated from JSON, including SOZ array string
-    assert "Settings" in out[0].extra
-    settings = out[0].extra["Settings"]
-    assert settings["Seizure start (sec)"] == 8
-    assert settings["SOZ"] == "[1 0 1 0]"
-
-
-def test_load_noise_dummy_raises_when_all_files_empty(tmp_path: Path) -> None:
-    """Noise loader raises if all discovered files are empty."""
-    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
-    noise_dir.mkdir(parents=True)
-    pd.DataFrame(columns=["n0"]).to_csv(noise_dir / "a.csv.xz", index=False, compression="xz")
-
-    with pytest.raises(ValueError, match="All files for 'dummy_noise' are empty"):
-        load_noise_dummy(repo_root=tmp_path)
-
-
-def test_load_noise_dummy_raises_when_no_csv_xz_files(tmp_path: Path) -> None:
-    """Noise loader raises FileNotFoundError when the noise dir has no .csv.xz files."""
-    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
-    noise_dir.mkdir(parents=True)
-
-    with pytest.raises(FileNotFoundError, match=r"No \.csv\.xz files found"):
-        load_noise_dummy(repo_root=tmp_path)
-
-
-def test_load_realistic_swiss_reads_all_matching_files(tmp_path: Path) -> None:
-    """Realistic loader returns one Data object per non-empty Swiss VAR file."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-    csv1 = realistic_dir / "fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv.xz"
-    csv2 = realistic_dir / "fit_Swiss_VAR_ID1_sz7_simulated_data_3.csv.xz"
-    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(csv1, index=False, compression="xz")
-    pd.DataFrame({"ch0": [3.0, 4.0]}).to_csv(csv2, index=False, compression="xz")
-
-    json1 = realistic_dir / "info_fit_Swiss_VAR_ID1_sz13_simulated_data_1.json"
-    with open(json1, "w", encoding="utf-8") as f:
-        json.dump({"Settings": {"Seizure start (sec)": 5, "SOZ": "[0 1 0]", "fs": 512}}, f)
-
-    out = load_realistic_swiss(repo_root=tmp_path)
-
-    assert len(out) == 2
-    np.testing.assert_allclose(out[0].to_numpy(), np.array([[1.0, 2.0]]))
-    assert out[0].data.attrs["identifier"] == "realistic_swiss"
-    assert out[0].sampling_rate == 512.0
-    assert "Settings" in out[0].extra
-    settings = out[0].extra["Settings"]
-    assert settings["Seizure start (sec)"] == 5
-    assert settings["SOZ"] == "[0 1 0]"
-
-
-def test_load_realistic_swiss_raises_when_no_matching_files(tmp_path: Path) -> None:
-    """Realistic loader raises when there are no matching Swiss VAR files."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-
-    with pytest.raises(FileNotFoundError, match=r"No \.csv\.xz files found"):
-        load_realistic_swiss(repo_root=tmp_path)
-
-
-def test_load_realistic_swiss_raises_when_all_files_empty(tmp_path: Path) -> None:
-    """Realistic loader raises when all matching files are empty."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-    pd.DataFrame(columns=["ch0"]).to_csv(
-        realistic_dir / "fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv.xz",
-        index=False,
-        compression="xz",
-    )
-
-    with pytest.raises(ValueError, match="All files for 'realistic_swiss' are empty"):
-        load_realistic_swiss(repo_root=tmp_path)
-
-
-def test_sidecar_json_for_csv_non_csv_xz_extension(tmp_path: Path) -> None:
-    """_sidecar_json_for_csv falls back to path.stem for non-.csv.xz files."""
-    p = tmp_path / "myfile.csv"
-    result = _sidecar_json_for_csv(p)
-    assert result.name == "info_myfile.json"
-
-
-def test_sampling_rate_from_info_raises_for_non_numeric_fs() -> None:
-    """_sampling_rate_from_info raises ValueError when fs is not numeric."""
-    with pytest.raises(ValueError, match="Invalid sampling rate"):
-        _sampling_rate_from_info({"fs": "not-a-number"})
-
-
-def test_sampling_rate_from_info_raises_for_unconvertible_type() -> None:
-    """_sampling_rate_from_info raises ValueError when fs cannot be float-cast."""
-    with pytest.raises(ValueError, match="Invalid sampling rate"):
-        _sampling_rate_from_info({"fs": [1, 2]})
-
-
-def test_sampling_rate_from_info_falls_back_to_top_level_fs() -> None:
-    """Top-level fs is used when Settings exists but has no fs key."""
-    info = {"Settings": {"Seizure start (sec)": 8}, "fs": 256}
-    assert _sampling_rate_from_info(info) == 256.0
-
-
-def test_load_structured_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
-    """Malformed JSON sidecar is silently ignored; data still loads."""
-    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
-    struct_dir.mkdir(parents=True)
-    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-        struct_dir / "dummy_struct_VAR_chain_1.csv.xz", index=False, compression="xz"
-    )
-    json_path = struct_dir / "info_dummy_struct_VAR_chain_1.json"
-    with open(json_path, "w", encoding="utf-8") as f:
-        f.write("not valid json {{{")
-
-    out = load_structured_dummy("dummy_chain", repo_root=tmp_path)
-    assert len(out) == 1
-    assert out[0].sampling_rate is None
-
-
-def test_load_noise_dummy_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
-    """Malformed JSON sidecar in noise loader is silently ignored."""
-    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
-    noise_dir.mkdir(parents=True)
-    pd.DataFrame({"n0": [1.0, 2.0]}).to_csv(noise_dir / "a.csv.xz", index=False, compression="xz")
-    json_path = noise_dir / "info_a.json"
-    with open(json_path, "w", encoding="utf-8") as f:
-        f.write("{{invalid")
-
-    out = load_noise_dummy(repo_root=tmp_path)
-    assert len(out) == 1
-    assert out[0].sampling_rate is None
-
-
-def test_load_realistic_swiss_ignores_malformed_json_sidecar(tmp_path: Path) -> None:
-    """Malformed JSON sidecar in realistic loader is silently ignored."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-    csv_path = realistic_dir / "fit_Swiss_VAR_ID1_sz1_simulated_data_1.csv.xz"
-    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(csv_path, index=False, compression="xz")
-    json_path = realistic_dir / "info_fit_Swiss_VAR_ID1_sz1_simulated_data_1.json"
-    with open(json_path, "w", encoding="utf-8") as f:
-        f.write("{{invalid")
-
-    out = load_realistic_swiss(repo_root=tmp_path)
-    assert len(out) == 1
-    assert out[0].sampling_rate is None
-
-
-# ----------------------------------------------------------------------
-# Metadata derived from filenames
-# ----------------------------------------------------------------------
-
-
-def test_structured_dummy_labels_subjects_and_groups_by_topology(tmp_path: Path) -> None:
-    """Each replicate becomes a subject; the VAR topology becomes the groupID."""
-    struct_dir = tmp_path / "data" / "synthetic" / "dummy" / "struct"
-    struct_dir.mkdir(parents=True)
-    for n in (1, 2):
-        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-            struct_dir / f"dummy_struct_VAR_star_{n}.csv.xz", index=False, compression="xz"
-        )
-
-    out = load_structured_dummy("dummy_star", repo_root=tmp_path)
-
-    assert out.keys() == ("sub-01", "sub-02")
-    assert {d.groupID for d in out} == {"star"}
-    assert out["sub-02"].subjectID == "sub-02"
-
-
-def test_noise_dummy_labels_subjects(tmp_path: Path) -> None:
-    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
-    noise_dir.mkdir(parents=True)
-    for n in (1, 2):
-        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-            noise_dir / f"dummy_noise_simulated_data_{n}.csv.xz", index=False, compression="xz"
-        )
-
-    out = load_noise_dummy(repo_root=tmp_path)
-
-    assert out.keys() == ("sub-01", "sub-02")
-    assert {d.groupID for d in out} == {"noise"}
-
-
-def test_realistic_swiss_takes_subject_and_seizure_from_filename(tmp_path: Path) -> None:
-    """Two replicates of one seizure share a label; a different seizure gets its own."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-    for name in (
-        "fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv.xz",
-        "fit_Swiss_VAR_ID1_sz13_simulated_data_2.csv.xz",
-        "fit_Swiss_VAR_ID1_sz7_simulated_data_3.csv.xz",
-    ):
-        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-            realistic_dir / name, index=False, compression="xz"
-        )
-
-    out = load_realistic_swiss(repo_root=tmp_path)
-
-    assert len(out) == 3
-    assert {d.subjectID for d in out} == {"ID1"}
-    assert out.unique("condition") == ("sz13", "sz7")
-    assert out.unique("runID") == ("1", "2", "3")
-
-
-def test_realistic_swiss_leaves_metadata_unset_for_unparsable_names(tmp_path: Path) -> None:
-    """A filename that does not match the convention yields no subject or condition."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-        realistic_dir / "fit_Swiss_VAR_ID1_unexpected.csv.xz", index=False, compression="xz"
-    )
-
-    out = load_realistic_swiss(repo_root=tmp_path)
-
-    assert out[0].subjectID is None
-    assert out[0].condition is None
-    assert out.keys() == ()
 
 
 @pytest.mark.parametrize(
@@ -324,84 +40,13 @@ def test_run_from_bids_stem(stem: str, expected: str | None) -> None:
         ("chb01_03", "_", "03"),  # chb_mit
         ("PN00-1", "-", "1"),  # siena_eeg
         ("ID01_7h", "_", "7h"),  # swiss_eeg_long: hourly segment
-        ("fit_Swiss_VAR_ID1_sz13_simulated_data_2", "_", "2"),  # realistic_swiss
+        ("fit_Swiss_VAR_ID1_sz13_simulated_data_2", "_", "2"),  # trailing replicate number
         ("single", "_", None),  # no separator at all
         ("_leading", "_", None),  # separator with nothing before it
     ],
 )
 def test_run_from_suffix(stem: str, separator: str, expected: str | None) -> None:
     assert _run_from_suffix(stem, separator) == expected
-
-
-def test_realistic_swiss_run_disambiguates_repeated_seizures(tmp_path: Path) -> None:
-    """With runID, the two sz13 replicates stop sharing a label."""
-    realistic_dir = tmp_path / "data" / "synthetic" / "realistic"
-    realistic_dir.mkdir(parents=True)
-    for name in (
-        "fit_Swiss_VAR_ID1_sz13_simulated_data_1.csv.xz",
-        "fit_Swiss_VAR_ID1_sz13_simulated_data_2.csv.xz",
-        "fit_Swiss_VAR_ID1_sz7_simulated_data_3.csv.xz",
-    ):
-        pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-            realistic_dir / name, index=False, compression="xz"
-        )
-
-    out = load_realistic_swiss(repo_root=tmp_path)
-
-    assert out.keys() == ("ID1/sz13/1", "ID1/sz13/2", "ID1/sz7/3")
-    assert out.one(subjectID="ID1", condition="sz13", runID="2").runID == "2"
-    # the coarser names still resolve, via prefix match
-    assert len(out["ID1/sz13"]) == 2
-    assert len(out["ID1"]) == 3
-
-
-def test_subject_label_falls_back_to_non_numeric_suffix(tmp_path: Path) -> None:
-    """A non-numeric trailing token is used verbatim rather than crashing on int()."""
-    noise_dir = tmp_path / "data" / "synthetic" / "dummy" / "noise"
-    noise_dir.mkdir(parents=True)
-    pd.DataFrame({"ch0": [1.0, 2.0]}).to_csv(
-        noise_dir / "dummy_noise_simulated_data_pilot.csv.xz", index=False, compression="xz"
-    )
-
-    out = load_noise_dummy(repo_root=tmp_path)
-
-    assert out.keys() == ("sub-pilot",)
-
-
-@pytest.mark.slow
-def test_load_structured_dummy_default_repo_root() -> None:
-    """load_structured_dummy infers repo_root from package path and loads real data."""
-    from cobrabox.data import Data
-
-    out = load_structured_dummy("dummy_chain")
-    assert len(out) > 0
-    assert all(isinstance(d, Data) for d in out)
-
-
-@pytest.mark.slow
-def test_load_noise_dummy_default_repo_root() -> None:
-    """load_noise_dummy infers repo_root from package path and loads real data."""
-    from cobrabox.data import Data
-
-    try:
-        out = load_noise_dummy()
-    except FileNotFoundError:
-        pytest.skip("Real dummy noise dataset files not available (likely LFS not fetched).")
-    assert len(out) > 0
-    assert all(isinstance(d, Data) for d in out)
-
-
-@pytest.mark.slow
-def test_load_realistic_swiss_default_repo_root() -> None:
-    """load_realistic_swiss infers repo_root and loads real data."""
-    from cobrabox.data import Data
-
-    try:
-        out = load_realistic_swiss()
-    except FileNotFoundError:
-        pytest.skip("Real realistic_swiss dataset files not available (likely LFS not fetched).")
-    assert len(out) > 0
-    assert all(isinstance(d, Data) for d in out)
 
 
 class _NoOpProgress:
@@ -982,17 +627,6 @@ def test_dataset_dict_subset_passes_stems_to_loader(
     assert loader_subset == ["ID1"]  # stem of "ID1.zip" is "ID1"
 
 
-def test_dataset_info_returns_local_dataset_info() -> None:
-    """dataset_info returns description for local datasets."""
-    from cobrabox.datasets import dataset_info
-
-    info = dataset_info("dummy_chain")
-    assert info.identifier == "dummy_chain"
-    assert info.description
-    assert info.subset_key_name is None
-    assert info.subsets is None
-
-
 def test_dataset_info_returns_remote_dataset_info() -> None:
     """dataset_info returns subsets and subset_key_name for remote datasets."""
     from cobrabox.datasets import dataset_info
@@ -1079,31 +713,6 @@ def test_dataset_subset_passes_to_loader(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
     assert captured["loader_subset"] == ["ID1", "ID2"]
     assert captured["ensure_subset"] == ["ID1", "ID2"]
-
-
-# ---------------------------------------------------------------------------
-# _sidecar_json_for_csv — else branch (non-csv/non-csv.xz extension)
-# ---------------------------------------------------------------------------
-
-
-def test_sidecar_json_for_csv_non_csv_extension(tmp_path: Path) -> None:
-    """_sidecar_json_for_csv uses path.stem for non-.csv and non-.csv.xz files."""
-    p = tmp_path / "myfile.mat"
-    result = _sidecar_json_for_csv(p)
-    assert result.name == "info_myfile.json"
-
-
-# ---------------------------------------------------------------------------
-# _sampling_rate_from_info — returns None when no fs key present
-# ---------------------------------------------------------------------------
-
-
-def test_sampling_rate_from_info_returns_none_when_no_fs() -> None:
-    """_sampling_rate_from_info returns None when neither Settings.fs nor fs exist."""
-    from cobrabox.dataset_loader import _sampling_rate_from_info
-
-    assert _sampling_rate_from_info({}) is None
-    assert _sampling_rate_from_info({"Settings": {"other_key": 1}}) is None
 
 
 # ---------------------------------------------------------------------------
@@ -1504,7 +1113,7 @@ def test_dataset_info_str_for_dataset_without_subsets() -> None:
     from cobrabox.datasets import DatasetInfo
 
     info = DatasetInfo(
-        identifier="dummy_chain",
+        identifier="example",
         description="Synthetic chain dataset.",
         subset_key_name=None,
         subsets=None,
@@ -1519,44 +1128,14 @@ def test_dataset_info_repr_equals_str() -> None:
     from cobrabox.datasets import DatasetInfo
 
     info = DatasetInfo(
-        identifier="dummy_chain", description="Test.", subset_key_name=None, subsets=None
+        identifier="example", description="Test.", subset_key_name=None, subsets=None
     )
     assert repr(info) == str(info)
 
 
 # ---------------------------------------------------------------------------
-# dataset() — local dataset branches and unknown identifier
+# dataset() — unknown identifier
 # ---------------------------------------------------------------------------
-
-
-def test_dataset_loads_dummy_noise(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """dataset() delegates to load_noise_dummy for 'dummy_noise'."""
-    import xarray as xr
-
-    from cobrabox.data import SignalData
-
-    da = xr.DataArray([[1.0, 2.0]], dims=["time", "space"])
-    fake_ds = Dataset([SignalData.from_xarray(da)])
-
-    monkeypatch.setattr(datasets, "load_noise_dummy", lambda ident: fake_ds)
-
-    out = datasets.load_dataset("dummy_noise")
-    assert len(out) == 1
-
-
-def test_dataset_loads_realistic_swiss(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """dataset() delegates to load_realistic_swiss for 'realistic_swiss'."""
-    import xarray as xr
-
-    from cobrabox.data import SignalData
-
-    da = xr.DataArray([[1.0, 2.0]], dims=["time", "space"])
-    fake_ds = Dataset([SignalData.from_xarray(da)])
-
-    monkeypatch.setattr(datasets, "load_realistic_swiss", lambda ident: fake_ds)
-
-    out = datasets.load_dataset("realistic_swiss")
-    assert len(out) == 1
 
 
 def test_dataset_raises_for_unknown_identifier() -> None:
@@ -2028,33 +1607,20 @@ def test_siena_eeg_spec_is_registered() -> None:
 
 
 def test_list_datasets_returns_sorted_list() -> None:
-    """list_datasets() returns a dict with sorted lists for 'local' and 'remote'."""
+    """list_datasets() returns a sorted list of identifiers."""
     from cobrabox.datasets import list_datasets
 
     result = list_datasets()
-    assert isinstance(result, dict)
-    assert set(result.keys()) == {"local", "remote"}
-    assert result["local"] == sorted(result["local"])
-    assert result["remote"] == sorted(result["remote"])
-
-
-def test_list_datasets_includes_local_datasets() -> None:
-    """list_datasets() includes all built-in local datasets under 'local'."""
-    from cobrabox.datasets import list_datasets
-
-    result = list_datasets()
-    for name in ("dummy_chain", "dummy_random", "dummy_star", "dummy_noise", "realistic_swiss"):
-        assert name in result["local"]
+    assert isinstance(result, list)
+    assert result == sorted(result)
 
 
 def test_list_datasets_includes_remote_datasets() -> None:
-    """list_datasets() includes all registered remote datasets under 'remote'."""
+    """list_datasets() lists exactly the registered datasets."""
     from cobrabox.datasets import list_datasets
     from cobrabox.downloader import REMOTE_DATASETS
 
-    result = list_datasets()
-    for name in REMOTE_DATASETS:
-        assert name in result["remote"]
+    assert set(list_datasets()) == set(REMOTE_DATASETS)
 
 
 def test_list_datasets_accessible_via_cb() -> None:
@@ -2063,35 +1629,6 @@ def test_list_datasets_accessible_via_cb() -> None:
 
     assert callable(cb.list_datasets)
     assert cb.list_datasets() == cb.list_datasets()
-
-
-# ---------------------------------------------------------------------------
-# default repo_root resolution
-# ---------------------------------------------------------------------------
-
-
-def test_load_structured_dummy_uses_default_repo_root() -> None:
-    """load_structured_dummy works when repo_root is not provided."""
-    from cobrabox.dataset_loader import load_structured_dummy
-
-    result = load_structured_dummy("dummy_chain")
-    assert len(result) > 0
-
-
-def test_load_noise_dummy_uses_default_repo_root() -> None:
-    """load_noise_dummy works when repo_root is not provided."""
-    from cobrabox.dataset_loader import load_noise_dummy
-
-    result = load_noise_dummy()
-    assert len(result) > 0
-
-
-def test_load_realistic_swiss_uses_default_repo_root() -> None:
-    """load_realistic_swiss works when repo_root is not provided."""
-    from cobrabox.dataset_loader import load_realistic_swiss
-
-    result = load_realistic_swiss()
-    assert len(result) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -2317,16 +1854,8 @@ def test_swiss_eeg_short_loader_raises_when_all_archives_empty(tmp_path: Path) -
 
 
 # ---------------------------------------------------------------------------
-# datasets.py — realistic_swiss and seizures display
+# datasets.py — seizures display
 # ---------------------------------------------------------------------------
-
-
-def test_dataset_loads_realistic_swiss_via_cb() -> None:
-    """cb.load_dataset('realistic_swiss') routes to load_realistic_swiss."""
-    import cobrabox as cb
-
-    result = cb.load_dataset("realistic_swiss")
-    assert len(result) > 0
 
 
 def test_dataset_info_str_shows_seizures_per_subject() -> None:
@@ -2456,3 +1985,206 @@ def test_load_zurich_ieeg_skips_zero_sample_recording(
 
     result = _load_zurich_ieeg(dataset_dir)
     assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# swiss_demo — simulated iEEG demo dataset
+# ---------------------------------------------------------------------------
+
+
+def _write_swiss_demo_recording(
+    directory: Path,
+    subject: str,
+    seizure: str,
+    state: str,
+    *,
+    n_samples: int = 8,
+    n_channels: int = 3,
+    fs: int = 4,
+    **overrides: object,
+) -> Path:
+    """Write one fit_*.csv.xz recording plus its info_*.json sidecar, like the real files."""
+    stem = f"fit_Swiss_VAR_{subject}_{seizure.lower()}_{state}"
+    csv_path = directory / f"{stem}.csv.xz"
+    values = np.arange(n_samples * n_channels, dtype=float).reshape(n_samples, n_channels)
+    pd.DataFrame(values, columns=[str(i) for i in range(n_channels)]).to_csv(
+        csv_path, index=False, compression="xz"
+    )
+    info: dict[str, object] = {
+        "Project": "Simulated Data for CobraBox",
+        "Description": f"VAR fit to Swiss data, {subject} {seizure}, {state}",
+        "subjectID": subject,
+        "seizureID": seizure,
+        "condition": state,
+        "fs": fs,
+        "Num_Samples": n_samples,
+        "Num_Electrodes": n_channels,
+        "Duration (sec)": n_samples / fs,
+        "Source": {"Name": "SWEC-ETHZ iEEG Database (short-term recordings)"},
+        "Generator": {"Method": "PCA -> VAR"},
+        "Quality_checks": {"passed": {"stable": True}},
+    }
+    info.update(overrides)
+    (directory / f"info_{stem}.json").write_text(json.dumps(info), encoding="utf-8")
+    return csv_path
+
+
+def _write_swiss_demo_dir(directory: Path) -> Path:
+    """Two subjects (ID1, ID12) x three states, plus the non-data files the source folder has."""
+    directory.mkdir(parents=True, exist_ok=True)
+    for subject, seizure in (("ID12", "Sz9"), ("ID1", "Sz1")):
+        for state in ("postictal", "ictal", "preictal"):
+            _write_swiss_demo_recording(directory, subject, seizure, state)
+    (directory / "fit_log.csv").write_text("subject,seizure,state\nID1,Sz1,ictal\n")
+    (directory / "run_config.json").write_text("{}")
+    np.savez(directory / "params_fit_Swiss_VAR_ID1_sz1_ictal.npz", a=np.zeros(1))
+    return directory
+
+
+def test_load_swiss_demo_reads_metadata_into_data_fields(tmp_path: Path) -> None:
+    """Sidecar identity fields land on Data; generation details are left out."""
+    out = _load_swiss_demo(_write_swiss_demo_dir(tmp_path / "swiss_demo"))
+
+    assert len(out) == 6
+    first = out[0]
+    assert first.subjectID == "ID1"
+    assert first.condition == "preictal"
+    assert first.groupID is None
+    assert first.sampling_rate == 4.0
+    assert first.extra == {
+        "seizureID": "Sz1",
+        "Project": "Simulated Data for CobraBox",
+        "Description": "VAR fit to Swiss data, ID1 Sz1, preictal",
+    }
+    assert first.data.sizes == {"space": 3, "time": 8}
+    np.testing.assert_allclose(first.data["time"].values, np.arange(8) / 4.0)
+    assert first.data.attrs["identifier"] == "swiss_demo"
+
+
+def test_load_swiss_demo_orders_by_subject_number_then_state(tmp_path: Path) -> None:
+    """ID1 sorts before ID12, and states run preictal -> ictal -> postictal."""
+    out = _load_swiss_demo(_write_swiss_demo_dir(tmp_path / "swiss_demo"))
+
+    assert [(d.subjectID, d.condition) for d in out] == [
+        ("ID1", "preictal"),
+        ("ID1", "ictal"),
+        ("ID1", "postictal"),
+        ("ID12", "preictal"),
+        ("ID12", "ictal"),
+        ("ID12", "postictal"),
+    ]
+
+
+def test_load_swiss_demo_subset_matches_subject_exactly(tmp_path: Path) -> None:
+    """subset=['ID1'] must not also pick up ID12."""
+    out = _load_swiss_demo(_write_swiss_demo_dir(tmp_path / "swiss_demo"), subset=["ID1"])
+
+    assert {d.subjectID for d in out} == {"ID1"}
+    assert len(out) == 3
+
+
+def test_load_swiss_demo_subset_skips_unselected_files(tmp_path: Path) -> None:
+    """Unselected recordings are filtered by filename and never opened."""
+    directory = _write_swiss_demo_dir(tmp_path / "swiss_demo")
+    (directory / "fit_Swiss_VAR_ID4_sz12_ictal.csv.xz").write_bytes(b"not xz")
+
+    out = _load_swiss_demo(directory, subset=["ID12"])
+
+    assert {d.subjectID for d in out} == {"ID12"}
+
+
+def test_load_swiss_demo_raises_when_no_recordings(tmp_path: Path) -> None:
+    """An empty (not yet populated) directory says where the files are expected."""
+    with pytest.raises(FileNotFoundError, match="set_dataset_dir"):
+        _load_swiss_demo(tmp_path)
+
+
+def test_load_swiss_demo_raises_when_subset_matches_nothing(tmp_path: Path) -> None:
+    """A subset with no matching files names the requested subjects."""
+    directory = _write_swiss_demo_dir(tmp_path / "swiss_demo")
+    with pytest.raises(FileNotFoundError, match=r"\['ID9'\]"):
+        _load_swiss_demo(directory, subset=["ID9"])
+
+
+def test_load_swiss_demo_raises_when_sidecar_missing(tmp_path: Path) -> None:
+    """A recording without its info_*.json sidecar is an error, not a silent skip."""
+    directory = tmp_path / "swiss_demo"
+    directory.mkdir()
+    csv_path = _write_swiss_demo_recording(directory, "ID1", "Sz1", "ictal")
+    (directory / f"info_{csv_path.name.removesuffix('.csv.xz')}.json").unlink()
+
+    with pytest.raises(FileNotFoundError, match="missing metadata sidecar"):
+        _load_swiss_demo(directory)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"), [("Num_Samples", 9), ("Num_Electrodes", 4), ("Duration (sec)", 3.0)]
+)
+def test_load_swiss_demo_raises_when_sidecar_disagrees_with_data(
+    tmp_path: Path, field: str, value: float
+) -> None:
+    """Declared sample count, channel count and duration are checked against the array."""
+    directory = tmp_path / "swiss_demo"
+    directory.mkdir()
+    _write_swiss_demo_recording(directory, "ID1", "Sz1", "ictal", **{field: value})
+
+    with pytest.raises(ValueError, match=field.replace("(", r"\(").replace(")", r"\)")):
+        _load_swiss_demo(directory)
+
+
+def test_swiss_demo_spec_is_registered() -> None:
+    """swiss_demo is a registered dataset with its five subjects as subset keys."""
+    spec = get_remote_dataset_spec("swiss_demo")
+    assert spec is not None
+    assert spec.loader is _load_swiss_demo
+    assert spec.subset_keys() == ["ID1", "ID4", "ID5", "ID9", "ID12"]
+    assert spec.files is None  # not hosted yet
+
+
+def test_load_dataset_swiss_demo_reads_from_data_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """cb.load_dataset reads <data_dir>/swiss_demo without downloading anything."""
+    import cobrabox as cb
+
+    _write_swiss_demo_dir(tmp_path / "swiss_demo")
+    monkeypatch.setattr(downloader, "_data_dir", None)  # ignore any set_dataset_dir()
+    monkeypatch.setenv("COBRABOX_DATA_DIR", str(tmp_path))
+
+    out = cb.load_dataset("swiss_demo", subset=["ID12"])
+
+    assert [d.condition for d in out] == ["preictal", "ictal", "postictal"]
+
+
+def test_load_dataset_swiss_demo_rejects_dict_subset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """File-level (dict) subsets need a file index, which swiss_demo does not have yet."""
+    import cobrabox as cb
+
+    monkeypatch.setenv("COBRABOX_DATA_DIR", str(tmp_path))
+    with pytest.raises(ValueError, match="file-level subsets are not supported"):
+        cb.load_dataset("swiss_demo", subset={"ID1": 1})
+
+
+def test_load_dataset_swiss_demo_rejects_unknown_subject() -> None:
+    """Subjects outside the five known ones are rejected before touching disk."""
+    import cobrabox as cb
+
+    with pytest.raises(ValueError, match="Unknown subset keys"):
+        cb.load_dataset("swiss_demo", subset=["ID2"])
+
+
+@pytest.mark.slow
+def test_load_swiss_demo_real_files() -> None:
+    """The real swiss_demo files load in full: 5 subjects x 3 states, 512 Hz."""
+    dataset_dir = downloader.get_dataset_dir() / "swiss_demo"
+    if not any(dataset_dir.glob("fit_Swiss_VAR_*.csv.xz")):
+        pytest.skip(f"swiss_demo files not in {dataset_dir} (dataset not hosted yet).")
+
+    out = _load_swiss_demo(dataset_dir)
+
+    assert len(out) == 15
+    assert [d.subjectID for d in out[::3]] == ["ID1", "ID4", "ID5", "ID9", "ID12"]
+    assert {d.condition for d in out} == {"preictal", "ictal", "postictal"}
+    assert {d.sampling_rate for d in out} == {512.0}

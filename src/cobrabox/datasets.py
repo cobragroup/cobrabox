@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 from .data import SignalData
 from .dataset import Dataset
-from .dataset_loader import load_noise_dummy, load_realistic_swiss, load_structured_dummy
 from .downloader import (
     REMOTE_DATASETS,
     LargeLoadError,
@@ -26,19 +25,6 @@ from .downloader import (
     get_dataset_dir,
     get_remote_dataset_spec,
 )
-
-# ---------------------------------------------------------------------------
-# Metadata for built-in local datasets (no subset concept)
-# ---------------------------------------------------------------------------
-
-_LOCAL_DATASET_INFO: dict[str, str] = {
-    "dummy_chain": "Synthetic chain-topology VAR time-series (5 subjects).",
-    "dummy_random": "Synthetic random-topology VAR time-series (3 subjects).",
-    "dummy_star": "Synthetic star-topology VAR time-series (4 subjects).",
-    "dummy_noise": "Synthetic uncorrelated noise time-series (5 subjects).",
-    "realistic_swiss": "Simulated realistic Swiss VAR time-series (1 subject, 3 recordings).",
-}
-
 
 # ---------------------------------------------------------------------------
 # DatasetInfo
@@ -195,6 +181,11 @@ class DatasetInfo:
 
 def _validate_subset(spec: RemoteDatasetSpec, subset: SubsetSpec) -> None:
     """Raise ValueError if *subset* contains keys or values invalid for *spec*."""
+    if isinstance(subset, dict) and spec.files is None:
+        raise ValueError(
+            f"'{spec.identifier}' has no file index, so file-level subsets are not "
+            f"supported. Pass a list of keys instead, e.g. subset={list(subset)!r}."
+        )
     keys_to_validate = list(subset.keys()) if isinstance(subset, dict) else list(subset)
     known = spec.subset_keys()
     if known is not None:
@@ -261,7 +252,7 @@ def load_dataset(
     """Load a dataset by identifier.
 
     Args:
-        identifier: Dataset name, e.g. ``"dummy_chain"`` or
+        identifier: Dataset name, e.g. ``"swiss_demo"`` or
             ``"swiss_eeg_short"``.
         subset: Restrict which data is downloaded and loaded.  Two forms:
 
@@ -312,13 +303,6 @@ def _load_items(
     identifier: str, *, subset: SubsetSpec | None, accept: bool, force: bool
 ) -> Dataset[SignalData]:
     """Dispatch *identifier* to its loader; the body of :func:`load_dataset`."""
-    if identifier in {"dummy_chain", "dummy_random", "dummy_star"}:
-        return load_structured_dummy(identifier)
-    if identifier == "dummy_noise":
-        return load_noise_dummy(identifier)
-    if identifier == "realistic_swiss":
-        return load_realistic_swiss(identifier)
-
     spec = get_remote_dataset_spec(identifier)
     if spec is not None:
         # Validate subset keys early, before triggering any downloads.
@@ -343,8 +327,7 @@ def _load_items(
         return spec.loader(dataset_dir, loader_subset)
 
     raise ValueError(
-        f"Unknown dataset identifier: {identifier!r}. "
-        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
+        f"Unknown dataset identifier: {identifier!r}. Known identifiers: {sorted(REMOTE_DATASETS)}"
     )
 
 
@@ -392,13 +375,10 @@ def download_dataset(
         and nothing has been downloaded yet).
 
     Raises:
-        ValueError: If ``identifier`` is a local dataset (no download needed)
-            or unknown, or if ``subset`` contains invalid keys.
+        ValueError: If ``identifier`` is unknown, or if ``subset`` contains
+            invalid keys.
         DownloadCancelled: If ``accept=False`` and the user declines the download.
     """
-    if identifier in {*_LOCAL_DATASET_INFO}:
-        raise ValueError(f"'{identifier}' is a local dataset — no download needed.")
-
     spec = get_remote_dataset_spec(identifier)
     if spec is not None:
         if subset is not None:
@@ -406,27 +386,24 @@ def download_dataset(
         return ensure_remote_files(spec, subset=subset, accept=accept, force=force, dry_run=dry_run)
 
     raise ValueError(
-        f"Unknown dataset identifier: {identifier!r}. "
-        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
+        f"Unknown dataset identifier: {identifier!r}. Known identifiers: {sorted(REMOTE_DATASETS)}"
     )
 
 
-def list_datasets() -> dict[str, list[str]]:
-    """Return all known dataset identifiers grouped by type.
+def list_datasets() -> list[str]:
+    """Return all known dataset identifiers, sorted.
+
+    Every dataset is downloaded on first use; none ship with the package.
 
     Example::
 
         cb.list_datasets()
-        # {
-        #   'local':  ['dummy_chain', 'dummy_noise', ...],
-        #   'remote': ['bonn_eeg', 'chb_mit', ...],
-        # }
+        # ['bonn_eeg', 'chb_mit', ..., 'swiss_demo', ...]
 
     Returns:
-        Dict with keys ``"local"`` (no download required) and ``"remote"``,
-        each mapping to a sorted list of identifier strings.
+        Sorted list of identifier strings accepted by :func:`load_dataset`.
     """
-    return {"local": sorted(_LOCAL_DATASET_INFO), "remote": sorted(REMOTE_DATASETS)}
+    return sorted(REMOTE_DATASETS)
 
 
 def show_datasets() -> list[dict[str, str | None]]:
@@ -435,24 +412,21 @@ def show_datasets() -> list[dict[str, str | None]]:
     Example::
 
         cb.show_datasets()
-        # Dataset        Source  Data type         Cached  Seizures  Size     Subsets  License
-        # bonn_eeg       remote  ictal/interictal  yes     100       ~10 MB   5 sets   ...
-        # chb_mit        remote  ictal/interictal  3/24    200       ~30 GB   24 subj  ...
-        # dummy_chain    local   —                 —       —         —        —        —
+        # Dataset     Data type         Cached  Seizures  Size     Subsets  License
+        # bonn_eeg    ictal/interictal  yes     100       ~10 MB   5 sets   ...
+        # chb_mit     ictal/interictal  3/24    200       ~30 GB   24 subj  ...
 
     Returns:
-        List of dicts with keys ``"identifier"``, ``"source"``, ``"data_type"``,
-        ``"cached"``, ``"seizures"``, ``"size"``, ``"subsets"``, and
-        ``"license"``.  Suitable for programmatic use in notebooks or scripts.
-        ``"cached"`` is ``"yes"``/``"no"``/``"N/M"`` for remote datasets and
-        ``None`` for local ones.
+        List of dicts with keys ``"identifier"``, ``"data_type"``, ``"cached"``,
+        ``"seizures"``, ``"size"``, ``"subsets"``, and ``"license"``.  Suitable
+        for programmatic use in notebooks or scripts.  ``"cached"`` is
+        ``"yes"``/``"no"``/``"N/M"``.
     """
     from rich.console import Console
     from rich.table import Table
 
     table = Table(title="Available Datasets", show_lines=False)
     table.add_column("Dataset", style="bold", no_wrap=True)
-    table.add_column("Source", style="dim")
     table.add_column("Data type")
     table.add_column("Cached")
     table.add_column("Seizures", justify="right")
@@ -461,58 +435,34 @@ def show_datasets() -> list[dict[str, str | None]]:
     table.add_column("License")
 
     rows: list[dict[str, str | None]] = []
-    for ident in sorted(_LOCAL_DATASET_INFO) + sorted(REMOTE_DATASETS):
-        if ident in _LOCAL_DATASET_INFO:
-            table.add_row(
-                ident, "local", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014"
-            )
-            rows.append(
-                {
-                    "identifier": ident,
-                    "source": "local",
-                    "data_type": None,
-                    "cached": None,
-                    "seizures": None,
-                    "size": None,
-                    "subsets": None,
-                    "license": None,
-                }
-            )
+    for ident in sorted(REMOTE_DATASETS):
+        spec = REMOTE_DATASETS[ident]
+        data_type_str = spec.data_type or "—"
+        cached_val = _dataset_cache_status(spec)
+        cached_cell = (
+            f"[green]{cached_val}[/green]" if cached_val == "yes" else f"[dim]{cached_val}[/dim]"
+        )
+        if spec.seizures_per_subject is not None:
+            seizures_str = str(sum(spec.seizures_per_subject.values()))
         else:
-            spec = get_remote_dataset_spec(ident)
-            if spec is None:
-                continue
-            data_type_str = spec.data_type or "—"
-            cached_val = _dataset_cache_status(spec)
-            cached_cell = (
-                f"[green]{cached_val}[/green]"
-                if cached_val == "yes"
-                else f"[dim]{cached_val}[/dim]"
-            )
-            if spec.seizures_per_subject is not None:
-                seizures_str = str(sum(spec.seizures_per_subject.values()))
-            else:
-                seizures_str = "\u2014"
-            size = spec.size_hint or "\u2014"
-            subset_keys = spec.subset_keys()
-            n_keys = len(subset_keys) if subset_keys else None
-            subsets = f"{n_keys} {spec.subset_key_name or 'subsets'}" if n_keys else "\u2014"
-            lic = spec.license or "\u2014"
-            table.add_row(
-                ident, "remote", data_type_str, cached_cell, seizures_str, size, subsets, lic
-            )
-            rows.append(
-                {
-                    "identifier": ident,
-                    "source": "remote",
-                    "data_type": None if data_type_str == "\u2014" else data_type_str,
-                    "cached": cached_val,
-                    "seizures": None if seizures_str == "\u2014" else seizures_str,
-                    "size": None if size == "\u2014" else size,
-                    "subsets": None if subsets == "\u2014" else subsets,
-                    "license": None if lic == "\u2014" else lic,
-                }
-            )
+            seizures_str = "—"
+        size = spec.size_hint or "—"
+        subset_keys = spec.subset_keys()
+        n_keys = len(subset_keys) if subset_keys else None
+        subsets = f"{n_keys} {spec.subset_key_name or 'subsets'}" if n_keys else "—"
+        lic = spec.license or "—"
+        table.add_row(ident, data_type_str, cached_cell, seizures_str, size, subsets, lic)
+        rows.append(
+            {
+                "identifier": ident,
+                "data_type": None if data_type_str == "—" else data_type_str,
+                "cached": cached_val,
+                "seizures": None if seizures_str == "—" else seizures_str,
+                "size": None if size == "—" else size,
+                "subsets": None if subsets == "—" else subsets,
+                "license": None if lic == "—" else lic,
+            }
+        )
 
     console = Console(file=sys.stdout)
     console.print(table)
@@ -541,14 +491,6 @@ def dataset_info(identifier: str) -> DatasetInfo:
     Raises:
         ValueError: If the identifier is unknown.
     """
-    if identifier in _LOCAL_DATASET_INFO:
-        return DatasetInfo(
-            identifier=identifier,
-            description=_LOCAL_DATASET_INFO[identifier],
-            subset_key_name=None,
-            subsets=None,
-        )
-
     spec = get_remote_dataset_spec(identifier)
     if spec is not None:
         keys = spec.subset_keys()
@@ -574,8 +516,7 @@ def dataset_info(identifier: str) -> DatasetInfo:
         )
 
     raise ValueError(
-        f"Unknown dataset identifier: {identifier!r}. "
-        f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
+        f"Unknown dataset identifier: {identifier!r}. Known identifiers: {sorted(REMOTE_DATASETS)}"
     )
 
 
@@ -598,8 +539,7 @@ def delete_dataset(
             automated pipelines).
 
     Raises:
-        ValueError: If ``identifier`` is a local dataset (nothing to delete)
-            or unknown.
+        ValueError: If ``identifier`` is unknown.
         DownloadCancelled: If ``confirm=True`` and the user declines the deletion.
 
     Example::
@@ -613,14 +553,11 @@ def delete_dataset(
         # Skip confirmation
         cb.delete_dataset("bonn_eeg", confirm=False)
     """
-    if identifier in _LOCAL_DATASET_INFO:
-        raise ValueError(f"'{identifier}' is a local dataset — nothing to delete.")
-
     spec = get_remote_dataset_spec(identifier)
     if spec is None:
         raise ValueError(
             f"Unknown dataset identifier: {identifier!r}. "
-            f"Known identifiers: {[*sorted(_LOCAL_DATASET_INFO), *REMOTE_DATASETS]}"
+            f"Known identifiers: {sorted(REMOTE_DATASETS)}"
         )
 
     delete_remote_files(spec, subset=subset, confirm=confirm)

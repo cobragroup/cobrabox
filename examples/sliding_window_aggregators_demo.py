@@ -8,9 +8,19 @@ Key difference:
   - ConcatAggregate preserves every window as a slice along a new 'window' dimension
 """
 
+import numpy as np
+
 import cobrabox as cb
 
-data = cb.load_dataset("dummy_chain")[0]
+# A small synthetic recording: 5 channels, 10 s at 100 Hz. For real-looking
+# data, use cb.load_dataset("swiss_demo") instead (downloaded on first use).
+rng = np.random.default_rng(0)
+data = cb.SignalData.from_numpy(
+    rng.standard_normal((1000, 5)).cumsum(axis=0),
+    dims=["time", "space"],
+    sampling_rate=100.0,
+    subjectID="sub-01",
+)
 print(f"Input shape:  {dict(data.data.sizes)}")
 print(f"Input dims:   {data.data.dims}")
 print()

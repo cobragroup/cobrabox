@@ -3,20 +3,18 @@
 Run with:  uv run python scripts/gen_dataset_docs.py
 
 Produces, under ``docs/``:
-    guide/datasets.md   local + remote dataset tables (two marked regions)
+    guide/datasets.md   dataset table (marked region)
     index.md            compact dataset summary table on the front page
 
-Everything is derived from ``cobrabox.datasets._LOCAL_DATASET_INFO`` and
-``cobrabox.downloader.REMOTE_DATASETS``, so the tables cannot drift out of sync
-with the code (e.g. a new remote dataset added to the registry shows up here
-automatically).
+Everything is derived from ``cobrabox.downloader.REMOTE_DATASETS``, so the tables
+cannot drift out of sync with the code (e.g. a new dataset added to the registry
+shows up here automatically).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from cobrabox.datasets import _LOCAL_DATASET_INFO
 from cobrabox.downloader import REMOTE_DATASETS, RemoteDatasetSpec
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -40,19 +38,6 @@ def _subset_count(spec: RemoteDatasetSpec) -> str:
     if "(" in name and ")" in name:
         name = name.split("(", 1)[1].rstrip(")")
     return f"{len(keys)} {name}"
-
-
-def gen_local_table() -> int:
-    lines = ["| Identifier | Description |", "| ---------- | ----------- |"]
-    for ident in sorted(_LOCAL_DATASET_INFO):
-        lines.append(f"| `{ident}` | {_LOCAL_DATASET_INFO[ident]} |")
-    _replace_marked_region(
-        DOCS / "guide" / "datasets.md",
-        "<!-- local-dataset-table:start -->",
-        "<!-- local-dataset-table:end -->",
-        "\n".join(lines),
-    )
-    return len(_LOCAL_DATASET_INFO)
 
 
 def gen_remote_table() -> int:
@@ -91,15 +76,12 @@ def _short_summary(text: str) -> str:
 
 
 def gen_index_summary() -> None:
-    lines = ["| Identifier | Type | Summary | Size |", "| ---------- | ---- | ------- | ---- |"]
-    for ident in sorted(_LOCAL_DATASET_INFO):
-        desc = _short_summary(_LOCAL_DATASET_INFO[ident])
-        lines.append(f"| `{ident}` | local | {desc} | — |")
+    lines = ["| Identifier | Summary | Size |", "| ---------- | ------- | ---- |"]
     for ident in sorted(REMOTE_DATASETS):
         spec = REMOTE_DATASETS[ident]
         desc = _short_summary(spec.description or "—")
         size = spec.size_hint or "—"
-        lines.append(f"| `{ident}` | remote | {desc} | {size} |")
+        lines.append(f"| `{ident}` | {desc} | {size} |")
     _replace_marked_region(
         DOCS / "index.md",
         "<!-- dataset-table:start -->",
@@ -109,10 +91,9 @@ def gen_index_summary() -> None:
 
 
 def main() -> None:
-    n_local = gen_local_table()
-    n_remote = gen_remote_table()
+    n_datasets = gen_remote_table()
     gen_index_summary()
-    print(f"Wrote guide/datasets.md ({n_local} local, {n_remote} remote) and index.md summary.")
+    print(f"Wrote guide/datasets.md ({n_datasets} datasets) and index.md summary.")
 
 
 if __name__ == "__main__":

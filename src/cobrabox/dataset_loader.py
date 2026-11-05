@@ -16,33 +16,113 @@ import xarray as xr
 from .data import SignalData
 from .dataset import Dataset
 
+# ---------------------------------------------------------------------------
+# swiss_demo — simulated iEEG fitted to the SWEC-ETHZ short-term recordings
+# ---------------------------------------------------------------------------
 
-def _sidecar_json_for_csv(path: Path) -> Path:
-    """Return expected JSON sidecar path for a given CSV file."""
-    name = path.name
-    if name.endswith(".csv.xz"):
-        stem = name[: -len(".csv.xz")]
-    elif name.endswith(".csv"):
-        stem = name[: -len(".csv")]
-    else:
-        stem = path.stem
-    return path.with_name(f"info_{stem}.json")
+# Sidecar fields copied into ``Data.extra``. The rest of the sidecar describes
+# how the data was generated (Source, Generator, Quality_checks, ...) and is
+# deliberately left out.
+_SWISS_DEMO_EXTRA_FIELDS: tuple[str, ...] = ("seizureID", "Project", "Description")
+_SWISS_DEMO_STATE_ORDER: tuple[str, ...] = ("preictal", "ictal", "postictal")
 
 
-def _sampling_rate_from_info(info: dict) -> float | None:
-    """Extract sampling rate from JSON info (Settings['fs'] or top-level 'fs')."""
-    settings = info.get("Settings")
-    fs = None
-    if isinstance(settings, dict):
-        fs = settings.get("fs")
-    if fs is None:
-        fs = info.get("fs")
-    if fs is None:
-        return None
-    try:
-        return float(fs)
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"Invalid sampling rate 'fs' in metadata: {fs!r}") from e
+def _swiss_demo_sort_key(csv_path: Path) -> tuple[int, str, int, str]:
+    """Order recordings by subject number, seizure, then preictal/ictal/postictal."""
+    # Filename layout: fit_Swiss_VAR_<subject>_<seizure>_<state>.csv.xz
+    _, _, _, subject, seizure, state = csv_path.name.removesuffix(".csv.xz").split("_", 5)
+    subject_num = int(subject[2:]) if subject[2:].isdigit() else -1
+    state_rank = _SWISS_DEMO_STATE_ORDER.index(state) if state in _SWISS_DEMO_STATE_ORDER else 99
+    return subject_num, seizure, state_rank, csv_path.name
+
+
+def _swiss_demo_sidecar(csv_path: Path) -> Path:
+    """Return the ``info_*.json`` sidecar for a ``fit_*.csv.xz`` recording."""
+    return csv_path.with_name(f"info_{csv_path.name.removesuffix('.csv.xz')}.json")
+
+
+def _load_swiss_demo_recording(csv_path: Path) -> SignalData:
+    """Load one swiss_demo recording and its sidecar metadata into a SignalData."""
+    json_path = _swiss_demo_sidecar(csv_path)
+    if not json_path.exists():
+        raise FileNotFoundError(f"swiss_demo: missing metadata sidecar {json_path.name}.")
+    info = json.loads(json_path.read_text(encoding="utf-8"))
+
+    values = pd.read_csv(csv_path, compression="xz").to_numpy(dtype=float)
+    fs = float(info["fs"])
+    n_samples, n_channels = values.shape
+
+    expected = {
+        "Num_Samples": (info["Num_Samples"], n_samples),
+        "Num_Electrodes": (info["Num_Electrodes"], n_channels),
+        "Duration (sec)": (info["Duration (sec)"], n_samples / fs),
+    }
+    for field, (declared, actual) in expected.items():
+        if not np.isclose(declared, actual):
+            raise ValueError(
+                f"swiss_demo: {csv_path.name} has {field}={actual:g} but its sidecar "
+                f"declares {declared:g}."
+            )
+
+    da = xr.DataArray(
+        values,
+        dims=["time", "space"],
+        coords={
+            "time": np.arange(n_samples, dtype=float) / fs,
+            "space": [f"ch{i}" for i in range(n_channels)],
+        },
+        attrs={"identifier": "swiss_demo", "source_file": csv_path.name},
+    )
+    return SignalData.from_xarray(
+        da,
+        sampling_rate=fs,
+        subjectID=info["subjectID"],
+        condition=info["condition"],
+        extra={k: info[k] for k in _SWISS_DEMO_EXTRA_FIELDS if k in info},
+    )
+
+
+def _load_swiss_demo(dataset_dir: Path, subset: Sequence[str] | None = None) -> Dataset[SignalData]:
+    """Load the swiss_demo dataset: simulated iEEG in three peri-ictal states.
+
+    Each recording is a ``fit_Swiss_VAR_<subject>_<seizure>_<state>.csv.xz``
+    file (samples x channels) with an ``info_*.json`` sidecar. One
+    ``SignalData`` is produced per recording, with ``subjectID`` and
+    ``condition`` (``"preictal"``, ``"ictal"`` or ``"postictal"``) set from
+    the sidecar and ``seizureID``, ``Project`` and ``Description`` in
+    ``extra``. The time axis is in seconds.
+
+    Args:
+        dataset_dir: Directory containing the recordings and their sidecars.
+        subset: If given, only load recordings whose subject ID (e.g.
+            ``"ID1"``) is in this list. Filtering happens on the filename, so
+            unselected recordings are never decompressed.
+
+    Raises:
+        FileNotFoundError: If no matching recordings are in ``dataset_dir``,
+            or a recording has no sidecar.
+        ValueError: If a recording's shape or duration disagrees with its
+            sidecar.
+    """
+    csv_paths = sorted(dataset_dir.glob("fit_Swiss_VAR_*.csv.xz"), key=_swiss_demo_sort_key)
+    if subset is not None:
+        subjects = set(subset)
+        # Filename layout: fit_Swiss_VAR_<subject>_<seizure>_<state>.csv.xz
+        csv_paths = [p for p in csv_paths if p.name.split("_")[3] in subjects]
+    if not csv_paths:
+        selected = f" for subjects {sorted(subset)}" if subset is not None else ""
+        raise FileNotFoundError(
+            f"No swiss_demo recordings found{selected} in {dataset_dir} "
+            "(expected fit_Swiss_VAR_*.csv.xz with info_*.json sidecars). The dataset "
+            "is not hosted yet: place the files there, or point cobrabox at the folder "
+            "that contains swiss_demo/ with cb.set_dataset_dir() or COBRABOX_DATA_DIR."
+        )
+    return Dataset([_load_swiss_demo_recording(p) for p in csv_paths])
+
+
+# ---------------------------------------------------------------------------
+# Remote dataset loaders
+# ---------------------------------------------------------------------------
 
 
 def _run_from_bids_stem(stem: str) -> str | None:
@@ -67,164 +147,6 @@ def _run_from_suffix(stem: str, separator: str = "_") -> str | None:
     """
     head, found, tail = stem.rpartition(separator)
     return tail if found and head else None
-
-
-def _subject_from_index(path: Path) -> str:
-    """Build a subject label from the trailing replicate number of a filename.
-
-    ``dummy_struct_VAR_chain_3.csv.xz`` -> ``"sub-03"``. Each synthetic replicate
-    stands in for one subject. The ``sub-`` prefix keeps labels clearly distinct
-    from positions, so ``ds[0]`` and ``ds["sub-01"]`` can never be confused.
-    """
-    tail = path.name.split(".", 1)[0].rsplit("_", 1)[-1]
-    return f"sub-{int(tail):02d}" if tail.isdigit() else f"sub-{tail}"
-
-
-def _load_one_csv_xz(
-    path: Path,
-    identifier: str,
-    *,
-    subjectID: str | None = None,
-    groupID: str | None = None,
-    condition: str | None = None,
-    runID: str | None = None,
-) -> SignalData | None:
-    """Load a single .csv.xz file into a SignalData, or return None if empty."""
-    df = pd.read_csv(path, compression="xz")
-    if df.empty:
-        return None
-    columns = list(df.columns)
-    if not columns:  # pragma: no cover
-        raise ValueError(f"{path.name}: expected at least one column")
-
-    time = df.index.to_numpy(dtype=float)
-    values = df.to_numpy()
-    da = xr.DataArray(
-        values,
-        dims=["time", "space"],
-        coords={"time": time, "space": columns},
-        attrs={"source_file": path.name, "identifier": identifier},
-    )
-    extra: dict = {}
-    info: dict = {}
-    json_path = _sidecar_json_for_csv(path)
-    if json_path.exists():
-        try:
-            with open(json_path, encoding="utf-8") as f:
-                info = json.load(f)
-            if isinstance(info, dict):
-                extra.update(info)
-        except Exception:
-            pass
-    sampling_rate = _sampling_rate_from_info(info) if info else None
-    return SignalData.from_xarray(
-        da,
-        sampling_rate=sampling_rate,
-        subjectID=subjectID,
-        groupID=groupID,
-        condition=condition,
-        runID=runID,
-        extra=extra or None,
-    )
-
-
-def load_structured_dummy(identifier: str, repo_root: Path | None = None) -> Dataset[SignalData]:
-    """Load dummy dataset parts from `data/dummy/struct`."""
-    if repo_root is None:
-        repo_root = Path(__file__).resolve().parents[2]
-
-    struct_dir = repo_root / "data" / "synthetic" / "dummy" / "struct"
-    variant = identifier.removeprefix("dummy_")
-    candidates = sorted(struct_dir.glob(f"dummy_struct_VAR_{variant}_*.csv.xz"))
-    if not candidates:
-        raise FileNotFoundError(
-            f"No files found for '{identifier}' in {struct_dir} "
-            f"(expected: dummy_struct_VAR_{variant}_*.csv.xz)."
-        )
-
-    # Each replicate is one subject; the VAR topology is shared by the whole set, so
-    # it becomes the groupID — concatenating two topologies then groups cleanly.
-    items = [
-        item
-        for path in candidates
-        if (
-            item := _load_one_csv_xz(
-                path, identifier, subjectID=_subject_from_index(path), groupID=variant
-            )
-        )
-    ]
-    if not items:
-        raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
-    return Dataset(items)
-
-
-def load_noise_dummy(
-    identifier: str = "dummy_noise", repo_root: Path | None = None
-) -> Dataset[SignalData]:
-    """Load dummy noise dataset parts from `data/dummy/noise`."""
-    if repo_root is None:
-        repo_root = Path(__file__).resolve().parents[2]
-
-    noise_dir = repo_root / "data" / "synthetic" / "dummy" / "noise"
-    candidates = sorted(noise_dir.glob("*.csv.xz"))
-    if not candidates:
-        raise FileNotFoundError(f"No .csv.xz files found for '{identifier}' in {noise_dir}.")
-
-    items = [
-        item
-        for path in candidates
-        if (
-            item := _load_one_csv_xz(
-                path, identifier, subjectID=_subject_from_index(path), groupID="noise"
-            )
-        )
-    ]
-    if not items:
-        raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
-    return Dataset(items)
-
-
-def load_realistic_swiss(
-    identifier: str = "realistic_swiss", repo_root: Path | None = None
-) -> Dataset[SignalData]:
-    """Load realistic Swiss VAR dataset parts from `data/synthetic/realistic`."""
-    if repo_root is None:
-        repo_root = Path(__file__).resolve().parents[2]
-
-    realistic_dir = repo_root / "data" / "synthetic" / "realistic"
-    candidates = sorted(realistic_dir.glob("fit_Swiss_VAR_ID1_*.csv.xz"))
-    if not candidates:
-        raise FileNotFoundError(
-            f"No .csv.xz files found for '{identifier}' in {realistic_dir} "
-            "matching pattern 'fit_Swiss_VAR_ID1_*.csv.xz'."
-        )
-
-    # Filenames carry the source subject and the seizure the VAR was fit to, e.g.
-    # fit_Swiss_VAR_ID1_sz13_simulated_data_2 -> subject ID1, seizure sz13, run 2.
-    # Two replicates share sz13; the trailing run number keeps their labels distinct
-    # (ID1/sz13/1, ID1/sz13/2).
-    items = []
-    for path in candidates:
-        match = re.match(r"fit_Swiss_VAR_(?P<subject>[^_]+)_(?P<seizure>sz\d+)_", path.name)
-        item = _load_one_csv_xz(
-            path,
-            identifier,
-            subjectID=match["subject"] if match else None,
-            condition=match["seizure"] if match else None,
-            # Tied to the same match: a name that does not follow the convention
-            # gets no metadata at all, rather than a bare run with no subject.
-            runID=_run_from_suffix(path.name.split(".", 1)[0]) if match else None,
-        )
-        if item:
-            items.append(item)
-    if not items:
-        raise ValueError(f"All files for '{identifier}' are empty: {[p.name for p in candidates]}")
-    return Dataset(items)
-
-
-# ---------------------------------------------------------------------------
-# Remote dataset loaders
-# ---------------------------------------------------------------------------
 
 
 def _extract_numeric_from_csv_bytes(raw: bytes) -> tuple[np.ndarray, list[str]]:
