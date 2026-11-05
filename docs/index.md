@@ -141,11 +141,11 @@ for loading, filtering, and subset-download examples.
 <!-- dataset-table:start -->
 | Identifier | Type | Summary | Size |
 | ---------- | ---- | ------- | ---- |
-| `dummy_chain` | local | Synthetic chain-topology VAR time-series (3 subjects). | — |
-| `dummy_noise` | local | Synthetic uncorrelated noise time-series (10 subjects). | — |
+| `dummy_chain` | local | Synthetic chain-topology VAR time-series (5 subjects). | — |
+| `dummy_noise` | local | Synthetic uncorrelated noise time-series (5 subjects). | — |
 | `dummy_random` | local | Synthetic random-topology VAR time-series (3 subjects). | — |
-| `dummy_star` | local | Synthetic star-topology VAR time-series (3 subjects). | — |
-| `realistic_swiss` | local | Simulated realistic Swiss VAR time-series (1 subject). | — |
+| `dummy_star` | local | Synthetic star-topology VAR time-series (4 subjects). | — |
+| `realistic_swiss` | local | Simulated realistic Swiss VAR time-series (1 subject, 3 recordings). | — |
 | `bonn_eeg` | remote | Bonn University EEG dataset (Andrzejak et al. 2001): 5 sets of 100 single-channel recordings. Sets: Z = healthy eyes open, O = healthy eyes… | ~10 MB |
 | `chb_mit` | remote | CHB-MIT Scalp EEG Database: pediatric patients with intractable seizures (24 subjects, 256 Hz, 23 channels, ictal/interictal). Children's… | ~30 GB |
 | `siena_eeg` | remote | Siena Scalp EEG Database: adult epilepsy patients with annotated seizures (14 subjects, 512 Hz, 21+ channels, ictal/interictal). University… | ~15 GB |
