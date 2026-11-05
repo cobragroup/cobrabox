@@ -29,13 +29,18 @@ class PartialDirectedCoherence(BaseFeature[SignalData]):
             :func:`statsmodels.tsa.api.VAR` pick the optimal order via AIC.
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
+    Input:
+        2-D data with named ``"space"`` and ``"time"`` dimensions (either
+        axis order — the feature transposes to ``(space, time)`` internally).
+
     Returns:
         :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
 
     Raises:
         ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,
-            there are fewer than 2 channels, or ``var_order < 1`` /
-            ``n_freqs < 1``.
+            the input lacks a ``"space"`` or ``"time"`` dimension, there are
+            fewer than 2 channels, the number of channels exceeds the number
+            of samples, or ``var_order < 1`` / ``n_freqs < 1``.
 
     References:
         Baccalá, L. A., & Sameshima, K. (2001). Partial directed coherence: a
@@ -78,7 +83,16 @@ class PartialDirectedCoherence(BaseFeature[SignalData]):
                 f"PartialDirectedCoherence requires 2-D input (space x time), "
                 f"got shape {xr_data.shape} with dims {xr_data.dims}."
             )
-        n_ch, _ = xr_data.shape
+        missing_dims = [d for d in ("space", "time") if d not in xr_data.dims]
+        if missing_dims:
+            raise ValueError(
+                f"PartialDirectedCoherence requires 'space' and 'time' dimensions, "
+                f"got dims {tuple(xr_data.dims)}. Reorder or rename the input to "
+                f"(space, time), or construct it with cb.SignalData.from_numpy(...), "
+                f"which orders dimensions automatically."
+            )
+        xr_data = xr_data.transpose("space", "time")
+        n_ch = xr_data.sizes["space"]
         if n_ch < 2:
             raise ValueError(f"PartialDirectedCoherence requires at least 2 channels, got {n_ch}.")
 
@@ -120,13 +134,18 @@ def partial_directed_coherence(
             :func:`statsmodels.tsa.api.VAR` pick the optimal order via AIC.
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
+    Input:
+        2-D data with named ``"space"`` and ``"time"`` dimensions (either
+        axis order — the feature transposes to ``(space, time)`` internally).
+
     Returns:
         :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
 
     Raises:
         ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,
-            there are fewer than 2 channels, or ``var_order < 1`` /
-            ``n_freqs < 1``.
+            the input lacks a ``"space"`` or ``"time"`` dimension, there are
+            fewer than 2 channels, the number of channels exceeds the number
+            of samples, or ``var_order < 1`` / ``n_freqs < 1``.
 
     References:
         Baccalá, L. A., & Sameshima, K. (2001). Partial directed coherence: a

@@ -31,8 +31,18 @@ class DirectedTransferFunction(BaseFeature[SignalData]):
             statsmodels pick the optimal order via AIC.
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
+    Input:
+        2-D data with named ``"space"`` and ``"time"`` dimensions (either
+        axis order — the feature transposes to ``(space, time)`` internally).
+
     Returns:
         :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
+
+    Raises:
+        ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,
+            the input lacks a ``"space"`` or ``"time"`` dimension, there are
+            fewer than 2 channels, the number of channels exceeds the number
+            of samples, or ``var_order < 1`` / ``n_freqs < 1``.
 
     References:
         Kamiński, M., & Blinowska, K. J. (1991). A new method of the description
@@ -75,7 +85,16 @@ class DirectedTransferFunction(BaseFeature[SignalData]):
                 f"DirectedTransferFunction requires 2-D input (space x time), "
                 f"got shape {xr_data.shape} with dims {xr_data.dims}."
             )
-        n_ch, _ = xr_data.shape
+        missing_dims = [d for d in ("space", "time") if d not in xr_data.dims]
+        if missing_dims:
+            raise ValueError(
+                f"DirectedTransferFunction requires 'space' and 'time' dimensions, "
+                f"got dims {tuple(xr_data.dims)}. Reorder or rename the input to "
+                f"(space, time), or construct it with cb.SignalData.from_numpy(...), "
+                f"which orders dimensions automatically."
+            )
+        xr_data = xr_data.transpose("space", "time")
+        n_ch = xr_data.sizes["space"]
         if n_ch < 2:
             raise ValueError(f"DirectedTransferFunction requires at least 2 channels, got {n_ch}.")
 
@@ -119,8 +138,18 @@ def directed_transfer_function(
             statsmodels pick the optimal order via AIC.
         n_freqs: Number of frequency bins in ``[0, sr/2]``. Default 128.
 
+    Input:
+        2-D data with named ``"space"`` and ``"time"`` dimensions (either
+        axis order — the feature transposes to ``(space, time)`` internally).
+
     Returns:
         :class:`~cobrabox.Data` with dims ``("space_to", "space_from", "frequency")``.
+
+    Raises:
+        ValueError: If ``data.sampling_rate`` is ``None``, the input is not 2-D,
+            the input lacks a ``"space"`` or ``"time"`` dimension, there are
+            fewer than 2 channels, the number of channels exceeds the number
+            of samples, or ``var_order < 1`` / ``n_freqs < 1``.
 
     References:
         Kamiński, M., & Blinowska, K. J. (1991). A new method of the description

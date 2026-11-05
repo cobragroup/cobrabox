@@ -109,17 +109,20 @@ class Nonreversibility(BaseFeature[SignalData]):
         return float(diff_norm / denom)
 
     def __call__(self, data: SignalData) -> xr.DataArray:
-        xr_data = data.data  # time is always last (Data.__init__ transposes it)
+        xr_data = data.data
 
         if "space" not in xr_data.dims:
             raise ValueError("data must have a 'space' dimension")
+        if "time" not in xr_data.dims:
+            raise ValueError("data must have a 'time' dimension")
 
         if xr_data.sizes["space"] < 2:
             raise ValueError(
                 "nonreversibility requires at least 2 time series (space dimension >= 2)"
             )
 
-        X = xr_data.values  # shape (n_space, n_time)
+        # Only SignalData orders time last; plain Data keeps its input order.
+        X = xr_data.transpose("space", "time").values
         dc = self._compute_dc_norm(X)
         return xr.DataArray([dc], dims=["space"], coords={"space": ["dc_norm"]})
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import xarray as xr
 
 import cobrabox as cb
 
@@ -83,3 +84,45 @@ def test_history_appended() -> None:
     data = _data(_causal_signal(n=200))
     result = cb.DirectedTransferFunction(var_order=2, n_freqs=16).apply(data)
     assert result.history[-1] == "DirectedTransferFunction"
+
+
+# ---------------------------------------------------------------------------
+# Input dimension handling (issue #167)
+# ---------------------------------------------------------------------------
+
+
+def test_time_space_order_transposed_internally() -> None:
+    """Plain Data with dims (time, space) gives the same result as (space, time)."""
+    arr = _causal_signal(n=400)
+
+    space_first = cb.SignalData.from_numpy(
+        arr, dims=["time", "space"], sampling_rate=128.0
+    )  # SignalData transposes to (space, time)
+    time_first = cb.Data.from_xarray(
+        xr.DataArray(arr, dims=["time", "space"], coords={"space": ["x", "y"]}), sampling_rate=128.0
+    )
+
+    out_expected = cb.DirectedTransferFunction(var_order=2).apply(space_first)
+    out_swapped = cb.DirectedTransferFunction(var_order=2).apply(time_first)
+
+    np.testing.assert_allclose(out_swapped.data.values, out_expected.data.values)
+    assert list(out_swapped.data.coords["space_to"].values) == ["x", "y"]
+
+
+def test_missing_space_dim_raises() -> None:
+    """Input lacking named 'space'/'time' dims is rejected with an actionable error."""
+    arr = _causal_signal(n=200)
+    data = cb.Data.from_xarray(xr.DataArray(arr, dims=["time", "electrode"]), sampling_rate=128.0)
+
+    with pytest.raises(ValueError, match="'space' and 'time' dimensions"):
+        cb.DirectedTransferFunction().apply(data)
+
+
+def test_more_channels_than_samples_raises() -> None:
+    """A degenerate VAR input (channels > samples) fails loudly, not silently."""
+    rng = np.random.default_rng(3)
+    arr = rng.standard_normal((8, 5))
+    data = cb.SignalData.from_numpy(arr, dims=["space", "time"], sampling_rate=128.0)
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        cb.DirectedTransferFunction().apply(data)
