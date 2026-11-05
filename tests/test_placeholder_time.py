@@ -93,7 +93,7 @@ def test_time_feature_still_runs_on_genuine_time_series() -> None:
 
 def test_time_preserving_feature_clears_the_flag() -> None:
     """A feature that yields a real multi-sample time axis is not flagged."""
-    filtered = cb.feature.BandpassFilter(bands={"alpha": [8.0, 12.0]}).apply(_data())
+    filtered = cb.feature.BandDecomposition(bands={"alpha": [8.0, 12.0]}).apply(_data())
 
     assert not has_placeholder_time(filtered)
     assert filtered.data.sizes["time"] > 1

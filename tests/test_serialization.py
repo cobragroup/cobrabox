@@ -296,6 +296,19 @@ def test_load_fixture_chord_v1() -> None:
     assert chord.split.step_size == 2
 
 
+def test_load_fixture_pre_rename_bandpass_filter_points_at_replacement() -> None:
+    """A pre-rename BandpassFilter pipeline must not load as the new feature.
+
+    The old BandpassFilter stacked bands along a new dimension and took an
+    ``"eeg"`` preset or a band mapping; the current one sums ranges into a
+    single output and takes ``[low_hz, high_hz]`` pairs. Loading an old file
+    must fail loudly and name BandDecomposition rather than reinterpreting the
+    parameters under the new semantics.
+    """
+    with pytest.raises(TypeError, match="BandDecomposition"):
+        load(FIXTURES / "bandpass_filter_v1.yaml")
+
+
 # ─── YAML Structure ──────────────────────────────────────────────────────────
 
 

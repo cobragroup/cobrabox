@@ -36,6 +36,16 @@ cb.Covariance(...).apply(data)  # composable, for pipelines
 
 **Tags:** [`undirected`](../tags.md#tag-undirected), [`linear`](../tags.md#tag-linear), [`resting-state`](../tags.md#tag-resting-state), [`eeg`](../tags.md#tag-eeg), [`fmri`](../tags.md#tag-fmri), [`io:matrix`](../tags.md#tag-io-matrix), [`req:multichannel`](../tags.md#tag-req-multichannel)
 
+### DirectDirectedTransferFunction
+Estimate the direct Directed Transfer Function (dDTF) between channels.
+
+```python
+cb.direct_directed_transfer_function(data, ...)  # one-shot
+cb.DirectDirectedTransferFunction(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`mvar`](../tags.md#tag-mvar), [`var`](../tags.md#tag-var), [`directed`](../tags.md#tag-directed), [`frequency-domain`](../tags.md#tag-frequency-domain), [`direct-causality`](../tags.md#tag-direct-causality), [`epilepsy`](../tags.md#tag-epilepsy), [`seizure-propagation`](../tags.md#tag-seizure-propagation), [`eeg`](../tags.md#tag-eeg), [`io:matrix-frequency`](../tags.md#tag-io-matrix-frequency), [`req:multichannel`](../tags.md#tag-req-multichannel), [`req:sampling-rate`](../tags.md#tag-req-sampling-rate)
+
 ### DirectedTransferFunction
 Estimate the Directed Transfer Function (DTF) between channels via a VAR model.
 
@@ -66,6 +76,16 @@ cb.GrangerCausality(...).apply(data)  # composable, for pipelines
 
 **Tags:** [`mvar`](../tags.md#tag-mvar), [`var`](../tags.md#tag-var), [`directed`](../tags.md#tag-directed), [`prediction-error`](../tags.md#tag-prediction-error), [`epilepsy`](../tags.md#tag-epilepsy), [`seizure-propagation`](../tags.md#tag-seizure-propagation), [`resting-state`](../tags.md#tag-resting-state), [`eeg`](../tags.md#tag-eeg), [`io:matrix`](../tags.md#tag-io-matrix), [`req:multichannel`](../tags.md#tag-req-multichannel), [`req:sampling-rate`](../tags.md#tag-req-sampling-rate)
 
+### InwardStrength
+Compute per-channel inward strength from a directed connectivity matrix.
+
+```python
+cb.inward_strength(data, ...)  # one-shot
+cb.InwardStrength(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`directed`](../tags.md#tag-directed), [`strength`](../tags.md#tag-strength), [`post-processing`](../tags.md#tag-post-processing), [`io:vector`](../tags.md#tag-io-vector), [`req:asymmetric-matrix`](../tags.md#tag-req-asymmetric-matrix)
+
 ### MutualInformation
 Compute mutual information (MI) between all pairs of series along a specified dimension (by
 
@@ -75,6 +95,16 @@ cb.MutualInformation(...).apply(data)  # composable, for pipelines
 ```
 
 **Tags:** [`nonlinear`](../tags.md#tag-nonlinear), [`entropy`](../tags.md#tag-entropy), [`undirected`](../tags.md#tag-undirected), [`resting-state`](../tags.md#tag-resting-state), [`eeg`](../tags.md#tag-eeg), [`io:matrix`](../tags.md#tag-io-matrix), [`req:multichannel`](../tags.md#tag-req-multichannel)
+
+### OutwardStrength
+Compute per-channel outward strength from a directed connectivity matrix.
+
+```python
+cb.outward_strength(data, ...)  # one-shot
+cb.OutwardStrength(...).apply(data)  # composable, for pipelines
+```
+
+**Tags:** [`directed`](../tags.md#tag-directed), [`strength`](../tags.md#tag-strength), [`post-processing`](../tags.md#tag-post-processing), [`io:vector`](../tags.md#tag-io-vector), [`req:asymmetric-matrix`](../tags.md#tag-req-asymmetric-matrix)
 
 ### PartialCorrelation
 Compute the partial-correlation matrix across channels.
